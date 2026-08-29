@@ -89,6 +89,14 @@ func (b *BackgroundVerifier) checkAllDomains() {
 }
 
 func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
+	// Check if Cloudflare - if so, SSL is handled at edge
+	if b.verifyService.IsCloudflare(domainName) {
+		log.Printf("[domains] %s is behind Cloudflare - SSL handled at edge", domainName)
+		t := true
+		b.domainService.Update(domainID, models.UpdateDomainInput{SSLEnabled: &t})
+		return
+	}
+
 	// First setup nginx config
 	if err := b.verifyService.SetupDomainNginx(domainName); err != nil {
 		log.Printf("[domains] nginx setup failed for %s: %v", domainName, err)
@@ -98,7 +106,6 @@ func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 	// Generate SSL certificate
 	if err := b.verifyService.GenerateSSL(domainName); err != nil {
 		log.Printf("[domains] SSL generation failed for %s: %v", domainName, err)
-		// Continue anyway - might be Cloudflare or already have cert
 	}
 
 	// Check if SSL exists and enable

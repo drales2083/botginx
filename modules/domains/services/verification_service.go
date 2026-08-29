@@ -197,8 +197,32 @@ type WildcardSSLRequest struct {
 	Instructions   string `json:"instructions"`
 }
 
+// IsCloudflare checks if domain is behind Cloudflare proxy
+func (s *VerificationService) IsCloudflare(domain string) bool {
+	ips, err := net.LookupIP(domain)
+	if err != nil || len(ips) == 0 {
+		return false
+	}
+
+	// Cloudflare IP ranges (simplified check)
+	cfRanges := []string{"104.", "172.67.", "162.158.", "141.101.", "108.162.", "190.93.", "188.114.", "197.234.", "198.41.", "103.21.", "103.22.", "103.31."}
+	ipStr := ips[0].String()
+	for _, prefix := range cfRanges {
+		if strings.HasPrefix(ipStr, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // GenerateSSL runs certbot to get SSL certificate for the domain
+// For Cloudflare domains, SSL is handled at edge - we just mark it ready
 func (s *VerificationService) GenerateSSL(domain string) error {
+	// If behind Cloudflare, SSL is handled by CF at edge
+	if s.IsCloudflare(domain) {
+		return nil // Cloudflare handles SSL
+	}
+
 	server, err := s.getServer()
 	if err != nil {
 		return fmt.Errorf("no deploy server available")
@@ -215,23 +239,19 @@ func (s *VerificationService) GenerateSSL(domain string) error {
 	}
 	defer client.Close()
 
-	// Run certbot for wildcard cert using HTTP-01 for base domain
-	// If Cloudflare proxy is on, this won't work - but we try anyway
-	cmd := fmt.Sprintf(`certbot certonly --nginx -d %s -d '*.%s' --non-interactive --agree-tos --email admin@%s 2>&1 || certbot certonly --nginx -d %s --non-interactive --agree-tos --email admin@%s 2>&1`,
-		domain, domain, domain, domain, domain)
+	// Run certbot for single domain (wildcard requires DNS challenge)
+	cmd := fmt.Sprintf(`certbot certonly --nginx -d %s --non-interactive --agree-tos --email admin@%s 2>&1`,
+		domain, domain)
 
 	output, err := client.Run(cmd)
 	if err != nil {
-		// Check if cert already exists
 		if strings.Contains(output, "Certificate not yet due for renewal") {
 			return nil
 		}
 		return fmt.Errorf("certbot failed: %s", output)
 	}
 
-	// Reload nginx to apply
 	client.Run("nginx -t && systemctl reload nginx")
-
 	return nil
 }
 
