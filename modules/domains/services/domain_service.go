@@ -134,6 +134,13 @@ func (s *DomainService) Get(id string) (*models.Domain, error) {
 	if err != nil {
 		return nil, ErrDomainNotFound
 	}
+
+	// Generate token for old domains that don't have one
+	if domain.VerifyToken == "" {
+		domain.VerifyToken = "guardbot-" + s.generateID()[:12]
+		s.db.Exec(`UPDATE domains SET verify_token = $1 WHERE id = $2`, domain.VerifyToken, domain.ID)
+	}
+
 	return &domain, nil
 }
 

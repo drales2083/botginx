@@ -1,113 +1,140 @@
 {{define "content"}}
 <div class="row">
-    <div class="col-md-8">
-        <div class="card">
+    <div class="col-lg-8">
+        <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="card-title mb-0"><code>{{.Domain.Name}}</code></h3>
+                <h3 class="card-title mb-0"><i class="bi bi-globe me-2"></i>{{.Domain.Name}}</h3>
                 <div class="d-flex gap-2">
                     {{if .Domain.DNSVerified}}
-                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>DNS Verified</span>
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Verified</span>
                     {{else}}
-                    <span class="badge bg-warning"><i class="bi bi-clock me-1"></i>DNS Pending</span>
+                    <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Pending</span>
                     {{end}}
                     {{if .Domain.SSLEnabled}}
-                    <span class="badge bg-success"><i class="bi bi-lock-fill me-1"></i>Wildcard SSL Active</span>
-                    {{else}}
-                    <span class="badge bg-secondary"><i class="bi bi-lock me-1"></i>SSL Not Active</span>
+                    <span class="badge bg-success"><i class="bi bi-lock-fill me-1"></i>SSL</span>
                     {{end}}
                 </div>
             </div>
             <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <h6 class="text-muted">Deployment</h6>
-                        <span class="text-muted">
-                            <i class="bi bi-server me-1"></i> A server is assigned automatically on deploy
-                        </span>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="text-muted">Created</h6>
-                        <span>{{.Domain.CreatedAt.Format "2006-01-02 15:04"}}</span>
-                    </div>
-                </div>
-
                 {{if not .Domain.DNSVerified}}
-                <div class="alert alert-warning mb-4">
-                    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Step 1: DNS Configuration</h5>
-                    <p class="mb-2">Go to your domain registrar (Cloudflare, Namecheap, GoDaddy, etc.) and add these DNS records:</p>
-                    <table class="table table-sm table-bordered mb-3">
-                        <thead>
+                <h6 class="text-muted mb-3"><i class="bi bi-gear me-1"></i>DNS Configuration</h6>
+                <p class="text-muted small">Add these records in your domain registrar (Cloudflare, Namecheap, GoDaddy, etc.)</p>
+
+                <div class="table-responsive">
+                    <table class="table table-sm mb-4">
+                        <thead class="table-dark">
                             <tr>
-                                <th style="width:80px">Type</th>
-                                <th>Host/Name</th>
+                                <th style="width:70px">Type</th>
+                                <th style="width:180px">Name</th>
                                 <th>Value</th>
+                                <th style="width:50px"></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td><code>A</code></td>
+                                <td><span class="badge bg-primary">A</span></td>
                                 <td><code>@</code></td>
-                                <td><code>{{.ServerIP}}</code></td>
+                                <td><code id="ip1">{{.ServerIP}}</code></td>
+                                <td><button class="btn btn-sm btn-outline-secondary" onclick="copyText('ip1')"><i class="bi bi-clipboard"></i></button></td>
                             </tr>
                             <tr>
-                                <td><code>A</code></td>
+                                <td><span class="badge bg-primary">A</span></td>
                                 <td><code>*</code></td>
-                                <td><code>{{.ServerIP}}</code></td>
+                                <td><code id="ip2">{{.ServerIP}}</code></td>
+                                <td><button class="btn btn-sm btn-outline-secondary" onclick="copyText('ip2')"><i class="bi bi-clipboard"></i></button></td>
                             </tr>
-                            <tr class="table-info">
-                                <td><code>TXT</code></td>
-                                <td><code>_guardbot-verify</code></td>
-                                <td><code>{{.Domain.VerifyToken}}</code></td>
+                            <tr>
+                                <td><span class="badge bg-info">TXT</span></td>
+                                <td><code id="txtname">_guardbot-verify</code></td>
+                                <td><code id="txtval">{{.Domain.VerifyToken}}</code></td>
+                                <td><button class="btn btn-sm btn-outline-secondary" onclick="copyText('txtval')"><i class="bi bi-clipboard"></i></button></td>
                             </tr>
                         </tbody>
                     </table>
-                    <p class="text-muted small mb-3">
-                        <i class="bi bi-info-circle me-1"></i>
-                        The TXT record is used for verification (works with Cloudflare proxy). DNS changes take 5-30 minutes to propagate.
-                    </p>
-                    <button class="btn btn-primary btn-verify" data-id="{{.Domain.ID}}">
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-primary btn-verify">
                         <i class="bi bi-check-circle me-1"></i> Verify DNS
                     </button>
+                    <small class="text-muted">DNS propagation takes 5-30 minutes</small>
                 </div>
                 {{else}}
-                <div class="alert alert-success mb-4">
-                    <i class="bi bi-check-circle me-2"></i><strong>DNS Verified</strong> — Your domain is connected and ready.
+                <div class="d-flex align-items-center mb-4 p-3 bg-success bg-opacity-10 rounded">
+                    <i class="bi bi-check-circle-fill text-success fs-4 me-3"></i>
+                    <div>
+                        <strong>Domain Connected</strong>
+                        <div class="text-muted small">DNS is verified and pointing to the correct server</div>
+                    </div>
                 </div>
-                {{end}}
 
-                {{if .Domain.DNSVerified}}
                 {{if not .Domain.SSLEnabled}}
-                <div class="alert alert-info mb-4">
-                    <h5 class="alert-heading"><i class="bi bi-lock me-2"></i>Step 2: Wildcard SSL</h5>
-                    <p>Enable HTTPS for your domain and all subdomains.</p>
-                    <button class="btn btn-primary btn-check-ssl" data-id="{{.Domain.ID}}">
+                <h6 class="text-muted mb-3"><i class="bi bi-shield-lock me-1"></i>SSL Certificate</h6>
+                <p class="text-muted small mb-3">Enable HTTPS for your domain and all subdomains</p>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary btn-check-ssl">
                         <i class="bi bi-shield-check me-1"></i> Check SSL Status
                     </button>
-                    <button class="btn btn-outline-primary btn-ssl-instructions ms-2" data-id="{{.Domain.ID}}">
-                        <i class="bi bi-question-circle me-1"></i> Setup Instructions
+                    <button class="btn btn-outline-secondary btn-ssl-instructions">
+                        <i class="bi bi-question-circle me-1"></i> Setup Guide
                     </button>
                 </div>
                 {{else}}
-                <div class="alert alert-success mb-4">
-                    <i class="bi bi-lock-fill me-2"></i><strong>Wildcard SSL Active</strong> — HTTPS is enabled for *.{{.Domain.Name}}
+                <div class="d-flex align-items-center p-3 bg-success bg-opacity-10 rounded">
+                    <i class="bi bi-lock-fill text-success fs-4 me-3"></i>
+                    <div>
+                        <strong>Wildcard SSL Active</strong>
+                        <div class="text-muted small">HTTPS enabled for *.{{.Domain.Name}}</div>
+                    </div>
                 </div>
                 {{end}}
                 {{end}}
+            </div>
+        </div>
 
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Actions</h5>
+            </div>
+            <div class="card-body">
                 <div class="d-flex gap-2">
                     <a href="/user/redirectlinks/new?domain={{.Domain.ID}}" class="btn btn-success">
                         <i class="bi bi-link-45deg me-1"></i> Create Redirect Link
                     </a>
-                    <button class="btn btn-danger" onclick="deleteDomain()">
-                        <i class="bi bi-trash me-1"></i> {{t "delete"}}
+                    <button class="btn btn-outline-danger" onclick="deleteDomain()">
+                        <i class="bi bi-trash me-1"></i> Delete Domain
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt class="text-muted small">Domain</dt>
+                    <dd>{{.Domain.Name}}</dd>
+                    <dt class="text-muted small">Created</dt>
+                    <dd>{{.Domain.CreatedAt.Format "Jan 2, 2006"}}</dd>
+                    <dt class="text-muted small">Server</dt>
+                    <dd class="text-muted">Assigned on deploy</dd>
+                </dl>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+function copyText(id) {
+    const text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text);
+    showToast('Copied!', 'success');
+}
+
 document.querySelector('.btn-verify')?.addEventListener('click', async function() {
     const btn = this;
     btn.disabled = true;
@@ -116,9 +143,9 @@ document.querySelector('.btn-verify')?.addEventListener('click', async function(
     const res = await fetch(`/user/domains/api/{{.Domain.ID}}/verify`, { method: 'POST' });
     const data = await res.json();
     if (res.ok && data.verified) {
-        reloadWithToast('DNS verified successfully!', 'success');
+        reloadWithToast('DNS verified!', 'success');
     } else {
-        showToast(data.message || 'DNS verification failed. Make sure your domain points to the correct IP.', 'danger');
+        showToast(data.message || 'Verification failed. Check your DNS records.', 'danger');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Verify DNS';
     }
@@ -135,34 +162,27 @@ document.querySelector('.btn-check-ssl')?.addEventListener('click', async functi
         if (data.ssl.exists && data.ssl.is_wildcard) {
             reloadWithToast('Wildcard SSL is active!', 'success');
         } else if (data.ssl.exists) {
-            showToast('SSL certificate found but not wildcard. Contact support for wildcard setup.', 'warning');
+            showToast('SSL found but not wildcard. Contact support.', 'warning');
         } else {
-            showToast('No SSL certificate found. Click "Setup Instructions" to enable SSL.', 'info');
+            showToast('No SSL certificate. See Setup Guide.', 'info');
         }
     } else {
-        showToast('Could not check SSL status. Try again later.', 'danger');
+        showToast('Could not check SSL.', 'danger');
     }
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-shield-check me-1"></i> Check SSL Status';
 });
 
 document.querySelector('.btn-ssl-instructions')?.addEventListener('click', async function() {
-    const btn = this;
-    btn.disabled = true;
-
     const res = await fetch(`/user/domains/api/{{.Domain.ID}}/wildcard-ssl`);
     const data = await res.json();
-    btn.disabled = false;
-
     if (res.ok && data.instructions) {
         alert(data.instructions);
-    } else {
-        showToast('Could not load SSL instructions.', 'danger');
     }
 });
 
 async function deleteDomain() {
-    if (!confirm('Delete this domain? This will also remove all redirect links.')) return;
+    if (!confirm('Delete this domain and all its redirect links?')) return;
     const res = await fetch(`/user/domains/api/{{.Domain.ID}}`, { method: 'DELETE' });
     if (res.ok) {
         window.location.href = '/user/domains';
