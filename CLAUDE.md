@@ -46,12 +46,27 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 
 | Script | Purpose |
 |--------|---------|
+| `deploy.sh` | Production deploy with SSL (local build → remote VPS) |
 | `deploy-onion.sh` | Full Tor VPS setup (PostgreSQL, Go, Nginx, systemd) |
 | `auto-deploy.sh` | Auto-update from GitHub releases (cron every 2 min) |
 
 Usage:
 ```bash
+# Production (real domain with SSL)
+cp deploy.env.example deploy.env  # Edit: SSH_HOST, PANEL_DOMAIN, CERTBOT_EMAIL
+./deploy.sh --setup               # First time: installs PostgreSQL, nginx, SSL
+./deploy.sh                       # Deploy binary
+
+# Tor hidden service
 DEPLOY_BRANCH="main" ssh root@SERVER 'bash -s' < deploy-onion.sh
+```
+
+### Antibot Mode
+
+When botection is installed on the same VPS, set `ANTIBOT_MODE=true` in deploy.env:
+
+```
+Traffic: Internet → :443 (nginx) → :8080 (botection) → :3001 (botginx)
 ```
 
 ## Botection Integration

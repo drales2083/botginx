@@ -7,7 +7,8 @@
 # here rather than on the box serving traffic.
 #
 # Traffic flow:
-#   Internet → :443 (nginx+SSL) → :3001 (botginx)
+#   Direct:  Internet → :443 (nginx+SSL) → :3001 (botginx)
+#   Antibot: Internet → :443 (nginx+SSL) → :8080 (botection) → :3001 (botginx)
 #
 # Usage:
 #   ./deploy.sh                 deploy the binary
@@ -57,6 +58,11 @@ RUN_USER="${RUN_USER:-botginx}"
 APP_PORT="${APP_PORT:-3001}"
 PANEL_DOMAIN="${PANEL_DOMAIN:-}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
+
+# Antibot mode: nginx → botection (8080) → botginx (3001)
+# Set ANTIBOT_MODE=true when botection is installed on the same server
+ANTIBOT_MODE="${ANTIBOT_MODE:-false}"
+ANTIBOT_PORT="${ANTIBOT_PORT:-8080}"
 
 BUILD_OS="${BUILD_OS:-linux}"
 BUILD_ARCH="${BUILD_ARCH:-amd64}"
@@ -441,6 +447,16 @@ UNITEOF"
 }
 
 install_nginx() {
+    # When botection is installed, nginx proxies to it (8080), not directly to botginx (3001)
+    local upstream_port
+    if [[ "$ANTIBOT_MODE" == "true" ]]; then
+        upstream_port="$ANTIBOT_PORT"
+        log "antibot mode: nginx → :${ANTIBOT_PORT} (botection) → :${APP_PORT} (botginx)"
+    else
+        upstream_port="$APP_PORT"
+        log "direct mode: nginx → :${APP_PORT} (botginx)"
+    fi
+
     local conf
     conf="$(cat <<NGINXEOF
 server {
@@ -451,7 +467,7 @@ server {
     # certbot rewrites this block to add the 443 listener and redirect here.
 
     location / {
-        proxy_pass http://127.0.0.1:${APP_PORT};
+        proxy_pass http://127.0.0.1:${upstream_port};
         proxy_http_version 1.1;
 
         proxy_set_header Host \$host;
