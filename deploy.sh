@@ -320,6 +320,8 @@ setup() {
 DATABASE_URL=${db_url}
 ANTIBOT_WEBHOOK_SECRET=${webhook_secret}
 DEFAULT_LANG=en
+# GitHub token for auto-deploy (required for private repos)
+GITHUB_TOKEN=${GITHUB_TOKEN:-}
 ENVEOF"
     remote_sudo "chown root:${RUN_USER} ${CONFIG_DIR}/${APP_NAME}.env"
     remote_sudo "chmod 640 ${CONFIG_DIR}/${APP_NAME}.env"
