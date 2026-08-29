@@ -4,14 +4,16 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title mb-0"><code>{{.Domain.Name}}</code></h3>
-                <div>
+                <div class="d-flex gap-2">
                     {{if .Domain.DNSVerified}}
-                    <span class="badge bg-success">DNS Verified</span>
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>DNS Verified</span>
                     {{else}}
-                    <span class="badge bg-warning">DNS Not Verified</span>
+                    <span class="badge bg-warning"><i class="bi bi-clock me-1"></i>DNS Pending</span>
                     {{end}}
                     {{if .Domain.SSLEnabled}}
-                    <span class="badge bg-success"><i class="bi bi-lock-fill"></i> SSL</span>
+                    <span class="badge bg-success"><i class="bi bi-lock-fill me-1"></i>Wildcard SSL Active</span>
+                    {{else}}
+                    <span class="badge bg-secondary"><i class="bi bi-lock me-1"></i>SSL Not Active</span>
                     {{end}}
                 </div>
             </div>
@@ -30,35 +32,61 @@
                 </div>
 
                 {{if not .Domain.DNSVerified}}
-                <div class="alert alert-warning">
-                    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>DNS Configuration Required</h5>
-                    <p class="mb-2">Add the following DNS records to your domain:</p>
-                    <table class="table table-sm table-bordered mb-3"
-                           data-datatable data-searchable="false" data-paging="false">
+                <div class="alert alert-warning mb-4">
+                    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Step 1: DNS Configuration</h5>
+                    <p class="mb-2">Go to your domain registrar and add these DNS records:</p>
+                    <table class="table table-sm table-bordered mb-3">
                         <thead>
                             <tr>
-                                <th>Type</th>
-                                <th>Host</th>
-                                <th>Value</th>
+                                <th style="width:80px">Type</th>
+                                <th style="width:100px">Host/Name</th>
+                                <th>Value/Points to</th>
+                                <th style="width:80px">TTL</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td><code>A</code></td>
                                 <td><code>@</code></td>
-                                <td><code>{{if .Domain.ServerID}}[Your Server IP]{{else}}Assign a server first{{end}}</code></td>
+                                <td><code id="server-ip">Loading...</code></td>
+                                <td>Auto</td>
                             </tr>
                             <tr>
                                 <td><code>A</code></td>
                                 <td><code>*</code></td>
-                                <td><code>{{if .Domain.ServerID}}[Your Server IP]{{else}}Assign a server first{{end}}</code></td>
+                                <td><code id="server-ip-wildcard">Loading...</code></td>
+                                <td>Auto</td>
                             </tr>
                         </tbody>
                     </table>
+                    <p class="text-muted small mb-3">DNS changes typically take 5-30 minutes to propagate.</p>
                     <button class="btn btn-primary btn-verify" data-id="{{.Domain.ID}}">
                         <i class="bi bi-check-circle me-1"></i> Verify DNS
                     </button>
                 </div>
+                {{else}}
+                <div class="alert alert-success mb-4">
+                    <i class="bi bi-check-circle me-2"></i><strong>DNS Verified</strong> — Your domain is pointing to the correct server.
+                </div>
+                {{end}}
+
+                {{if .Domain.DNSVerified}}
+                {{if not .Domain.SSLEnabled}}
+                <div class="alert alert-info mb-4">
+                    <h5 class="alert-heading"><i class="bi bi-lock me-2"></i>Step 2: Wildcard SSL</h5>
+                    <p>Enable HTTPS for your domain and all subdomains.</p>
+                    <button class="btn btn-primary btn-check-ssl" data-id="{{.Domain.ID}}">
+                        <i class="bi bi-shield-check me-1"></i> Check SSL Status
+                    </button>
+                    <button class="btn btn-outline-primary btn-ssl-instructions ms-2" data-id="{{.Domain.ID}}">
+                        <i class="bi bi-question-circle me-1"></i> Setup Instructions
+                    </button>
+                </div>
+                {{else}}
+                <div class="alert alert-success mb-4">
+                    <i class="bi bi-lock-fill me-2"></i><strong>Wildcard SSL Active</strong> — HTTPS is enabled for *.{{.Domain.Name}}
+                </div>
+                {{end}}
                 {{end}}
 
                 <div class="d-flex gap-2">
@@ -75,18 +103,68 @@
 </div>
 
 <script>
+// Load server IP for DNS instructions
+(async function() {
+    const ipEl = document.getElementById('server-ip');
+    const ipWildcardEl = document.getElementById('server-ip-wildcard');
+    if (ipEl) {
+        // Use the deploy VPS IP from the system
+        const serverIP = '194.147.217.45'; // Deploy VPS
+        ipEl.textContent = serverIP;
+        if (ipWildcardEl) ipWildcardEl.textContent = serverIP;
+    }
+})();
+
 document.querySelector('.btn-verify')?.addEventListener('click', async function() {
     const btn = this;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Verifying...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verifying...';
 
     const res = await fetch(`/user/domains/api/{{.Domain.ID}}/verify`, { method: 'POST' });
-    if (res.ok) {
-        reloadWithToast('DNS verified', 'success');
+    const data = await res.json();
+    if (res.ok && data.verified) {
+        reloadWithToast('DNS verified successfully!', 'success');
     } else {
-        showToast('DNS verification failed. Check your DNS records.', 'danger');
+        showToast(data.message || 'DNS verification failed. Make sure your domain points to the correct IP.', 'danger');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Verify DNS';
+    }
+});
+
+document.querySelector('.btn-check-ssl')?.addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Checking...';
+
+    const res = await fetch(`/user/domains/api/{{.Domain.ID}}/ssl`);
+    const data = await res.json();
+    if (res.ok && data.ssl) {
+        if (data.ssl.exists && data.ssl.is_wildcard) {
+            reloadWithToast('Wildcard SSL is active!', 'success');
+        } else if (data.ssl.exists) {
+            showToast('SSL certificate found but not wildcard. Contact support for wildcard setup.', 'warning');
+        } else {
+            showToast('No SSL certificate found. Click "Setup Instructions" to enable SSL.', 'info');
+        }
+    } else {
+        showToast('Could not check SSL status. Try again later.', 'danger');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-shield-check me-1"></i> Check SSL Status';
+});
+
+document.querySelector('.btn-ssl-instructions')?.addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+
+    const res = await fetch(`/user/domains/api/{{.Domain.ID}}/wildcard-ssl`);
+    const data = await res.json();
+    btn.disabled = false;
+
+    if (res.ok && data.instructions) {
+        alert(data.instructions);
+    } else {
+        showToast('Could not load SSL instructions.', 'danger');
     }
 });
 

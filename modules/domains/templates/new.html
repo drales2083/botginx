@@ -15,10 +15,16 @@
                         <div class="form-text">Enter your domain without http:// or www</div>
                     </div>
 
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        After adding the domain, point its DNS at the server address shown on the
-                        domain's page. A server is assigned automatically when you deploy.
+                    <div class="alert alert-info mb-3">
+                        <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>DNS Setup Steps</h6>
+                        <ol class="mb-0 ps-3">
+                            <li>Go to your domain registrar (Cloudflare, Namecheap, GoDaddy, etc.)</li>
+                            <li>Add an <strong>A record</strong> for <code>@</code> pointing to the server IP</li>
+                            <li>Add an <strong>A record</strong> for <code>*</code> (wildcard) pointing to the same IP</li>
+                            <li>Wait for DNS propagation (usually 5-30 minutes)</li>
+                            <li>Click <strong>Verify DNS</strong> on the domain page</li>
+                            <li>Once verified, enable <strong>Wildcard SSL</strong></li>
+                        </ol>
                     </div>
 
                     <div class="d-flex gap-2">
