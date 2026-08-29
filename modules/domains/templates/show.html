@@ -69,13 +69,13 @@
                 </div>
 
                 {{if not .Domain.SSLEnabled}}
-                <div class="d-flex align-items-center p-3 bg-light rounded">
-                    <i class="bi bi-hourglass-split text-muted fs-4 me-3"></i>
+                <div class="d-flex align-items-center p-3 bg-warning bg-opacity-25 rounded">
+                    <i class="bi bi-hourglass-split text-warning fs-4 me-3"></i>
                     <div class="flex-grow-1">
                         <strong>SSL Setup in Progress</strong>
-                        <div class="text-muted small">SSL will be configured automatically. This usually takes a few minutes.</div>
+                        <div class="small">SSL will be configured automatically. This usually takes a few minutes.</div>
                     </div>
-                    <button class="btn btn-sm btn-outline-primary btn-check-ssl">
+                    <button class="btn btn-sm btn-warning btn-check-ssl">
                         <i class="bi bi-arrow-clockwise me-1"></i> Check Now
                     </button>
                 </div>
