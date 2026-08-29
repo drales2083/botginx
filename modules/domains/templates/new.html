@@ -16,15 +16,10 @@
                     </div>
 
                     <div class="bg-light rounded p-3 mb-3">
-                        <h6 class="mb-3"><i class="bi bi-gear me-2"></i>After adding, configure DNS:</h6>
-                        <ol class="mb-0 small">
-                            <li class="mb-1">Go to your domain registrar (Cloudflare, Namecheap, GoDaddy)</li>
-                            <li class="mb-1">Add <strong>A record</strong> <code>@</code> → server IP</li>
-                            <li class="mb-1">Add <strong>A record</strong> <code>*</code> → same IP</li>
-                            <li class="mb-1">Add <strong>TXT record</strong> <code>_guardbot-verify</code> → verification code (shown after adding)</li>
-                            <li class="mb-1">Wait 5-30 minutes for DNS propagation</li>
-                            <li>Click <strong>Verify DNS</strong> on the domain page</li>
-                        </ol>
+                        <p class="mb-0 small text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            After adding, you'll see the DNS records to configure at your registrar.
+                        </p>
                     </div>
 
                     <div class="d-flex gap-2">
