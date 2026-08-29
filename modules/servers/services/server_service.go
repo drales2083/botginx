@@ -73,6 +73,11 @@ func (s *ServerService) Create(userID string, input models.CreateServerInput) (*
 		}
 	}
 
+	var provider *string
+	if input.Provider != "" {
+		provider = &input.Provider
+	}
+
 	server := &models.Server{
 		ID:          id,
 		UserID:      userID,
@@ -83,7 +88,7 @@ func (s *ServerService) Create(userID string, input models.CreateServerInput) (*
 		SSHPassword: input.SSHPassword,
 		AuthMethod:  authMethod,
 		Status:      models.ServerStatusPending,
-		Provider:    input.Provider,
+		Provider:    provider,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}

@@ -24,8 +24,8 @@ type Server struct {
 	SSHPassword string       `db:"ssh_password" json:"-"` // Never expose in JSON
 	AuthMethod  string       `db:"auth_method" json:"authMethod"` // "password" or "key"
 	Status      ServerStatus `db:"status" json:"status"`
-	Provider    string       `db:"provider" json:"provider,omitempty"`
-	OS          string       `db:"os" json:"os,omitempty"`
+	Provider    *string      `db:"provider" json:"provider,omitempty"`
+	OS          *string      `db:"os" json:"os,omitempty"`
 	CreatedAt   time.Time    `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time    `db:"updated_at" json:"updatedAt"`
 }
