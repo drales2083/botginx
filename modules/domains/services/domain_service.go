@@ -251,6 +251,28 @@ func (s *DomainService) CountAll() (int, error) {
 	return count, err
 }
 
+// ListUnverified returns domains that haven't been DNS verified yet
+func (s *DomainService) ListUnverified() ([]models.Domain, error) {
+	var domains []models.Domain
+	err := s.db.Select(&domains, `
+		SELECT * FROM domains
+		WHERE dns_verified = FALSE AND verify_token != ''
+		ORDER BY created_at DESC
+	`)
+	return domains, err
+}
+
+// ListVerifiedWithoutSSL returns domains that are verified but don't have SSL enabled
+func (s *DomainService) ListVerifiedWithoutSSL() ([]models.Domain, error) {
+	var domains []models.Domain
+	err := s.db.Select(&domains, `
+		SELECT * FROM domains
+		WHERE dns_verified = TRUE AND ssl_enabled = FALSE
+		ORDER BY created_at DESC
+	`)
+	return domains, err
+}
+
 // GetDeployIP returns the IP of an available deploy server for DNS instructions.
 func (s *DomainService) GetDeployIP() string {
 	var ip string

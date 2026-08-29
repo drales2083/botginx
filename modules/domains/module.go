@@ -21,8 +21,9 @@ var migrationsFS embed.FS
 
 type Module struct {
 	*module.BaseModule
-	service *services.DomainService
-	handler *handlers.Handler
+	service    *services.DomainService
+	handler    *handlers.Handler
+	background *services.BackgroundVerifier
 }
 
 func New() *Module {
@@ -43,6 +44,11 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
+
+	// Start background verifier for auto DNS/SSL checks
+	verifyService := services.NewVerificationService()
+	m.background = services.NewBackgroundVerifier(m.service, verifyService)
+	m.background.Start()
 
 	return nil
 }
