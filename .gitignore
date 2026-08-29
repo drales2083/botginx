@@ -1,3 +1,5 @@
+.exclude
+
 # Deploy config -- holds your server's address and key path
 deploy.env
 
