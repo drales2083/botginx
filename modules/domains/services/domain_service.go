@@ -242,3 +242,13 @@ func (s *DomainService) CountAll() (int, error) {
 	err := s.db.Get(&count, `SELECT COUNT(*) FROM domains`)
 	return count, err
 }
+
+// GetDeployIP returns the IP of an available deploy server for DNS instructions.
+func (s *DomainService) GetDeployIP() string {
+	var ip string
+	err := s.db.Get(&ip, `SELECT ip FROM servers WHERE status = 'ready' ORDER BY created_at LIMIT 1`)
+	if err != nil {
+		return "No server available"
+	}
+	return ip
+}

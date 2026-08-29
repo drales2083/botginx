@@ -299,6 +299,16 @@ func (s *ServerService) CountAvailable() (int, error) {
 	return count, err
 }
 
+// GetDeployIP returns the IP of the first available server for DNS instructions.
+func (s *ServerService) GetDeployIP() string {
+	var ip string
+	err := s.db.Get(&ip, `SELECT ip FROM servers WHERE status = 'ready' ORDER BY created_at LIMIT 1`)
+	if err != nil {
+		return ""
+	}
+	return ip
+}
+
 // GetServerForDomain returns SSH connection details for the server a domain is deployed to.
 // Used by analytics to push settings files to the VPS.
 func (s *ServerService) GetServerForDomain(domainID string) (ip string, port int, user, password string, err error) {

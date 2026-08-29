@@ -48,13 +48,13 @@
                             <tr>
                                 <td><code>A</code></td>
                                 <td><code>@</code></td>
-                                <td><code id="server-ip">Loading...</code></td>
+                                <td><code>{{.ServerIP}}</code></td>
                                 <td>Auto</td>
                             </tr>
                             <tr>
                                 <td><code>A</code></td>
                                 <td><code>*</code></td>
-                                <td><code id="server-ip-wildcard">Loading...</code></td>
+                                <td><code>{{.ServerIP}}</code></td>
                                 <td>Auto</td>
                             </tr>
                         </tbody>
@@ -103,18 +103,6 @@
 </div>
 
 <script>
-// Load server IP for DNS instructions
-(async function() {
-    const ipEl = document.getElementById('server-ip');
-    const ipWildcardEl = document.getElementById('server-ip-wildcard');
-    if (ipEl) {
-        // Use the deploy VPS IP from the system
-        const serverIP = '194.147.217.45'; // Deploy VPS
-        ipEl.textContent = serverIP;
-        if (ipWildcardEl) ipWildcardEl.textContent = serverIP;
-    }
-})();
-
 document.querySelector('.btn-verify')?.addEventListener('click', async function() {
     const btn = this;
     btn.disabled = true;

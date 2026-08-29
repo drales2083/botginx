@@ -51,9 +51,13 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get deploy server IP for DNS instructions
+	deployIP := h.service.GetDeployIP()
+
 	module.RenderUserSection(w, r, h.templates, "domains:show.html", map[string]interface{}{
-		"Title":  domain.Name,
-		"Domain": domain,
+		"Title":    domain.Name,
+		"Domain":   domain,
+		"ServerIP": deployIP,
 	})
 }
 

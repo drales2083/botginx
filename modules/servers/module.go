@@ -118,6 +118,11 @@ func (m *Module) GetServerForDomain(domainID string) (ip string, port int, user,
 	return m.service.GetServerForDomain(domainID)
 }
 
+// GetDeployIP returns the IP of an available deploy server for DNS instructions.
+func (m *Module) GetDeployIP() string {
+	return m.service.GetDeployIP()
+}
+
 func (m *Module) Widgets() []module.Widget {
 	return nil
 }
