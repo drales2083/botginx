@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 #
-# Deploy botginx to a VPS.
+# Deploy botginx to a production VPS with SSL.
 #
 # Builds the binary locally for linux/amd64, ships it over SSH, and swaps it
 # behind systemd. Nothing is compiled on the server, so a broken build fails
 # here rather than on the box serving traffic.
 #
+# Traffic flow:
+#   Internet → :443 (nginx+SSL) → :3001 (botginx)
+#
 # Usage:
 #   ./deploy.sh                 deploy the binary
-#   ./deploy.sh --setup         first run: install systemd unit, nginx, TLS
+#   ./deploy.sh --setup         first run: install PostgreSQL, nginx, TLS
 #   ./deploy.sh --dry-run       show what would happen, change nothing
 #   ./deploy.sh --rollback      restore the previous binary
 #   ./deploy.sh --status        show service status and recent logs
@@ -16,6 +19,13 @@
 #
 # Configuration lives in deploy.env next to this script (see deploy.env.example).
 # Nothing server-specific is hardcoded below.
+#
+# First-time setup:
+#   1. cp deploy.env.example deploy.env
+#   2. Set SSH_HOST, PANEL_DOMAIN, CERTBOT_EMAIL
+#   3. Point DNS for PANEL_DOMAIN to SSH_HOST
+#   4. ./deploy.sh --setup
+#   5. ./deploy.sh
 
 set -euo pipefail
 
@@ -50,6 +60,10 @@ CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
 
 BUILD_OS="${BUILD_OS:-linux}"
 BUILD_ARCH="${BUILD_ARCH:-amd64}"
+
+DB_NAME="${DB_NAME:-botginx}"
+DB_USER="${DB_USER:-botginx}"
+DB_PASS="${DB_PASS:-}"
 
 HEALTH_PATH="${HEALTH_PATH:-/health}"
 HEALTH_RETRIES="${HEALTH_RETRIES:-10}"
@@ -267,8 +281,16 @@ health_check() {
 # ----------------------------------------------------------------------------
 
 setup() {
-    STEP_TOTAL=6
+    STEP_TOTAL=8
     preflight
+
+    step "Installing system dependencies"
+    install_dependencies
+    ok "dependencies installed"
+
+    step "Setting up PostgreSQL"
+    setup_postgresql
+    ok "database ready"
 
     step "Creating service user and directories"
     remote_sudo "id -u ${RUN_USER} >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin ${RUN_USER}"
@@ -310,6 +332,65 @@ ENVEOF"
     printf '  1. Set DATABASE_URL in %s:%s/%s.env\n' "$SSH_HOST" "$CONFIG_DIR" "$APP_NAME"
     printf '  2. Create the database and role on the server\n'
     printf '  3. ./deploy.sh          to ship the first build\n\n'
+}
+
+install_dependencies() {
+    if [[ "$DRY_RUN" == true ]]; then
+        printf '%s  would install nginx, certbot, postgresql%s\n' "$DIM" "$RESET"
+        return 0
+    fi
+
+    remote_sudo "export DEBIAN_FRONTEND=noninteractive && apt-get update -qq"
+    remote_sudo "apt-get install -y -qq curl wget gnupg cron ca-certificates"
+
+    # PostgreSQL 16
+    log "adding PostgreSQL repository"
+    remote_sudo "sh -c 'echo \"deb http://apt.postgresql.org/pub/repos/apt \$(lsb_release -cs)-pgdg main\" > /etc/apt/sources.list.d/pgdg.list'"
+    remote_sudo "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -"
+    remote_sudo "apt-get update -qq"
+    remote_sudo "apt-get install -y -qq postgresql-16 postgresql-contrib-16"
+
+    # nginx and certbot
+    remote_sudo "apt-get install -y -qq nginx certbot python3-certbot-nginx"
+
+    # Enable services
+    remote_sudo "systemctl enable postgresql nginx cron"
+    remote_sudo "systemctl start postgresql nginx cron"
+}
+
+setup_postgresql() {
+    local db_name="${DB_NAME:-botginx}"
+    local db_user="${DB_USER:-botginx}"
+    local db_pass
+    db_pass="${DB_PASS:-$(openssl rand -hex 16)}"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        printf '%s  would create database %s and user %s%s\n' "$DIM" "$db_name" "$db_user" "$RESET"
+        return 0
+    fi
+
+    log "waiting for PostgreSQL"
+    for i in {1..10}; do
+        if remote_sudo "pg_isready -h localhost -p 5432" >/dev/null 2>&1; then
+            break
+        fi
+        sleep 2
+    done
+
+    # Create user if not exists
+    remote_sudo "sudo -u postgres psql -tc \"SELECT 1 FROM pg_roles WHERE rolname='${db_user}'\" | grep -q 1 || \
+        sudo -u postgres psql -c \"CREATE USER ${db_user} WITH PASSWORD '${db_pass}';\""
+
+    # Create database if not exists
+    remote_sudo "sudo -u postgres psql -tc \"SELECT 1 FROM pg_database WHERE datname='${db_name}'\" | grep -q 1 || \
+        sudo -u postgres psql -c \"CREATE DATABASE ${db_name} OWNER ${db_user};\""
+
+    remote_sudo "sudo -u postgres psql -c \"GRANT ALL PRIVILEGES ON DATABASE ${db_name} TO ${db_user};\" 2>/dev/null || true"
+
+    # Update the env file with the database URL
+    log "database: ${db_name}, user: ${db_user}"
+    printf '\n  %sIMPORTANT:%s Save this password - it will be needed for DATABASE_URL:\n' "$YELLOW" "$RESET"
+    printf '  DB_PASS=%s\n\n' "$db_pass"
 }
 
 install_systemd_unit() {
