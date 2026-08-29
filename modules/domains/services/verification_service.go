@@ -34,8 +34,8 @@ func NewVerificationService() *VerificationService {
 // VerifyDNS checks if domain has the correct TXT record for verification.
 // This works with Cloudflare proxy enabled.
 func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, error) {
-	// Look up TXT record at _botginx-verify.domain.com
-	txtHost := "_botginx-verify." + domain
+	// Look up TXT record at _guardbot-verify.domain.com
+	txtHost := "_guardbot-verify." + domain
 
 	records, err := net.LookupTXT(txtHost)
 	if err != nil {

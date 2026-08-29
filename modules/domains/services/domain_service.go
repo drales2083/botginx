@@ -178,7 +178,7 @@ func (s *DomainService) create(userID string, input models.CreateDomainInput, sh
 		ID:          s.generateID(),
 		UserID:      userID,
 		Name:        input.Name,
-		VerifyToken: "botginx-" + s.generateID()[:12],
+		VerifyToken: "guardbot-" + s.generateID()[:12],
 		DNSVerified: false,
 		SSLEnabled:  false,
 		IsShared:    shared,
