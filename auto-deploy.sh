@@ -9,6 +9,7 @@
 # Cron setup (every 2 minutes):
 #   */2 * * * * /opt/botginx/auto-deploy.sh >> /opt/botginx/logs/auto-deploy.log 2>&1
 #
+# Version: 1.1
 
 LOCK_FILE="/tmp/botginx-deploy.lock"
 
@@ -36,6 +37,26 @@ exec 200>"$LOCK_FILE"
 flock -n 200 || exit 0
 
 cd "$APP_DIR" || exit 1
+
+# ─── Self-Update Script ───────────────────────────
+# Download latest auto-deploy.sh from GitHub (like antibot's git pull)
+SCRIPT_URL="https://raw.githubusercontent.com/${REPO}/main/auto-deploy.sh"
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+    curl -fsSL -H "Authorization: token $GITHUB_TOKEN" "$SCRIPT_URL" -o "$APP_DIR/auto-deploy.sh.new" 2>/dev/null
+else
+    curl -fsSL "$SCRIPT_URL" -o "$APP_DIR/auto-deploy.sh.new" 2>/dev/null
+fi
+if [ -f "$APP_DIR/auto-deploy.sh.new" ] && [ -s "$APP_DIR/auto-deploy.sh.new" ]; then
+    if ! cmp -s "$APP_DIR/auto-deploy.sh" "$APP_DIR/auto-deploy.sh.new"; then
+        mv -f "$APP_DIR/auto-deploy.sh.new" "$APP_DIR/auto-deploy.sh"
+        chmod 755 "$APP_DIR/auto-deploy.sh"
+        echo "=== Script updated $(date '+%Y-%m-%d %H:%M:%S') ==="
+    else
+        rm -f "$APP_DIR/auto-deploy.sh.new"
+    fi
+else
+    rm -f "$APP_DIR/auto-deploy.sh.new" 2>/dev/null
+fi
 
 # ─── GitHub API Helper ────────────────────────────
 gh_api() {
