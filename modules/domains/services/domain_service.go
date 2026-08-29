@@ -126,7 +126,7 @@ func (s *DomainService) SharedDomainsFlag() bool {
 func (s *DomainService) Get(id string) (*models.Domain, error) {
 	var domain models.Domain
 	err := s.db.Get(&domain, `
-		SELECT d.*, s.name as server_name
+		SELECT d.*, COALESCE(s.name, '') as server_name
 		FROM domains d
 		LEFT JOIN servers s ON s.id = d.server_id
 		WHERE d.id = $1
