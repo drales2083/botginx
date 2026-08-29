@@ -89,27 +89,36 @@ func (b *BackgroundVerifier) checkAllDomains() {
 }
 
 func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
-	// Check if Cloudflare - if so, SSL is handled at edge
-	if b.verifyService.IsCloudflare(domainName) {
-		log.Printf("[domains] %s is behind Cloudflare - SSL handled at edge", domainName)
-		t := true
-		b.domainService.Update(domainID, models.UpdateDomainInput{SSLEnabled: &t})
-		return
+	isCloudflare := b.verifyService.IsCloudflare(domainName)
+
+	if isCloudflare {
+		log.Printf("[domains] %s is behind Cloudflare - setting up origin SSL", domainName)
+
+		// Generate self-signed cert for Cloudflare Full mode
+		if err := b.verifyService.GenerateSSL(domainName); err != nil {
+			log.Printf("[domains] self-signed cert failed for %s: %v", domainName, err)
+		}
 	}
 
-	// First setup nginx config
+	// Setup nginx config (with or without SSL based on Cloudflare detection)
 	if err := b.verifyService.SetupDomainNginx(domainName); err != nil {
 		log.Printf("[domains] nginx setup failed for %s: %v", domainName, err)
 		return
 	}
 
-	// Generate SSL certificate
-	if err := b.verifyService.GenerateSSL(domainName); err != nil {
-		log.Printf("[domains] SSL generation failed for %s: %v", domainName, err)
+	if isCloudflare {
+		// For Cloudflare, mark SSL enabled immediately
+		log.Printf("[domains] %s SSL ready (Cloudflare)", domainName)
+		t := true
+		b.domainService.Update(domainID, models.UpdateDomainInput{SSLEnabled: &t})
+	} else {
+		// For non-Cloudflare, generate Let's Encrypt cert
+		if err := b.verifyService.GenerateSSL(domainName); err != nil {
+			log.Printf("[domains] SSL generation failed for %s: %v", domainName, err)
+		}
+		// Check if SSL exists and enable
+		b.checkAndEnableSSL(domainID, domainName)
 	}
-
-	// Check if SSL exists and enable
-	b.checkAndEnableSSL(domainID, domainName)
 }
 
 func (b *BackgroundVerifier) checkAndEnableSSL(domainID, domainName string) {
@@ -119,8 +128,8 @@ func (b *BackgroundVerifier) checkAndEnableSSL(domainID, domainName string) {
 		return
 	}
 
-	if status.Exists && status.IsWildcard {
-		log.Printf("[domains] SSL active for %s", domainName)
+	if status.Exists {
+		log.Printf("[domains] SSL active for %s (wildcard: %v)", domainName, status.IsWildcard)
 		t := true
 		b.domainService.Update(domainID, models.UpdateDomainInput{SSLEnabled: &t})
 	}
