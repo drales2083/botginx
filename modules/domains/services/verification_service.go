@@ -378,3 +378,56 @@ func (s *VerificationService) SetupDomainNginx(domain string) error {
 
 	return nil
 }
+
+// CleanupDomain removes all domain-related files from the VPS:
+// - nginx config (sites-available and sites-enabled)
+// - SSL certificates (self-signed and Let's Encrypt)
+// - site directories
+func (s *VerificationService) CleanupDomain(domain string) error {
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Remove nginx config
+	nginxCmd := fmt.Sprintf(`
+rm -f /etc/nginx/sites-enabled/%s.conf
+rm -f /etc/nginx/sites-available/%s.conf
+`, domain, domain)
+	client.Run(nginxCmd)
+
+	// Remove self-signed SSL cert
+	sslCmd := fmt.Sprintf(`
+rm -f /etc/nginx/ssl/%s.pem
+rm -f /etc/nginx/ssl/%s.key
+`, domain, domain)
+	client.Run(sslCmd)
+
+	// Remove Let's Encrypt cert if exists
+	letsEncryptCmd := fmt.Sprintf(`
+if [ -d /etc/letsencrypt/live/%s ]; then
+    certbot delete --cert-name %s --non-interactive 2>/dev/null || true
+fi
+`, domain, domain)
+	client.Run(letsEncryptCmd)
+
+	// Remove site directories
+	siteDirCmd := fmt.Sprintf("rm -rf /var/www/sites/%s", domain)
+	client.Run(siteDirCmd)
+
+	// Reload nginx
+	client.Run("nginx -t && systemctl reload nginx 2>/dev/null || true")
+
+	return nil
+}

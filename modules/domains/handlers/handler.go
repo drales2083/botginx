@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/botginx/botginx/modules/domains/models"
@@ -222,11 +223,47 @@ func (h *Handler) APIUpdate(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+
+	// Get domain first to have the name for cleanup
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if force delete is requested
+	force := r.URL.Query().Get("force") == "true"
+
+	// Count redirect links using this domain
+	linkCount, _ := h.service.CountRedirectLinks(id)
+
+	// If there are links and not force, return warning
+	if linkCount > 0 && !force {
+		h.json(w, http.StatusConflict, map[string]interface{}{
+			"warning":    true,
+			"link_count": linkCount,
+			"message":    fmt.Sprintf("This domain has %d redirect link(s). Deleting will permanently remove all links and their analytics data.", linkCount),
+			"domain":     domain.Name,
+		})
+		return
+	}
+
+	// Cleanup VPS: nginx config, SSL certs, site directories
+	if cleanupErr := h.verification.CleanupDomain(domain.Name); cleanupErr != nil {
+		// Log but don't fail - VPS might be unreachable
+		// We still want to remove from our database
+	}
+
+	// Delete from database (cascade removes redirect_links)
 	if err := h.service.Delete(id); err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	h.json(w, http.StatusOK, map[string]interface{}{"deleted": true})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"deleted":       true,
+		"links_deleted": linkCount,
+	})
 }
 
 func (h *Handler) APIVerifyDNS(w http.ResponseWriter, r *http.Request) {

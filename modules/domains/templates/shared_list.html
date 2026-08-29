@@ -130,13 +130,32 @@ async function verifyDomain(id) {
 }
 
 async function deleteDomain(id, name) {
-    if (!confirm(`Remove ${name} from the shared pool?`)) return;
+    // First check if domain has links
+    const checkRes = await fetch(`/admin/domains/api/${id}`, { method: 'DELETE' });
+    const checkData = await checkRes.json();
 
-    const res = await fetch(`/admin/domains/api/${id}`, { method: 'DELETE' });
-    if (res.ok) {
+    if (checkRes.status === 409 && checkData.warning) {
+        // Domain has redirect links - show destructive warning
+        const proceed = confirm(
+            `⚠️ DESTRUCTIVE ACTION\n\n` +
+            `${checkData.message}\n\n` +
+            `This cannot be undone. Type OK to proceed.`
+        );
+        if (!proceed) return;
+
+        // Force delete
+        const forceRes = await fetch(`/admin/domains/api/${id}?force=true`, { method: 'DELETE' });
+        if (forceRes.ok) {
+            const data = await forceRes.json();
+            reloadWithToast(`${name} removed (${data.links_deleted} link(s) deleted)`, 'success');
+        } else {
+            const data = await forceRes.json().catch(() => ({}));
+            showToast(data.error || 'Failed to remove domain', 'danger');
+        }
+    } else if (checkRes.ok) {
         reloadWithToast(`${name} removed from the shared pool`, 'success');
     } else {
-        showToast('Failed to remove domain', 'danger');
+        showToast(checkData.error || 'Failed to remove domain', 'danger');
     }
 }
 </script>

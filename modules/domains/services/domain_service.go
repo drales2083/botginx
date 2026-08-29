@@ -239,6 +239,13 @@ func (s *DomainService) Delete(id string) error {
 	return err
 }
 
+// CountRedirectLinks returns the number of redirect links using this domain
+func (s *DomainService) CountRedirectLinks(domainID string) (int, error) {
+	var count int
+	err := s.db.Get(&count, `SELECT COUNT(*) FROM redirect_links WHERE domain_id = $1`, domainID)
+	return count, err
+}
+
 func (s *DomainService) Count(userID string) (int, error) {
 	var count int
 	err := s.db.Get(&count, `SELECT COUNT(*) FROM domains WHERE user_id = $1`, userID)
