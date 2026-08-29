@@ -95,7 +95,13 @@ func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 		return
 	}
 
-	// Check if SSL exists
+	// Generate SSL certificate
+	if err := b.verifyService.GenerateSSL(domainName); err != nil {
+		log.Printf("[domains] SSL generation failed for %s: %v", domainName, err)
+		// Continue anyway - might be Cloudflare or already have cert
+	}
+
+	// Check if SSL exists and enable
 	b.checkAndEnableSSL(domainID, domainName)
 }
 

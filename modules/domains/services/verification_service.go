@@ -197,6 +197,44 @@ type WildcardSSLRequest struct {
 	Instructions   string `json:"instructions"`
 }
 
+// GenerateSSL runs certbot to get SSL certificate for the domain
+func (s *VerificationService) GenerateSSL(domain string) error {
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Run certbot for wildcard cert using HTTP-01 for base domain
+	// If Cloudflare proxy is on, this won't work - but we try anyway
+	cmd := fmt.Sprintf(`certbot certonly --nginx -d %s -d '*.%s' --non-interactive --agree-tos --email admin@%s 2>&1 || certbot certonly --nginx -d %s --non-interactive --agree-tos --email admin@%s 2>&1`,
+		domain, domain, domain, domain, domain)
+
+	output, err := client.Run(cmd)
+	if err != nil {
+		// Check if cert already exists
+		if strings.Contains(output, "Certificate not yet due for renewal") {
+			return nil
+		}
+		return fmt.Errorf("certbot failed: %s", output)
+	}
+
+	// Reload nginx to apply
+	client.Run("nginx -t && systemctl reload nginx")
+
+	return nil
+}
+
 // SetupDomainNginx creates nginx config for the domain on the VPS
 func (s *VerificationService) SetupDomainNginx(domain string) error {
 	server, err := s.getServer()
