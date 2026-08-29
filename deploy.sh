@@ -287,7 +287,7 @@ health_check() {
 # ----------------------------------------------------------------------------
 
 setup() {
-    STEP_TOTAL=8
+    STEP_TOTAL=9
     preflight
 
     step "Installing system dependencies"
@@ -309,11 +309,16 @@ setup() {
     ok "unit installed and enabled"
 
     step "Creating environment file"
+    # Use the generated DB password from setup_postgresql
+    local db_url="postgres://${DB_USER}:${GENERATED_DB_PASS}@127.0.0.1:5432/${DB_NAME}?sslmode=disable"
+    local webhook_secret
+    webhook_secret=$(openssl rand -hex 32)
+
     # Written only if absent, so a redeploy never clobbers live secrets.
-    remote_sudo "test -f ${CONFIG_DIR}/${APP_NAME}.env || cat > ${CONFIG_DIR}/${APP_NAME}.env <<'ENVEOF'
+    remote_sudo "test -f ${CONFIG_DIR}/${APP_NAME}.env || cat > ${CONFIG_DIR}/${APP_NAME}.env <<ENVEOF
 # botginx environment. Secrets belong here, not in config.yaml or git.
-DATABASE_URL=postgres://botginx:CHANGE_ME@127.0.0.1:5432/botginx?sslmode=disable
-ANTIBOT_WEBHOOK_SECRET=
+DATABASE_URL=${db_url}
+ANTIBOT_WEBHOOK_SECRET=${webhook_secret}
 DEFAULT_LANG=en
 ENVEOF"
     remote_sudo "chown root:${RUN_USER} ${CONFIG_DIR}/${APP_NAME}.env"
@@ -333,11 +338,13 @@ ENVEOF"
         step "Skipping TLS"
     fi
 
+    step "Setting up auto-deploy cron"
+    setup_autodeploy
+    ok "auto-deploy configured"
+
     printf '\n%sSetup complete.%s\n\n' "$GREEN" "$RESET"
     printf 'Next:\n'
-    printf '  1. Set DATABASE_URL in %s:%s/%s.env\n' "$SSH_HOST" "$CONFIG_DIR" "$APP_NAME"
-    printf '  2. Create the database and role on the server\n'
-    printf '  3. ./deploy.sh          to ship the first build\n\n'
+    printf '  ./deploy.sh          to ship the first build\n\n'
 }
 
 install_dependencies() {
@@ -393,10 +400,79 @@ setup_postgresql() {
 
     remote_sudo "sudo -u postgres psql -c \"GRANT ALL PRIVILEGES ON DATABASE ${db_name} TO ${db_user};\" 2>/dev/null || true"
 
-    # Update the env file with the database URL
+    # Store password for later use in env file setup
     log "database: ${db_name}, user: ${db_user}"
-    printf '\n  %sIMPORTANT:%s Save this password - it will be needed for DATABASE_URL:\n' "$YELLOW" "$RESET"
-    printf '  DB_PASS=%s\n\n' "$db_pass"
+
+    # Save DB_PASS globally so env file step can use it
+    GENERATED_DB_PASS="$db_pass"
+}
+
+setup_autodeploy() {
+    if [[ "$DRY_RUN" == true ]]; then
+        printf '%s  would setup auto-deploy cron%s\n' "$DIM" "$RESET"
+        return 0
+    fi
+
+    # Create auto-deploy script on server
+    remote_sudo "cat > ${APP_DIR}/auto-deploy.sh <<'AUTODEPLOY'
+#!/bin/bash
+# Botginx Auto-Deploy (checks GitHub releases every 2 min)
+APP_DIR=\"${APP_DIR}\"
+BINARY=\"\${APP_DIR}/bin/botginx\"
+REPO=\"robertp2083/botginx\"
+LOCK=\"/tmp/botginx-autodeploy.lock\"
+mkdir -p \"\${APP_DIR}/logs\"
+exec 200>\"\$LOCK\"
+flock -n 200 || exit 0
+cd \"\$APP_DIR\" || exit 1
+[ -f /etc/botginx/botginx.env ] && . /etc/botginx/botginx.env
+case \"\$(uname -m)\" in
+    x86_64|amd64) ASSET=\"botginx-linux-amd64\" ;;
+    aarch64|arm64) ASSET=\"botginx-linux-arm64\" ;;
+    *) exit 0 ;;
+esac
+gh_api() {
+    curl -fsSL \${GITHUB_TOKEN:+-H \"Authorization: token \$GITHUB_TOKEN\"} \\
+        -H \"Accept: application/vnd.github+json\" \\
+        \"https://api.github.com/repos/\${REPO}\$1\" 2>/dev/null
+}
+LATEST=\$(gh_api \"/releases/latest\" | jq -r \".tag_name // empty\")
+[ -z \"\$LATEST\" ] && exit 0
+INSTALLED=\"\"
+[ -x \"\$BINARY\" ] && INSTALLED=\$(\"\$BINARY\" -version 2>/dev/null | sed \"s/^v//\")
+[ \"\$INSTALLED\" = \"\${LATEST#v}\" ] && exit 0
+echo \"\"
+echo \"=== Update \$(date): \$INSTALLED -> \$LATEST ===\"
+rel=\$(gh_api \"/releases/tags/\$LATEST\")
+if [ -n \"\${GITHUB_TOKEN:-}\" ]; then
+    url=\$(echo \"\$rel\" | jq -r \".assets[] | select(.name==\\\"\$ASSET\\\") | .url // empty\")
+    curl -fsSL -H \"Authorization: token \$GITHUB_TOKEN\" -H \"Accept: application/octet-stream\" -o \"\$BINARY.new\" \"\$url\"
+else
+    url=\$(echo \"\$rel\" | jq -r \".assets[] | select(.name==\\\"\$ASSET\\\") | .browser_download_url // empty\")
+    curl -fsSL -o \"\$BINARY.new\" \"\$url\"
+fi
+[ ! -f \"\$BINARY.new\" ] && { echo \"Download failed\"; exit 1; }
+chmod +x \"\$BINARY.new\"
+systemctl stop botginx
+mv -f \"\$BINARY.new\" \"\$BINARY\"
+chown botginx:botginx \"\$BINARY\"
+systemctl start botginx
+sleep 2
+if systemctl is-active --quiet botginx; then
+    echo \"Update OK: \$(\"\$BINARY\" -version 2>/dev/null)\"
+else
+    echo \"Service FAILED\"
+    journalctl -u botginx -n 10 --no-pager
+fi
+AUTODEPLOY"
+
+    remote_sudo "chmod +x ${APP_DIR}/auto-deploy.sh"
+
+    # Add cron job (every 2 minutes)
+    local cron_job="*/2 * * * * ${APP_DIR}/auto-deploy.sh >> ${APP_DIR}/logs/auto-deploy.log 2>&1"
+    remote_sudo "(crontab -l 2>/dev/null | grep -v 'auto-deploy.sh'; echo '${cron_job}') | crontab -"
+
+    log "cron: every 2 minutes"
 }
 
 install_systemd_unit() {
