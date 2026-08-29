@@ -15,15 +15,15 @@
                         <div class="form-text">Enter your domain without http:// or www</div>
                     </div>
 
-                    <div class="alert alert-info mb-3">
-                        <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>DNS Setup Steps</h6>
-                        <ol class="mb-0 ps-3">
-                            <li>Go to your domain registrar (Cloudflare, Namecheap, GoDaddy, etc.)</li>
-                            <li>Add an <strong>A record</strong> for <code>@</code> pointing to the server IP</li>
-                            <li>Add an <strong>A record</strong> for <code>*</code> (wildcard) pointing to the same IP</li>
-                            <li>Wait for DNS propagation (usually 5-30 minutes)</li>
+                    <div class="bg-light rounded p-3 mb-3">
+                        <h6 class="mb-3"><i class="bi bi-gear me-2"></i>After adding, configure DNS:</h6>
+                        <ol class="mb-0 small">
+                            <li class="mb-1">Go to your domain registrar (Cloudflare, Namecheap, GoDaddy)</li>
+                            <li class="mb-1">Add <strong>A record</strong> <code>@</code> → server IP</li>
+                            <li class="mb-1">Add <strong>A record</strong> <code>*</code> → same IP</li>
+                            <li class="mb-1">Add <strong>TXT record</strong> <code>_guardbot-verify</code> → verification code (shown after adding)</li>
+                            <li class="mb-1">Wait 5-30 minutes for DNS propagation</li>
                             <li>Click <strong>Verify DNS</strong> on the domain page</li>
-                            <li>Once verified, enable <strong>Wildcard SSL</strong></li>
                         </ol>
                     </div>
 
@@ -58,9 +58,9 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
             })
         });
         const data = await res.json();
-        if (res.ok) {
-            flashToast('Domain added', 'success');
-            window.location.href = '/user/domains';
+        if (res.ok && data.domain) {
+            flashToast('Domain added — configure DNS records below', 'success');
+            window.location.href = '/user/domains/' + data.domain.id;
         } else {
             errorAlert.textContent = data.error || 'Failed to add domain';
             errorAlert.classList.remove('d-none');
