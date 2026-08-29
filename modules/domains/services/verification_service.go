@@ -2,8 +2,8 @@ package services
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -31,39 +31,24 @@ func NewVerificationService() *VerificationService {
 	}
 }
 
-// VerifyDNS checks if domain is pointed to the deploy VPS
-// by calling /.well-known/domain-verify endpoint
-func (s *VerificationService) VerifyDNS(domain string) (bool, error) {
-	// Try HTTPS first, then HTTP
-	urls := []string{
-		fmt.Sprintf("https://%s/.well-known/domain-verify", domain),
-		fmt.Sprintf("http://%s/.well-known/domain-verify", domain),
+// VerifyDNS checks if domain has the correct TXT record for verification.
+// This works with Cloudflare proxy enabled.
+func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, error) {
+	// Look up TXT record at _botginx-verify.domain.com
+	txtHost := "_botginx-verify." + domain
+
+	records, err := net.LookupTXT(txtHost)
+	if err != nil {
+		return false, fmt.Errorf("TXT record not found. Add: %s TXT %s", txtHost, expectedToken)
 	}
 
-	for _, url := range urls {
-		resp, err := s.httpClient.Get(url)
-		if err != nil {
-			continue
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			continue
-		}
-
-		var result struct {
-			Verified bool `json:"verified"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-			continue
-		}
-
-		if result.Verified {
+	for _, record := range records {
+		if record == expectedToken {
 			return true, nil
 		}
 	}
 
-	return false, fmt.Errorf("domain not connected: please point your domain DNS to our servers")
+	return false, fmt.Errorf("TXT record value mismatch. Expected: %s", expectedToken)
 }
 
 // SSLStatus represents the SSL certificate status for a domain

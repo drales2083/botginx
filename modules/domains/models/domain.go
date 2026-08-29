@@ -7,6 +7,7 @@ type Domain struct {
 	UserID      string    `db:"user_id" json:"userId"`
 	Name        string    `db:"name" json:"name"` // e.g., example.com
 	ServerID    *string   `db:"server_id" json:"serverId,omitempty"`
+	VerifyToken string    `db:"verify_token" json:"verifyToken"`
 	DNSVerified bool      `db:"dns_verified" json:"dnsVerified"`
 	SSLEnabled  bool      `db:"ssl_enabled" json:"sslEnabled"`
 	IsShared    bool      `db:"is_shared" json:"isShared"`

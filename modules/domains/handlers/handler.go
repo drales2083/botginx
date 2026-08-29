@@ -227,8 +227,8 @@ func (h *Handler) APIVerifyDNS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Actually verify by calling the domain's /.well-known/domain-verify endpoint
-	verified, verifyErr := h.verification.VerifyDNS(domain.Name)
+	// Verify via TXT record lookup (works with Cloudflare proxy)
+	verified, verifyErr := h.verification.VerifyDNS(domain.Name, domain.VerifyToken)
 
 	// Update the domain record
 	_, err = h.service.Update(id, models.UpdateDomainInput{

@@ -178,6 +178,7 @@ func (s *DomainService) create(userID string, input models.CreateDomainInput, sh
 		ID:          s.generateID(),
 		UserID:      userID,
 		Name:        input.Name,
+		VerifyToken: "botginx-" + s.generateID()[:12],
 		DNSVerified: false,
 		SSLEnabled:  false,
 		IsShared:    shared,
@@ -190,8 +191,8 @@ func (s *DomainService) create(userID string, input models.CreateDomainInput, sh
 	}
 
 	_, err := s.db.NamedExec(`
-		INSERT INTO domains (id, user_id, name, server_id, dns_verified, ssl_enabled, is_shared, created_at, updated_at)
-		VALUES (:id, :user_id, :name, :server_id, :dns_verified, :ssl_enabled, :is_shared, :created_at, :updated_at)
+		INSERT INTO domains (id, user_id, name, verify_token, server_id, dns_verified, ssl_enabled, is_shared, created_at, updated_at)
+		VALUES (:id, :user_id, :name, :verify_token, :server_id, :dns_verified, :ssl_enabled, :is_shared, :created_at, :updated_at)
 	`, domain)
 
 	return domain, err
