@@ -9,7 +9,7 @@
 # Cron setup (every 2 minutes):
 #   */2 * * * * /opt/botginx/auto-deploy.sh >> /opt/botginx/logs/auto-deploy.log 2>&1
 #
-# Version: 1.2
+# Version: 1.3
 
 LOCK_FILE="/tmp/botginx-deploy.lock"
 
