@@ -6,22 +6,23 @@
 # installed binary, downloads the new asset, verifies its checksum, swaps it in
 # atomically, and restarts the service. No building — binaries are prebuilt.
 #
-# Also pulls git for script/config updates (preserves .env and data/).
-#
 # Cron setup (every 2 minutes):
-#   */2 * * * * DEPLOY_BRANCH="main" /var/www/botginx/auto-deploy.sh >> /var/www/botginx/logs/auto-deploy.log 2>&1
+#   */2 * * * * /opt/botginx/auto-deploy.sh >> /opt/botginx/logs/auto-deploy.log 2>&1
 #
 
 LOCK_FILE="/tmp/botginx-deploy.lock"
 
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BINARY="$PROJECT_DIR/botginx"
+# Production paths (set via env or use defaults)
+APP_DIR="${APP_DIR:-/opt/botginx}"
+BINARY="${BINARY:-$APP_DIR/bin/botginx}"
+CONFIG_DIR="${CONFIG_DIR:-/etc/botginx}"
 REPO="${BOTGINX_REPO:-robertp2083/botginx}"
-mkdir -p "$PROJECT_DIR/logs"
 
-# Cron has no environment — load GITHUB_TOKEN from .env
+mkdir -p "$APP_DIR/logs"
+
+# Cron has no environment — load GITHUB_TOKEN from env file.
 # shellcheck disable=SC1091
-[ -f "$PROJECT_DIR/.env" ] && . "$PROJECT_DIR/.env"
+[ -f "$CONFIG_DIR/botginx.env" ] && . "$CONFIG_DIR/botginx.env"
 
 # Detect architecture
 case "$(uname -m)" in
@@ -34,33 +35,7 @@ esac
 exec 200>"$LOCK_FILE"
 flock -n 200 || exit 0
 
-cd "$PROJECT_DIR" || exit 1
-
-# ─── Git Pull (scripts/templates update) ─────────
-# IMPORTANT: Never overwrite .env or data/ — they are local state
-if [ -d .git ]; then
-    if [ -f /root/.ssh/github_deploy ]; then
-        export GIT_SSH_COMMAND="ssh -i /root/.ssh/github_deploy -o StrictHostKeyChecking=no"
-    fi
-
-    # Backup local state before git operations
-    [ -f .env ] && cp .env /tmp/botginx-env-backup
-    [ -f "$BINARY" ] && cp "$BINARY" /tmp/botginx-binary-backup
-    [ -d data ] && cp -r data /tmp/botginx-data-backup
-
-    # Pull latest code
-    BRANCH="${DEPLOY_BRANCH:-main}"
-    git fetch origin "$BRANCH" --quiet 2>/dev/null && \
-    git reset --hard "origin/$BRANCH" --quiet 2>/dev/null || true
-
-    # Restore local state after git reset
-    [ -f /tmp/botginx-env-backup ] && mv /tmp/botginx-env-backup .env
-    [ -f /tmp/botginx-binary-backup ] && mv /tmp/botginx-binary-backup "$BINARY" && chmod +x "$BINARY"
-    [ -d /tmp/botginx-data-backup ] && cp -r /tmp/botginx-data-backup/* data/ 2>/dev/null && rm -rf /tmp/botginx-data-backup
-
-    # Ensure scripts are executable after git pull
-    chmod 755 "$PROJECT_DIR"/*.sh 2>/dev/null || true
-fi
+cd "$APP_DIR" || exit 1
 
 # ─── GitHub API Helper ────────────────────────────
 gh_api() {
@@ -69,17 +44,15 @@ gh_api() {
         "https://api.github.com/repos/${REPO}$1"
 }
 
-# Normalize versions: strip "v" prefix and "botginx " prefix
-norm() { echo "$1" | sed -E 's/^botginx //; s/^v//' | tr -d '[:space:]'; }
+# Normalize versions: extract first word, strip "v" prefix
+norm() { echo "$1" | awk '{print $1}' | sed 's/^v//' | tr -d '[:space:]'; }
 
 # ─── Check for New Release ────────────────────────
 LATEST_TAG=$(gh_api "/releases/latest" | jq -r '.tag_name // empty')
 [ -n "$LATEST_TAG" ] || exit 0
 
 INSTALLED=""
-if [ -x "$BINARY" ]; then
-    INSTALLED=$("$BINARY" -version 2>/dev/null || "$BINARY" version 2>/dev/null || echo "")
-fi
+[ -x "$BINARY" ] && INSTALLED=$("$BINARY" -version 2>/dev/null)
 
 if [ "$(norm "$INSTALLED")" = "$(norm "$LATEST_TAG")" ]; then
     exit 0   # Already current
@@ -127,19 +100,21 @@ fi
 
 # ─── Verify Binary Executes ───────────────────────
 chmod +x "$BINARY.new"
-if ! "$BINARY.new" -version >/dev/null 2>&1 && ! "$BINARY.new" version >/dev/null 2>&1; then
+if ! "$BINARY.new" -version >/dev/null 2>&1; then
     echo "  New binary won't execute — aborting update"
     rm -f "$BINARY.new"
     exit 1
 fi
 
 # ─── Atomic Swap & Restart ────────────────────────
+systemctl stop botginx
 mv -f "$BINARY.new" "$BINARY"
-systemctl restart botginx
+chown botginx:botginx "$BINARY" 2>/dev/null || true
+systemctl start botginx
 
 sleep 2
 if systemctl is-active --quiet botginx; then
-    NEW_VER=$("$BINARY" -version 2>/dev/null || "$BINARY" version 2>/dev/null || echo "unknown")
+    NEW_VER=$("$BINARY" -version 2>/dev/null)
     echo "  Updated OK -> ${NEW_VER}"
     echo "=== Update complete $(date '+%Y-%m-%d %H:%M:%S') ==="
 else

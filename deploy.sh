@@ -415,64 +415,23 @@ setup_autodeploy() {
         return 0
     fi
 
-    # Create auto-deploy script on server
-    remote_sudo "cat > ${APP_DIR}/auto-deploy.sh <<'AUTODEPLOY'
-#!/bin/bash
-# Botginx Auto-Deploy (checks GitHub releases every 2 min)
-APP_DIR=\"${APP_DIR}\"
-BINARY=\"\${APP_DIR}/bin/botginx\"
-REPO=\"robertp2083/botginx\"
-LOCK=\"/tmp/botginx-autodeploy.lock\"
-mkdir -p \"\${APP_DIR}/logs\"
-exec 200>\"\$LOCK\"
-flock -n 200 || exit 0
-cd \"\$APP_DIR\" || exit 1
-[ -f /etc/botginx/botginx.env ] && . /etc/botginx/botginx.env
-case \"\$(uname -m)\" in
-    x86_64|amd64) ASSET=\"botginx-linux-amd64\" ;;
-    aarch64|arm64) ASSET=\"botginx-linux-arm64\" ;;
-    *) exit 0 ;;
-esac
-gh_api() {
-    curl -fsSL \${GITHUB_TOKEN:+-H \"Authorization: token \$GITHUB_TOKEN\"} \\
-        -H \"Accept: application/vnd.github+json\" \\
-        \"https://api.github.com/repos/\${REPO}\$1\" 2>/dev/null
-}
-LATEST=\$(gh_api \"/releases/latest\" | jq -r \".tag_name // empty\")
-[ -z \"\$LATEST\" ] && exit 0
-INSTALLED=\"\"
-[ -x \"\$BINARY\" ] && INSTALLED=\$(\"\$BINARY\" -version 2>/dev/null | awk '{print \$1}' | sed \"s/^v//\")
-[ \"\$INSTALLED\" = \"\${LATEST#v}\" ] && exit 0
-echo \"\"
-echo \"=== Update \$(date): \$INSTALLED -> \$LATEST ===\"
-rel=\$(gh_api \"/releases/tags/\$LATEST\")
-if [ -n \"\${GITHUB_TOKEN:-}\" ]; then
-    url=\$(echo \"\$rel\" | jq -r \".assets[] | select(.name==\\\"\$ASSET\\\") | .url // empty\")
-    curl -fsSL -H \"Authorization: token \$GITHUB_TOKEN\" -H \"Accept: application/octet-stream\" -o \"\$BINARY.new\" \"\$url\"
-else
-    url=\$(echo \"\$rel\" | jq -r \".assets[] | select(.name==\\\"\$ASSET\\\") | .browser_download_url // empty\")
-    curl -fsSL -o \"\$BINARY.new\" \"\$url\"
-fi
-[ ! -f \"\$BINARY.new\" ] && { echo \"Download failed\"; exit 1; }
-chmod +x \"\$BINARY.new\"
-systemctl stop botginx
-mv -f \"\$BINARY.new\" \"\$BINARY\"
-chown botginx:botginx \"\$BINARY\"
-systemctl start botginx
-sleep 2
-if systemctl is-active --quiet botginx; then
-    echo \"Update OK: \$(\"\$BINARY\" -version 2>/dev/null)\"
-else
-    echo \"Service FAILED\"
-    journalctl -u botginx -n 10 --no-pager
-fi
-AUTODEPLOY"
+    # Download auto-deploy.sh from GitHub (consistent with antibot approach)
+    local repo="robertp2083/botginx"
+    local branch="main"
+    local script_url="https://raw.githubusercontent.com/${repo}/${branch}/auto-deploy.sh"
 
-    remote_sudo "chmod +x ${APP_DIR}/auto-deploy.sh"
+    log "downloading auto-deploy.sh from GitHub"
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        remote_sudo "curl -fsSL -H 'Authorization: token ${GITHUB_TOKEN}' '${script_url}' -o ${APP_DIR}/auto-deploy.sh"
+    else
+        remote_sudo "curl -fsSL '${script_url}' -o ${APP_DIR}/auto-deploy.sh"
+    fi
 
-    # Add cron job (every 2 minutes)
+    remote_sudo "chmod 755 ${APP_DIR}/auto-deploy.sh"
+
+    # Add cron job (every 2 minutes) - preserve other crons
     local cron_job="*/2 * * * * ${APP_DIR}/auto-deploy.sh >> ${APP_DIR}/logs/auto-deploy.log 2>&1"
-    remote_sudo "(crontab -l 2>/dev/null | grep -v 'auto-deploy.sh'; echo '${cron_job}') | crontab -"
+    remote_sudo "(crontab -l 2>/dev/null | grep -v '${APP_DIR}/auto-deploy.sh'; echo '${cron_job}') | crontab -"
 
     log "cron: every 2 minutes"
 }
