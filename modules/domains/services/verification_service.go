@@ -5,16 +5,24 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/botginx/botginx/pkg/sshexec"
 )
 
+// ServerInfo holds SSH connection details
+type ServerInfo struct {
+	IP       string
+	Port     int
+	User     string
+	Password string
+}
+
 // VerificationService handles domain verification and SSL operations
 type VerificationService struct {
-	httpClient *http.Client
+	httpClient    *http.Client
+	getServerFunc func() (*ServerInfo, error)
 }
 
 // NewVerificationService creates a new verification service
@@ -29,6 +37,18 @@ func NewVerificationService() *VerificationService {
 			},
 		},
 	}
+}
+
+// SetServerProvider sets the function to get server credentials from database
+func (s *VerificationService) SetServerProvider(fn func() (*ServerInfo, error)) {
+	s.getServerFunc = fn
+}
+
+func (s *VerificationService) getServer() (*ServerInfo, error) {
+	if s.getServerFunc != nil {
+		return s.getServerFunc()
+	}
+	return nil, fmt.Errorf("no server available")
 }
 
 // VerifyDNS checks if domain has the correct TXT record for verification.
@@ -62,19 +82,17 @@ type SSLStatus struct {
 
 // CheckSSL checks if SSL certificate exists on the VPS for the domain
 func (s *VerificationService) CheckSSL(domain string) (*SSLStatus, error) {
-	vpsIP := os.Getenv("DEPLOY_VPS_IP")
-	vpsUser := os.Getenv("DEPLOY_VPS_USER")
-	vpsPass := os.Getenv("DEPLOY_VPS_PASSWORD")
-	vpsPort := os.Getenv("DEPLOY_VPS_PORT")
-	if vpsPort == "" {
-		vpsPort = "22"
+	server, err := s.getServer()
+	if err != nil {
+		return nil, fmt.Errorf("no deploy server available")
 	}
 
-	if vpsIP == "" || vpsUser == "" || vpsPass == "" {
-		return nil, fmt.Errorf("server credentials not configured")
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
 	}
 
-	client, err := sshexec.NewClient(vpsIP, vpsPort, vpsUser, vpsPass)
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
 	if err != nil {
 		return nil, fmt.Errorf("connection to server failed: %w", err)
 	}
@@ -124,23 +142,21 @@ func (s *VerificationService) CheckSSL(domain string) (*SSLStatus, error) {
 // This uses DNS-01 challenge which requires manual DNS TXT record
 // Returns the TXT record value that needs to be added
 func (s *VerificationService) GenerateWildcardSSL(domain, email string) (*WildcardSSLRequest, error) {
-	vpsIP := os.Getenv("DEPLOY_VPS_IP")
-	vpsUser := os.Getenv("DEPLOY_VPS_USER")
-	vpsPass := os.Getenv("DEPLOY_VPS_PASSWORD")
-	vpsPort := os.Getenv("DEPLOY_VPS_PORT")
-	if vpsPort == "" {
-		vpsPort = "22"
+	server, err := s.getServer()
+	if err != nil {
+		return nil, fmt.Errorf("no deploy server available")
 	}
 
-	if vpsIP == "" || vpsUser == "" || vpsPass == "" {
-		return nil, fmt.Errorf("server credentials not configured")
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
 	}
 
 	if email == "" {
 		email = "admin@" + domain
 	}
 
-	client, err := sshexec.NewClient(vpsIP, vpsPort, vpsUser, vpsPass)
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
 	if err != nil {
 		return nil, fmt.Errorf("connection to server failed: %w", err)
 	}
@@ -183,19 +199,17 @@ type WildcardSSLRequest struct {
 
 // SetupDomainNginx creates nginx config for the domain on the VPS
 func (s *VerificationService) SetupDomainNginx(domain string) error {
-	vpsIP := os.Getenv("DEPLOY_VPS_IP")
-	vpsUser := os.Getenv("DEPLOY_VPS_USER")
-	vpsPass := os.Getenv("DEPLOY_VPS_PASSWORD")
-	vpsPort := os.Getenv("DEPLOY_VPS_PORT")
-	if vpsPort == "" {
-		vpsPort = "22"
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
 	}
 
-	if vpsIP == "" || vpsUser == "" || vpsPass == "" {
-		return fmt.Errorf("DEPLOY_VPS credentials not configured")
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
 	}
 
-	client, err := sshexec.NewClient(vpsIP, vpsPort, vpsUser, vpsPass)
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
 	if err != nil {
 		return fmt.Errorf("SSH connection failed: %w", err)
 	}

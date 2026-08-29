@@ -16,6 +16,15 @@ type BackgroundVerifier struct {
 
 // NewBackgroundVerifier creates a new background verifier
 func NewBackgroundVerifier(ds *DomainService, vs *VerificationService) *BackgroundVerifier {
+	// Set server provider to get credentials from database
+	vs.SetServerProvider(func() (*ServerInfo, error) {
+		ip, port, user, pass, err := ds.GetDeployServer()
+		if err != nil {
+			return nil, err
+		}
+		return &ServerInfo{IP: ip, Port: port, User: user, Password: pass}, nil
+	})
+
 	return &BackgroundVerifier{
 		domainService: ds,
 		verifyService: vs,

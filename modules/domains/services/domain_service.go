@@ -282,3 +282,23 @@ func (s *DomainService) GetDeployIP() string {
 	}
 	return ip
 }
+
+// GetDeployServer returns full SSH credentials for an available deploy server.
+func (s *DomainService) GetDeployServer() (ip string, port int, user string, password string, err error) {
+	var server struct {
+		IP       string `db:"ip"`
+		Port     int    `db:"port"`
+		User     string `db:"ssh_user"`
+		Password string `db:"ssh_password"`
+	}
+	err = s.db.Get(&server, `
+		SELECT ip, port, ssh_user, ssh_password
+		FROM servers
+		WHERE status = 'ready'
+		ORDER BY created_at LIMIT 1
+	`)
+	if err != nil {
+		return "", 0, "", "", err
+	}
+	return server.IP, server.Port, server.User, server.Password, nil
+}

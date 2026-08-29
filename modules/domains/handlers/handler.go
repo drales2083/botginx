@@ -18,9 +18,20 @@ type Handler struct {
 }
 
 func NewHandler(service *services.DomainService, templates *module.TemplateEngine) *Handler {
+	vs := services.NewVerificationService()
+
+	// Set server provider to get credentials from database
+	vs.SetServerProvider(func() (*services.ServerInfo, error) {
+		ip, port, user, pass, err := service.GetDeployServer()
+		if err != nil {
+			return nil, err
+		}
+		return &services.ServerInfo{IP: ip, Port: port, User: user, Password: pass}, nil
+	})
+
 	return &Handler{
 		service:      service,
-		verification: services.NewVerificationService(),
+		verification: vs,
 		templates:    templates,
 	}
 }
