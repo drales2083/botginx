@@ -32,7 +32,9 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
+          VERSION="${{ github.ref_name }}"
+          PKG="github.com/botginx/botginx/pkg/buildinfo"
+          go build -ldflags="-s -w -X ${PKG}.version=${VERSION}" \
             -o botginx-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/server
 
       - uses: actions/upload-artifact@v4

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -51,7 +52,13 @@ type Config struct {
 
 func main() {
 	configPath := flag.String("config", "config.yaml", "config file path")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("%s (build %s)\n", buildinfo.Version(), buildinfo.Build())
+		os.Exit(0)
+	}
 
 	// Logger
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}).

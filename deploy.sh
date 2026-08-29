@@ -439,7 +439,7 @@ gh_api() {
 LATEST=\$(gh_api \"/releases/latest\" | jq -r \".tag_name // empty\")
 [ -z \"\$LATEST\" ] && exit 0
 INSTALLED=\"\"
-[ -x \"\$BINARY\" ] && INSTALLED=\$(\"\$BINARY\" -version 2>/dev/null | sed \"s/^v//\")
+[ -x \"\$BINARY\" ] && INSTALLED=\$(\"\$BINARY\" -version 2>/dev/null | awk '{print \$1}' | sed \"s/^v//\")
 [ \"\$INSTALLED\" = \"\${LATEST#v}\" ] && exit 0
 echo \"\"
 echo \"=== Update \$(date): \$INSTALLED -> \$LATEST ===\"
