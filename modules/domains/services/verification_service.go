@@ -216,11 +216,11 @@ func (s *VerificationService) IsCloudflare(domain string) bool {
 }
 
 // GenerateSSL runs certbot to get SSL certificate for the domain
-// For Cloudflare domains, SSL is handled at edge - we just mark it ready
+// For Cloudflare domains, create self-signed cert for origin connection
 func (s *VerificationService) GenerateSSL(domain string) error {
-	// If behind Cloudflare, SSL is handled by CF at edge
+	// If behind Cloudflare, create self-signed cert for origin (Full mode)
 	if s.IsCloudflare(domain) {
-		return nil // Cloudflare handles SSL
+		return s.generateSelfSignedCert(domain)
 	}
 
 	server, err := s.getServer()
@@ -255,6 +255,39 @@ func (s *VerificationService) GenerateSSL(domain string) error {
 	return nil
 }
 
+// generateSelfSignedCert creates a self-signed cert for Cloudflare Full mode
+func (s *VerificationService) generateSelfSignedCert(domain string) error {
+	server, err := s.getServer()
+	if err != nil {
+		return err
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	// Create self-signed cert for origin
+	cmd := fmt.Sprintf(`
+mkdir -p /etc/nginx/ssl
+if [ ! -f /etc/nginx/ssl/%s.pem ]; then
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout /etc/nginx/ssl/%s.key \
+        -out /etc/nginx/ssl/%s.pem \
+        -subj '/CN=*.%s' 2>/dev/null
+fi
+`, domain, domain, domain, domain)
+
+	_, err = client.Run(cmd)
+	return err
+}
+
 // SetupDomainNginx creates nginx config for the domain on the VPS
 func (s *VerificationService) SetupDomainNginx(domain string) error {
 	server, err := s.getServer()
@@ -284,19 +317,33 @@ func (s *VerificationService) SetupDomainNginx(domain string) error {
 		return err
 	}
 
-	// Fallback: create basic nginx config
-	nginxConfig := fmt.Sprintf(`server {
+	// Check if Cloudflare - use self-signed cert if so
+	isCloudflare := s.IsCloudflare(domain)
+
+	// Fallback: create basic nginx config with SSL
+	var nginxConfig string
+	if isCloudflare {
+		nginxConfig = fmt.Sprintf(`server {
+    listen 80;
+    listen 443 ssl;
+    server_name %s *.%s;
+
+    ssl_certificate /etc/nginx/ssl/%s.pem;
+    ssl_certificate_key /etc/nginx/ssl/%s.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}`, domain, domain, domain, domain)
+	} else {
+		nginxConfig = fmt.Sprintf(`server {
     listen 80;
     server_name %s *.%s;
 
-    location /.well-known/domain-verify {
-        default_type application/json;
-        return 200 '{"verified":true}';
-    }
-    location /.well-known/domain-verify/ {
-        default_type application/json;
-        return 200 '{"verified":true}';
-    }
     location /.well-known/acme-challenge/ {
         root /var/www/sites/%s;
         allow all;
@@ -310,6 +357,7 @@ func (s *VerificationService) SetupDomainNginx(domain string) error {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }`, domain, domain, domain)
+	}
 
 	// Create directories
 	mkdirCmd := fmt.Sprintf("mkdir -p /var/www/sites/%s/_root /var/www/sites/%s/_errors", domain, domain)
