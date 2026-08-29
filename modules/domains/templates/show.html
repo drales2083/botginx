@@ -69,14 +69,14 @@
                 </div>
 
                 {{if not .Domain.SSLEnabled}}
-                <h6 class="text-muted mb-3"><i class="bi bi-shield-lock me-1"></i>SSL Certificate</h6>
-                <p class="text-muted small mb-3">Enable HTTPS for your domain and all subdomains</p>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-primary btn-check-ssl">
-                        <i class="bi bi-shield-check me-1"></i> Check SSL Status
-                    </button>
-                    <button class="btn btn-outline-secondary btn-ssl-instructions">
-                        <i class="bi bi-question-circle me-1"></i> Setup Guide
+                <div class="d-flex align-items-center p-3 bg-light rounded">
+                    <i class="bi bi-hourglass-split text-muted fs-4 me-3"></i>
+                    <div class="flex-grow-1">
+                        <strong>SSL Setup in Progress</strong>
+                        <div class="text-muted small">SSL will be configured automatically. This usually takes a few minutes.</div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary btn-check-ssl">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Check Now
                     </button>
                 </div>
                 {{else}}
@@ -154,31 +154,24 @@ document.querySelector('.btn-verify')?.addEventListener('click', async function(
 document.querySelector('.btn-check-ssl')?.addEventListener('click', async function() {
     const btn = this;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Checking...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
     const res = await fetch(`/user/domains/api/{{.Domain.ID}}/ssl`);
     const data = await res.json();
     if (res.ok && data.ssl) {
         if (data.ssl.exists && data.ssl.is_wildcard) {
-            reloadWithToast('Wildcard SSL is active!', 'success');
+            reloadWithToast('SSL is active!', 'success');
         } else if (data.ssl.exists) {
-            showToast('SSL found but not wildcard. Contact support.', 'warning');
+            showToast('SSL certificate detected', 'success');
+            setTimeout(() => location.reload(), 1000);
         } else {
-            showToast('No SSL certificate. See Setup Guide.', 'info');
+            showToast('SSL is being configured. Check back in a few minutes.', 'info');
         }
     } else {
-        showToast('Could not check SSL.', 'danger');
+        showToast('SSL setup in progress. Check back shortly.', 'info');
     }
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-shield-check me-1"></i> Check SSL Status';
-});
-
-document.querySelector('.btn-ssl-instructions')?.addEventListener('click', async function() {
-    const res = await fetch(`/user/domains/api/{{.Domain.ID}}/wildcard-ssl`);
-    const data = await res.json();
-    if (res.ok && data.instructions) {
-        alert(data.instructions);
-    }
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Check Now';
 });
 
 async function deleteDomain() {
