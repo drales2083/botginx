@@ -69,8 +69,10 @@
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-plus-lg me-1"></i> {{t "create"}}
+                        <button type="submit" class="btn btn-primary" id="submit-btn">
+                            <span class="spinner-border spinner-border-sm d-none me-1" role="status"></span>
+                            <i class="bi bi-plus-lg me-1 btn-icon"></i>
+                            <span class="btn-text">{{t "create"}}</span>
                         </button>
                         <a href="/admin/servers" class="btn btn-secondary">{{t "cancel"}}</a>
                     </div>
@@ -94,7 +96,9 @@ document.querySelectorAll('input[name="authMethod"]').forEach(radio => {
 document.getElementById('create-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const btn = form.querySelector('button[type="submit"]');
+    const btn = document.getElementById('submit-btn');
+    const spinner = btn.querySelector('.spinner-border');
+    const icon = btn.querySelector('.btn-icon');
     const errorAlert = document.getElementById('error-alert');
 
     const authMethod = form.querySelector('input[name="authMethod"]:checked').value;
@@ -113,6 +117,8 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
     }
 
     btn.disabled = true;
+    spinner.classList.remove('d-none');
+    icon.classList.add('d-none');
     errorAlert.classList.add('d-none');
 
     try {
@@ -122,18 +128,23 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
             body: JSON.stringify(data)
         });
         const result = await res.json();
-        if (res.ok) {
+        if (res.ok && result.server && result.server.id) {
             flashToast('Server added', 'success');
             window.location.href = '/admin/servers/' + result.server.id;
         } else {
             errorAlert.textContent = result.error || 'Failed to create server';
             errorAlert.classList.remove('d-none');
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            icon.classList.remove('d-none');
         }
     } catch (err) {
-        errorAlert.textContent = 'Network error';
+        errorAlert.textContent = 'Network error: ' + err.message;
         errorAlert.classList.remove('d-none');
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+        icon.classList.remove('d-none');
     }
-    btn.disabled = false;
 });
 </script>
 {{end}}

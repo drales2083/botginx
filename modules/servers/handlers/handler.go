@@ -45,7 +45,11 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	server, err := h.service.Get(id)
 	if err != nil {
-		http.Error(w, "Server not found", http.StatusNotFound)
+		// Render a proper 404 page instead of plain text
+		module.Render(w, r, h.templates, "errors:404.html", map[string]interface{}{
+			"Title":   "Server Not Found",
+			"Message": "The server you're looking for doesn't exist or has been deleted.",
+		})
 		return
 	}
 
@@ -113,6 +117,13 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 	server, err := h.service.Create(userID, input)
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Verify the server was actually created
+	_, verifyErr := h.service.Get(server.ID)
+	if verifyErr != nil {
+		h.jsonError(w, "Server created but verification failed: "+verifyErr.Error(), http.StatusInternalServerError)
 		return
 	}
 

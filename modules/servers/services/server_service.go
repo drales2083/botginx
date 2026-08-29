@@ -92,8 +92,11 @@ func (s *ServerService) Create(userID string, input models.CreateServerInput) (*
 		INSERT INTO servers (id, user_id, name, ip, port, ssh_user, ssh_password, auth_method, status, provider, created_at, updated_at)
 		VALUES (:id, :user_id, :name, :ip, :port, :ssh_user, :ssh_password, :auth_method, :status, :provider, :created_at, :updated_at)
 	`, server)
+	if err != nil {
+		return nil, fmt.Errorf("insert server: %w", err)
+	}
 
-	return server, err
+	return server, nil
 }
 
 func (s *ServerService) Update(id string, input models.UpdateServerInput) (*models.Server, error) {
