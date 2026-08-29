@@ -126,6 +126,10 @@ func main() {
 		log.Fatal().Err(err).Msg("module init failed")
 	}
 
+	// Wire up analytics settings push dependencies (after init, to avoid circular deps)
+	analyticsModule.SetLinkDetails(redirectLinksModule)
+	analyticsModule.SetServerProvider(serversModule)
+
 	// Run migrations
 	if err := registry.MigrateAll(); err != nil {
 		log.Fatal().Err(err).Msg("migration failed")

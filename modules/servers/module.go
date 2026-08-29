@@ -112,6 +112,12 @@ func (m *Module) PickRandom() (*models.Server, error) {
 	return m.service.PickRandom()
 }
 
+// GetServerForDomain returns SSH connection details for the server a domain is deployed to.
+// Used by analytics to push settings files to the VPS.
+func (m *Module) GetServerForDomain(domainID string) (ip string, port int, user, password string, err error) {
+	return m.service.GetServerForDomain(domainID)
+}
+
 func (m *Module) Widgets() []module.Widget {
 	return nil
 }

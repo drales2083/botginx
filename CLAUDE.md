@@ -79,6 +79,10 @@ go test ./...
 
 ## Environment Variables
 
+**Path:** `.env` (gitignored, never commit)
+
+### Application
+
 | Variable | Description |
 |----------|-------------|
 | `PORT` | Server port (default: 3001) |
@@ -86,6 +90,21 @@ go test ./...
 | `SESSION_SECRET` | Session encryption key |
 | `ANTIBOT_WEBHOOK_SECRET` | Webhook signature verification |
 | `TOR_MODE` | Enable Tor-specific behavior |
+
+### Deploy VPS Servers
+
+Used by settings push (`pkg/settingspush/`) to SCP link settings to deploy servers.
+
+| Variable | Description |
+|----------|-------------|
+| `GUARD_VPS_IP` | Guard Bot VPS (botection server) IP |
+| `GUARD_VPS_USER` | SSH user |
+| `GUARD_VPS_PASSWORD` | SSH password |
+| `GUARD_VPS_PORT` | SSH port (default: 22) |
+| `DEPLOY_VPS_IP` | Deploy VPS (abrow_s4) IP |
+| `DEPLOY_VPS_USER` | SSH user |
+| `DEPLOY_VPS_PASSWORD` | SSH password |
+| `DEPLOY_VPS_PORT` | SSH port (default: 22) |
 
 ## Related Documentation
 

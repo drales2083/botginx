@@ -145,3 +145,13 @@ func (m *Module) Widgets() []module.Widget {
 func (m *Module) Service() *services.AnalyticsService {
 	return m.service
 }
+
+// SetLinkDetails sets the link details provider for settings push
+func (m *Module) SetLinkDetails(linkInfo handlers.LinkDetails) {
+	m.handler.SetLinkDetails(linkInfo)
+}
+
+// SetServerProvider sets the server provider for settings push
+func (m *Module) SetServerProvider(servers handlers.ServerProvider) {
+	m.handler.SetServerProvider(servers)
+}

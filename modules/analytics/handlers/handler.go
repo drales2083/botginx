@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/botginx/botginx/pkg/antibot"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/botginx/botginx/pkg/settingspush"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -24,10 +26,23 @@ type LinkResolver interface {
 	OwnerOf(linkID string) (userID string, err error)
 }
 
+// LinkDetails provides link information for settings push
+type LinkDetails interface {
+	GetLinkHost(linkID string) (host string, domainID string, err error)
+}
+
+// ServerProvider provides server SSH details for settings push
+type ServerProvider interface {
+	GetServerForDomain(domainID string) (ip string, port int, user, password string, err error)
+}
+
 type Handler struct {
 	service   *services.AnalyticsService
 	templates *module.TemplateEngine
 	links     LinkResolver
+	linkInfo  LinkDetails
+	servers   ServerProvider
+	pusher    *settingspush.Pusher
 }
 
 func NewHandler(
@@ -39,7 +54,18 @@ func NewHandler(
 		service:   service,
 		templates: templates,
 		links:     links,
+		pusher:    settingspush.New(),
 	}
+}
+
+// SetLinkDetails sets the link details provider (called after init to avoid circular deps)
+func (h *Handler) SetLinkDetails(linkInfo LinkDetails) {
+	h.linkInfo = linkInfo
+}
+
+// SetServerProvider sets the server provider (called after init to avoid circular deps)
+func (h *Handler) SetServerProvider(servers ServerProvider) {
+	h.servers = servers
 }
 
 // Pages
@@ -213,7 +239,61 @@ func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Push settings to deploy VPS (async, don't block response)
+	go h.pushSettingsToVPS(linkID, settings)
+
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
+// pushSettingsToVPS pushes the settings file to the VPS where the link is deployed
+func (h *Handler) pushSettingsToVPS(linkID string, settings *models.LinkSettings) {
+	if h.linkInfo == nil || h.servers == nil {
+		return // Dependencies not set
+	}
+
+	// Get link host and domain
+	host, domainID, err := h.linkInfo.GetLinkHost(linkID)
+	if err != nil || domainID == "" {
+		log.Printf("Settings push: link %s not found or not deployed", linkID)
+		return
+	}
+
+	// Get server SSH details
+	ip, port, user, password, err := h.servers.GetServerForDomain(domainID)
+	if err != nil || ip == "" {
+		log.Printf("Settings push: no server for domain %s", domainID)
+		return
+	}
+
+	// Build settings for botection
+	pushSettings := settingspush.LinkSettings{
+		LinkID:           linkID,
+		Host:             host,
+		BlockBots:        settings.BlockBots,
+		BlockTor:         settings.BlockTor,
+		BlockProxy:       settings.BlockProxy,
+		BlockDatacenter:  settings.BlockDatacenter,
+		BlockHeadless:    settings.BlockHeadless,
+		CountryMode:      settings.CountryMode,
+		CountryList:      settings.CountryList,
+		DeviceMode:       settings.DeviceMode,
+		DeviceList:       settings.DeviceList,
+		MinBehaviorScore: settings.MinBehaviorScore,
+		RedirectOnBlock:  settings.RedirectOnBlock,
+	}
+
+	server := settingspush.ServerInfo{
+		IP:       ip,
+		Port:     port,
+		User:     user,
+		Password: password,
+	}
+
+	if err := h.pusher.Push(server, linkID, pushSettings); err != nil {
+		log.Printf("Settings push failed for %s: %v", linkID, err)
+	} else {
+		log.Printf("Settings pushed for %s to %s", linkID, ip)
+	}
 }
 
 // APIRecordVisit is called by the redirect link endpoint to track visits

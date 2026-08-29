@@ -132,3 +132,9 @@ func (m *Module) ResolveByHost(host string) (linkID, userID string, err error) {
 func (m *Module) OwnerOf(linkID string) (string, error) {
 	return m.service.OwnerOf(linkID)
 }
+
+// GetLinkHost returns the full hostname and domain ID for a link.
+// Used by analytics to push settings to the deploy VPS.
+func (m *Module) GetLinkHost(linkID string) (host string, domainID string, err error) {
+	return m.service.GetLinkHost(linkID)
+}

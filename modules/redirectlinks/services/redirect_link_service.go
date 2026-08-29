@@ -217,6 +217,27 @@ func (s *RedirectLinkService) DeleteByDomainID(domainID string) error {
 	return err
 }
 
+// GetLinkHost returns the full hostname and domain ID for a link
+// Used by analytics to push settings to the deploy VPS
+func (s *RedirectLinkService) GetLinkHost(linkID string) (host string, domainID string, err error) {
+	var row struct {
+		Subdomain  string `db:"subdomain"`
+		DomainID   string `db:"domain_id"`
+		DomainName string `db:"domain_name"`
+	}
+	err = s.db.Get(&row, `
+		SELECT rl.subdomain, rl.domain_id, d.name as domain_name
+		FROM redirect_links rl
+		JOIN domains d ON d.id = rl.domain_id
+		WHERE rl.id = $1
+	`, linkID)
+	if err != nil {
+		return "", "", err
+	}
+	host = row.Subdomain + "." + row.DomainName
+	return host, row.DomainID, nil
+}
+
 // Helper
 func stringJoin(strs []string, sep string) string {
 	if len(strs) == 0 {

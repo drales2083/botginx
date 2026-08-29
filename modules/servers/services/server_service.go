@@ -290,3 +290,18 @@ func (s *ServerService) CountAvailable() (int, error) {
 	err := s.db.Get(&count, `SELECT COUNT(*) FROM servers WHERE status = 'ready'`)
 	return count, err
 }
+
+// GetServerForDomain returns SSH connection details for the server a domain is deployed to.
+// Used by analytics to push settings files to the VPS.
+func (s *ServerService) GetServerForDomain(domainID string) (ip string, port int, user, password string, err error) {
+	var server models.Server
+	err = s.db.Get(&server, `
+		SELECT s.* FROM servers s
+		JOIN domains d ON d.server_id = s.id
+		WHERE d.id = $1
+	`, domainID)
+	if err != nil {
+		return "", 0, "", "", err
+	}
+	return server.IP, server.Port, server.SSHUser, server.SSHPassword, nil
+}
