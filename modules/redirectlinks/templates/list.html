@@ -72,24 +72,22 @@
                     </td>
                     <td>{{.CreatedAt.Format "2006-01-02"}}</td>
                     <td>
-                        <div class="btn-group btn-group-sm">
-                            <a href="/user/analytics/link/{{.ID}}" class="btn btn-outline-info" title="Analytics">
-                                <i class="bi bi-graph-up"></i>
-                            </a>
-                            <button class="btn btn-outline-primary btn-copy" data-url="{{.FullURL}}" title="Copy URL">
-                                <i class="bi bi-clipboard"></i>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-dark dropdown-toggle" data-bs-toggle="dropdown">
+                                Actions
                             </button>
-                            {{if $canWrite}}
-                            <a href="/user/redirectlinks/{{.ID}}/customize" class="btn btn-outline-secondary" title="{{t "customize"}}">
-                                <i class="bi bi-palette"></i>
-                            </a>
-                            <button class="btn btn-outline-success btn-deploy" data-id="{{.ID}}" title="{{t "deploy"}}">
-                                <i class="bi bi-cloud-upload"></i>
-                            </button>
-                            <button class="btn btn-outline-danger btn-delete" data-id="{{.ID}}" title="{{t "delete"}}">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                            {{end}}
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}"><i class="bi bi-eye me-2"></i>View</a></li>
+                                <li><a class="dropdown-item" href="/user/analytics/link/{{.ID}}"><i class="bi bi-graph-up me-2"></i>Analytics</a></li>
+                                <li><a class="dropdown-item btn-copy" href="#" data-url="{{.FullURL}}"><i class="bi bi-clipboard me-2"></i>Copy URL</a></li>
+                                {{if $canWrite}}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/customize"><i class="bi bi-palette me-2"></i>Customize</a></li>
+                                <li><a class="dropdown-item btn-deploy" href="#" data-id="{{.ID}}"><i class="bi bi-cloud-upload me-2"></i>Deploy</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                {{end}}
+                            </ul>
                         </div>
                     </td>
                 </tr>

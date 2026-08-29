@@ -75,12 +75,16 @@
                                 </td>
                                 <td><small class="text-muted">{{.CreatedAt.Format "2006-01-02"}}</small></td>
                                 <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-primary" onclick="verifyDomain('{{.ID}}')">
-                                        <i class="bi bi-shield-check"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteDomain('{{.ID}}', '{{.Name}}')">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-dark dropdown-toggle" data-bs-toggle="dropdown">
+                                            Actions
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" onclick="verifyDomain('{{.ID}}'); return false;"><i class="bi bi-shield-check me-2"></i>Verify DNS</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteDomain('{{.ID}}', '{{.Name}}'); return false;"><i class="bi bi-trash me-2"></i>Remove</a></li>
+                                        </ul>
+                                    </div>
                                 </td>
                             </tr>
                             {{else}}

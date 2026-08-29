@@ -44,19 +44,19 @@
                     <td>{{.Provider}}</td>
                     <td>{{.CreatedAt.Format "2006-01-02"}}</td>
                     <td>
-                        <div class="btn-group btn-group-sm">
-                            <a href="/admin/servers/{{.ID}}/terminal" class="btn btn-outline-primary" title="Terminal">
-                                <i class="bi bi-terminal"></i>
-                            </a>
-                            <a href="/admin/servers/{{.ID}}/logs" class="btn btn-outline-secondary" title="Logs">
-                                <i class="bi bi-file-text"></i>
-                            </a>
-                            <button class="btn btn-outline-success btn-test-connection" data-id="{{.ID}}" title="Test Connection">
-                                <i class="bi bi-wifi"></i>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-dark dropdown-toggle" data-bs-toggle="dropdown">
+                                Actions
                             </button>
-                            <button class="btn btn-outline-danger btn-delete" data-id="{{.ID}}" title="Delete">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/admin/servers/{{.ID}}"><i class="bi bi-eye me-2"></i>View</a></li>
+                                <li><a class="dropdown-item" href="/admin/servers/{{.ID}}/terminal"><i class="bi bi-terminal me-2"></i>Terminal</a></li>
+                                <li><a class="dropdown-item" href="/admin/servers/{{.ID}}/logs"><i class="bi bi-file-text me-2"></i>Logs</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item btn-test-connection" href="#" data-id="{{.ID}}"><i class="bi bi-wifi me-2"></i>Test Connection</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                            </ul>
                         </div>
                     </td>
                 </tr>

@@ -57,16 +57,16 @@
                     </td>
                     <td>{{.CreatedAt.Format "2006-01-02"}}</td>
                     <td>
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary btn-verify" data-id="{{.ID}}" title="{{t "domains.verify"}}">
-                                <i class="bi bi-check-circle"></i>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-dark dropdown-toggle" data-bs-toggle="dropdown">
+                                Actions
                             </button>
-                            <a href="/user/domains/{{.ID}}" class="btn btn-outline-secondary" title="View">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <button class="btn btn-outline-danger btn-delete" data-id="{{.ID}}" title="{{t "delete"}}">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/user/domains/{{.ID}}"><i class="bi bi-eye me-2"></i>View Details</a></li>
+                                <li><a class="dropdown-item btn-verify" href="#" data-id="{{.ID}}"><i class="bi bi-check-circle me-2"></i>Verify DNS</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                            </ul>
                         </div>
                     </td>
                 </tr>
