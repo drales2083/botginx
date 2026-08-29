@@ -1,0 +1,69 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-lg-4 col-6">
+        <div class="small-box text-bg-success">
+            <div class="inner">
+                <h3>{{.Stats.redirectLinks}}</h3>
+                <p>{{t "redirects"}}</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-link-45deg"></i>
+            </div>
+            <a href="/user/redirectlinks" class="small-box-footer">
+                {{t "redirectlinks.create"}} <i class="bi bi-arrow-right-circle-fill"></i>
+            </a>
+        </div>
+    </div>
+    <div class="col-lg-4 col-6">
+        <div class="small-box text-bg-warning">
+            <div class="inner">
+                <h3>{{.Stats.domains}}</h3>
+                <p>{{t "domains.title"}}</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-globe"></i>
+            </div>
+            <a href="/user/domains" class="small-box-footer">
+                {{t "domains.add"}} <i class="bi bi-arrow-right-circle-fill"></i>
+            </a>
+        </div>
+    </div>
+    <div class="col-lg-4 col-6">
+        <div class="small-box text-bg-info">
+            <div class="inner">
+                <h3>{{.Stats.live}}</h3>
+                <p>{{t "live"}}</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-cloud-check"></i>
+            </div>
+            <a href="/user/redirectlinks" class="small-box-footer">
+                {{t "actions"}} <i class="bi bi-arrow-right-circle-fill"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">{{t "domains.title"}}</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Add a domain to deploy your links to. <a href="/user/domains/new">{{t "domains.add"}}</a></p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">{{t "redirectlinks.title"}}</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">{{t "redirectlinks.no_links"}} <a href="/user/redirectlinks/new">{{t "redirectlinks.create"}}</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

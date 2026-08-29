@@ -1,0 +1,47 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">
+                    <a href="/admin/servers/{{.Server.ID}}" class="text-decoration-none">{{.Server.Name}}</a>
+                    <span class="text-muted"> / {{t "servers.logs"}}</span>
+                </h3>
+                <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="bg-dark text-light p-3 font-monospace" style="max-height: 600px; overflow-y: auto;" id="logs-container">
+                    {{if .Logs}}
+                    {{range .Logs}}
+                    <div class="log-entry mb-1">
+                        <span class="text-muted">{{.Timestamp.Format "2006-01-02 15:04:05"}}</span>
+                        <span class="{{if eq .Level "error"}}text-danger{{else if eq .Level "warning"}}text-warning{{else}}text-success{{end}}">[{{.Level}}]</span>
+                        <span>{{.Message}}</span>
+                    </div>
+                    {{end}}
+                    {{else}}
+                    <div class="text-muted text-center py-4">
+                        No logs yet
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.log-entry {
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+</style>
+
+<script>
+// Scroll to bottom on load
+const container = document.getElementById('logs-container');
+container.scrollTop = container.scrollHeight;
+</script>
+{{end}}

@@ -1,0 +1,139 @@
+{{define "content"}}
+<div class="row mb-3">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-1">Shared Domains</h5>
+            <small class="text-muted">Domains every user can deploy to. Users always keep their own domains.</small>
+        </div>
+        <a href="/admin/domains/new" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i> Add Shared Domain
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="sharedToggle" {{if .Enabled}}checked{{end}}>
+                        <label class="form-check-label" for="sharedToggle">
+                            <strong>Let users deploy to shared domains</strong>
+                        </label>
+                    </div>
+                    <small class="text-muted">
+                        {{if .Active}}
+                        Active — users see these domains alongside their own.
+                        {{else if .Enabled}}
+                        Enabled, but no shared domain has been added yet, so users only see their own.
+                        {{else}}
+                        Off — users can only deploy to domains they added themselves.
+                        {{end}}
+                    </small>
+                </div>
+                <span class="badge {{if .Active}}bg-success{{else}}bg-secondary{{end}} fs-6">
+                    {{if .Active}}Active{{else}}Inactive{{end}}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0" data-datatable data-no-sort="4">
+                        <thead>
+                            <tr>
+                                <th>Domain</th>
+                                <th>DNS</th>
+                                <th>SSL</th>
+                                <th>Added</th>
+                                <th class="text-end">{{t "actions"}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Domains}}
+                            <tr>
+                                <td><i class="bi bi-globe2 me-2"></i><code>{{.Name}}</code></td>
+                                <td>
+                                    {{if .DNSVerified}}
+                                    <span class="badge bg-success">{{t "domains.verified"}}</span>
+                                    {{else}}
+                                    <span class="badge bg-warning">{{t "domains.unverified"}}</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    {{if .SSLEnabled}}
+                                    <span class="badge bg-success">{{t "enabled"}}</span>
+                                    {{else}}
+                                    <span class="badge bg-secondary">{{t "disabled"}}</span>
+                                    {{end}}
+                                </td>
+                                <td><small class="text-muted">{{.CreatedAt.Format "2006-01-02"}}</small></td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="verifyDomain('{{.ID}}')">
+                                        <i class="bi bi-shield-check"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteDomain('{{.ID}}', '{{.Name}}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No shared domains yet. Until one is added, users deploy only to their own domains.
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('sharedToggle').addEventListener('change', async (e) => {
+    const res = await fetch('/admin/domains/api/toggle', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: e.target.checked })
+    });
+    if (res.ok) {
+        reloadWithToast(
+            e.target.checked ? 'Shared domains enabled' : 'Shared domains disabled',
+            'success'
+        );
+    } else {
+        e.target.checked = !e.target.checked;
+        showToast('Failed to update setting', 'danger');
+    }
+});
+
+async function verifyDomain(id) {
+    const res = await fetch(`/admin/domains/api/${id}/verify`, { method: 'POST' });
+    if (res.ok) {
+        reloadWithToast('DNS verified', 'success');
+    } else {
+        showToast('DNS verification failed', 'danger');
+    }
+}
+
+async function deleteDomain(id, name) {
+    if (!confirm(`Remove ${name} from the shared pool?`)) return;
+
+    const res = await fetch(`/admin/domains/api/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+        reloadWithToast(`${name} removed from the shared pool`, 'success');
+    } else {
+        showToast('Failed to remove domain', 'danger');
+    }
+}
+</script>
+{{end}}

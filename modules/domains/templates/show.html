@@ -1,0 +1,101 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0"><code>{{.Domain.Name}}</code></h3>
+                <div>
+                    {{if .Domain.DNSVerified}}
+                    <span class="badge bg-success">DNS Verified</span>
+                    {{else}}
+                    <span class="badge bg-warning">DNS Not Verified</span>
+                    {{end}}
+                    {{if .Domain.SSLEnabled}}
+                    <span class="badge bg-success"><i class="bi bi-lock-fill"></i> SSL</span>
+                    {{end}}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Deployment</h6>
+                        <span class="text-muted">
+                            <i class="bi bi-server me-1"></i> A server is assigned automatically on deploy
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Created</h6>
+                        <span>{{.Domain.CreatedAt.Format "2006-01-02 15:04"}}</span>
+                    </div>
+                </div>
+
+                {{if not .Domain.DNSVerified}}
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>DNS Configuration Required</h5>
+                    <p class="mb-2">Add the following DNS records to your domain:</p>
+                    <table class="table table-sm table-bordered mb-3"
+                           data-datatable data-searchable="false" data-paging="false">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Host</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>A</code></td>
+                                <td><code>@</code></td>
+                                <td><code>{{if .Domain.ServerID}}[Your Server IP]{{else}}Assign a server first{{end}}</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>A</code></td>
+                                <td><code>*</code></td>
+                                <td><code>{{if .Domain.ServerID}}[Your Server IP]{{else}}Assign a server first{{end}}</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button class="btn btn-primary btn-verify" data-id="{{.Domain.ID}}">
+                        <i class="bi bi-check-circle me-1"></i> Verify DNS
+                    </button>
+                </div>
+                {{end}}
+
+                <div class="d-flex gap-2">
+                    <a href="/user/redirectlinks/new?domain={{.Domain.ID}}" class="btn btn-success">
+                        <i class="bi bi-link-45deg me-1"></i> Create Redirect Link
+                    </a>
+                    <button class="btn btn-danger" onclick="deleteDomain()">
+                        <i class="bi bi-trash me-1"></i> {{t "delete"}}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelector('.btn-verify')?.addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Verifying...';
+
+    const res = await fetch(`/user/domains/api/{{.Domain.ID}}/verify`, { method: 'POST' });
+    if (res.ok) {
+        reloadWithToast('DNS verified', 'success');
+    } else {
+        showToast('DNS verification failed. Check your DNS records.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Verify DNS';
+    }
+});
+
+async function deleteDomain() {
+    if (!confirm('Delete this domain? This will also remove all redirect links.')) return;
+    const res = await fetch(`/user/domains/api/{{.Domain.ID}}`, { method: 'DELETE' });
+    if (res.ok) {
+        window.location.href = '/user/domains';
+    }
+}
+</script>
+{{end}}

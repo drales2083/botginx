@@ -1,0 +1,103 @@
+{{define "auth-content"}}
+<p class="register-box-msg">{{t "sign_up"}}</p>
+
+<div id="error-alert" class="alert alert-danger d-none"></div>
+<div id="success-alert" class="alert alert-success d-none"></div>
+
+<form id="signup-form">
+    <div class="input-group mb-3">
+        <input type="text" class="form-control" id="name" name="name" placeholder="{{t "name"}}" required autofocus>
+        <div class="input-group-text">
+            <span class="bi bi-person"></span>
+        </div>
+    </div>
+    <div class="input-group mb-3">
+        <input type="email" class="form-control" id="email" name="email" placeholder="{{t "email"}}" required>
+        <div class="input-group-text">
+            <span class="bi bi-envelope"></span>
+        </div>
+    </div>
+    <div class="input-group mb-3">
+        <input type="password" class="form-control" id="password" name="password" placeholder="{{t "password"}}" required minlength="8">
+        <div class="input-group-text">
+            <span class="bi bi-lock"></span>
+        </div>
+    </div>
+    <div class="input-group mb-3">
+        <input type="password" class="form-control" id="password2" name="password2" placeholder="{{t "confirm_password"}}" required>
+        <div class="input-group-text">
+            <span class="bi bi-lock-fill"></span>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-8">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="agree" required>
+                <label class="form-check-label" for="agree">I agree to the terms</label>
+            </div>
+        </div>
+        <div class="col-4">
+            <button type="submit" class="btn btn-primary btn-block w-100">
+                {{t "sign_up"}}
+            </button>
+        </div>
+    </div>
+</form>
+
+<p class="mb-0 mt-3">
+    {{t "have_account"}} <a href="/auth/login" class="text-center">{{t "sign_in"}}</a>
+</p>
+
+<script>
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const errorAlert = document.getElementById('error-alert');
+    const successAlert = document.getElementById('success-alert');
+
+    errorAlert.classList.add('d-none');
+    successAlert.classList.add('d-none');
+
+    if (form.password.value !== form.password2.value) {
+        errorAlert.textContent = '{{t "passwords_not_match"}}';
+        errorAlert.classList.remove('d-none');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+        const res = await fetch('/auth/api/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: form.name.value,
+                email: form.email.value,
+                password: form.password.value
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            successAlert.textContent = '{{t "signup_success"}}';
+            successAlert.classList.remove('d-none');
+            setTimeout(() => {
+                window.location.href = '/auth/login';
+            }, 1500);
+        } else {
+            errorAlert.textContent = data.error || 'Signup failed';
+            errorAlert.classList.remove('d-none');
+        }
+    } catch (err) {
+        errorAlert.textContent = 'Network error';
+        errorAlert.classList.remove('d-none');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '{{t "sign_up"}}';
+});
+</script>
+{{end}}

@@ -1,0 +1,94 @@
+# Botginx
+
+Go-based redirect link panel with AdminLTE v4.9.1, dark mode, red primary theme.
+
+## Project Structure
+
+```
+cmd/server/          # Main application entry point
+modules/             # Feature modules (auth, analytics, redirectlinks, etc.)
+pkg/                 # Shared packages (subscription, module framework)
+web/templates/       # HTML templates (base layout, partials)
+docs/                # Documentation
+```
+
+## Key Features
+
+- **Modular architecture** — Each feature is a self-contained module with routes, templates, migrations
+- **Subscription system** — Admin grants access, lapsed users get view-only mode
+- **Bot protection** — Per-link settings enforced via botection callback API
+- **Analytics** — Visit tracking with country, device, bot detection
+- **DataTables** — All tables use simple-datatables with search/sort/paging
+- **Toast notifications** — All user feedback via toast system
+
+## Deployment
+
+### Auto-Deploy Requirements
+
+**For auto-deploy to work, GitHub releases must include prebuilt binaries:**
+
+| Asset | Description |
+|-------|-------------|
+| `botginx-linux-amd64` | Binary for x86_64 servers |
+| `botginx-linux-arm64` | Binary for ARM64 servers |
+| `SHA256SUMS` | Checksums file |
+
+Build commands:
+```bash
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o botginx-linux-amd64 ./cmd/server
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o botginx-linux-arm64 ./cmd/server
+sha256sum botginx-linux-* > SHA256SUMS
+```
+
+See `docs/DEPLOYMENT.md` for full deployment guide.
+
+### Deploy Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `deploy-onion.sh` | Full Tor VPS setup (PostgreSQL, Go, Nginx, systemd) |
+| `auto-deploy.sh` | Auto-update from GitHub releases (cron every 2 min) |
+
+Usage:
+```bash
+DEPLOY_BRANCH="main" ssh root@SERVER 'bash -s' < deploy-onion.sh
+```
+
+## Botection Integration
+
+Botginx provides a callback API for botection (antibot reverse proxy):
+
+- **Endpoint:** `POST /api/botection/should-block`
+- **Purpose:** Per-link blocking decisions based on user settings
+- **Docs:** `docs/BOTECTION-CALLBACK-API.md`
+
+Botection calls this endpoint before making block decisions. Settings changes take effect within 30 seconds (cache TTL).
+
+## Development
+
+```bash
+# Run locally
+go run ./cmd/server
+
+# Build
+go build -o botginx ./cmd/server
+
+# Test
+go test ./...
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `PORT` | Server port (default: 3001) |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `SESSION_SECRET` | Session encryption key |
+| `ANTIBOT_WEBHOOK_SECRET` | Webhook signature verification |
+| `TOR_MODE` | Enable Tor-specific behavior |
+
+## Related Documentation
+
+- `docs/DEPLOYMENT.md` — Full deployment guide
+- `docs/BOTECTION-CALLBACK-API.md` — Callback API specification
+- `ENFORCEMENT-PLAN.md` — Bot protection architecture

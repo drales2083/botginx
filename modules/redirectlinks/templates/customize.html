@@ -1,0 +1,192 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">{{t "customize"}} - {{.Link.Subdomain}}</h3>
+            </div>
+            <div class="card-body">
+                <form id="customize-form">
+                    <!-- Background -->
+                    <h5 class="mb-3">Background</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="bgColor" class="form-label">Background Color</label>
+                            <input type="color" class="form-control form-control-color w-100" id="bgColor" value="#0a0a0a">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="bgColorSecondary" class="form-label">Secondary Color</label>
+                            <input type="color" class="form-control form-control-color w-100" id="bgColorSecondary" value="#1a1a1a">
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="gradientEnabled">
+                                <label class="form-check-label" for="gradientEnabled">Enable Gradient</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="pattern" class="form-label">Pattern</label>
+                        <select class="form-select" id="pattern">
+                            <option value="none">None</option>
+                            <option value="dots">Dots</option>
+                            <option value="grid">Grid</option>
+                            <option value="lines">Lines</option>
+                        </select>
+                    </div>
+
+                    <hr>
+
+                    <!-- Loader -->
+                    <h5 class="mb-3">Loader</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="loader" class="form-label">Style</label>
+                            <select class="form-select" id="loader">
+                                <option value="dots-bounce">Bouncing Dots</option>
+                                <option value="spinner">Spinner</option>
+                                <option value="pulse">Pulse</option>
+                                <option value="bars">Bars</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="loaderColorPrimary" class="form-label">Primary</label>
+                            <input type="color" class="form-control form-control-color w-100" id="loaderColorPrimary" value="#3b82f6">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="loaderColorSecondary" class="form-label">Secondary</label>
+                            <input type="color" class="form-control form-control-color w-100" id="loaderColorSecondary" value="#1e3a5f">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Text -->
+                    <h5 class="mb-3">Text</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="heading" class="form-label">Heading</label>
+                            <input type="text" class="form-control" id="heading" value="Please Wait">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="subheading" class="form-label">Subheading</label>
+                            <input type="text" class="form-control" id="subheading" value="Redirecting...">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="textColor" class="form-label">Text Color</label>
+                            <input type="color" class="form-control form-control-color w-100" id="textColor" value="#ffffff">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="textSize" class="form-label">Size (px)</label>
+                            <input type="number" class="form-control" id="textSize" value="32" min="12" max="72">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="font" class="form-label">Font</label>
+                            <select class="form-select" id="font">
+                                <option value="inter">Inter</option>
+                                <option value="roboto">Roboto</option>
+                                <option value="poppins">Poppins</option>
+                                <option value="system">System</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Layout -->
+                    <h5 class="mb-3">Layout</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="layout" class="form-label">Layout Style</label>
+                            <select class="form-select" id="layout">
+                                <option value="loader-text">Loader above Text</option>
+                                <option value="text-loader">Text above Loader</option>
+                                <option value="side-by-side">Side by Side</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="alignment" class="form-label">Alignment</label>
+                            <select class="form-select" id="alignment">
+                                <option value="center">Center</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> {{t "save"}}
+                        </button>
+                        <a href="/user/redirectlinks/{{.Link.ID}}" class="btn btn-secondary">{{t "cancel"}}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Preview</h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="preview" style="height: 300px; display: flex; align-items: center; justify-content: center; background: #0a0a0a;">
+                    <div style="text-align: center; color: #fff;">
+                        <div class="loader mb-3">...</div>
+                        <h4>Please Wait</h4>
+                        <p>Redirecting...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('customize-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const customization = {
+        bgColor: document.getElementById('bgColor').value,
+        bgColorSecondary: document.getElementById('bgColorSecondary').value,
+        gradientEnabled: document.getElementById('gradientEnabled').checked,
+        pattern: document.getElementById('pattern').value,
+        loader: document.getElementById('loader').value,
+        loaderColorPrimary: document.getElementById('loaderColorPrimary').value,
+        loaderColorSecondary: document.getElementById('loaderColorSecondary').value,
+        heading: document.getElementById('heading').value,
+        subheading: document.getElementById('subheading').value,
+        textColor: document.getElementById('textColor').value,
+        textSize: parseInt(document.getElementById('textSize').value),
+        font: document.getElementById('font').value,
+        layout: document.getElementById('layout').value,
+        alignment: document.getElementById('alignment').value
+    };
+
+    const res = await fetch('/user/redirectlinks/api/{{.Link.ID}}/customization', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(customization)
+    });
+
+    if (res.ok) {
+        flashToast('Customization saved', 'success');
+        window.location.href = '/user/redirectlinks/{{.Link.ID}}';
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to save customization', 'danger');
+    }
+});
+
+// Live preview updates
+function updatePreview() {
+    const preview = document.getElementById('preview');
+    preview.style.background = document.getElementById('bgColor').value;
+}
+document.getElementById('bgColor').addEventListener('input', updatePreview);
+</script>
+{{end}}

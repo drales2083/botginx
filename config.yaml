@@ -1,0 +1,23 @@
+server:
+  listen: ":3001"
+
+database:
+  url: "postgres://forg365:password123@localhost:5432/botginx?sslmode=disable"
+
+redis:
+  addr: "localhost:6379"
+  db: 2
+
+ssh:
+  keys_path: "data/keys"
+  default_user: "botginx"
+  connect_timeout: 30
+
+cloudflare:
+  wrangler_version: "4.87.0"
+
+i18n:
+  default_lang: "en"
+  available:
+    - "en"
+    - "ru"

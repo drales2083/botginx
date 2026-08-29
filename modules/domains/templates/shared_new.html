@@ -1,0 +1,80 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Add Shared Domain</h5>
+            </div>
+            <div class="card-body">
+                <div id="error-alert" class="alert alert-danger d-none"></div>
+
+                <form id="domain-form">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Domain Name</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               placeholder="example.com" required autofocus>
+                        <div class="form-text">Point the domain's DNS at one of your servers before verifying.</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> {{t "add"}}
+                        </button>
+                        <a href="/admin/domains" class="btn btn-secondary">{{t "cancel"}}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Shared vs. own domains</h6>
+            </div>
+            <div class="card-body small text-muted">
+                <p>
+                    A domain added here is available to <strong>every user</strong> as a deploy target,
+                    as long as the toggle on the shared domains page is on.
+                </p>
+                <p>
+                    Users can still add their own domains under their Domains page — those stay private
+                    to them and are always available regardless of this setting.
+                </p>
+                <p class="mb-0">
+                    Adding a domain from your own user section adds it as a personal domain, not a shared one.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('domain-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const errorAlert = document.getElementById('error-alert');
+
+    btn.disabled = true;
+    errorAlert.classList.add('d-none');
+
+    const res = await fetch('/admin/domains/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name.value.trim() })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+        flashToast('Shared domain added', 'success');
+        window.location.href = '/admin/domains';
+    } else {
+        errorAlert.textContent = data.error || 'Failed to add domain';
+        errorAlert.classList.remove('d-none');
+        btn.disabled = false;
+    }
+});
+</script>
+{{end}}

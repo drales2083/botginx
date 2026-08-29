@@ -1,0 +1,119 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">
+                    <a href="/servers/{{.Server.ID}}" class="text-decoration-none">{{.Server.Name}}</a>
+                    <span class="text-muted"> / {{t "servers.terminal"}}</span>
+                </h3>
+                <span class="badge bg-secondary" id="status">Disconnected</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="bg-dark text-light p-3 font-monospace" style="height: 500px; overflow-y: auto;" id="terminal">
+                    <div class="text-muted">Connected to {{.Server.User}}@{{.Server.IP}}</div>
+                    <div class="text-muted mb-2">Type commands below and press Enter</div>
+                    <div id="output"></div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <form id="cmd-form">
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark text-success border-dark font-monospace">$</span>
+                        <input type="text" class="form-control bg-dark text-light border-dark font-monospace"
+                               id="cmd-input" placeholder="Enter command..." autocomplete="off" autofocus>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-play-fill"></i> Run
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#cmd-input:focus {
+    box-shadow: none;
+    border-color: #495057;
+}
+.cmd-line {
+    margin-bottom: 0.5rem;
+}
+.cmd-prompt {
+    color: #28a745;
+}
+.cmd-output {
+    white-space: pre-wrap;
+    color: #ddd;
+}
+.cmd-error {
+    color: #dc3545;
+}
+</style>
+
+<script>
+const output = document.getElementById('output');
+const terminal = document.getElementById('terminal');
+const cmdInput = document.getElementById('cmd-input');
+const statusBadge = document.getElementById('status');
+
+document.getElementById('cmd-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const cmd = cmdInput.value.trim();
+    if (!cmd) return;
+
+    // Show command
+    const cmdDiv = document.createElement('div');
+    cmdDiv.className = 'cmd-line';
+    cmdDiv.innerHTML = `<span class="cmd-prompt">$ </span><span>${escapeHtml(cmd)}</span>`;
+    output.appendChild(cmdDiv);
+
+    cmdInput.value = '';
+    statusBadge.textContent = 'Running...';
+    statusBadge.className = 'badge bg-warning';
+
+    try {
+        const res = await fetch('/servers/api/{{.Server.ID}}/exec', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: cmd })
+        });
+        const data = await res.json();
+
+        const outDiv = document.createElement('div');
+        outDiv.className = 'cmd-line';
+
+        if (data.error) {
+            outDiv.innerHTML = `<span class="cmd-error">${escapeHtml(data.error)}</span>`;
+        } else {
+            outDiv.innerHTML = `<span class="cmd-output">${escapeHtml(data.output || '')}</span>`;
+        }
+        output.appendChild(outDiv);
+
+        statusBadge.textContent = 'Ready';
+        statusBadge.className = 'badge bg-success';
+    } catch (err) {
+        const errDiv = document.createElement('div');
+        errDiv.className = 'cmd-line cmd-error';
+        errDiv.textContent = 'Network error';
+        output.appendChild(errDiv);
+
+        statusBadge.textContent = 'Error';
+        statusBadge.className = 'badge bg-danger';
+    }
+
+    terminal.scrollTop = terminal.scrollHeight;
+});
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Set initial status
+statusBadge.textContent = 'Ready';
+statusBadge.className = 'badge bg-success';
+</script>
+{{end}}

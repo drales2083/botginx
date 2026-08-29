@@ -1,0 +1,209 @@
+{{define "content"}}
+<style>
+  /* WordPress plugins table: a dense full-width list where each row is one
+     module, actions sit under the name, and disabled rows recede. */
+  .plugins-table > :not(caption) > * > * {
+    padding: 0.9rem 1rem;
+  }
+  .plugin-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+  .plugin-actions {
+    font-size: 0.9rem;
+  }
+  .plugin-actions a,
+  .plugin-actions button {
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: inherit;
+    text-decoration: none;
+    color: var(--bs-link-color);
+  }
+  .plugin-actions a:hover,
+  .plugin-actions button:hover {
+    text-decoration: underline;
+  }
+  .plugin-actions .sep {
+    color: var(--bs-secondary-color);
+    margin: 0 0.4rem;
+  }
+  .plugin-actions .text-danger { color: var(--bs-danger) !important; }
+  .plugin-meta {
+    font-size: 0.875rem;
+    color: var(--bs-secondary-color);
+  }
+  /* Inactive plugins are dimmed and marked with a left edge, as in WP. */
+  tr.plugin-inactive {
+    opacity: 0.65;
+  }
+  tr.plugin-active > td:first-child {
+    box-shadow: inset 4px 0 0 var(--bs-success);
+  }
+</style>
+
+<div class="row mb-3">
+  <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h5 class="mb-1">Modules</h5>
+      <small class="text-muted">
+        {{len .Modules}} installed
+      </small>
+    </div>
+    <div class="alert alert-info mb-0 py-2 px-3 d-flex align-items-center gap-3">
+      <span>
+        <i class="bi bi-info-circle me-1"></i>
+        Enabling or disabling a module takes effect after a server restart.
+      </span>
+      <button class="btn btn-sm btn-outline-primary flex-shrink-0" id="btn-restart">
+        <i class="bi bi-arrow-clockwise me-1"></i> Restart now
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 plugins-table" data-datatable data-per-page="50">
+      <thead>
+        <tr>
+          <th style="width: 32%">Module</th>
+          <th>Description</th>
+          <th style="width: 18%">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Modules}}
+        <tr class="{{if .IsEnabled}}plugin-active{{else}}plugin-inactive{{end}}">
+          <td>
+            <div class="plugin-name">
+              <a href="/admin/modules/{{.ID}}" class="text-decoration-none">{{.Name}}</a>
+            </div>
+            <div class="plugin-actions">
+              {{if .IsCore}}
+              <span class="text-muted">Required</span>
+              {{else if .IsEnabled}}
+              <button type="button" class="btn-disable text-danger" data-id="{{.ID}}">Deactivate</button>
+              {{else}}
+              <button type="button" class="btn-enable" data-id="{{.ID}}">Activate</button>
+              {{end}}
+              <span class="sep">|</span>
+              <a href="/admin/modules/{{.ID}}">Details</a>
+            </div>
+          </td>
+          <td>
+            <div>{{.Description}}</div>
+            <div class="plugin-meta mt-1">
+              Version {{.Version}}
+              {{if .MenuSection}}<span class="sep">|</span>{{.MenuSection}} menu{{end}}
+              {{if .HasRoutes}}<span class="sep">|</span>Routes{{end}}
+              {{if .HasWidgets}}<span class="sep">|</span>Widgets{{end}}
+            </div>
+          </td>
+          <td>
+            {{if .IsCore}}
+            <span class="badge bg-primary">Core</span>
+            {{else if .IsEnabled}}
+            <span class="badge bg-success">Active</span>
+            {{else}}
+            <span class="badge bg-secondary">Inactive</span>
+            {{end}}
+          </td>
+        </tr>
+        {{else}}
+        <tr>
+          <td colspan="3" class="text-center text-muted py-5">
+            No modules are registered.
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// Restart. The server stops answering mid-request by design, so a failed fetch
+// is the expected outcome rather than an error worth reporting.
+document.getElementById('btn-restart').addEventListener('click', async () => {
+    if (!confirm('Restart the server now? Anyone using the panel will be briefly disconnected.')) return;
+
+    const btn = document.getElementById('btn-restart');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Restarting...';
+
+    try {
+        await fetch('/admin/modules/api/restart', { method: 'POST' });
+    } catch (err) {
+        // Connection dropped as the server went down -- expected.
+    }
+
+    waitForServer();
+});
+
+// Poll until the server answers again, then reload.
+async function waitForServer(attempt = 0) {
+    const btn = document.getElementById('btn-restart');
+
+    if (attempt > 30) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i> Server did not come back';
+        return;
+    }
+
+    try {
+        const res = await fetch('/health', { cache: 'no-store' });
+        if (res.ok) {
+            location.reload();
+            return;
+        }
+    } catch (err) {
+        // Still down.
+    }
+
+    setTimeout(() => waitForServer(attempt + 1), 1000);
+}
+
+async function toggleModule(btn, action, confirmText) {
+    if (confirmText && !confirm(confirmText)) return;
+
+    const id = btn.dataset.id;
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    try {
+        const res = await fetch(`/admin/modules/api/${id}/${action}`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+            reloadWithToast(data.message || `Module ${action}d`, 'success');
+            return;
+        }
+        showToast(data.error || `Failed to ${action} module`, 'danger');
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+
+    btn.disabled = false;
+    btn.textContent = label;
+}
+
+// Delegated: paging swaps rows in and out of the DOM, so listeners bound to
+// individual buttons at load would stop working past page one.
+document.addEventListener('click', (e) => {
+    const enable = e.target.closest('.btn-enable');
+    if (enable) {
+        toggleModule(enable, 'enable', null);
+        return;
+    }
+
+    const disable = e.target.closest('.btn-disable');
+    if (disable) {
+        toggleModule(disable, 'disable', 'Deactivate this module? The server will need to be restarted.');
+    }
+});
+</script>
+{{end}}

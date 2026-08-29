@@ -1,0 +1,292 @@
+{{define "content"}}
+<div class="row mb-3">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/user/analytics">Analytics</a></li>
+                <li class="breadcrumb-item active">{{.LinkID}}</li>
+            </ol>
+        </nav>
+        <a href="/user/analytics/link/{{.LinkID}}/settings" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-gear me-1"></i> Settings
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-2 col-6">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-primary">{{.Stats.TotalVisits}}</h3>
+                <small class="text-muted">Total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-2 col-6">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-success">{{.Stats.UniqueVisits}}</h3>
+                <small class="text-muted">Unique</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-2 col-6">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-warning">{{.Stats.BotVisits}}</h3>
+                <small class="text-muted">Bots</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-2 col-6">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-danger">{{.Stats.BlockedVisits}}</h3>
+                <small class="text-muted">Blocked</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-2 col-6">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-info">{{.Stats.TodayVisits}}</h3>
+                <small class="text-muted">Today</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Traffic Timeline</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary period-btn {{if eq .Period "hourly"}}active{{end}}" data-period="hourly">24h</button>
+                    <button class="btn btn-outline-primary period-btn {{if eq .Period "daily"}}active{{end}}" data-period="daily">30d</button>
+                    <button class="btn btn-outline-primary period-btn {{if eq .Period "monthly"}}active{{end}}" data-period="monthly">12m</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="timeline-chart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">Countries</h6></div>
+            <div class="card-body">
+                <canvas id="country-chart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">Devices</h6></div>
+            <div class="card-body">
+                <canvas id="device-chart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">Browsers</h6></div>
+            <div class="card-body">
+                <canvas id="browser-chart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Operating Systems</h6></div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0" data-datatable data-per-page="10">
+                    <thead>
+                        <tr>
+                            <th>Operating System</th>
+                            <th class="text-end">Visits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .OSStats}}
+                        <tr>
+                            <td>{{.OS}}</td>
+                            <td class="text-end"><span class="badge bg-secondary">{{.Count}}</span></td>
+                        </tr>
+                        {{else}}
+                        <tr><td colspan="2" class="text-muted text-center py-3">No data</td></tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Referrers</h6></div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0" data-datatable data-per-page="10">
+                    <thead>
+                        <tr>
+                            <th>Referrer</th>
+                            <th class="text-end">Visits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Referrers}}
+                        <tr>
+                            <td class="text-truncate" style="max-width: 200px;">{{.Referrer}}</td>
+                            <td class="text-end"><span class="badge bg-secondary">{{.Count}}</span></td>
+                        </tr>
+                        {{else}}
+                        <tr><td colspan="2" class="text-muted text-center py-3">No data</td></tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Recent Visits</h6></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped mb-0" data-datatable data-per-page="10" data-no-sort="2">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Country</th>
+                                <th>Device</th>
+                                <th>Browser</th>
+                                <th>Referrer</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .RecentVisits}}
+                            <tr>
+                                <td><small>{{.CreatedAt.Format "01-02 15:04"}}</small></td>
+                                <td>{{if .Country}}{{.Country}}{{else}}-{{end}}</td>
+                                <td>
+                                    {{if eq .Device "mobile"}}<i class="bi bi-phone"></i>
+                                    {{else if eq .Device "tablet"}}<i class="bi bi-tablet"></i>
+                                    {{else}}<i class="bi bi-display"></i>{{end}}
+                                </td>
+                                <td>{{.Browser}}</td>
+                                <td class="text-truncate" style="max-width: 150px;">{{if .Referrer}}{{.Referrer}}{{else}}Direct{{end}}</td>
+                                <td>
+                                    {{if .IsBot}}<span class="badge bg-warning">Bot</span>{{end}}
+                                    {{if .Blocked}}<span class="badge bg-danger">Blocked</span>{{end}}
+                                    {{if and (not .IsBot) (not .Blocked)}}<span class="badge bg-success">OK</span>{{end}}
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr><td colspan="6" class="text-muted text-center py-3">No visits yet</td></tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const linkId = '{{.LinkID}}';
+const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
+// Timeline chart
+let timelineChart;
+async function loadTimeline(period) {
+    const res = await fetch(`/user/analytics/api/link/${linkId}/timeline?period=${period}`);
+    const data = await res.json();
+
+    if (timelineChart) timelineChart.destroy();
+    timelineChart = new Chart(document.getElementById('timeline-chart'), {
+        type: 'line',
+        data: {
+            labels: data.timeline.map(p => p.time),
+            datasets: [{
+                label: 'Visits',
+                data: data.timeline.map(p => p.count),
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadTimeline(btn.dataset.period);
+    });
+});
+
+// Country chart
+async function loadCountryChart() {
+    const res = await fetch(`/user/analytics/api/link/${linkId}/countries`);
+    const data = await res.json();
+    new Chart(document.getElementById('country-chart'), {
+        type: 'doughnut',
+        data: {
+            labels: data.countries.map(c => c.country || 'Unknown'),
+            datasets: [{ data: data.countries.map(c => c.count), backgroundColor: colors }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+}
+
+// Device chart
+async function loadDeviceChart() {
+    const res = await fetch(`/user/analytics/api/link/${linkId}/devices`);
+    const data = await res.json();
+    new Chart(document.getElementById('device-chart'), {
+        type: 'doughnut',
+        data: {
+            labels: data.devices.map(d => d.device),
+            datasets: [{ data: data.devices.map(d => d.count), backgroundColor: colors }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+}
+
+// Browser chart
+async function loadBrowserChart() {
+    const res = await fetch(`/user/analytics/api/link/${linkId}/browsers`);
+    const data = await res.json();
+    new Chart(document.getElementById('browser-chart'), {
+        type: 'doughnut',
+        data: {
+            labels: data.browsers.map(b => b.browser || 'Unknown'),
+            datasets: [{ data: data.browsers.map(b => b.count), backgroundColor: colors }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+}
+
+loadTimeline('{{.Period}}');
+loadCountryChart();
+loadDeviceChart();
+loadBrowserChart();
+</script>
+{{end}}

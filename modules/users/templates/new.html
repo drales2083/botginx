@@ -1,0 +1,80 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Create User</h3>
+            </div>
+            <div class="card-body">
+                <div id="error-alert" class="alert alert-danger d-none"></div>
+
+                <form id="create-form">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">{{t "name"}}</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">{{t "email"}}</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">{{t "password"}}</label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="8">
+                    </div>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-lg me-1"></i> {{t "create"}}
+                        </button>
+                        <a href="/admin/users" class="btn btn-secondary">{{t "cancel"}}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const errorAlert = document.getElementById('error-alert');
+
+    btn.disabled = true;
+    errorAlert.classList.add('d-none');
+
+    try {
+        const res = await fetch('/admin/users/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: form.name.value,
+                email: form.email.value,
+                password: form.password.value,
+                role: form.role.value
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            flashToast('User created', 'success');
+            window.location.href = '/admin/users';
+        } else {
+            errorAlert.textContent = data.error || 'Failed to create user';
+            errorAlert.classList.remove('d-none');
+        }
+    } catch (err) {
+        errorAlert.textContent = 'Network error';
+        errorAlert.classList.remove('d-none');
+    }
+    btn.disabled = false;
+});
+</script>
+{{end}}

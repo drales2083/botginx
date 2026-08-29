@@ -1,0 +1,156 @@
+{{define "content"}}
+{{$canWrite := .Subscription.Active}}
+<div class="row mb-3">
+    <div class="col-12">
+        {{if $canWrite}}
+        <a href="/user/redirectlinks/new" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> {{t "create"}} {{t "redirect_link"}}
+        </a>
+        {{end}}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">{{t "redirect_links"}}</h3>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-striped mb-0" data-datatable data-no-sort="6">
+            <thead>
+                <tr>
+                    <th>URL</th>
+                    <th>{{t "type"}}</th>
+                    <th>{{t "destinations"}}</th>
+                    <th>Turnstile</th>
+                    <th>{{t "status"}}</th>
+                    <th>{{t "created"}}</th>
+                    <th>{{t "actions"}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Links}}
+                <tr>
+                    <td>
+                        {{if .DeployedURL}}
+                        <a href="{{.FullURL}}" target="_blank" class="text-decoration-none">
+                            <code>{{.Subdomain}}.{{.DomainName}}/{{.Path}}</code>
+                            <i class="bi bi-box-arrow-up-right ms-1 small"></i>
+                        </a>
+                        {{else}}
+                        <code class="text-muted">{{.Subdomain}}.{{.DomainName}}/{{.Path}}</code>
+                        {{end}}
+                    </td>
+                    <td>
+                        {{if eq .Type "REDIRECT"}}
+                        <span class="badge bg-primary">Redirect</span>
+                        {{else}}
+                        <span class="badge bg-info">HTML</span>
+                        {{end}}
+                    </td>
+                    <td>
+                        {{if .DestinationURLs}}
+                        {{len .DestinationURLs}} URL(s)
+                        {{else}}
+                        -
+                        {{end}}
+                    </td>
+                    <td>
+                        {{if .TurnstileEnabled}}
+                        <span class="badge bg-success">{{t "enabled"}}</span>
+                        {{else}}
+                        <span class="badge bg-secondary">{{t "disabled"}}</span>
+                        {{end}}
+                    </td>
+                    <td>
+                        {{if eq .DeployStatus "deployed"}}
+                        <span class="badge bg-success">{{t "deployed"}}</span>
+                        {{else if eq .DeployStatus "pending"}}
+                        <span class="badge bg-warning">{{t "pending"}}</span>
+                        {{else}}
+                        <span class="badge bg-danger" title="{{.DeployError}}">{{t "failed"}}</span>
+                        {{end}}
+                    </td>
+                    <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="/user/analytics/link/{{.ID}}" class="btn btn-outline-info" title="Analytics">
+                                <i class="bi bi-graph-up"></i>
+                            </a>
+                            <button class="btn btn-outline-primary btn-copy" data-url="{{.FullURL}}" title="Copy URL">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                            {{if $canWrite}}
+                            <a href="/user/redirectlinks/{{.ID}}/customize" class="btn btn-outline-secondary" title="{{t "customize"}}">
+                                <i class="bi bi-palette"></i>
+                            </a>
+                            <button class="btn btn-outline-success btn-deploy" data-id="{{.ID}}" title="{{t "deploy"}}">
+                                <i class="bi bi-cloud-upload"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-delete" data-id="{{.ID}}" title="{{t "delete"}}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {{end}}
+                        </div>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        {{t "no_data"}}. <a href="/user/redirectlinks/new">{{t "create"}} {{t "redirect_link"}}</a>.
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Delegated: paging swaps rows in and out of the DOM, so listeners bound to
+// individual buttons at load would stop working past page one.
+document.addEventListener('click', async (e) => {
+    const copy = e.target.closest('.btn-copy');
+    if (copy) {
+        const url = copy.dataset.url;
+        if (!url) return;
+        navigator.clipboard.writeText(url);
+        const icon = copy.querySelector('i');
+        icon.className = 'bi bi-check-lg';
+        setTimeout(() => icon.className = 'bi bi-clipboard', 1500);
+        showToast('URL copied to clipboard', 'success');
+        return;
+    }
+
+    const deploy = e.target.closest('.btn-deploy');
+    if (deploy) {
+        deploy.disabled = true;
+        deploy.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        const res = await fetch(`/user/redirectlinks/api/${deploy.dataset.id}/deploy`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+            reloadWithToast('Redirect link deployed', 'success');
+        } else {
+            showToast('Deploy failed: ' + (data.error || 'Unknown error'), 'danger');
+            deploy.disabled = false;
+            deploy.innerHTML = '<i class="bi bi-cloud-upload"></i>';
+        }
+        return;
+    }
+
+    const del = e.target.closest('.btn-delete');
+    if (del) {
+        if (!confirm('Delete this redirect link?')) return;
+
+        const res = await fetch(`/user/redirectlinks/api/${del.dataset.id}`, { method: 'DELETE' });
+        if (res.ok) {
+            reloadWithToast('Redirect link deleted', 'success');
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Failed to delete redirect link', 'danger');
+        }
+    }
+});
+</script>
+{{end}}

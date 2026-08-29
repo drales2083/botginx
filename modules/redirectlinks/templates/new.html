@@ -1,0 +1,314 @@
+{{define "content"}}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+<style>
+  /* CodeMirror ships its own sizing; match the Bootstrap controls around it. */
+  .CodeMirror {
+    height: 420px;
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    font-size: 0.875rem;
+  }
+  #html-preview {
+    width: 100%;
+    height: 420px;
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    /* Pages assume a white canvas; the dark app chrome would distort the preview. */
+    background: #fff;
+  }
+</style>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">{{t "redirectlinks.create"}}</h3>
+            </div>
+            <div class="card-body">
+                <div id="error-alert" class="alert alert-danger d-none"></div>
+
+                <form id="create-form">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="domainId" class="form-label">{{t "domains.title"}}</label>
+                            <select class="form-select" id="domainId" name="domainId" required>
+                                <option value="">Select domain...</option>
+                                {{range .Domains}}
+                                <option value="{{.ID}}">{{.Name}}{{if .IsShared}} (shared){{end}}</option>
+                                {{end}}
+                            </select>
+                            {{if not .Domains}}
+                            <div class="form-text text-warning">
+                                No domains available. <a href="/user/domains/new">Add one</a> to continue.
+                            </div>
+                            {{end}}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="subdomain" class="form-label">{{t "redirectlinks.subdomain"}}</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="subdomain" name="subdomain"
+                                       value="{{.SuggestedSubdomain}}" placeholder="amber-canyon" required>
+                                <button type="button" class="btn btn-outline-secondary" id="btn-random-subdomain"
+                                        title="Suggest a random subdomain">
+                                    <i class="bi bi-shuffle"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">Pick your own or shuffle for a suggestion.</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="path" class="form-label">{{t "redirectlinks.path"}}</label>
+                        <div class="input-group">
+                            <span class="input-group-text">/</span>
+                            <input type="text" class="form-control" id="path" name="path" placeholder="redirect" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">{{t "type"}}</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="type" id="type-redirect" value="REDIRECT" checked>
+                            <label class="btn btn-outline-primary" for="type-redirect">
+                                <i class="bi bi-arrow-right-circle me-1"></i> {{t "redirectlinks.type_redirect"}}
+                            </label>
+                            <input type="radio" class="btn-check" name="type" id="type-html" value="HTML">
+                            <label class="btn btn-outline-primary" for="type-html">
+                                <i class="bi bi-code-slash me-1"></i> {{t "redirectlinks.type_html"}}
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="redirect-urls" class="mb-3">
+                        <label class="form-label">{{t "redirectlinks.destinations"}}</label>
+                        <div id="urls-container">
+                            <div class="input-group mb-2">
+                                <input type="url" class="form-control url-input" placeholder="https://example.com" required>
+                                <button type="button" class="btn btn-outline-secondary btn-add-url">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted">Add multiple URLs for random rotation</small>
+                    </div>
+
+                    <div id="html-content" class="mb-3 d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label for="htmlContent" class="form-label mb-0">HTML Content</label>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary active" data-pane="editor">
+                                    <i class="bi bi-code-slash me-1"></i> Editor
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" data-pane="preview">
+                                    <i class="bi bi-eye me-1"></i> Preview
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="pane-editor">
+                            <textarea id="htmlContent" name="htmlContent"></textarea>
+                        </div>
+
+                        <div id="pane-preview" class="d-none">
+                            <!-- No allow-same-origin: the previewed page cannot reach this one. -->
+                            <iframe id="html-preview" title="HTML preview"
+                                    sandbox="allow-scripts"
+                                    referrerpolicy="no-referrer"></iframe>
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="botProtection" name="botProtection">
+                            <label class="form-check-label" for="botProtection">{{t "redirectlinks.bot_protection"}}</label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> {{t "create"}}
+                        </button>
+                        <a href="/user/redirectlinks" class="btn btn-secondary">{{t "cancel"}}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script>
+// HTML editor. htmlmixed highlights the embedded <script> and <style> blocks
+// too, which is why the xml, javascript and css modes load above it.
+let htmlEditor = null;
+
+if (window.CodeMirror) {
+    htmlEditor = CodeMirror.fromTextArea(document.getElementById('htmlContent'), {
+        mode: 'htmlmixed',
+        theme: 'material-darker',
+        lineNumbers: true,
+        lineWrapping: true,
+        autoCloseTags: true,
+        matchBrackets: true,
+        indentUnit: 2,
+        tabSize: 2,
+        viewportMargin: Infinity
+    });
+}
+
+// Preview. srcdoc keeps the frame on an opaque origin, so combined with the
+// sandbox attribute the previewed page has no access to this one.
+let previewTimer = null;
+
+function renderPreview() {
+    const frame = document.getElementById('html-preview');
+    if (!frame) return;
+    frame.srcdoc = htmlEditor ? htmlEditor.getValue() : '';
+}
+
+function showPane(pane) {
+    document.getElementById('pane-editor').classList.toggle('d-none', pane !== 'editor');
+    document.getElementById('pane-preview').classList.toggle('d-none', pane !== 'preview');
+
+    document.querySelectorAll('[data-pane]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.pane === pane);
+    });
+
+    if (pane === 'preview') {
+        renderPreview();
+    } else if (htmlEditor) {
+        htmlEditor.refresh();
+    }
+}
+
+document.querySelectorAll('[data-pane]').forEach(btn => {
+    btn.addEventListener('click', () => showPane(btn.dataset.pane));
+});
+
+// Keep the preview live while it is the visible pane, debounced so we are not
+// rebuilding the frame on every keystroke.
+if (htmlEditor) {
+    htmlEditor.on('change', () => {
+        if (document.getElementById('pane-preview').classList.contains('d-none')) return;
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(renderPreview, 300);
+    });
+}
+
+// Random subdomain suggestion. Fills the field; the user can still edit it.
+document.getElementById('btn-random-subdomain').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const icon = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+        const res = await fetch('/user/redirectlinks/api/random-subdomain');
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('subdomain').value = data.subdomain;
+        }
+    } catch (err) {
+        // Leave the field as-is; the user can type their own.
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = icon;
+});
+
+// Type toggle
+document.querySelectorAll('input[name="type"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const isRedirect = document.getElementById('type-redirect').checked;
+        document.getElementById('redirect-urls').classList.toggle('d-none', !isRedirect);
+        document.getElementById('html-content').classList.toggle('d-none', isRedirect);
+
+        // A hidden `required` input blocks submission with no visible error, so
+        // the destination URLs only stay required while they are on screen.
+        document.querySelectorAll('.url-input').forEach(input => {
+            input.required = isRedirect;
+        });
+
+        // CodeMirror measures itself on creation; it renders 0px tall if it was
+        // built while hidden, so re-measure whenever the pane becomes visible.
+        if (!isRedirect && htmlEditor) {
+            htmlEditor.refresh();
+        }
+    });
+});
+
+// Add URL button
+document.querySelector('.btn-add-url').addEventListener('click', () => {
+    const container = document.getElementById('urls-container');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <input type="url" class="form-control url-input" placeholder="https://example.com">
+        <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-x"></i></button>
+    `;
+    container.appendChild(div);
+    div.querySelector('.btn-remove-url').addEventListener('click', () => div.remove());
+});
+
+// Form submit
+document.getElementById('create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const errorAlert = document.getElementById('error-alert');
+
+    const urls = Array.from(document.querySelectorAll('.url-input'))
+        .map(input => input.value)
+        .filter(url => url);
+
+    const data = {
+        domainId: form.domainId.value,
+        subdomain: form.subdomain.value,
+        path: form.path.value,
+        type: form.querySelector('input[name="type"]:checked').value,
+        destinationUrls: urls,
+        // CodeMirror holds the live value; the textarea behind it is stale until
+        // save() is called, so read the editor directly.
+        htmlContent: htmlEditor ? htmlEditor.getValue() : form.htmlContent.value,
+        botProtection: form.botProtection.checked
+    };
+
+    if (data.type === 'HTML' && !data.htmlContent.trim()) {
+        errorAlert.textContent = 'Add some HTML content before creating the link';
+        errorAlert.classList.remove('d-none');
+        return;
+    }
+
+    btn.disabled = true;
+    errorAlert.classList.add('d-none');
+
+    try {
+        const res = await fetch('/user/redirectlinks/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (res.ok) {
+            flashToast('Redirect link created', 'success');
+            window.location.href = '/user/redirectlinks';
+        } else {
+            errorAlert.textContent = result.error || 'Failed to create';
+            errorAlert.classList.remove('d-none');
+        }
+    } catch (err) {
+        errorAlert.textContent = 'Network error';
+        errorAlert.classList.remove('d-none');
+    }
+    btn.disabled = false;
+});
+</script>
+{{end}}

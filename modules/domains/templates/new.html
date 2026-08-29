@@ -1,0 +1,69 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">{{t "domains.add"}}</h3>
+            </div>
+            <div class="card-body">
+                <div id="error-alert" class="alert alert-danger d-none"></div>
+
+                <form id="create-form">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Domain Name</label>
+                        <input type="text" class="form-control" id="name" name="name" placeholder="example.com" required>
+                        <div class="form-text">Enter your domain without http:// or www</div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        After adding the domain, point its DNS at the server address shown on the
+                        domain's page. A server is assigned automatically when you deploy.
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-lg me-1"></i> {{t "add"}}
+                        </button>
+                        <a href="/user/domains" class="btn btn-secondary">{{t "cancel"}}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const errorAlert = document.getElementById('error-alert');
+
+    btn.disabled = true;
+    errorAlert.classList.add('d-none');
+
+    try {
+        const res = await fetch('/user/domains/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: form.name.value
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            flashToast('Domain added', 'success');
+            window.location.href = '/user/domains';
+        } else {
+            errorAlert.textContent = data.error || 'Failed to add domain';
+            errorAlert.classList.remove('d-none');
+        }
+    } catch (err) {
+        errorAlert.textContent = 'Network error';
+        errorAlert.classList.remove('d-none');
+    }
+    btn.disabled = false;
+});
+</script>
+{{end}}

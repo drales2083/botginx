@@ -1,0 +1,153 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">{{.Link.Subdomain}}.{{.Link.DomainName}}/{{.Link.Path}}</h3>
+                <div class="btn-group btn-group-sm">
+                    <a href="/user/redirectlinks/{{.Link.ID}}/customize" class="btn btn-outline-secondary">
+                        <i class="bi bi-palette me-1"></i> {{t "customize"}}
+                    </a>
+                    <button class="btn btn-outline-success btn-deploy" data-id="{{.Link.ID}}">
+                        <i class="bi bi-cloud-upload me-1"></i> {{t "deploy"}}
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">{{t "type"}}</h6>
+                        {{if eq .Link.Type "REDIRECT"}}
+                        <span class="badge bg-primary fs-6">Redirect</span>
+                        {{else}}
+                        <span class="badge bg-info fs-6">HTML</span>
+                        {{end}}
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">{{t "status"}}</h6>
+                        {{if eq .Link.DeployStatus "deployed"}}
+                        <span class="badge bg-success fs-6">{{t "deployed"}}</span>
+                        {{else if eq .Link.DeployStatus "pending"}}
+                        <span class="badge bg-warning fs-6">{{t "pending"}}</span>
+                        {{else}}
+                        <span class="badge bg-danger fs-6">{{t "failed"}}</span>
+                        {{end}}
+                    </div>
+                </div>
+
+                {{if .Link.DestinationURLs}}
+                <div class="mb-4">
+                    <h6 class="text-muted">{{t "destinations"}}</h6>
+                    <ul class="list-group">
+                        {{range .Link.DestinationURLs}}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <code>{{.}}</code>
+                            <a href="{{.}}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </li>
+                        {{end}}
+                    </ul>
+                </div>
+                {{end}}
+
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <h6 class="text-muted">{{t "redirectlinks.turnstile"}}</h6>
+                        {{if .Link.TurnstileEnabled}}
+                        <span class="badge bg-success">{{t "enabled"}}</span>
+                        {{else}}
+                        <span class="badge bg-secondary">{{t "disabled"}}</span>
+                        {{end}}
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">{{t "redirectlinks.bot_protection"}}</h6>
+                        {{if .Link.BotProtection}}
+                        <span class="badge bg-success">{{t "enabled"}}</span>
+                        {{else}}
+                        <span class="badge bg-secondary">{{t "disabled"}}</span>
+                        {{end}}
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Animation</h6>
+                        <span>{{.Link.AnimationDuration}}s</span>
+                    </div>
+                </div>
+
+                {{if .Link.DeployedURL}}
+                <div class="mb-4">
+                    <h6 class="text-muted">Live URL</h6>
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="{{.Link.FullURL}}" readonly id="live-url">
+                        <button class="btn btn-outline-primary" onclick="navigator.clipboard.writeText(document.getElementById('live-url').value)">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                        <a href="{{.Link.FullURL}}" target="_blank" class="btn btn-outline-secondary">
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                    </div>
+                </div>
+                {{end}}
+
+                <div class="text-muted small">
+                    {{t "created"}}: {{.Link.CreatedAt.Format "2006-01-02 15:04"}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{t "actions"}}</h5>
+            </div>
+            <div class="card-body d-grid gap-2">
+                <a href="/user/analytics/link/{{.Link.ID}}" class="btn btn-outline-info">
+                    <i class="bi bi-graph-up me-2"></i> Analytics
+                </a>
+                <a href="/user/analytics/link/{{.Link.ID}}/settings" class="btn btn-outline-secondary">
+                    <i class="bi bi-sliders me-2"></i> Traffic Settings
+                </a>
+                <a href="/user/redirectlinks/{{.Link.ID}}/customize" class="btn btn-outline-primary">
+                    <i class="bi bi-palette me-2"></i> {{t "customize"}}
+                </a>
+                <button class="btn btn-outline-danger" onclick="deleteLink()">
+                    <i class="bi bi-trash me-2"></i> {{t "delete"}}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelector('.btn-deploy')?.addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    const res = await fetch(`/user/redirectlinks/api/{{.Link.ID}}/deploy`, { method: 'POST' });
+    const data = await res.json();
+
+    if (data.success) {
+        reloadWithToast('Redirect link deployed', 'success');
+    } else {
+        showToast('Deploy failed: ' + (data.error || 'Unknown error'), 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> {{t "deploy"}}';
+    }
+});
+
+async function deleteLink() {
+    if (!confirm('Delete this redirect link?')) return;
+
+    const res = await fetch(`/user/redirectlinks/api/{{.Link.ID}}`, { method: 'DELETE' });
+    if (res.ok) {
+        flashToast('Redirect link deleted', 'success');
+        window.location.href = '/user/redirectlinks';
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to delete redirect link', 'danger');
+    }
+}
+</script>
+{{end}}

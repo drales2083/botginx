@@ -1,0 +1,130 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">{{.Server.Name}}</h3>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary btn-test" data-id="{{.Server.ID}}">
+                        <i class="bi bi-plug me-1"></i> {{t "servers.test_connection"}}
+                    </button>
+                    <a href="/admin/servers/{{.Server.ID}}/terminal" class="btn btn-outline-secondary">
+                        <i class="bi bi-terminal me-1"></i> {{t "servers.terminal"}}
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">{{t "servers.ip"}}</h6>
+                        <code class="fs-5">{{.Server.IP}}</code>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">{{t "servers.port"}}</h6>
+                        <span class="fs-5">{{.Server.Port}}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">{{t "status"}}</h6>
+                        {{if eq .Server.Status "connected"}}
+                        <span class="badge bg-success fs-6">{{t "ready"}}</span>
+                        {{else if eq .Server.Status "connecting"}}
+                        <span class="badge bg-warning fs-6">{{t "connecting"}}</span>
+                        {{else}}
+                        <span class="badge bg-secondary fs-6">{{t "disconnected"}}</span>
+                        {{end}}
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">{{t "servers.user"}}</h6>
+                        <span>{{.Server.User}}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">{{t "servers.provider"}}</h6>
+                        <span class="text-capitalize">{{.Server.Provider}}</span>
+                    </div>
+                </div>
+
+                {{if .PublicKey}}
+                <div class="mb-4">
+                    <h6 class="text-muted">SSH Public Key</h6>
+                    <div class="input-group">
+                        <textarea class="form-control font-monospace" rows="3" readonly id="pub-key">{{.PublicKey}}</textarea>
+                        <button class="btn btn-outline-primary" onclick="navigator.clipboard.writeText(document.getElementById('pub-key').value)">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">Add this key to <code>~/.ssh/authorized_keys</code> on your server</small>
+                </div>
+                {{end}}
+
+                <div class="text-muted small">
+                    {{t "created"}}: {{.Server.CreatedAt.Format "2006-01-02 15:04"}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{t "actions"}}</h5>
+            </div>
+            <div class="card-body d-grid gap-2">
+                <a href="/admin/servers/{{.Server.ID}}/logs" class="btn btn-outline-primary">
+                    <i class="bi bi-journal-text me-2"></i> {{t "servers.logs"}}
+                </a>
+                <a href="/admin/servers/{{.Server.ID}}/terminal" class="btn btn-outline-secondary">
+                    <i class="bi bi-terminal me-2"></i> {{t "servers.terminal"}}
+                </a>
+                <button class="btn btn-outline-danger" onclick="deleteServer()">
+                    <i class="bi bi-trash me-2"></i> {{t "delete"}}
+                </button>
+            </div>
+        </div>
+
+        <div class="card mt-3" id="test-result" style="display:none;">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Connection Test</h5>
+            </div>
+            <div class="card-body">
+                <div id="test-output"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelector('.btn-test')?.addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+
+    const res = await fetch(`/admin/servers/api/{{.Server.ID}}/test`, { method: 'POST' });
+    const data = await res.json();
+
+    const resultCard = document.getElementById('test-result');
+    const output = document.getElementById('test-output');
+    resultCard.style.display = 'block';
+
+    if (data.success) {
+        output.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle me-2"></i>Connection successful!</div>';
+    } else {
+        output.innerHTML = `<div class="alert alert-danger mb-0"><i class="bi bi-x-circle me-2"></i>${data.error || 'Connection failed'}</div>`;
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plug me-1"></i> {{t "servers.test_connection"}}';
+});
+
+async function deleteServer() {
+    if (!confirm('Delete this server? This will also remove all deployed redirect links.')) return;
+
+    const res = await fetch(`/admin/servers/api/{{.Server.ID}}`, { method: 'DELETE' });
+    if (res.ok) {
+        window.location.href = '/admin/servers';
+    }
+}
+</script>
+{{end}}

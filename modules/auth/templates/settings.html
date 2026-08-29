@@ -1,0 +1,197 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{t "settings"}}</h5>
+            </div>
+            <div class="card-body">
+                <form id="profile-form">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">{{t "name"}}</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               value="{{.Account.Name}}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">{{t "email"}}</label>
+                        <input type="email" class="form-control" id="email" name="email"
+                               value="{{.Account.Email}}" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> {{t "save"}}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{t "password"}}</h5>
+            </div>
+            <div class="card-body">
+                <form id="password-form">
+                    <div class="mb-3">
+                        <label for="currentPassword" class="form-label">Current password</label>
+                        <input type="password" class="form-control" id="currentPassword"
+                               name="currentPassword" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New password</label>
+                        <input type="password" class="form-control" id="newPassword"
+                               name="newPassword" minlength="8" required>
+                        <div class="form-text">{{t "password_hint"}}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">{{t "confirm_password"}}</label>
+                        <input type="password" class="form-control" id="confirmPassword"
+                               name="confirmPassword" required>
+                    </div>
+
+                    <div class="alert alert-warning py-2 px-3 small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Changing your password signs you out everywhere, including here.
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-shield-lock me-1"></i> Change password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Account</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4 text-muted">Role</dt>
+                    <dd class="col-sm-8">
+                        {{if eq (printf "%s" .Account.Role) "admin"}}
+                        <span class="badge bg-danger">Admin</span>
+                        {{else}}
+                        <span class="badge bg-secondary">User</span>
+                        {{end}}
+                    </dd>
+
+                    <dt class="col-sm-4 text-muted">Subscription</dt>
+                    <dd class="col-sm-8">
+                        {{if eq .Subscription.Status "active"}}
+                        <span class="badge bg-success">Active</span>
+                        <div class="text-muted mt-1">Until {{.Subscription.ExpiresAt.Format "2006-01-02"}}</div>
+                        {{else if eq .Subscription.Status "expiring"}}
+                        <span class="badge bg-warning">{{.Subscription.DaysLeft}} days left</span>
+                        <div class="text-muted mt-1">Until {{.Subscription.ExpiresAt.Format "2006-01-02"}}</div>
+                        {{else if eq .Subscription.Status "expired"}}
+                        <span class="badge bg-danger">Expired</span>
+                        <div class="text-muted mt-1">Contact an admin on Telegram to renew.</div>
+                        {{else}}
+                        <span class="badge bg-secondary">None</span>
+                        <div class="text-muted mt-1">Contact an admin on Telegram to subscribe.</div>
+                        {{end}}
+                    </dd>
+
+                    <dt class="col-sm-4 text-muted">{{t "created"}}</dt>
+                    <dd class="col-sm-8">{{.Account.CreatedAt.Format "2006-01-02"}}</dd>
+
+                    <dt class="col-sm-4 text-muted">ID</dt>
+                    <dd class="col-sm-8"><code>{{.Account.ID}}</code></dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">{{t "language"}}</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex gap-2 flex-wrap">
+                    {{range languages}}
+                    <a href="?lang={{.}}"
+                       class="btn btn-sm {{if eq . currentLang}}btn-primary{{else}}btn-outline-secondary{{end}}">
+                        {{tLang . (printf "language.%s" .)}}
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('profile-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/user/settings/api/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: form.name.value,
+                email: form.email.value
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            reloadWithToast('Profile updated', 'success');
+            return;
+        }
+        showToast(data.error || 'Failed to update profile', 'danger');
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+
+    btn.disabled = false;
+});
+
+document.getElementById('password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+
+    if (form.newPassword.value !== form.confirmPassword.value) {
+        showToast('{{t "passwords_not_match"}}', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/user/settings/api/password', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                currentPassword: form.currentPassword.value,
+                newPassword: form.newPassword.value
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            // The session was invalidated server-side, so there is nothing to
+            // return to -- send them to log in with the new password.
+            flashToast('Password changed. Please sign in again.', 'success');
+            window.location.href = '/auth/login';
+            return;
+        }
+        showToast(data.error || 'Failed to change password', 'danger');
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+
+    btn.disabled = false;
+});
+</script>
+{{end}}

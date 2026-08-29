@@ -1,0 +1,139 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">{{t "servers.add"}}</h3>
+            </div>
+            <div class="card-body">
+                <div id="error-alert" class="alert alert-danger d-none"></div>
+
+                <form id="create-form">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">{{t "name"}}</label>
+                        <input type="text" class="form-control" id="name" name="name" placeholder="My VPS Server" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="ip" class="form-label">{{t "servers.ip"}}</label>
+                            <input type="text" class="form-control" id="ip" name="ip" placeholder="192.168.1.1" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="port" class="form-label">{{t "servers.port"}}</label>
+                            <input type="number" class="form-control" id="port" name="port" value="22" min="1" max="65535" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="user" class="form-label">{{t "servers.user"}}</label>
+                        <input type="text" class="form-control" id="user" name="user" value="root" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Authentication Method</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="authMethod" id="auth-password" value="password" checked>
+                            <label class="btn btn-outline-primary" for="auth-password">
+                                <i class="bi bi-key me-1"></i> Password
+                            </label>
+                            <input type="radio" class="btn-check" name="authMethod" id="auth-key" value="key">
+                            <label class="btn btn-outline-primary" for="auth-key">
+                                <i class="bi bi-file-earmark-lock me-1"></i> SSH Key
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="password-section" class="mb-3">
+                        <label for="sshPassword" class="form-label">SSH Password</label>
+                        <input type="password" class="form-control" id="sshPassword" name="sshPassword" placeholder="Enter SSH password">
+                    </div>
+
+                    <div id="key-section" class="mb-3 d-none">
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            After creating the server, you'll need to add the generated public key to your server's <code>~/.ssh/authorized_keys</code>.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="provider" class="form-label">{{t "servers.provider"}}</label>
+                        <select class="form-select" id="provider" name="provider">
+                            <option value="custom">Custom</option>
+                            <option value="digitalocean">DigitalOcean</option>
+                            <option value="vultr">Vultr</option>
+                            <option value="linode">Linode</option>
+                            <option value="hetzner">Hetzner</option>
+                            <option value="aws">AWS</option>
+                        </select>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-lg me-1"></i> {{t "create"}}
+                        </button>
+                        <a href="/admin/servers" class="btn btn-secondary">{{t "cancel"}}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle auth method sections
+document.querySelectorAll('input[name="authMethod"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const isPassword = document.getElementById('auth-password').checked;
+        document.getElementById('password-section').classList.toggle('d-none', !isPassword);
+        document.getElementById('key-section').classList.toggle('d-none', isPassword);
+        document.getElementById('sshPassword').required = isPassword;
+    });
+});
+
+document.getElementById('create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const errorAlert = document.getElementById('error-alert');
+
+    const authMethod = form.querySelector('input[name="authMethod"]:checked').value;
+
+    const data = {
+        name: form.name.value,
+        ip: form.ip.value,
+        port: parseInt(form.port.value),
+        sshUser: form.user.value,
+        authMethod: authMethod,
+        provider: form.provider.value
+    };
+
+    if (authMethod === 'password') {
+        data.sshPassword = form.sshPassword.value;
+    }
+
+    btn.disabled = true;
+    errorAlert.classList.add('d-none');
+
+    try {
+        const res = await fetch('/admin/servers/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (res.ok) {
+            flashToast('Server added', 'success');
+            window.location.href = '/admin/servers/' + result.server.id;
+        } else {
+            errorAlert.textContent = result.error || 'Failed to create server';
+            errorAlert.classList.remove('d-none');
+        }
+    } catch (err) {
+        errorAlert.textContent = 'Network error';
+        errorAlert.classList.remove('d-none');
+    }
+    btn.disabled = false;
+});
+</script>
+{{end}}

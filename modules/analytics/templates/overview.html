@@ -1,0 +1,141 @@
+{{define "content"}}
+<div class="row mb-4">
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-primary">
+            <div class="inner">
+                <h3>{{.Stats.TotalVisits}}</h3>
+                <p>Total Visits</p>
+            </div>
+            <div class="small-box-icon"><i class="bi bi-eye"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-success">
+            <div class="inner">
+                <h3>{{.Stats.UniqueVisits}}</h3>
+                <p>Unique Visitors</p>
+            </div>
+            <div class="small-box-icon"><i class="bi bi-person-check"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-warning">
+            <div class="inner">
+                <h3>{{.Stats.BotVisits}}</h3>
+                <p>Bot Visits</p>
+            </div>
+            <div class="small-box-icon"><i class="bi bi-robot"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-info">
+            <div class="inner">
+                <h3>{{.Stats.TodayVisits}}</h3>
+                <p>Today</p>
+            </div>
+            <div class="small-box-icon"><i class="bi bi-calendar-day"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Traffic Overview</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary period-btn active" data-period="daily">7 Days</button>
+                    <button class="btn btn-outline-primary period-btn" data-period="hourly">24 Hours</button>
+                    <button class="btn btn-outline-primary period-btn" data-period="monthly">12 Months</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="traffic-chart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Top Links</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0" data-datatable data-per-page="10">
+                    <thead>
+                        <tr>
+                            <th>Link</th>
+                            <th class="text-end">Visits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .TopLinks}}
+                        <tr>
+                            <td class="text-truncate" style="max-width: 200px;">
+                                <a href="/user/analytics/link/{{.linkId}}" class="text-decoration-none">
+                                    {{.linkId}}
+                                </a>
+                            </td>
+                            <td class="text-end">
+                                <span class="badge bg-primary rounded-pill">{{.totalVisits}}</span>
+                            </td>
+                        </tr>
+                        {{else}}
+                        <tr>
+                            <td colspan="2" class="text-muted text-center py-4">No data yet</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+let trafficChart;
+
+async function loadChart(period) {
+    const res = await fetch(`/user/analytics/api/overview?period=${period}`);
+    const data = await res.json();
+
+    const labels = data.timeline.map(p => p.time);
+    const values = data.timeline.map(p => p.count);
+
+    if (trafficChart) trafficChart.destroy();
+
+    trafficChart = new Chart(document.getElementById('traffic-chart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Visits',
+                data: values,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadChart(btn.dataset.period);
+    });
+});
+
+loadChart('daily');
+</script>
+{{end}}

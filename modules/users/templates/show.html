@@ -1,0 +1,198 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">{{.TargetUser.Name}}</h3>
+                {{if eq .TargetUser.Role "admin"}}
+                <span class="badge bg-danger">Admin</span>
+                {{else}}
+                <span class="badge bg-secondary">User</span>
+                {{end}}
+            </div>
+            <div class="card-body">
+                <form id="edit-form">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">{{t "name"}}</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{.TargetUser.Name}}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">{{t "email"}}</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{.TargetUser.Email}}">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role">
+                                <option value="user" {{if eq .TargetUser.Role "user"}}selected{{end}}>User</option>
+                                <option value="admin" {{if eq .TargetUser.Role "admin"}}selected{{end}}>Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="password" class="form-label">New Password (leave empty to keep)</label>
+                            <input type="password" class="form-control" id="password" name="password" minlength="8">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="isActive" name="isActive" {{if .TargetUser.IsActive}}checked{{end}}>
+                            <label class="form-check-label" for="isActive">{{t "active"}}</label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> {{t "save"}}
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="deleteUser()">
+                            <i class="bi bi-trash me-1"></i> {{t "delete"}}
+                        </button>
+                        <a href="/admin/users" class="btn btn-secondary">{{t "cancel"}}</a>
+                    </div>
+                </form>
+
+                <hr>
+                <div class="text-muted small">
+                    ID: <code>{{.TargetUser.ID}}</code><br>
+                    {{t "created"}}: {{.TargetUser.CreatedAt.Format "2006-01-02 15:04"}}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Subscription</h5>
+                {{if eq .SubscriptionInfo.Status "active"}}
+                <span class="badge bg-success">Active</span>
+                {{else if eq .SubscriptionInfo.Status "expiring"}}
+                <span class="badge bg-warning">{{.SubscriptionInfo.DaysLeft}} days left</span>
+                {{else if eq .SubscriptionInfo.Status "expired"}}
+                <span class="badge bg-danger">Expired</span>
+                {{else}}
+                <span class="badge bg-secondary">None</span>
+                {{end}}
+            </div>
+            <div class="card-body">
+                {{if eq .SubscriptionInfo.Status "none"}}
+                <p class="text-muted small">
+                    This user has never been subscribed and has view-only access.
+                </p>
+                {{else}}
+                <p class="text-muted small mb-3">
+                    {{if .SubscriptionInfo.Active}}Expires{{else}}Expired{{end}}
+                    on <strong>{{.SubscriptionInfo.ExpiresAt.Format "2006-01-02"}}</strong>
+                    {{if .SubscriptionInfo.Plan}}on the {{.SubscriptionInfo.Plan}} plan{{end}}.
+                </p>
+                {{end}}
+
+                <label class="form-label small text-muted">Extend access</label>
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    <button class="btn btn-sm btn-outline-success btn-extend" data-days="30">+30 days</button>
+                    <button class="btn btn-sm btn-outline-success btn-extend" data-days="90">+90 days</button>
+                    <button class="btn btn-sm btn-outline-success btn-extend" data-days="365">+1 year</button>
+                </div>
+
+                <label for="expiresAt" class="form-label small text-muted">Or set an exact expiry date</label>
+                <div class="input-group input-group-sm mb-3">
+                    <input type="date" class="form-control" id="expiresAt">
+                    <button class="btn btn-outline-primary" id="btn-set-date">Set</button>
+                </div>
+
+                {{if .SubscriptionInfo.Active}}
+                <button class="btn btn-sm btn-outline-danger" id="btn-revoke">
+                    <i class="bi bi-x-circle me-1"></i> Revoke access now
+                </button>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Subscription controls
+async function postSubscription(body, method, successMessage) {
+    try {
+        const res = await fetch('/admin/users/api/{{.TargetUser.ID}}/subscription', {
+            method: method || 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: body ? JSON.stringify(body) : undefined
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            // Queued rather than shown: the reload below would destroy it.
+            reloadWithToast(successMessage, 'success');
+            return;
+        }
+        showToast(data.error || 'Failed to update subscription', 'danger');
+    } catch (err) {
+        showToast('Network error updating subscription', 'danger');
+    }
+}
+
+document.querySelectorAll('.btn-extend').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const days = parseInt(btn.dataset.days, 10);
+        postSubscription({ days: days }, 'POST', `Subscription extended by ${days} days`);
+    });
+});
+
+document.getElementById('btn-set-date').addEventListener('click', () => {
+    const value = document.getElementById('expiresAt').value;
+    if (!value) {
+        showToast('Pick a date first', 'warning');
+        return;
+    }
+    postSubscription({ expiresAt: value }, 'POST', `Subscription set to expire on ${value}`);
+});
+
+document.getElementById('btn-revoke')?.addEventListener('click', () => {
+    if (!confirm('Revoke this user\'s access immediately? They will drop to view-only.')) return;
+    postSubscription(null, 'DELETE', 'Subscription revoked — user is now view-only');
+});
+
+document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+
+    const data = {
+        name: form.name.value,
+        email: form.email.value,
+        role: form.role.value,
+        isActive: form.isActive.checked
+    };
+    if (form.password.value) {
+        data.password = form.password.value;
+    }
+
+    const res = await fetch('/admin/users/api/{{.TargetUser.ID}}', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+        flashToast('User updated', 'success');
+        window.location.href = '/admin/users';
+    } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to update user', 'danger');
+    }
+});
+
+async function deleteUser() {
+    if (!confirm('Delete this user?')) return;
+
+    const res = await fetch('/admin/users/api/{{.TargetUser.ID}}', { method: 'DELETE' });
+    if (res.ok) {
+        flashToast('User deleted', 'success');
+        window.location.href = '/admin/users';
+    } else {
+        showToast('Failed to delete user', 'danger');
+    }
+}
+</script>
+{{end}}

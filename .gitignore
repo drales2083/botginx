@@ -1,0 +1,17 @@
+# Deploy config -- holds your server's address and key path
+deploy.env
+
+# Build output
+dist/
+botginx
+
+# Local config with real credentials
+config.local.yaml
+.env
+
+# SSH keys managed by the app
+data/keys/
+
+# Editor / OS
+.DS_Store
+*.swp

@@ -1,0 +1,121 @@
+{{define "content"}}
+<div class="row mb-3">
+    <div class="col-12">
+        <a href="/admin/servers/new" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Server
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">All Servers</h3>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-striped mb-0" data-datatable data-no-sort="5">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>IP Address</th>
+                    <th>Status</th>
+                    <th>Provider</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Servers}}
+                <tr>
+                    <td>
+                        <a href="/admin/servers/{{.ID}}">{{.Name}}</a>
+                    </td>
+                    <td><code>{{.IP}}:{{.Port}}</code></td>
+                    <td>
+                        {{if eq .Status "ready"}}
+                        <span class="badge bg-success">Ready</span>
+                        {{else if eq .Status "pending"}}
+                        <span class="badge bg-warning">Pending</span>
+                        {{else if eq .Status "connecting"}}
+                        <span class="badge bg-info">Connecting</span>
+                        {{else}}
+                        <span class="badge bg-danger">{{.Status}}</span>
+                        {{end}}
+                    </td>
+                    <td>{{.Provider}}</td>
+                    <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="/admin/servers/{{.ID}}/terminal" class="btn btn-outline-primary" title="Terminal">
+                                <i class="bi bi-terminal"></i>
+                            </a>
+                            <a href="/admin/servers/{{.ID}}/logs" class="btn btn-outline-secondary" title="Logs">
+                                <i class="bi bi-file-text"></i>
+                            </a>
+                            <button class="btn btn-outline-success btn-test-connection" data-id="{{.ID}}" title="Test Connection">
+                                <i class="bi bi-wifi"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-delete" data-id="{{.ID}}" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No servers yet. <a href="/admin/servers/new">Add your first server</a>.
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Delegated: paging swaps rows in and out of the DOM, so listeners bound to
+// individual buttons at load would stop working past page one.
+document.addEventListener('click', async (e) => {
+    const test = e.target.closest('.btn-test-connection');
+    if (test) {
+        test.disabled = true;
+        test.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        const res = await fetch(`/admin/servers/api/${test.dataset.id}/test`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+            test.innerHTML = '<i class="bi bi-check-lg"></i>';
+            test.classList.remove('btn-outline-success');
+            test.classList.add('btn-success');
+            showToast('Connection successful', 'success');
+        } else {
+            test.innerHTML = '<i class="bi bi-x-lg"></i>';
+            test.classList.remove('btn-outline-success');
+            test.classList.add('btn-danger');
+            showToast('Connection failed: ' + (data.error || 'Unknown error'), 'danger');
+        }
+
+        setTimeout(() => {
+            test.disabled = false;
+            test.innerHTML = '<i class="bi bi-wifi"></i>';
+            test.classList.remove('btn-success', 'btn-danger');
+            test.classList.add('btn-outline-success');
+        }, 2000);
+        return;
+    }
+
+    const del = e.target.closest('.btn-delete');
+    if (del) {
+        if (!confirm('Delete this server?')) return;
+
+        const res = await fetch(`/admin/servers/api/${del.dataset.id}`, { method: 'DELETE' });
+        if (res.ok) {
+            reloadWithToast('Server deleted', 'success');
+        } else {
+            showToast('Failed to delete server', 'danger');
+        }
+    }
+});
+</script>
+{{end}}

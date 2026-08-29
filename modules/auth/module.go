@@ -1,0 +1,118 @@
+package auth
+
+import (
+	"embed"
+	"io/fs"
+	"net/http"
+
+	"github.com/botginx/botginx/modules/auth/handlers"
+	"github.com/botginx/botginx/modules/auth/services"
+	"github.com/botginx/botginx/pkg/module"
+	"github.com/go-chi/chi/v5"
+)
+
+//go:embed templates/*.html
+var templatesFS embed.FS
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
+
+type Module struct {
+	*module.BaseModule
+	service *services.AuthService
+	Handler *handlers.Handler
+}
+
+func New() *Module {
+	return &Module{
+		BaseModule: module.NewBaseModule(
+			"auth",
+			"Authentication",
+			"User authentication and sessions",
+		),
+	}
+}
+
+func (m *Module) Init(deps *module.Dependencies) error {
+	m.SetDeps(deps)
+
+	m.service = services.NewAuthService(deps.DB)
+	m.Handler = handlers.NewHandler(m.service, deps.Templates)
+
+	tmplFS, _ := fs.Sub(templatesFS, "templates")
+	deps.Templates.RegisterModule(m.ID(), tmplFS)
+
+	return nil
+}
+
+func (m *Module) Migrate() error {
+	sql, err := fs.ReadFile(migrationsFS, "migrations/001_create_tables.sql")
+	if err != nil {
+		return err
+	}
+	_, err = m.DB().Exec(string(sql))
+	return err
+}
+
+// SettingsRoutes is the signed-in user's own account page. It is mounted under
+// /user rather than /auth so it inherits the app chrome and the auth
+// middleware, while the password logic stays here with the rest of auth.
+func (m *Module) SettingsRoutes() chi.Router {
+	r := chi.NewRouter()
+
+	r.Get("/", m.Handler.SettingsPage)
+	r.Put("/api/profile", m.Handler.APIUpdateProfile)
+	r.Put("/api/password", m.Handler.APIChangePassword)
+
+	return r
+}
+
+func (m *Module) Routes() chi.Router {
+	r := chi.NewRouter()
+
+	// Public pages
+	r.Get("/login", m.Handler.LoginPage)
+	r.Get("/signup", m.Handler.SignupPage)
+
+	// API
+	r.Post("/api/signup", m.Handler.APISignup)
+	r.Post("/api/login", m.Handler.APILogin)
+	r.Post("/api/logout", m.Handler.APILogout)
+	r.Get("/api/me", m.Handler.APIMe)
+
+	// Logout redirect
+	r.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
+		if cookie, err := r.Cookie("session"); err == nil {
+			m.service.Logout(cookie.Value)
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:   "session",
+			Value:  "",
+			Path:   "/",
+			MaxAge: -1,
+		})
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+	})
+
+	return r
+}
+
+func (m *Module) Templates() fs.FS {
+	tmplFS, _ := fs.Sub(templatesFS, "templates")
+	return tmplFS
+}
+
+func (m *Module) MenuItems() []module.MenuItem {
+	// Login and signup stay out of the sidebar, but the account settings page
+	// this module serves under /user/settings belongs there. Ordered last so it
+	// sits below the feature pages.
+	return []module.MenuItem{
+		{
+			Title:   "Settings",
+			Icon:    "bi-gear",
+			Path:    "/user/settings",
+			Order:   90,
+			Section: module.MenuSectionUser,
+		},
+	}
+}

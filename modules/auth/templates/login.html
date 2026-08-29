@@ -1,0 +1,76 @@
+{{define "auth-content"}}
+<p class="login-box-msg">{{t "sign_in"}}</p>
+
+<div id="error-alert" class="alert alert-danger d-none"></div>
+
+<form id="login-form">
+    <div class="input-group mb-3">
+        <input type="email" class="form-control" id="email" name="email" placeholder="{{t "email"}}" required autofocus>
+        <div class="input-group-text">
+            <span class="bi bi-envelope"></span>
+        </div>
+    </div>
+    <div class="input-group mb-3">
+        <input type="password" class="form-control" id="password" name="password" placeholder="{{t "password"}}" required>
+        <div class="input-group-text">
+            <span class="bi bi-lock"></span>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-8">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="remember">
+                <label class="form-check-label" for="remember">Remember Me</label>
+            </div>
+        </div>
+        <div class="col-4">
+            <button type="submit" class="btn btn-primary btn-block w-100">
+                {{t "sign_in"}}
+            </button>
+        </div>
+    </div>
+</form>
+
+<p class="mb-0 mt-3">
+    {{t "no_account"}} <a href="/auth/signup" class="text-center">{{t "sign_up"}}</a>
+</p>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const errorAlert = document.getElementById('error-alert');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    errorAlert.classList.add('d-none');
+
+    try {
+        const res = await fetch('/auth/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: form.email.value,
+                password: form.password.value
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            window.location.href = '/user/dashboard';
+        } else {
+            errorAlert.textContent = data.error || 'Login failed';
+            errorAlert.classList.remove('d-none');
+        }
+    } catch (err) {
+        errorAlert.textContent = 'Network error';
+        errorAlert.classList.remove('d-none');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '{{t "sign_in"}}';
+});
+</script>
+{{end}}
