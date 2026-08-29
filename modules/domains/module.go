@@ -82,6 +82,9 @@ func (m *Module) Routes() chi.Router {
 		r.Put("/{id}", m.handler.APIUpdate)
 		r.Delete("/{id}", m.handler.APIDelete)
 		r.Post("/{id}/verify", m.handler.APIVerifyDNS)
+		r.Get("/{id}/ssl", m.handler.APICheckSSL)
+		r.Post("/{id}/setup", m.handler.APISetupDomain)
+		r.Get("/{id}/wildcard-ssl", m.handler.APIGetWildcardSSLInstructions)
 	})
 
 	return r
@@ -106,6 +109,9 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 		r.Post("/", m.handler.APISharedCreate)
 		r.Delete("/{id}", m.handler.APIDelete)
 		r.Post("/{id}/verify", m.handler.APIVerifyDNS)
+		r.Get("/{id}/ssl", m.handler.APICheckSSL)
+		r.Post("/{id}/setup", m.handler.APISetupDomain)
+		r.Get("/{id}/wildcard-ssl", m.handler.APIGetWildcardSSLInstructions)
 		r.Put("/toggle", m.handler.APIToggleShared)
 	})
 

@@ -12,14 +12,16 @@ import (
 )
 
 type Handler struct {
-	service   *services.DomainService
-	templates *module.TemplateEngine
+	service      *services.DomainService
+	verification *services.VerificationService
+	templates    *module.TemplateEngine
 }
 
 func NewHandler(service *services.DomainService, templates *module.TemplateEngine) *Handler {
 	return &Handler{
-		service:   service,
-		templates: templates,
+		service:      service,
+		verification: services.NewVerificationService(),
+		templates:    templates,
 	}
 }
 
@@ -215,10 +217,17 @@ func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APIVerifyDNS(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	// DNS verification logic would go here
-	// For now, just mark as verified
-	verified := true
-	_, err := h.service.Update(id, models.UpdateDomainInput{
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Actually verify by calling the domain's /.well-known/domain-verify endpoint
+	verified, verifyErr := h.verification.VerifyDNS(domain.Name)
+
+	// Update the domain record
+	_, err = h.service.Update(id, models.UpdateDomainInput{
 		DNSVerified: &verified,
 	})
 	if err != nil {
@@ -226,7 +235,89 @@ func (h *Handler) APIVerifyDNS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.json(w, http.StatusOK, map[string]interface{}{"verified": true})
+	result := map[string]interface{}{
+		"verified": verified,
+		"domain":   domain.Name,
+	}
+	if verifyErr != nil && !verified {
+		result["message"] = verifyErr.Error()
+	}
+
+	h.json(w, http.StatusOK, result)
+}
+
+// APICheckSSL checks if SSL certificate exists for the domain
+func (h *Handler) APICheckSSL(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	status, err := h.verification.CheckSSL(domain.Name)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Update SSL status in database
+	if status.Exists && status.IsWildcard {
+		sslEnabled := true
+		h.service.Update(id, models.UpdateDomainInput{
+			SSLEnabled: &sslEnabled,
+		})
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"domain": domain.Name,
+		"ssl":    status,
+	})
+}
+
+// APISetupDomain creates nginx config for the domain on the VPS
+func (h *Handler) APISetupDomain(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"domain":  domain.Name,
+		"message": "Domain configured successfully",
+	})
+}
+
+// APIGetWildcardSSLInstructions returns instructions for setting up wildcard SSL
+func (h *Handler) APIGetWildcardSSLInstructions(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Get email from query or use default
+	email := r.URL.Query().Get("email")
+
+	instructions, err := h.verification.GenerateWildcardSSL(domain.Name, email)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, instructions)
 }
 
 // Helpers
