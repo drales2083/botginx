@@ -58,16 +58,49 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 	// Look up TXT record at _guardbot-verify.domain.com
 	txtHost := "_guardbot-verify." + domain
 
-	// Try multiple DNS servers to avoid caching issues
-	// Return success if ANY server has the correct record (DNS propagation varies)
+	// Helper to query a specific DNS server
+	queryDNS := func(dnsServer string) ([]string, error) {
+		if dnsServer == "" {
+			return net.LookupTXT(txtHost)
+		}
+		resolver := &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				d := net.Dialer{Timeout: 3 * time.Second}
+				return d.DialContext(ctx, "udp", dnsServer)
+			},
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return resolver.LookupTXT(ctx, txtHost)
+	}
+
+	// First, try to get authoritative nameservers and query them directly
+	// This bypasses public DNS caching issues
+	nsRecords, _ := net.LookupNS(domain)
+	for _, ns := range nsRecords {
+		nsHost := strings.TrimSuffix(ns.Host, ".")
+		// Resolve NS hostname to IP
+		nsIPs, err := net.LookupHost(nsHost)
+		if err != nil || len(nsIPs) == 0 {
+			continue
+		}
+		records, err := queryDNS(nsIPs[0] + ":53")
+		if err == nil && len(records) > 0 {
+			for _, record := range records {
+				if strings.TrimSpace(record) == expectedToken {
+					return true, nil // Success from authoritative NS!
+				}
+			}
+		}
+	}
+
+	// Fallback: try public DNS servers
 	dnsServers := []string{"8.8.8.8:53", "1.1.1.1:53", ""}
 	var allFoundRecords []string
 	var lastSource string
 
 	for _, dnsServer := range dnsServers {
-		var records []string
-		var err error
-
 		dnsSource := "Google DNS"
 		if dnsServer == "1.1.1.1:53" {
 			dnsSource = "Cloudflare DNS"
@@ -75,29 +108,13 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 			dnsSource = "System DNS"
 		}
 
-		if dnsServer == "" {
-			// Use system resolver as fallback
-			records, err = net.LookupTXT(txtHost)
-		} else {
-			resolver := &net.Resolver{
-				PreferGo: true,
-				Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-					d := net.Dialer{Timeout: 3 * time.Second}
-					return d.DialContext(ctx, "udp", dnsServer)
-				},
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			records, err = resolver.LookupTXT(ctx, txtHost)
-			cancel()
-		}
-
+		records, err := queryDNS(dnsServer)
 		if err == nil && len(records) > 0 {
 			for _, record := range records {
 				if strings.TrimSpace(record) == expectedToken {
-					return true, nil // Success! At least one DNS server has correct value
+					return true, nil // Success from public DNS
 				}
 			}
-			// Track what we found for error message
 			allFoundRecords = records
 			lastSource = dnsSource
 		}
@@ -105,7 +122,7 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 
 	// No DNS server had the correct value
 	if len(allFoundRecords) > 0 {
-		return false, fmt.Errorf("TXT mismatch (%s). Expected: %s, Found: [%s]. Delete old record, wait 5-30 min for propagation", lastSource, expectedToken, strings.Join(allFoundRecords, ", "))
+		return false, fmt.Errorf("TXT mismatch (%s). Expected: %s, Found: [%s]. DNS may still be propagating", lastSource, expectedToken, strings.Join(allFoundRecords, ", "))
 	}
 	return false, fmt.Errorf("TXT not found at %s. Add value: %s", txtHost, expectedToken)
 }
