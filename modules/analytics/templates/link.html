@@ -162,7 +162,7 @@
             <div class="card-header"><h6 class="mb-0">Recent Visits</h6></div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-sm table-striped mb-0" data-datatable data-per-page="10" data-no-sort="2,6">
+                    <table class="table table-sm table-striped mb-0" id="visits-table" data-datatable data-per-page="10" data-no-sort="2,6">
                         <thead>
                             <tr>
                                 <th>Time</th>
@@ -323,7 +323,7 @@ async function refreshVisits() {
         if (!res.ok) return;
         const data = await res.json();
 
-        const tbody = document.querySelector('table[data-datatable] tbody');
+        const tbody = document.querySelector('#visits-table tbody');
         if (!tbody || !data.visits) return;
 
         tbody.innerHTML = data.visits.length ? data.visits.map(v => `
