@@ -59,12 +59,22 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 	txtHost := "_guardbot-verify." + domain
 
 	// Try multiple DNS servers to avoid caching issues
+	// Return success if ANY server has the correct record (DNS propagation varies)
 	dnsServers := []string{"8.8.8.8:53", "1.1.1.1:53", ""}
-	var records []string
-	var lastErr error
+	var allFoundRecords []string
+	var lastSource string
 
 	for _, dnsServer := range dnsServers {
+		var records []string
 		var err error
+
+		dnsSource := "Google DNS"
+		if dnsServer == "1.1.1.1:53" {
+			dnsSource = "Cloudflare DNS"
+		} else if dnsServer == "" {
+			dnsSource = "System DNS"
+		}
+
 		if dnsServer == "" {
 			// Use system resolver as fallback
 			records, err = net.LookupTXT(txtHost)
@@ -84,22 +94,19 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 		if err == nil && len(records) > 0 {
 			for _, record := range records {
 				if strings.TrimSpace(record) == expectedToken {
-					return true, nil
+					return true, nil // Success! At least one DNS server has correct value
 				}
 			}
-			// Show which DNS server we checked
-			dnsSource := "Google DNS"
-			if dnsServer == "1.1.1.1:53" {
-				dnsSource = "Cloudflare DNS"
-			} else if dnsServer == "" {
-				dnsSource = "System DNS"
-			}
-			return false, fmt.Errorf("TXT mismatch (%s). Expected: %s, Found: [%s]. Delete old record, wait 5-30 min for propagation", dnsSource, expectedToken, strings.Join(records, ", "))
+			// Track what we found for error message
+			allFoundRecords = records
+			lastSource = dnsSource
 		}
-		lastErr = err
 	}
 
-	_ = lastErr // ignore, we show helpful message
+	// No DNS server had the correct value
+	if len(allFoundRecords) > 0 {
+		return false, fmt.Errorf("TXT mismatch (%s). Expected: %s, Found: [%s]. Delete old record, wait 5-30 min for propagation", lastSource, expectedToken, strings.Join(allFoundRecords, ", "))
+	}
 	return false, fmt.Errorf("TXT not found at %s. Add value: %s", txtHost, expectedToken)
 }
 
