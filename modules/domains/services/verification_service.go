@@ -58,30 +58,42 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 	// Look up TXT record at _guardbot-verify.domain.com
 	txtHost := "_guardbot-verify." + domain
 
-	// Use Google DNS to avoid local caching issues
-	resolver := &net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-			d := net.Dialer{Timeout: 5 * time.Second}
-			return d.DialContext(ctx, "udp", "8.8.8.8:53")
-		},
-	}
+	// Try multiple DNS servers to avoid caching issues
+	dnsServers := []string{"8.8.8.8:53", "1.1.1.1:53", ""}
+	var records []string
+	var lastErr error
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	records, err := resolver.LookupTXT(ctx, txtHost)
-	if err != nil {
-		return false, fmt.Errorf("TXT record not found. Add: %s TXT %s", txtHost, expectedToken)
-	}
-
-	for _, record := range records {
-		if record == expectedToken {
-			return true, nil
+	for _, dnsServer := range dnsServers {
+		var err error
+		if dnsServer == "" {
+			// Use system resolver as fallback
+			records, err = net.LookupTXT(txtHost)
+		} else {
+			resolver := &net.Resolver{
+				PreferGo: true,
+				Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+					d := net.Dialer{Timeout: 3 * time.Second}
+					return d.DialContext(ctx, "udp", dnsServer)
+				},
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			records, err = resolver.LookupTXT(ctx, txtHost)
+			cancel()
 		}
+
+		if err == nil && len(records) > 0 {
+			for _, record := range records {
+				if record == expectedToken {
+					return true, nil
+				}
+			}
+			return false, fmt.Errorf("TXT record value mismatch. Expected: %s, Found: %s", expectedToken, strings.Join(records, ", "))
+		}
+		lastErr = err
 	}
 
-	return false, fmt.Errorf("TXT record value mismatch. Expected: %s", expectedToken)
+	_ = lastErr // ignore, we show helpful message
+	return false, fmt.Errorf("TXT record not found. Add: %s TXT %s", txtHost, expectedToken)
 }
 
 // SSLStatus represents the SSL certificate status for a domain
