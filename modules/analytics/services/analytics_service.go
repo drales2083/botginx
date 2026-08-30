@@ -121,7 +121,7 @@ func (s *AnalyticsService) GetLinkStats(linkID string) (*models.LinkStats, error
 	stats := &models.LinkStats{LinkID: linkID}
 
 	s.db.Get(&stats.TotalVisits, `SELECT COUNT(*) FROM visits WHERE link_id = $1`, linkID)
-	s.db.Get(&stats.UniqueVisits, `SELECT COUNT(*) FROM visits WHERE link_id = $1 AND is_unique = true`, linkID)
+	s.db.Get(&stats.UniqueVisits, `SELECT COUNT(DISTINCT ip) FROM visits WHERE link_id = $1`, linkID)
 	s.db.Get(&stats.BotVisits, `SELECT COUNT(*) FROM visits WHERE link_id = $1 AND is_bot = true`, linkID)
 	s.db.Get(&stats.BlockedVisits, `SELECT COUNT(*) FROM visits WHERE link_id = $1 AND blocked = true`, linkID)
 	s.db.Get(&stats.TodayVisits, `SELECT COUNT(*) FROM visits WHERE link_id = $1 AND created_at > CURRENT_DATE`, linkID)
@@ -156,7 +156,7 @@ func (s *AnalyticsService) GetUserStats(userID string) (*models.LinkStats, error
 	stats := &models.LinkStats{}
 
 	s.db.Get(&stats.TotalVisits, `SELECT COUNT(*) FROM visits WHERE user_id = $1`, userID)
-	s.db.Get(&stats.UniqueVisits, `SELECT COUNT(*) FROM visits WHERE user_id = $1 AND is_unique = true`, userID)
+	s.db.Get(&stats.UniqueVisits, `SELECT COUNT(DISTINCT ip) FROM visits WHERE user_id = $1`, userID)
 	s.db.Get(&stats.BotVisits, `SELECT COUNT(*) FROM visits WHERE user_id = $1 AND is_bot = true`, userID)
 	s.db.Get(&stats.BlockedVisits, `SELECT COUNT(*) FROM visits WHERE user_id = $1 AND blocked = true`, userID)
 	s.db.Get(&stats.TodayVisits, `SELECT COUNT(*) FROM visits WHERE user_id = $1 AND created_at > CURRENT_DATE`, userID)
@@ -478,12 +478,12 @@ func (s *AnalyticsService) ShouldBlock(linkID, country, device string, isBot, is
 		return true, "low_behavior_score"
 	}
 
-	if settings.CountryMode == "whitelist" && len(settings.CountryList) > 0 {
+	if settings.CountryMode == "whitelist" && len(settings.CountryList) > 0 && country != "" {
 		if !contains(settings.CountryList, strings.ToUpper(country)) {
 			return true, "country_not_whitelisted"
 		}
 	}
-	if settings.CountryMode == "blacklist" && len(settings.CountryList) > 0 {
+	if settings.CountryMode == "blacklist" && len(settings.CountryList) > 0 && country != "" {
 		if contains(settings.CountryList, strings.ToUpper(country)) {
 			return true, "country_blacklisted"
 		}
