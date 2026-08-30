@@ -190,7 +190,26 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.json(w, http.StatusCreated, map[string]interface{}{"domain": domain})
+	// Detect if this domain needs external setup wizard
+	// Wildcard domains always need DNS-01 challenge (external setup)
+	needsSetupWizard := false
+	if domain.IsWildcard {
+		needsSetupWizard = true
+		// Update domain to mark as external setup pending
+		setupType := models.SetupTypeExternal
+		setupStep := models.SetupStepDNSWaiting
+		h.service.Update(domain.ID, models.UpdateDomainInput{
+			SetupType: &setupType,
+			SetupStep: &setupStep,
+		})
+		// Start generating ACME token in background
+		go h.generateAcmeTokenBackground(domain.ID, services.GetBaseDomain(domain.Name))
+	}
+
+	h.json(w, http.StatusCreated, map[string]interface{}{
+		"domain":            domain,
+		"needsSetupWizard": needsSetupWizard,
+	})
 }
 
 func (h *Handler) APIGet(w http.ResponseWriter, r *http.Request) {
