@@ -1,178 +1,230 @@
 {{define "content"}}
-<div class="row justify-content-center">
+<div class="row mb-3">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/user/domains">Domains</a></li>
+                <li class="breadcrumb-item active">Setup Wizard</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
     <div class="col-lg-8">
-        <div class="card">
+        <!-- Header Card -->
+        <div class="card card-primary card-outline">
             <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-globe me-2"></i>External Domain Setup: {{.SetupInfo.Domain}}
-                </h5>
+                <h3 class="card-title">
+                    <i class="bi bi-globe me-2"></i>{{.SetupInfo.Domain}}
+                </h3>
+                <div class="card-tools">
+                    <span class="badge bg-warning" id="setup-status">Setup Required</span>
+                </div>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-4">
-                    Add these DNS records in your cPanel or DNS provider's Zone Editor.
-                    The page will automatically detect when records are added.
-                </p>
+                <p class="text-muted">Add these DNS records in your cPanel Zone Editor or DNS provider. The page checks automatically every 30 seconds.</p>
+            </div>
+        </div>
 
-                <!-- Step 1: A Record -->
-                <div class="card mb-3" id="step-a-record">
-                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <span><strong>Step 1:</strong> Point domain to our server</span>
-                        <span id="status-a" class="badge bg-secondary">Checking...</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr><th>Type</th><th>Name</th><th>Value</th><th></th></tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>A</code></td>
-                                        <td><code>{{if .SetupInfo.IsWildcard}}*{{else}}@{{end}}</code></td>
-                                        <td><code id="server-ip">{{.SetupInfo.ServerIP}}</code></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{.SetupInfo.ServerIP}}')">
-                                                <i class="bi bi-clipboard"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+        <!-- Step 1: A Record -->
+        <div class="card" id="card-step1">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span class="badge bg-secondary me-2">1</span>
+                    A Record — Point to Server
+                </h5>
+                <div class="card-tools">
+                    <span id="badge-a" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Waiting</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:80px">Type</th>
+                            <th style="width:150px">Name</th>
+                            <th>Value</th>
+                            <th style="width:60px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge bg-primary">A</span></td>
+                            <td><code>{{if .SetupInfo.IsWildcard}}*{{else}}@{{end}}</code></td>
+                            <td>
+                                <div class="input-group input-group-sm" style="max-width:300px">
+                                    <input type="text" class="form-control form-control-sm" value="{{.SetupInfo.ServerIP}}" readonly id="copy-ip">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('copy-ip')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Step 2: Verify TXT -->
+        <div class="card" id="card-step2">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span class="badge bg-secondary me-2">2</span>
+                    TXT Record — Verify Ownership
+                </h5>
+                <div class="card-tools">
+                    <span id="badge-verify" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Waiting</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:80px">Type</th>
+                            <th style="width:150px">Name</th>
+                            <th>Value</th>
+                            <th style="width:60px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge bg-info">TXT</span></td>
+                            <td><code>_guardbot-verify</code></td>
+                            <td>
+                                <div class="input-group input-group-sm" style="max-width:300px">
+                                    <input type="text" class="form-control form-control-sm" value="{{.SetupInfo.VerifyToken}}" readonly id="copy-verify">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('copy-verify')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Step 3: ACME TXT -->
+        <div class="card" id="card-step3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span class="badge bg-secondary me-2">3</span>
+                    TXT Record — SSL Certificate
+                </h5>
+                <div class="card-tools">
+                    <span id="badge-ssl" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Waiting</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {{if .SetupInfo.AcmeTokenReady}}
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:80px">Type</th>
+                            <th style="width:150px">Name</th>
+                            <th>Value</th>
+                            <th style="width:60px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge bg-info">TXT</span></td>
+                            <td><code>_acme-challenge</code></td>
+                            <td>
+                                <div class="input-group input-group-sm" style="max-width:400px">
+                                    <input type="text" class="form-control form-control-sm" value="{{.SetupInfo.AcmeToken}}" readonly id="copy-acme">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('copy-acme')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="p-3">
+                    <div class="d-flex align-items-center text-muted">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        Generating SSL challenge token...
                     </div>
                 </div>
+                {{end}}
+            </div>
+        </div>
 
-                <!-- Step 2: Verify TXT -->
-                <div class="card mb-3" id="step-verify">
-                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <span><strong>Step 2:</strong> Verify domain ownership</span>
-                        <span id="status-verify" class="badge bg-secondary">Checking...</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr><th>Type</th><th>Name</th><th>Value</th><th></th></tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>TXT</code></td>
-                                        <td><code>_guardbot-verify</code></td>
-                                        <td><code id="verify-token">{{.SetupInfo.VerifyToken}}</code></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{.SetupInfo.VerifyToken}}')">
-                                                <i class="bi bi-clipboard"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+        <!-- Stale ACME Warning -->
+        <div class="callout callout-danger d-none" id="stale-warning">
+            <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Old ACME Record First</h5>
+            <p class="mb-2">An old <code>_acme-challenge</code> TXT record exists that will block SSL generation. Delete it first:</p>
+            <div class="input-group input-group-sm mb-2" style="max-width:400px">
+                <span class="input-group-text bg-danger text-white">DELETE THIS</span>
+                <input type="text" class="form-control" id="stale-value" readonly>
+            </div>
+            <small>Then add the new value shown in Step 3 above.</small>
+        </div>
 
-                <!-- Step 3: SSL TXT (for wildcard or external) -->
-                <div class="card mb-3" id="step-ssl">
-                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <span><strong>Step 3:</strong> SSL Certificate (HTTPS)</span>
-                        <span id="status-ssl" class="badge bg-secondary">Checking...</span>
-                    </div>
-                    <div class="card-body">
-                        {{if .SetupInfo.AcmeTokenReady}}
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr><th>Type</th><th>Name</th><th>Value</th><th></th></tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>TXT</code></td>
-                                        <td><code>_acme-challenge</code></td>
-                                        <td><code id="acme-token">{{.SetupInfo.AcmeToken}}</code></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{.SetupInfo.AcmeToken}}')">
-                                                <i class="bi bi-clipboard"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        {{else}}
-                        <div class="d-flex align-items-center">
-                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                            <span>Generating SSL challenge token...</span>
-                        </div>
-                        {{end}}
-                    </div>
-                </div>
+        <!-- Success Card -->
+        <div class="card card-success d-none" id="success-card">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                <h4 class="mt-3">Setup Complete!</h4>
+                <p class="text-muted">Your domain is now active with wildcard SSL.</p>
+                <a href="/user/domains/{{.Domain.ID}}" class="btn btn-primary">
+                    <i class="bi bi-arrow-right me-1"></i> View Domain
+                </a>
+                <a href="/user/redirectlinks/new?domain={{.Domain.ID}}" class="btn btn-success">
+                    <i class="bi bi-link-45deg me-1"></i> Create Redirect Link
+                </a>
+            </div>
+        </div>
+    </div>
 
-                <!-- Stale ACME Warning (shown via JS when detected) -->
-                <div class="alert alert-danger d-none" id="stale-acme-warning">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <strong>Old ACME record detected!</strong>
-                    <p class="mb-2 mt-2">You have an old <code>_acme-challenge</code> TXT record that must be deleted first:</p>
-                    <div class="bg-dark text-light p-2 rounded mb-2">
-                        <code id="stale-acme-value"></code>
-                    </div>
-                    <p class="mb-0 small">Delete this record in your DNS settings, then add the new one shown above.</p>
-                </div>
+    <div class="col-lg-4">
+        <!-- Progress Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-list-check me-2"></i>Progress</h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center" id="progress-a">
+                        <span><i class="bi bi-globe me-2"></i>A Record</span>
+                        <span class="badge bg-secondary"><i class="bi bi-clock"></i></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center" id="progress-verify">
+                        <span><i class="bi bi-shield-check me-2"></i>Verification</span>
+                        <span class="badge bg-secondary"><i class="bi bi-clock"></i></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center" id="progress-ssl">
+                        <span><i class="bi bi-lock me-2"></i>SSL Certificate</span>
+                        <span class="badge bg-secondary"><i class="bi bi-clock"></i></span>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-footer text-center" id="poll-status">
+                <small class="text-muted">
+                    <i class="bi bi-arrow-repeat me-1"></i>Checking every 30 seconds...
+                </small>
+            </div>
+        </div>
 
-                <!-- cPanel Instructions -->
-                <div class="card mb-4 border-info">
-                    <div class="card-header bg-info text-white">
-                        <i class="bi bi-info-circle me-2"></i>cPanel Instructions
-                    </div>
-                    <div class="card-body">
-                        <ol class="mb-0">
-                            <li>Login to your cPanel account</li>
-                            <li>Go to <strong>Zone Editor</strong> (under Domains section)</li>
-                            <li>Click <strong>Manage</strong> next to <code>{{.SetupInfo.BaseDomain}}</code></li>
-                            <li>Click <strong>+ Add Record</strong> for each record above</li>
-                            <li>Wait ~30 seconds for DNS to propagate</li>
-                        </ol>
-                    </div>
-                </div>
-
-                <!-- Status Summary -->
-                <div class="card" id="status-card">
-                    <div class="card-header">
-                        <i class="bi bi-check-circle me-2"></i>Setup Progress
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex flex-column gap-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span>A Record</span>
-                                <span id="progress-a" class="text-muted"><i class="bi bi-hourglass-split"></i> Waiting...</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span>Verification TXT</span>
-                                <span id="progress-verify" class="text-muted"><i class="bi bi-hourglass-split"></i> Waiting...</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span>SSL Challenge TXT</span>
-                                <span id="progress-ssl" class="text-muted"><i class="bi bi-hourglass-split"></i> Waiting...</span>
-                            </div>
-                        </div>
-
-                        <hr>
-
-                        <div class="text-center">
-                            <div id="overall-status">
-                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                                <span>Checking DNS records every 30 seconds...</span>
-                            </div>
-                            <div id="success-message" class="d-none">
-                                <i class="bi bi-check-circle-fill text-success fs-3"></i>
-                                <h5 class="mt-2 text-success">Setup Complete!</h5>
-                                <p class="mb-2">Your domain is now active with SSL.</p>
-                                <a href="/user/domains/{{.Domain.ID}}" class="btn btn-primary">
-                                    <i class="bi bi-arrow-right me-1"></i> Go to Domain
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Instructions Card -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>cPanel Instructions</h5>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0 ps-3">
+                    <li class="mb-2">Login to cPanel</li>
+                    <li class="mb-2">Go to <strong>Zone Editor</strong></li>
+                    <li class="mb-2">Click <strong>Manage</strong> for <code>{{.SetupInfo.BaseDomain}}</code></li>
+                    <li class="mb-2">Click <strong>+ Add Record</strong></li>
+                    <li>Add each record above</li>
+                </ol>
             </div>
         </div>
     </div>
@@ -180,35 +232,36 @@
 
 <script>
 const domainId = '{{.Domain.ID}}';
-const domain = '{{.SetupInfo.Domain}}';
-let pollInterval;
 let acmeToken = '{{.SetupInfo.AcmeToken}}';
+let pollInterval;
 
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        showToast('Copied to clipboard!', 'success');
-    });
+function copyField(id) {
+    const input = document.getElementById(id);
+    input.select();
+    document.execCommand('copy');
+    showToast('Copied!', 'success');
 }
 
-function updateStatus(elementId, found, icon) {
-    const el = document.getElementById(elementId);
+function updateBadge(id, found) {
+    const el = document.getElementById(id);
     if (found) {
-        el.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i> Found';
-        el.className = 'text-success';
+        el.innerHTML = '<i class="bi bi-check-lg"></i> Found';
+        el.className = 'badge bg-success';
     } else {
-        el.innerHTML = '<i class="bi bi-hourglass-split"></i> Waiting...';
-        el.className = 'text-muted';
+        el.innerHTML = '<i class="bi bi-hourglass-split"></i> Waiting';
+        el.className = 'badge bg-secondary';
     }
 }
 
-function updateBadge(elementId, found) {
-    const el = document.getElementById(elementId);
+function updateProgress(id, found) {
+    const el = document.getElementById(id);
+    const badge = el.querySelector('.badge');
     if (found) {
-        el.textContent = 'Found';
-        el.className = 'badge bg-success';
+        badge.innerHTML = '<i class="bi bi-check-lg"></i>';
+        badge.className = 'badge bg-success';
     } else {
-        el.textContent = 'Waiting...';
-        el.className = 'badge bg-secondary';
+        badge.innerHTML = '<i class="bi bi-clock"></i>';
+        badge.className = 'badge bg-secondary';
     }
 }
 
@@ -220,40 +273,37 @@ async function checkStatus() {
         const status = await res.json();
 
         // Update badges
-        updateBadge('status-a', status.aRecordFound);
-        updateBadge('status-verify', status.verifyTxtFound);
-        updateBadge('status-ssl', status.acmeTxtFound);
+        updateBadge('badge-a', status.aRecordFound);
+        updateBadge('badge-verify', status.verifyTxtFound);
+        updateBadge('badge-ssl', status.acmeTxtFound);
 
-        // Update progress indicators
-        updateStatus('progress-a', status.aRecordFound);
-        updateStatus('progress-verify', status.verifyTxtFound);
-        updateStatus('progress-ssl', status.acmeTxtFound);
+        // Update progress
+        updateProgress('progress-a', status.aRecordFound);
+        updateProgress('progress-verify', status.verifyTxtFound);
+        updateProgress('progress-ssl', status.acmeTxtFound);
 
-        // Update ACME token if it wasn't ready before
+        // Update ACME token if available
         if (status.acmeToken && !acmeToken) {
             acmeToken = status.acmeToken;
-            const tokenEl = document.getElementById('acme-token');
-            if (tokenEl) {
-                tokenEl.textContent = acmeToken;
-            }
-            // Reload page to show the token properly
             location.reload();
         }
 
-        // Show warning if stale ACME record detected
-        const staleWarning = document.getElementById('stale-acme-warning');
+        // Show stale warning
+        const staleWarning = document.getElementById('stale-warning');
         if (status.acmeTxtStale && status.acmeTxtStaleValue) {
-            document.getElementById('stale-acme-value').textContent = status.acmeTxtStaleValue;
+            document.getElementById('stale-value').value = status.acmeTxtStaleValue;
             staleWarning.classList.remove('d-none');
         } else {
             staleWarning.classList.add('d-none');
         }
 
-        // Check if all done
+        // Check if complete
         if (status.sslReady) {
             clearInterval(pollInterval);
-            document.getElementById('overall-status').classList.add('d-none');
-            document.getElementById('success-message').classList.remove('d-none');
+            document.getElementById('setup-status').textContent = 'Complete';
+            document.getElementById('setup-status').className = 'badge bg-success';
+            document.getElementById('poll-status').innerHTML = '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Setup complete!</small>';
+            document.getElementById('success-card').classList.remove('d-none');
             showToast('Domain setup complete!', 'success');
         }
 
@@ -262,17 +312,8 @@ async function checkStatus() {
     }
 }
 
-// Poll every 30 seconds
+// Start polling
 checkStatus();
 pollInterval = setInterval(checkStatus, 30000);
-
-// Show toast helper (use base template's showToast if available)
-function showToastLocal(message, type) {
-    if (typeof showToast === 'function') {
-        showToast(message, type);
-    } else {
-        console.log(type + ': ' + message);
-    }
-}
 </script>
 {{end}}
