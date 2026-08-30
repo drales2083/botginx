@@ -14556,9 +14556,9 @@ html.maximized-card {
 .card-header::after,
 .card-body::after,
 .card-footer::after {
-  display: block;
-  clear: both;
-  content: "";
+  /*! display: block; */
+  /*! clear: both; */
+  /*! content: ""; */
 }
 
 .card-header {
