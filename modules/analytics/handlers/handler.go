@@ -266,6 +266,12 @@ func (h *Handler) pushSettingsToVPS(linkID string, settings *models.LinkSettings
 		return
 	}
 
+	// Get user ID for IP list lookups
+	userID := ""
+	if h.links != nil {
+		userID, _ = h.links.OwnerOf(linkID)
+	}
+
 	// Get server SSH details
 	ip, port, user, password, err := h.servers.GetServerForDomain(domainID)
 	if err != nil || ip == "" {
@@ -276,6 +282,7 @@ func (h *Handler) pushSettingsToVPS(linkID string, settings *models.LinkSettings
 	// Build settings for botection
 	pushSettings := settingspush.LinkSettings{
 		LinkID:           linkID,
+		UserID:           userID,
 		Host:             host,
 		BlockBots:        settings.BlockBots,
 		BlockTor:         settings.BlockTor,

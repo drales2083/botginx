@@ -11,6 +11,7 @@ import (
 // LinkSettings matches what botection expects
 type LinkSettings struct {
 	LinkID           string   `json:"link_id"`
+	UserID           string   `json:"user_id"`
 	Host             string   `json:"host"`
 	BlockBots        bool     `json:"block_bots"`
 	BlockTor         bool     `json:"block_tor"`
