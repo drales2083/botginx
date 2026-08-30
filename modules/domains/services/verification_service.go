@@ -662,11 +662,11 @@ chmod +x /tmp/dns-auth-capture.sh
 `
 	client.Run(setupCmd)
 
-	// Check if certbot is already running for this domain
-	checkCmd := fmt.Sprintf(`pgrep -f "certbot.*%s" && cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain, baseDomain)
+	// Check if token file already exists (certbot may already be running)
+	checkCmd := fmt.Sprintf(`cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
 	existing, _ := client.Run(checkCmd)
-	if existingToken := strings.TrimSpace(existing); existingToken != "" && !strings.HasPrefix(existingToken, "/") {
-		// Certbot already running and token exists
+	if existingToken := strings.TrimSpace(existing); existingToken != "" && len(existingToken) > 20 {
+		// Token already exists and looks valid (ACME tokens are ~43 chars)
 		return existingToken, nil
 	}
 
