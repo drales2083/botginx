@@ -459,6 +459,8 @@ func (h *Handler) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("Webhook received: %d bytes", len(body))
+
 	// Verify webhook signature if secret is configured
 	secret := os.Getenv("ANTIBOT_WEBHOOK_SECRET")
 	if secret != "" {
@@ -506,11 +508,14 @@ func (h *Handler) verifySignature(body []byte, signature, secret string) bool {
 func (h *Handler) handleRequestEvent(data any) {
 	eventData, ok := data.(map[string]interface{})
 	if !ok {
+		log.Printf("Webhook: invalid event data type: %T", data)
 		return
 	}
 
 	linkID, userID := h.resolveLink(eventData)
 	if linkID == "" {
+		log.Printf("Webhook: could not resolve link for host=%s path=%s",
+			getString(eventData, "host"), getString(eventData, "path"))
 		return
 	}
 
@@ -567,7 +572,12 @@ func (h *Handler) handleRequestEvent(data any) {
 		}
 	}
 
-	h.service.RecordVisit(visit)
+	if err := h.service.RecordVisit(visit); err != nil {
+		log.Printf("Webhook: failed to record visit for link=%s: %v", linkID, err)
+	} else {
+		log.Printf("Webhook: recorded visit link=%s ip=%s blocked=%v reason=%s",
+			linkID, visit.IP, visit.Blocked, visit.BlockReason)
+	}
 }
 
 func (h *Handler) handleSessionStartEvent(data any) {
