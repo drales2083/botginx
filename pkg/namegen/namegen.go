@@ -30,6 +30,11 @@ func Subdomain() string {
 	return Generate("-")
 }
 
+// Path returns a single random noun for use as a URL path.
+func Path() string {
+	return nouns[rand.IntN(len(nouns))]
+}
+
 // Combinations reports how many distinct names the vocabulary can produce.
 func Combinations() int {
 	return len(adjectives) * len(nouns)

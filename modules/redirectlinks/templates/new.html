@@ -62,7 +62,12 @@
                         <label for="path" class="form-label">{{t "redirectlinks.path"}}</label>
                         <div class="input-group">
                             <span class="input-group-text">/</span>
-                            <input type="text" class="form-control" id="path" name="path" placeholder="redirect" required>
+                            <input type="text" class="form-control" id="path" name="path"
+                                   value="{{.SuggestedPath}}" placeholder="redirect" required>
+                            <button type="button" class="btn btn-outline-secondary" id="btn-random-path"
+                                    title="Suggest a random path">
+                                <i class="bi bi-shuffle"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -208,6 +213,27 @@ document.getElementById('btn-random-subdomain').addEventListener('click', async 
         if (res.ok) {
             const data = await res.json();
             document.getElementById('subdomain').value = data.subdomain;
+        }
+    } catch (err) {
+        // Leave the field as-is; the user can type their own.
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = icon;
+});
+
+// Random path suggestion. Single word for cleaner URLs.
+document.getElementById('btn-random-path').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const icon = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+        const res = await fetch('/user/redirectlinks/api/random-path');
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('path').value = data.path;
         }
     } catch (err) {
         // Leave the field as-is; the user can type their own.

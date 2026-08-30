@@ -78,6 +78,7 @@ func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 		"Title":              "Create Redirect Link",
 		"Domains":            domains,
 		"SuggestedSubdomain": namegen.Subdomain(),
+		"SuggestedPath":      namegen.Path(),
 	})
 }
 
@@ -275,6 +276,13 @@ func (h *Handler) APIUpdateURLs(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APIRandomSubdomain(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"subdomain": namegen.Subdomain(),
+	})
+}
+
+// APIRandomPath suggests a single random word for use as a URL path.
+func (h *Handler) APIRandomPath(w http.ResponseWriter, r *http.Request) {
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"path": namegen.Path(),
 	})
 }
 
