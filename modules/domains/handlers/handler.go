@@ -487,7 +487,11 @@ func (h *Handler) generateAcmeTokenBackground(domainID, baseDomain string) {
 		return
 	}
 	// Save token to database
-	fmt.Printf("[ACME] Token generated for %s: %s\n", baseDomain, token[:8]+"...")
+	preview := token
+	if len(preview) > 8 {
+		preview = token[:8] + "..."
+	}
+	fmt.Printf("[ACME] Token generated for %s: %s\n", baseDomain, preview)
 	h.service.Update(domainID, models.UpdateDomainInput{
 		AcmeToken: &token,
 	})
