@@ -319,43 +319,21 @@ nginx -t && systemctl reload nginx
 echo "  Nginx configured (outer:80 -> botection:8080 -> internal:8081)"
 
 # =============================================================================
-# 5. Cloudflare-only firewall
+# 5. Firewall (allow web traffic from anywhere - botection provides protection)
 # =============================================================================
 echo ""
-echo "[5/7] Configuring Cloudflare-only firewall..."
+echo "[5/7] Configuring firewall..."
 
 ufw --force reset >/dev/null
 ufw default deny incoming >/dev/null
 ufw default allow outgoing >/dev/null
 ufw allow 22/tcp >/dev/null
-
-# Cloudflare IPs
-for ip in $(curl -s https://www.cloudflare.com/ips-v4); do
-    ufw allow from $ip to any port 80,443 proto tcp >/dev/null 2>&1
-done
-for ip in $(curl -s https://www.cloudflare.com/ips-v6); do
-    ufw allow from $ip to any port 80,443 proto tcp >/dev/null 2>&1
-done
+ufw allow 80/tcp >/dev/null
+ufw allow 443/tcp >/dev/null
 
 ufw --force enable >/dev/null
-echo "  Firewall enabled (SSH + Cloudflare only)"
-
-# Weekly Cloudflare IP update
-cat > /etc/cron.weekly/update-cloudflare-ips << 'CFEOF'
-#!/bin/bash
-ufw --force reset
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow 22/tcp
-for ip in $(curl -s https://www.cloudflare.com/ips-v4); do
-    ufw allow from $ip to any port 80,443 proto tcp
-done
-for ip in $(curl -s https://www.cloudflare.com/ips-v6); do
-    ufw allow from $ip to any port 80,443 proto tcp
-done
-ufw --force enable
-CFEOF
-chmod +x /etc/cron.weekly/update-cloudflare-ips
+echo "  Firewall enabled (SSH + HTTP/HTTPS)"
+echo "  Note: Botection provides bot protection for all domains"
 
 # =============================================================================
 # 6. Add-site helper script
