@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	domainmodels "github.com/botginx/botginx/modules/domains/models"
@@ -11,6 +12,7 @@ import (
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/namegen"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/botginx/botginx/pkg/sshexec"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -205,14 +207,83 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Remaining work: generate the nginx config, push it over SSH, then record
-	// the deploy status against the link.
+	// Build the full hostname
+	fullHost := link.Subdomain + "." + link.DomainName
+	deployedURL := "https://" + fullHost + "/" + link.Path
+
+	// Connect to server via SSH
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.SSHUser, server.SSHPassword)
+	if err != nil {
+		errMsg := "SSH connection failed: " + err.Error()
+		h.service.SetDeployStatus(id, models.DeployStatusFailed, nil, &errMsg)
+		h.jsonError(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+	defer client.Close()
+
+	// Generate nginx config for the redirect
+	nginxConfig := generateRedirectNginxConfig(link)
+
+	// Create site directory
+	mkdirCmd := fmt.Sprintf("mkdir -p /var/www/sites/%s", fullHost)
+	client.Run(mkdirCmd)
+
+	// Write nginx config
+	configPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", fullHost)
+	writeCmd := fmt.Sprintf("cat > %s << 'NGINXEOF'\n%s\nNGINXEOF", configPath, nginxConfig)
+	if _, err := client.Run(writeCmd); err != nil {
+		errMsg := "Failed to write nginx config: " + err.Error()
+		h.service.SetDeployStatus(id, models.DeployStatusFailed, nil, &errMsg)
+		h.jsonError(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	// Enable site and reload nginx
+	enableCmd := fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx", configPath)
+	if _, err := client.Run(enableCmd); err != nil {
+		errMsg := "Failed to enable site: " + err.Error()
+		h.service.SetDeployStatus(id, models.DeployStatusFailed, nil, &errMsg)
+		h.jsonError(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	// Update deploy status
+	h.service.SetDeployStatus(id, models.DeployStatusDeployed, &deployedURL, nil)
+
 	h.json(w, http.StatusOK, map[string]interface{}{
-		"success": false,
-		"error":   "Deployment not yet implemented",
-		"id":      link.ID,
-		"server":  server.Name,
+		"success":     true,
+		"deployedUrl": deployedURL,
+		"server":      server.Name,
 	})
+}
+
+// generateRedirectNginxConfig creates nginx config for a redirect link
+func generateRedirectNginxConfig(link *models.RedirectLink) string {
+	fullHost := link.Subdomain + "." + link.DomainName
+
+	// For a simple redirect, we proxy to botection which handles the logic
+	// The redirect splash page is served by botection based on link settings
+	return fmt.Sprintf(`server {
+    listen 80;
+    listen 443 ssl;
+    server_name %s;
+
+    ssl_certificate /etc/nginx/ssl/%s.pem;
+    ssl_certificate_key /etc/nginx/ssl/%s.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}`, fullHost, link.DomainName, link.DomainName)
 }
 
 // Helpers
