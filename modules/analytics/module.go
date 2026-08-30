@@ -82,6 +82,7 @@ func (m *Module) Routes() chi.Router {
 			r.Get("/countries", m.handler.APIGetCountries)
 			r.Get("/devices", m.handler.APIGetDevices)
 			r.Get("/browsers", m.handler.APIGetBrowsers)
+			r.Get("/os", m.handler.APIGetOS)
 			r.Get("/referrers", m.handler.APIGetReferrers)
 			r.Get("/visits", m.handler.APIGetRecentVisits)
 			r.Get("/settings", m.handler.APIGetSettings)

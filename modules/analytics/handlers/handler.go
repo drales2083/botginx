@@ -175,6 +175,12 @@ func (h *Handler) APIGetBrowsers(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{"browsers": browsers})
 }
 
+func (h *Handler) APIGetOS(w http.ResponseWriter, r *http.Request) {
+	linkID := chi.URLParam(r, "linkId")
+	osStats, _ := h.service.GetOSStats(linkID, 20)
+	h.json(w, http.StatusOK, map[string]interface{}{"os": osStats})
+}
+
 func (h *Handler) APIGetReferrers(w http.ResponseWriter, r *http.Request) {
 	linkID := chi.URLParam(r, "linkId")
 	referrers, _ := h.service.GetReferrerStats(linkID, 20)
