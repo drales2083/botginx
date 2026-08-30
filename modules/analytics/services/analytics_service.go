@@ -474,7 +474,8 @@ func (s *AnalyticsService) ShouldBlock(linkID, country, device string, isBot, is
 	if settings.BlockHeadless && isHeadless {
 		return true, "headless_blocked"
 	}
-	if settings.MinBehaviorScore > 0 && behaviorScore < settings.MinBehaviorScore {
+	// Only check behavior score if we actually have one (> 0 means data was provided)
+	if settings.MinBehaviorScore > 0 && behaviorScore > 0 && behaviorScore < settings.MinBehaviorScore {
 		return true, "low_behavior_score"
 	}
 
