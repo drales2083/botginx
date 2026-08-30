@@ -80,9 +80,9 @@
                                             Actions
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item" href="#" onclick="verifyDomain('{{.ID}}'); return false;"><i class="bi bi-shield-check me-2"></i>Verify DNS</a></li>
+                                            <li><a class="dropdown-item btn-verify" href="#" data-id="{{.ID}}"><i class="bi bi-shield-check me-2"></i>Verify DNS</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteDomain('{{.ID}}', '{{.Name}}'); return false;"><i class="bi bi-trash me-2"></i>Remove</a></li>
+                                            <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}" data-name="{{.Name}}"><i class="bi bi-trash me-2"></i>Remove</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -97,6 +97,27 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Remove Domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="deleteModalBody">
+                <p>Checking...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                    <i class="bi bi-trash me-1"></i>Remove
+                </button>
             </div>
         </div>
     </div>
@@ -120,43 +141,83 @@ document.getElementById('sharedToggle').addEventListener('change', async (e) => 
     }
 });
 
-async function verifyDomain(id) {
-    const res = await fetch(`/admin/domains/api/${id}/verify`, { method: 'POST' });
-    if (res.ok) {
-        reloadWithToast('DNS verified', 'success');
-    } else {
-        showToast('DNS verification failed', 'danger');
-    }
-}
+let deleteId = null;
+let deleteName = null;
+let forceDelete = false;
+const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+const deleteModalBody = document.getElementById('deleteModalBody');
+const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-async function deleteDomain(id, name) {
-    // First check if domain has links
-    const checkRes = await fetch(`/admin/domains/api/${id}`, { method: 'DELETE' });
-    const checkData = await checkRes.json();
-
-    if (checkRes.status === 409 && checkData.warning) {
-        // Domain has redirect links - show destructive warning
-        const proceed = confirm(
-            `⚠️ DESTRUCTIVE ACTION\n\n` +
-            `${checkData.message}\n\n` +
-            `This cannot be undone. Type OK to proceed.`
-        );
-        if (!proceed) return;
-
-        // Force delete
-        const forceRes = await fetch(`/admin/domains/api/${id}?force=true`, { method: 'DELETE' });
-        if (forceRes.ok) {
-            const data = await forceRes.json();
-            reloadWithToast(`${name} removed (${data.links_deleted} link(s) deleted)`, 'success');
+document.addEventListener('click', async (e) => {
+    const verify = e.target.closest('.btn-verify');
+    if (verify) {
+        e.preventDefault();
+        const res = await fetch(`/admin/domains/api/${verify.dataset.id}/verify`, { method: 'POST' });
+        if (res.ok) {
+            reloadWithToast('DNS verified', 'success');
         } else {
-            const data = await forceRes.json().catch(() => ({}));
-            showToast(data.error || 'Failed to remove domain', 'danger');
+            showToast('DNS verification failed', 'danger');
         }
-    } else if (checkRes.ok) {
-        reloadWithToast(`${name} removed from the shared pool`, 'success');
-    } else {
-        showToast(checkData.error || 'Failed to remove domain', 'danger');
+        return;
     }
-}
+
+    const del = e.target.closest('.btn-delete');
+    if (del) {
+        e.preventDefault();
+        deleteId = del.dataset.id;
+        deleteName = del.dataset.name;
+        forceDelete = false;
+
+        deleteModalBody.innerHTML = '<p><span class="spinner-border spinner-border-sm me-2"></span>Checking...</p>';
+        confirmDeleteBtn.disabled = true;
+        confirmDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Remove';
+        deleteModal.show();
+
+        const checkRes = await fetch(`/admin/domains/api/${deleteId}`, { method: 'DELETE' });
+        const checkData = await checkRes.json();
+
+        if (checkRes.status === 409 && checkData.warning) {
+            forceDelete = true;
+            deleteModalBody.innerHTML = `
+                <div class="alert alert-danger mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Destructive Action</strong>
+                </div>
+                <p>${checkData.message}</p>
+                <p class="text-danger fw-bold mb-0">This cannot be undone!</p>
+            `;
+            confirmDeleteBtn.disabled = false;
+            confirmDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Remove Permanently';
+        } else if (checkRes.ok) {
+            reloadWithToast(`${deleteName} removed from the shared pool`, 'success');
+        } else {
+            deleteModalBody.innerHTML = `
+                <p>Remove <strong>${deleteName}</strong> from the shared pool?</p>
+                <p class="text-muted small mb-0">Users will no longer be able to deploy to this domain.</p>
+            `;
+            confirmDeleteBtn.disabled = false;
+        }
+    }
+});
+
+confirmDeleteBtn.addEventListener('click', async () => {
+    if (!deleteId) return;
+
+    confirmDeleteBtn.disabled = true;
+    confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Removing...';
+
+    const url = forceDelete ? `/admin/domains/api/${deleteId}?force=true` : `/admin/domains/api/${deleteId}`;
+    const res = await fetch(url, { method: 'DELETE' });
+
+    if (res.ok) {
+        const data = await res.json();
+        const msg = data.links_deleted ? `${deleteName} removed (${data.links_deleted} link(s) deleted)` : `${deleteName} removed`;
+        reloadWithToast(msg, 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to remove domain', 'danger');
+        deleteModal.hide();
+    }
+});
 </script>
 {{end}}

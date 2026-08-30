@@ -328,7 +328,7 @@ func (h *Handler) APICheckSSL(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// APISetupDomain creates nginx config for the domain on the VPS
+// APISetupDomain generates SSL and creates nginx config for the domain on the VPS
 func (h *Handler) APISetupDomain(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -338,10 +338,21 @@ func (h *Handler) APISetupDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate SSL certificate first (self-signed for Cloudflare, Let's Encrypt for others)
+	if err := h.verification.GenerateSSL(domain.Name); err != nil {
+		h.jsonError(w, "SSL generation failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Then setup nginx config
 	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Mark SSL enabled
+	t := true
+	h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t})
 
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"success": true,

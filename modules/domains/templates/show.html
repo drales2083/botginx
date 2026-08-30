@@ -101,7 +101,7 @@
                     <a href="/user/redirectlinks/new?domain={{.Domain.ID}}" class="btn btn-success">
                         <i class="bi bi-link-45deg me-1"></i> Create Redirect Link
                     </a>
-                    <button class="btn btn-outline-danger" onclick="deleteDomain()">
+                    <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                         <i class="bi bi-trash me-1"></i> Delete Domain
                     </button>
                 </div>
@@ -123,6 +123,28 @@
                     <dt class="text-muted small">Server</dt>
                     <dd class="text-muted">Assigned on deploy</dd>
                 </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="deleteModalBody">
+                <p>Are you sure you want to delete <strong>{{.Domain.Name}}</strong>?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
             </div>
         </div>
     </div>
@@ -174,44 +196,67 @@ document.querySelector('.btn-check-ssl')?.addEventListener('click', async functi
     btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Check Now';
 });
 
-async function deleteDomain() {
-    const id = '{{.Domain.ID}}';
+const deleteModal = document.getElementById('deleteModal');
+const deleteModalBody = document.getElementById('deleteModalBody');
+const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+let forceDelete = false;
 
-    // First check if domain has redirect links
+deleteModal?.addEventListener('show.bs.modal', async function() {
+    const id = '{{.Domain.ID}}';
+    confirmDeleteBtn.disabled = true;
+    confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking...';
+
+    // Check if domain has redirect links
     const checkRes = await fetch(`/user/domains/api/${id}`, { method: 'DELETE' });
     const checkData = await checkRes.json();
 
     if (checkRes.status === 409 && checkData.warning) {
         // Domain has redirect links - show destructive warning
-        const proceed = confirm(
-            `⚠️ DESTRUCTIVE ACTION\n\n` +
-            `${checkData.message}\n\n` +
-            `This cannot be undone. Click OK to proceed.`
-        );
-        if (!proceed) return;
-
-        // Force delete
-        const forceRes = await fetch(`/user/domains/api/${id}?force=true`, { method: 'DELETE' });
-        if (forceRes.ok) {
-            const data = await forceRes.json();
-            sessionStorage.setItem('toast', JSON.stringify({
-                message: `Domain deleted (${data.links_deleted} link(s) removed)`,
-                type: 'success'
-            }));
-            window.location.href = '/user/domains';
-        } else {
-            const data = await forceRes.json().catch(() => ({}));
-            showToast(data.error || 'Failed to delete domain', 'danger');
-        }
+        forceDelete = true;
+        deleteModalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Destructive Action</strong>
+            </div>
+            <p>${checkData.message}</p>
+            <p class="text-danger fw-bold mb-0">This cannot be undone!</p>
+        `;
+        confirmDeleteBtn.disabled = false;
+        confirmDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Permanently';
     } else if (checkRes.ok) {
-        sessionStorage.setItem('toast', JSON.stringify({
-            message: 'Domain deleted',
-            type: 'success'
-        }));
+        // Already deleted
+        sessionStorage.setItem('toast', JSON.stringify({ message: 'Domain deleted', type: 'success' }));
         window.location.href = '/user/domains';
     } else {
-        showToast(checkData.error || 'Failed to delete domain', 'danger');
+        // No links, simple delete
+        forceDelete = false;
+        deleteModalBody.innerHTML = `
+            <p>Are you sure you want to delete <strong>{{.Domain.Name}}</strong>?</p>
+            <p class="text-muted small mb-0">This action cannot be undone.</p>
+        `;
+        confirmDeleteBtn.disabled = false;
+        confirmDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
     }
-}
+});
+
+confirmDeleteBtn?.addEventListener('click', async function() {
+    const id = '{{.Domain.ID}}';
+    confirmDeleteBtn.disabled = true;
+    confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+
+    const url = forceDelete ? `/user/domains/api/${id}?force=true` : `/user/domains/api/${id}`;
+    const res = await fetch(url, { method: 'DELETE' });
+
+    if (res.ok) {
+        const data = await res.json();
+        const msg = data.links_deleted ? `Domain deleted (${data.links_deleted} link(s) removed)` : 'Domain deleted';
+        sessionStorage.setItem('toast', JSON.stringify({ message: msg, type: 'success' }));
+        window.location.href = '/user/domains';
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to delete domain', 'danger');
+        bootstrap.Modal.getInstance(deleteModal).hide();
+    }
+});
 </script>
 {{end}}
