@@ -326,6 +326,8 @@ GITHUB_TOKEN=${GITHUB_TOKEN:-}
 SUPABASE_URL=${SUPABASE_URL:-}
 SUPABASE_KEY=${SUPABASE_KEY:-}
 PANEL_URL=${PANEL_DOMAIN:-guardbot.sbs}
+# UI display name
+UI_APP_NAME=${UI_APP_NAME:-GuardBot}
 ENVEOF"
     remote_sudo "chown root:${RUN_USER} ${CONFIG_DIR}/${APP_NAME}.env"
     remote_sudo "chmod 640 ${CONFIG_DIR}/${APP_NAME}.env"

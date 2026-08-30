@@ -111,6 +111,7 @@ func main() {
 	templates.AddFuncs(template.FuncMap{
 		"appVersion": buildinfo.Version,
 		"appBuild":   buildinfo.Build,
+		"appName":    getAppName,
 	})
 	// Rebuilt per render so "t" resolves in the visitor's chosen language
 	// rather than the configured default.
@@ -360,4 +361,11 @@ func loadConfig(path string) *Config {
 	}
 
 	return cfg
+}
+
+func getAppName() string {
+	if name := os.Getenv("UI_APP_NAME"); name != "" {
+		return name
+	}
+	return "GuardBot"
 }

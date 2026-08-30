@@ -100,6 +100,7 @@ go test ./...
 
 | Variable | Description |
 |----------|-------------|
+| `UI_APP_NAME` | Display name in UI (default: GuardBot) |
 | `PORT` | Server port (default: 3001) |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `SESSION_SECRET` | Session encryption key |
