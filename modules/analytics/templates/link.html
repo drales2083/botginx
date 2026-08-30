@@ -1,12 +1,14 @@
 {{define "content"}}
 <div class="row mb-3">
     <div class="col-12 d-flex justify-content-between align-items-center">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="/user/analytics">Analytics</a></li>
-                <li class="breadcrumb-item active">{{.LinkID}}</li>
-            </ol>
-        </nav>
+        <div class="d-flex align-items-center gap-3">
+            <a href="/user/redirectlinks/{{.LinkID}}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Link
+            </a>
+            <span class="badge bg-success" id="live-indicator">
+                <i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i> Live
+            </span>
+        </div>
         <a href="/user/analytics/link/{{.LinkID}}/settings" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-gear me-1"></i> Settings
         </a>
@@ -17,7 +19,7 @@
     <div class="col-lg-2 col-6">
         <div class="card text-center">
             <div class="card-body">
-                <h3 class="text-primary">{{.Stats.TotalVisits}}</h3>
+                <h3 class="text-primary" data-stat="total">{{.Stats.TotalVisits}}</h3>
                 <small class="text-muted">Total</small>
             </div>
         </div>
@@ -25,7 +27,7 @@
     <div class="col-lg-2 col-6">
         <div class="card text-center">
             <div class="card-body">
-                <h3 class="text-success">{{.Stats.UniqueVisits}}</h3>
+                <h3 class="text-success" data-stat="unique">{{.Stats.UniqueVisits}}</h3>
                 <small class="text-muted">Unique</small>
             </div>
         </div>
@@ -33,7 +35,7 @@
     <div class="col-lg-2 col-6">
         <div class="card text-center">
             <div class="card-body">
-                <h3 class="text-warning">{{.Stats.BotVisits}}</h3>
+                <h3 class="text-warning" data-stat="bots">{{.Stats.BotVisits}}</h3>
                 <small class="text-muted">Bots</small>
             </div>
         </div>
@@ -41,7 +43,7 @@
     <div class="col-lg-2 col-6">
         <div class="card text-center">
             <div class="card-body">
-                <h3 class="text-danger">{{.Stats.BlockedVisits}}</h3>
+                <h3 class="text-danger" data-stat="blocked">{{.Stats.BlockedVisits}}</h3>
                 <small class="text-muted">Blocked</small>
             </div>
         </div>
@@ -49,7 +51,7 @@
     <div class="col-lg-2 col-6">
         <div class="card text-center">
             <div class="card-body">
-                <h3 class="text-info">{{.Stats.TodayVisits}}</h3>
+                <h3 class="text-info" data-stat="today">{{.Stats.TodayVisits}}</h3>
                 <small class="text-muted">Today</small>
             </div>
         </div>
@@ -288,5 +290,29 @@ loadTimeline('{{.Period}}');
 loadCountryChart();
 loadDeviceChart();
 loadBrowserChart();
+
+// Live updates - poll every 5 seconds
+async function refreshStats() {
+    try {
+        const res = await fetch(`/user/analytics/api/link/${linkId}/stats`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Update stat cards using data-stat attribute
+        document.querySelector('[data-stat="total"]').textContent = data.totalVisits || 0;
+        document.querySelector('[data-stat="unique"]').textContent = data.uniqueVisits || 0;
+        document.querySelector('[data-stat="bots"]').textContent = data.botVisits || 0;
+        document.querySelector('[data-stat="blocked"]').textContent = data.blockedVisits || 0;
+        document.querySelector('[data-stat="today"]').textContent = data.todayVisits || 0;
+
+        // Blink live indicator
+        const indicator = document.getElementById('live-indicator');
+        indicator.style.opacity = '0.5';
+        setTimeout(() => indicator.style.opacity = '1', 200);
+    } catch (e) {}
+}
+
+// Poll every 5 seconds
+setInterval(refreshStats, 5000);
 </script>
 {{end}}

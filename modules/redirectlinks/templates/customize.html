@@ -62,13 +62,6 @@
     font-size: 1rem;
     margin-top: 1rem;
 }
-/* Loader wrapper */
-#preview-loader {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 48px;
-}
 /* Loader animations */
 .loader-spinner {
     width: 48px;
@@ -137,7 +130,9 @@
                 <div class="preview-frame">
                     <div id="preview" class="preview-content">
                         <div class="preview-inner">
-                            <div id="preview-loader" class="mb-4"></div>
+                            <div id="preview-loader-wrapper" style="display:flex;justify-content:center;align-items:center;min-height:48px;margin-bottom:1.5rem;">
+                                <div id="preview-loader"></div>
+                            </div>
                             <h2 id="preview-heading">Please Wait</h2>
                             <p id="preview-subheading" class="mt-2 opacity-75">Redirecting...</p>
                         </div>
@@ -314,19 +309,19 @@ function updatePreview() {
 
     switch(loaderType) {
         case 'spinner':
-            loaderEl.className = 'loader-spinner mb-4';
+            loaderEl.className = 'loader-spinner';
             loaderEl.innerHTML = '';
             break;
         case 'dots-bounce':
-            loaderEl.className = 'loader-dots-bounce mb-4';
+            loaderEl.className = 'loader-dots-bounce';
             loaderEl.innerHTML = '<span></span><span></span><span></span>';
             break;
         case 'pulse':
-            loaderEl.className = 'loader-pulse mb-4';
+            loaderEl.className = 'loader-pulse';
             loaderEl.innerHTML = '';
             break;
         case 'bars':
-            loaderEl.className = 'loader-bars mb-4';
+            loaderEl.className = 'loader-bars';
             loaderEl.innerHTML = '<span></span><span></span><span></span><span></span>';
             break;
     }
