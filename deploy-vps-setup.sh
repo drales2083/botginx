@@ -25,6 +25,15 @@ GITHUB_TOKEN="${GITHUB_TOKEN:-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}"
 ANTIBOT_DIR="/var/www/antibot"
 SITES_DIR="/var/www/sites"
 
+# Panel URL for callback/webhook (required for analytics)
+PANEL_URL="${PANEL_URL:-}"
+WEBHOOK_SECRET="${WEBHOOK_SECRET:-$(openssl rand -hex 32)}"
+
+if [ -z "$PANEL_URL" ]; then
+    echo "WARNING: PANEL_URL not set. Analytics will not work."
+    echo "         Set PANEL_URL=https://your-panel.com to enable analytics."
+fi
+
 # Get VPS IP
 VPS_IP=$(curl -4 -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
 echo "VPS IP: $VPS_IP"
@@ -91,8 +100,12 @@ admin:
   token: ""
   rate_limit: 100
 
-panel:
-  enabled: false
+panel_callback:
+  enabled: ${PANEL_ENABLED:-false}
+  url: "${PANEL_URL}/api/botection/should-block"
+  timeout: "100ms"
+  cache_ttl: "30s"
+  fallback: "allow"
 
 redis:
   addr: "localhost:6379"
@@ -139,8 +152,35 @@ modules:
       difficulty: 1000
 
 webhooks:
-  enabled: false
+  enabled: ${PANEL_ENABLED:-false}
+  url: "${PANEL_URL}/webhooks/antibot/webhook"
+  secret: "${WEBHOOK_SECRET}"
+  events:
+    - "request"
+    - "session.start"
+    - "session.end"
+    - "page.view"
+  batch_size: 10
+  flush_interval: "5s"
+  timeout: "2s"
+  retry_max: 3
 CONFIGEOF
+
+# Replace panel enabled based on PANEL_URL presence
+if [ -n "$PANEL_URL" ]; then
+    sed -i 's/\${PANEL_ENABLED:-false}/true/g' "$ANTIBOT_DIR/config/config.yaml"
+    sed -i "s|\${PANEL_URL}|$PANEL_URL|g" "$ANTIBOT_DIR/config/config.yaml"
+    sed -i "s|\${WEBHOOK_SECRET}|$WEBHOOK_SECRET|g" "$ANTIBOT_DIR/config/config.yaml"
+    echo "  Panel callback enabled: $PANEL_URL"
+    echo "  Webhook secret: $WEBHOOK_SECRET"
+    echo ""
+    echo "  IMPORTANT: Add this secret to your panel's .env:"
+    echo "  ANTIBOT_WEBHOOK_SECRET=$WEBHOOK_SECRET"
+else
+    sed -i 's/\${PANEL_ENABLED:-false}/false/g' "$ANTIBOT_DIR/config/config.yaml"
+    sed -i "s|\${PANEL_URL}||g" "$ANTIBOT_DIR/config/config.yaml"
+    sed -i "s|\${WEBHOOK_SECRET}||g" "$ANTIBOT_DIR/config/config.yaml"
+fi
 
 # Set admin token from .env.local
 source "$ANTIBOT_DIR/.env.local"
