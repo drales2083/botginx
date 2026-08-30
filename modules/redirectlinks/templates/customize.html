@@ -1,154 +1,323 @@
 {{define "content"}}
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">{{t "customize"}} - {{.Link.Subdomain}}</h3>
+<style>
+.preview-frame {
+    width: 100%;
+    height: calc(100vh - 200px);
+    min-height: 500px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+.preview-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+.preview-inner {
+    text-align: center;
+    padding: 2rem;
+}
+.form-section {
+    background: var(--bs-body-bg);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.form-section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--bs-secondary);
+    margin-bottom: 0.75rem;
+}
+.color-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.color-input-group input[type="color"] {
+    width: 36px;
+    height: 36px;
+    padding: 2px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.color-input-group input[type="text"] {
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+/* Loader animations */
+.loader-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255,255,255,0.2);
+    border-top-color: var(--loader-color, #3b82f6);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+.loader-dots-bounce span {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin: 0 4px;
+    background: var(--loader-color, #3b82f6);
+    border-radius: 50%;
+    animation: bounce 1.4s ease-in-out infinite both;
+}
+.loader-dots-bounce span:nth-child(1) { animation-delay: -0.32s; }
+.loader-dots-bounce span:nth-child(2) { animation-delay: -0.16s; }
+.loader-pulse {
+    width: 48px;
+    height: 48px;
+    background: var(--loader-color, #3b82f6);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+.loader-bars span {
+    display: inline-block;
+    width: 6px;
+    height: 32px;
+    margin: 0 3px;
+    background: var(--loader-color, #3b82f6);
+    animation: bars 1.2s ease-in-out infinite;
+}
+.loader-bars span:nth-child(1) { animation-delay: 0s; }
+.loader-bars span:nth-child(2) { animation-delay: 0.1s; }
+.loader-bars span:nth-child(3) { animation-delay: 0.2s; }
+.loader-bars span:nth-child(4) { animation-delay: 0.3s; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+@keyframes pulse { 0%, 100% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1); opacity: 1; } }
+@keyframes bars { 0%, 40%, 100% { transform: scaleY(0.4); } 20% { transform: scaleY(1); } }
+</style>
+
+<div class="row g-3">
+    <!-- Preview (70%) -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <span class="small text-muted">Live Preview</span>
+                <span class="badge bg-secondary">{{.Link.Subdomain}}.{{.Link.DomainName}}</span>
             </div>
-            <div class="card-body">
-                <form id="customize-form">
-                    <!-- Background -->
-                    <h5 class="mb-3">Background</h5>
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label for="bgColor" class="form-label">Background Color</label>
-                            <input type="color" class="form-control form-control-color w-100" id="bgColor" value="#0a0a0a">
+            <div class="card-body p-3">
+                <div class="preview-frame">
+                    <div id="preview" class="preview-content">
+                        <div class="preview-inner">
+                            <div id="preview-loader" class="mb-4"></div>
+                            <h2 id="preview-heading">Please Wait</h2>
+                            <p id="preview-subheading" class="mt-2 opacity-75">Redirecting...</p>
                         </div>
-                        <div class="col-md-4">
-                            <label for="bgColorSecondary" class="form-label">Secondary Color</label>
-                            <input type="color" class="form-control form-control-color w-100" id="bgColorSecondary" value="#1a1a1a">
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-check form-switch mt-4">
-                                <input class="form-check-input" type="checkbox" id="gradientEnabled">
-                                <label class="form-check-label" for="gradientEnabled">Enable Gradient</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="pattern" class="form-label">Pattern</label>
-                        <select class="form-select" id="pattern">
-                            <option value="none">None</option>
-                            <option value="dots">Dots</option>
-                            <option value="grid">Grid</option>
-                            <option value="lines">Lines</option>
-                        </select>
-                    </div>
-
-                    <hr>
-
-                    <!-- Loader -->
-                    <h5 class="mb-3">Loader</h5>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="loader" class="form-label">Style</label>
-                            <select class="form-select" id="loader">
-                                <option value="dots-bounce">Bouncing Dots</option>
-                                <option value="spinner">Spinner</option>
-                                <option value="pulse">Pulse</option>
-                                <option value="bars">Bars</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="loaderColorPrimary" class="form-label">Primary</label>
-                            <input type="color" class="form-control form-control-color w-100" id="loaderColorPrimary" value="#3b82f6">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="loaderColorSecondary" class="form-label">Secondary</label>
-                            <input type="color" class="form-control form-control-color w-100" id="loaderColorSecondary" value="#1e3a5f">
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    <!-- Text -->
-                    <h5 class="mb-3">Text</h5>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="heading" class="form-label">Heading</label>
-                            <input type="text" class="form-control" id="heading" value="Please Wait">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="subheading" class="form-label">Subheading</label>
-                            <input type="text" class="form-control" id="subheading" value="Redirecting...">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label for="textColor" class="form-label">Text Color</label>
-                            <input type="color" class="form-control form-control-color w-100" id="textColor" value="#ffffff">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="textSize" class="form-label">Size (px)</label>
-                            <input type="number" class="form-control" id="textSize" value="32" min="12" max="72">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="font" class="form-label">Font</label>
-                            <select class="form-select" id="font">
-                                <option value="inter">Inter</option>
-                                <option value="roboto">Roboto</option>
-                                <option value="poppins">Poppins</option>
-                                <option value="system">System</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    <!-- Layout -->
-                    <h5 class="mb-3">Layout</h5>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="layout" class="form-label">Layout Style</label>
-                            <select class="form-select" id="layout">
-                                <option value="loader-text">Loader above Text</option>
-                                <option value="text-loader">Text above Loader</option>
-                                <option value="side-by-side">Side by Side</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="alignment" class="form-label">Alignment</label>
-                            <select class="form-select" id="alignment">
-                                <option value="center">Center</option>
-                                <option value="left">Left</option>
-                                <option value="right">Right</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg me-1"></i> {{t "save"}}
-                        </button>
-                        <a href="/user/redirectlinks/{{.Link.ID}}" class="btn btn-secondary">{{t "cancel"}}</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Preview</h5>
-            </div>
-            <div class="card-body p-0">
-                <div id="preview" style="height: 300px; display: flex; align-items: center; justify-content: center; background: #0a0a0a;">
-                    <div style="text-align: center; color: #fff;">
-                        <div class="loader mb-3">...</div>
-                        <h4>Please Wait</h4>
-                        <p>Redirecting...</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Form (30%) -->
+    <div class="col-lg-4">
+        <form id="customize-form">
+            <!-- Background -->
+            <div class="form-section">
+                <div class="form-section-title">Background</div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label small mb-1">Primary</label>
+                        <div class="color-input-group">
+                            <input type="color" id="bgColor" value="#0a0a0a">
+                            <input type="text" class="form-control form-control-sm" id="bgColorText" value="#0a0a0a">
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small mb-1">Secondary</label>
+                        <div class="color-input-group">
+                            <input type="color" id="bgColorSecondary" value="#1a1a1a">
+                            <input type="text" class="form-control form-control-sm" id="bgColorSecondaryText" value="#1a1a1a">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="gradientEnabled">
+                    <label class="form-check-label small" for="gradientEnabled">Gradient</label>
+                </div>
+                <select class="form-select form-select-sm" id="pattern">
+                    <option value="none">No Pattern</option>
+                    <option value="dots">Dots</option>
+                    <option value="grid">Grid</option>
+                    <option value="lines">Lines</option>
+                </select>
+            </div>
+
+            <!-- Loader -->
+            <div class="form-section">
+                <div class="form-section-title">Loader</div>
+                <select class="form-select form-select-sm mb-2" id="loader">
+                    <option value="spinner">Spinner</option>
+                    <option value="dots-bounce">Bouncing Dots</option>
+                    <option value="pulse">Pulse</option>
+                    <option value="bars">Bars</option>
+                </select>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small mb-1">Color</label>
+                        <div class="color-input-group">
+                            <input type="color" id="loaderColorPrimary" value="#3b82f6">
+                            <input type="text" class="form-control form-control-sm" id="loaderColorPrimaryText" value="#3b82f6">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Text -->
+            <div class="form-section">
+                <div class="form-section-title">Text</div>
+                <div class="mb-2">
+                    <input type="text" class="form-control form-control-sm" id="heading" value="Please Wait" placeholder="Heading">
+                </div>
+                <div class="mb-2">
+                    <input type="text" class="form-control form-control-sm" id="subheading" value="Redirecting..." placeholder="Subheading">
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small mb-1">Color</label>
+                        <div class="color-input-group">
+                            <input type="color" id="textColor" value="#ffffff">
+                            <input type="text" class="form-control form-control-sm" id="textColorText" value="#ffffff">
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small mb-1">Size</label>
+                        <input type="number" class="form-control form-control-sm" id="textSize" value="32" min="16" max="72">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i> Save & Deploy
+                </button>
+                <a href="/user/redirectlinks/{{.Link.ID}}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
+// Load existing customization
+const existing = {{if .Link.Customization}}{{.Link.Customization | json}}{{else}}{}{{end}};
+
+// Initialize form with existing values
+function initForm() {
+    if (existing.bgColor) {
+        document.getElementById('bgColor').value = existing.bgColor;
+        document.getElementById('bgColorText').value = existing.bgColor;
+    }
+    if (existing.bgColorSecondary) {
+        document.getElementById('bgColorSecondary').value = existing.bgColorSecondary;
+        document.getElementById('bgColorSecondaryText').value = existing.bgColorSecondary;
+    }
+    if (existing.gradientEnabled) document.getElementById('gradientEnabled').checked = existing.gradientEnabled;
+    if (existing.pattern) document.getElementById('pattern').value = existing.pattern;
+    if (existing.loader) document.getElementById('loader').value = existing.loader;
+    if (existing.loaderColorPrimary) {
+        document.getElementById('loaderColorPrimary').value = existing.loaderColorPrimary;
+        document.getElementById('loaderColorPrimaryText').value = existing.loaderColorPrimary;
+    }
+    if (existing.heading) document.getElementById('heading').value = existing.heading;
+    if (existing.subheading) document.getElementById('subheading').value = existing.subheading;
+    if (existing.textColor) {
+        document.getElementById('textColor').value = existing.textColor;
+        document.getElementById('textColorText').value = existing.textColor;
+    }
+    if (existing.textSize) document.getElementById('textSize').value = existing.textSize;
+}
+
+// Sync color picker with text input
+function syncColors(colorId, textId) {
+    const color = document.getElementById(colorId);
+    const text = document.getElementById(textId);
+    color.addEventListener('input', () => { text.value = color.value; updatePreview(); });
+    text.addEventListener('input', () => {
+        if (/^#[0-9A-Fa-f]{6}$/.test(text.value)) {
+            color.value = text.value;
+            updatePreview();
+        }
+    });
+}
+
+syncColors('bgColor', 'bgColorText');
+syncColors('bgColorSecondary', 'bgColorSecondaryText');
+syncColors('loaderColorPrimary', 'loaderColorPrimaryText');
+syncColors('textColor', 'textColorText');
+
+// Live preview update
+function updatePreview() {
+    const preview = document.getElementById('preview');
+    const bgColor = document.getElementById('bgColor').value;
+    const bgColorSecondary = document.getElementById('bgColorSecondary').value;
+    const gradient = document.getElementById('gradientEnabled').checked;
+    const textColor = document.getElementById('textColor').value;
+    const loaderColor = document.getElementById('loaderColorPrimary').value;
+    const textSize = document.getElementById('textSize').value;
+    const loaderType = document.getElementById('loader').value;
+
+    // Background
+    if (gradient) {
+        preview.style.background = `linear-gradient(135deg, ${bgColor} 0%, ${bgColorSecondary} 100%)`;
+    } else {
+        preview.style.background = bgColor;
+    }
+
+    // Text
+    preview.style.color = textColor;
+    document.getElementById('preview-heading').textContent = document.getElementById('heading').value || 'Please Wait';
+    document.getElementById('preview-heading').style.fontSize = textSize + 'px';
+    document.getElementById('preview-subheading').textContent = document.getElementById('subheading').value || 'Redirecting...';
+
+    // Loader
+    const loaderEl = document.getElementById('preview-loader');
+    loaderEl.style.setProperty('--loader-color', loaderColor);
+
+    switch(loaderType) {
+        case 'spinner':
+            loaderEl.className = 'loader-spinner mb-4';
+            loaderEl.innerHTML = '';
+            break;
+        case 'dots-bounce':
+            loaderEl.className = 'loader-dots-bounce mb-4';
+            loaderEl.innerHTML = '<span></span><span></span><span></span>';
+            break;
+        case 'pulse':
+            loaderEl.className = 'loader-pulse mb-4';
+            loaderEl.innerHTML = '';
+            break;
+        case 'bars':
+            loaderEl.className = 'loader-bars mb-4';
+            loaderEl.innerHTML = '<span></span><span></span><span></span><span></span>';
+            break;
+    }
+}
+
+// Attach live preview to all inputs
+document.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input', updatePreview);
+    el.addEventListener('change', updatePreview);
+});
+
+// Initialize
+initForm();
+updatePreview();
+
+// Form submit
 document.getElementById('customize-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
     const customization = {
         bgColor: document.getElementById('bgColor').value,
@@ -157,14 +326,10 @@ document.getElementById('customize-form').addEventListener('submit', async (e) =
         pattern: document.getElementById('pattern').value,
         loader: document.getElementById('loader').value,
         loaderColorPrimary: document.getElementById('loaderColorPrimary').value,
-        loaderColorSecondary: document.getElementById('loaderColorSecondary').value,
         heading: document.getElementById('heading').value,
         subheading: document.getElementById('subheading').value,
         textColor: document.getElementById('textColor').value,
-        textSize: parseInt(document.getElementById('textSize').value),
-        font: document.getElementById('font').value,
-        layout: document.getElementById('layout').value,
-        alignment: document.getElementById('alignment').value
+        textSize: parseInt(document.getElementById('textSize').value)
     };
 
     const res = await fetch('/user/redirectlinks/api/{{.Link.ID}}/customization', {
@@ -174,19 +339,16 @@ document.getElementById('customize-form').addEventListener('submit', async (e) =
     });
 
     if (res.ok) {
-        flashToast('Customization saved', 'success');
+        // Auto-deploy after saving customization
+        await fetch('/user/redirectlinks/api/{{.Link.ID}}/deploy', { method: 'POST' });
+        flashToast('Saved and deployed!', 'success');
         window.location.href = '/user/redirectlinks/{{.Link.ID}}';
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Failed to save customization', 'danger');
+        showToast(data.error || 'Failed to save', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save & Deploy';
     }
 });
-
-// Live preview updates
-function updatePreview() {
-    const preview = document.getElementById('preview');
-    preview.style.background = document.getElementById('bgColor').value;
-}
-document.getElementById('bgColor').addEventListener('input', updatePreview);
 </script>
 {{end}}

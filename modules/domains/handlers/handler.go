@@ -200,6 +200,17 @@ func (h *Handler) APIGet(w http.ResponseWriter, r *http.Request) {
 		h.jsonError(w, "Domain not found", http.StatusNotFound)
 		return
 	}
+
+	// If check param is set, include link count for delete confirmation
+	if r.URL.Query().Get("check") == "true" {
+		linkCount, _ := h.service.CountRedirectLinks(id)
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"domain":     domain,
+			"link_count": linkCount,
+		})
+		return
+	}
+
 	h.json(w, http.StatusOK, map[string]interface{}{"domain": domain})
 }
 

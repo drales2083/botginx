@@ -136,6 +136,9 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Auto-deploy the link immediately after creation
+	go h.autoDeploy(link.ID)
+
 	h.json(w, http.StatusCreated, map[string]interface{}{"link": link})
 }
 
@@ -307,6 +310,51 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 		"deployedUrl": deployedURL,
 		"server":      server.Name,
 	})
+}
+
+// autoDeploy deploys a link in the background (called after create)
+func (h *Handler) autoDeploy(linkID string) {
+	link, err := h.service.Get(linkID)
+	if err != nil {
+		return
+	}
+
+	server, err := h.servers.PickRandom()
+	if err != nil {
+		errMsg := "No servers available"
+		h.service.SetDeployStatus(linkID, models.DeployStatusFailed, nil, &errMsg)
+		return
+	}
+
+	fullHost := link.Subdomain + "." + link.DomainName
+	deployedURL := "https://" + fullHost + "/" + link.Path
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.SSHUser, server.SSHPassword)
+	if err != nil {
+		errMsg := "SSH connection failed: " + err.Error()
+		h.service.SetDeployStatus(linkID, models.DeployStatusFailed, nil, &errMsg)
+		return
+	}
+	defer client.Close()
+
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.DomainName, link.Subdomain)
+	client.Run(fmt.Sprintf("mkdir -p %s", siteDir))
+
+	redirectHTML := generateRedirectHTML(link)
+	htmlPath := fmt.Sprintf("%s/index.html", siteDir)
+	writeHTMLCmd := fmt.Sprintf("cat > %s << 'HTMLEOF'\n%s\nHTMLEOF", htmlPath, redirectHTML)
+	if _, err := client.Run(writeHTMLCmd); err != nil {
+		errMsg := "Failed to write redirect page: " + err.Error()
+		h.service.SetDeployStatus(linkID, models.DeployStatusFailed, nil, &errMsg)
+		return
+	}
+
+	h.service.SetDeployStatus(linkID, models.DeployStatusDeployed, &deployedURL, nil)
 }
 
 // generateRedirectHTML creates the redirect splash page HTML using customization settings
