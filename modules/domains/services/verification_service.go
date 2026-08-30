@@ -662,29 +662,45 @@ chmod +x /tmp/dns-auth-capture.sh
 `
 	client.Run(setupCmd)
 
+	// Check if certbot is already running for this domain
+	checkCmd := fmt.Sprintf(`pgrep -f "certbot.*%s" && cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain, baseDomain)
+	existing, _ := client.Run(checkCmd)
+	if existingToken := strings.TrimSpace(existing); existingToken != "" && !strings.HasPrefix(existingToken, "/") {
+		// Certbot already running and token exists
+		return existingToken, nil
+	}
+
 	// Start certbot in background to capture the token
 	certbotCmd := fmt.Sprintf(`
-rm -f /tmp/acme-token-%s.txt
+rm -f /tmp/acme-token-%s.txt /tmp/certbot-%s.log
 nohup certbot certonly --manual --preferred-challenges dns \
   -d "*.%s" \
   --agree-tos --email admin@%s \
   --manual-auth-hook /tmp/dns-auth-capture.sh \
   > /tmp/certbot-%s.log 2>&1 &
-sleep 3
-cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""
 `, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
 
-	output, err := client.Run(certbotCmd)
+	_, err = client.Run(certbotCmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to start certbot: %w", err)
 	}
 
-	token := strings.TrimSpace(output)
-	if token == "" {
-		return "", fmt.Errorf("token not generated yet, try again in a few seconds")
+	// Poll for token with retries (certbot can take 5-15 seconds to generate token)
+	for i := 0; i < 10; i++ {
+		time.Sleep(2 * time.Second)
+		readCmd := fmt.Sprintf(`cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
+		output, _ := client.Run(readCmd)
+		token := strings.TrimSpace(output)
+		if token != "" {
+			return token, nil
+		}
 	}
 
-	return token, nil
+	// Check certbot log for errors
+	logCmd := fmt.Sprintf(`tail -5 /tmp/certbot-%s.log 2>/dev/null || echo "no log"`, baseDomain)
+	logOutput, _ := client.Run(logCmd)
+
+	return "", fmt.Errorf("token generation timed out. Log: %s", strings.TrimSpace(logOutput))
 }
 
 // CompleteWildcardSSL kills the waiting certbot process to let it verify

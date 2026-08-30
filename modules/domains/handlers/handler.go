@@ -478,9 +478,16 @@ func (h *Handler) ExternalSetup(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) generateAcmeTokenBackground(domainID, baseDomain string) {
 	token, err := h.verification.PreGenerateAcmeToken(baseDomain)
 	if err != nil {
+		// Log error but don't fail - user can retry via refresh button
+		fmt.Printf("[ACME] Failed to generate token for %s: %v\n", baseDomain, err)
+		return
+	}
+	if token == "" {
+		fmt.Printf("[ACME] Empty token returned for %s\n", baseDomain)
 		return
 	}
 	// Save token to database
+	fmt.Printf("[ACME] Token generated for %s: %s\n", baseDomain, token[:8]+"...")
 	h.service.Update(domainID, models.UpdateDomainInput{
 		AcmeToken: &token,
 	})
