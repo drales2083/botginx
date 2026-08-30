@@ -169,9 +169,14 @@
 </div>
 
 <script>
-const restartModal = new bootstrap.Modal(document.getElementById('restartModal'));
-const disableModal = new bootstrap.Modal(document.getElementById('disableModal'));
+let restartModal = null;
+let disableModal = null;
 let pendingDisableBtn = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    restartModal = new bootstrap.Modal(document.getElementById('restartModal'));
+    disableModal = new bootstrap.Modal(document.getElementById('disableModal'));
+});
 
 // Restart server
 document.getElementById('btn-restart').addEventListener('click', () => {

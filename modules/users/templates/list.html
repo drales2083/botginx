@@ -108,8 +108,12 @@
 
 <script>
 let deleteId = null;
-const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+let deleteModal = null;
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+document.addEventListener('DOMContentLoaded', () => {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+});
 
 // Delegated: paging swaps rows in and out of the DOM, so listeners bound to
 // individual buttons at load would stop working past page one.

@@ -106,9 +106,13 @@
 <script>
 let deleteId = null;
 let forceDelete = false;
-const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+let deleteModal = null;
 const deleteModalBody = document.getElementById('deleteModalBody');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+document.addEventListener('DOMContentLoaded', () => {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+});
 
 document.addEventListener('click', async (e) => {
     const verify = e.target.closest('.btn-verify');
