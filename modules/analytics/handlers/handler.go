@@ -540,14 +540,13 @@ func (h *Handler) handleRequestEvent(data any) {
 	visit.Browser = h.detectBrowser(visit.UserAgent)
 	visit.OS = h.detectOS(visit.UserAgent)
 
-	// Check blocking rules
-	blocked, reason := h.service.ShouldBlock(
-		visit.LinkID, visit.Country, visit.Device,
-		visit.IsBot, visit.IsTor, visit.IsProxy, visit.IsDatacenter, visit.IsHeadless,
-		visit.BehaviorScore,
-	)
-	visit.Blocked = blocked
-	visit.BlockReason = reason
+	// Use botection's actual decision from the action field
+	// action = "allow", "block", or "challenge"
+	action := getString(eventData, "action")
+	visit.Blocked = (action == "block")
+	if visit.Blocked {
+		visit.BlockReason = "blocked_by_antibot"
+	}
 
 	h.service.RecordVisit(visit)
 }
