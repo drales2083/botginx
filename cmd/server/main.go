@@ -204,6 +204,10 @@ func main() {
 	// Used by botection to get per-link blocking decisions before taking action
 	r.Mount("/api/botection", analyticsModule.BotectionRoutes())
 
+	// Public tracking API (no auth, CORS enabled)
+	// Called by redirect pages to record visits
+	r.Mount("/api/track", analyticsModule.TrackingRoutes())
+
 	// User routes (/user/*) - require auth, and an active subscription for any
 	// write. Reads stay open so a lapsed user keeps view-only access.
 	r.Route("/user", func(r chi.Router) {

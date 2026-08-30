@@ -762,6 +762,90 @@ func getBool(m map[string]interface{}, key string) bool {
 	return false
 }
 
+// TrackingPixel handles client-side tracking from redirect pages
+// No auth required - link ownership is validated via linkID lookup
+func (h *Handler) TrackingPixel(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		LinkID    string `json:"linkId"`
+		IP        string `json:"ip"`
+		UserAgent string `json:"userAgent"`
+		Referrer  string `json:"referrer"`
+		Language  string `json:"language"`
+		ScreenRes string `json:"screenRes"`
+		Timezone  string `json:"timezone"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.jsonError(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.LinkID == "" {
+		h.jsonError(w, "linkId required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate link exists and get owner
+	owner, err := h.links.OwnerOf(req.LinkID)
+	if err != nil || owner == "" {
+		h.jsonError(w, "Unknown link", http.StatusNotFound)
+		return
+	}
+
+	// Get real IP from request if not provided
+	ip := req.IP
+	if ip == "" {
+		ip = r.Header.Get("X-Real-IP")
+		if ip == "" {
+			ip = r.Header.Get("X-Forwarded-For")
+		}
+		if ip == "" {
+			ip = r.RemoteAddr
+		}
+	}
+
+	// Get user agent from request header if not in body
+	ua := req.UserAgent
+	if ua == "" {
+		ua = r.Header.Get("User-Agent")
+	}
+
+	visit := &models.Visit{
+		LinkID:    req.LinkID,
+		UserID:    owner,
+		IP:        ip,
+		UserAgent: ua,
+		Referrer:  req.Referrer,
+		Language:  req.Language,
+		ScreenRes: req.ScreenRes,
+		Timezone:  req.Timezone,
+		Device:    h.detectDevice(ua),
+		Browser:   h.detectBrowser(ua),
+		OS:        h.detectOS(ua),
+		CreatedAt: time.Now(),
+	}
+
+	// Check if should be blocked based on settings
+	blocked, reason := h.service.ShouldBlock(
+		visit.LinkID, visit.Country, visit.Device,
+		visit.IsBot, visit.IsTor, visit.IsProxy, visit.IsDatacenter, visit.IsHeadless,
+		visit.BehaviorScore,
+	)
+	visit.Blocked = blocked
+	visit.BlockReason = reason
+
+	if err := h.service.RecordVisit(visit); err != nil {
+		log.Printf("Tracking pixel error: %v", err)
+		h.jsonError(w, "Failed to record", http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"ok":      true,
+		"blocked": blocked,
+	})
+}
+
 // Helpers
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {

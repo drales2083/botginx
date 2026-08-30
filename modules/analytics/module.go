@@ -3,6 +3,7 @@ package analytics
 import (
 	"embed"
 	"io/fs"
+	"net/http"
 
 	"github.com/botginx/botginx/modules/analytics/handlers"
 	"github.com/botginx/botginx/modules/analytics/services"
@@ -103,6 +104,27 @@ func (m *Module) WebhookRoutes() chi.Router {
 func (m *Module) BotectionRoutes() chi.Router {
 	r := chi.NewRouter()
 	r.Post("/should-block", m.handler.ShouldBlockCallback)
+	return r
+}
+
+// TrackingRoutes returns public routes for client-side tracking pixels
+// No auth required - called directly from redirect pages on deploy VPS
+func (m *Module) TrackingRoutes() chi.Router {
+	r := chi.NewRouter()
+	// CORS middleware for cross-origin requests from redirect pages
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	r.Post("/pixel", m.handler.TrackingPixel)
 	return r
 }
 
