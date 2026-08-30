@@ -261,6 +261,9 @@ async function manualCheck() {
 
         const status = await res.json();
 
+        // Log for debugging
+        console.log('API Response:', JSON.stringify(status, null, 2));
+
         // Update badges
         updateBadge('badge-a', status.aRecordFound);
         updateBadge('badge-verify', status.verifyTxtFound);
@@ -296,17 +299,17 @@ async function manualCheck() {
             document.getElementById('success-card').classList.remove('d-none');
             showToast('Domain setup complete!', 'success');
         } else {
-            // Show feedback
+            // Show feedback with debug info
             const found = [status.aRecordFound, status.verifyTxtFound, status.acmeTxtFound].filter(Boolean).length;
+            let msg = `Checked: ${found}/3 verified`;
             if (status.errorMessage) {
-                console.log('Debug:', status.errorMessage);
-                showToast(`${found}/3 verified. Debug: ${status.errorMessage}`, 'warning');
-            } else {
-                showToast(`Checked: ${found}/3 records verified`, 'info');
+                msg += ` | ${status.errorMessage}`;
             }
+            showToast(msg, found > 0 ? 'info' : 'warning');
         }
 
     } catch (e) {
+        console.error('Check error:', e);
         showToast('Network error', 'danger');
     } finally {
         btn.disabled = false;

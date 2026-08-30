@@ -87,13 +87,20 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 					return true, nil
 				}
 			}
-			return false, fmt.Errorf("TXT record value mismatch. Expected: %s, Found: %s", expectedToken, strings.Join(records, ", "))
+			// Show which DNS server we checked
+			dnsSource := "Google DNS"
+			if dnsServer == "1.1.1.1:53" {
+				dnsSource = "Cloudflare DNS"
+			} else if dnsServer == "" {
+				dnsSource = "System DNS"
+			}
+			return false, fmt.Errorf("TXT mismatch (%s). Expected: %s, Found: [%s]. Delete old record, wait 5-30 min for propagation", dnsSource, expectedToken, strings.Join(records, ", "))
 		}
 		lastErr = err
 	}
 
 	_ = lastErr // ignore, we show helpful message
-	return false, fmt.Errorf("TXT record not found. Add: %s TXT %s", txtHost, expectedToken)
+	return false, fmt.Errorf("TXT not found at %s. Add value: %s", txtHost, expectedToken)
 }
 
 // SSLStatus represents the SSL certificate status for a domain
