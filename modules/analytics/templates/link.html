@@ -211,8 +211,20 @@
 const linkId = '{{.LinkID}}';
 const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
-// Track locally blocked IPs (persists across table refreshes)
+// Track blocked IPs from server blocklist
 const blockedIPs = new Set();
+
+// Load user's blocklist on page load
+async function loadBlocklist() {
+    try {
+        const res = await fetch('/user/iplists/api/blocklist');
+        if (!res.ok) return;
+        const data = await res.json();
+        blockedIPs.clear();
+        (data.blocklist || []).forEach(entry => blockedIPs.add(entry.ip));
+    } catch (e) {}
+}
+loadBlocklist();
 
 // Cache previous data to avoid unnecessary redraws
 let prevData = {
@@ -370,7 +382,13 @@ async function refreshVisits() {
         if (!tbody || !data.visits) return;
 
         tbody.innerHTML = data.visits.length ? data.visits.map(v => {
-            const isLocallyBlocked = blockedIPs.has(v.ip);
+            const isBlocked = blockedIPs.has(v.ip);
+            const statusBadge = v.isBot ? '<span class="badge bg-warning">Bot</span>'
+                : isBlocked ? '<span class="badge bg-danger">Blocked</span>'
+                : '<span class="badge bg-success">OK</span>';
+            const actionBtn = isBlocked
+                ? `<button class="btn btn-sm btn-outline-success btn-unblock-ip" data-ip="${v.ip}">Unblock</button>`
+                : `<button class="btn btn-sm btn-outline-danger btn-block-ip" data-ip="${v.ip}">Block</button>`;
             return `
             <tr data-ip="${v.ip}">
                 <td><small>${new Date(v.createdAt).toLocaleString('en-US', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</small></td>
@@ -378,18 +396,21 @@ async function refreshVisits() {
                 <td>${v.country || '-'}</td>
                 <td>${v.device === 'mobile' ? '<i class="bi bi-phone"></i>' : v.device === 'tablet' ? '<i class="bi bi-tablet"></i>' : '<i class="bi bi-display"></i>'}</td>
                 <td>${v.browser || '-'}</td>
-                <td>${v.isBot ? '<span class="badge bg-warning">Bot</span>' : (v.blocked || isLocallyBlocked) ? '<span class="badge bg-danger">Blocked</span>' : '<span class="badge bg-success">OK</span>'}</td>
-                <td>${isLocallyBlocked ? '<button class="btn btn-sm btn-success" disabled>Blocked</button>' : '<button class="btn btn-sm btn-outline-danger btn-block-ip" data-ip="' + v.ip + '">Block</button>'}</td>
+                <td>${statusBadge}</td>
+                <td>${actionBtn}</td>
             </tr>`;
         }).join('') : '<tr><td colspan="7" class="text-muted text-center py-3">No visits yet</td></tr>';
 
-        attachBlockHandlers();
+        attachHandlers();
     } catch (e) {}
 }
 
-function attachBlockHandlers() {
+function attachHandlers() {
     document.querySelectorAll('.btn-block-ip').forEach(btn => {
         btn.onclick = () => blockIP(btn.dataset.ip, btn);
+    });
+    document.querySelectorAll('.btn-unblock-ip').forEach(btn => {
+        btn.onclick = () => unblockIP(btn.dataset.ip, btn);
     });
 }
 
@@ -425,6 +446,44 @@ async function blockIP(ip, btn) {
     } catch (err) {
         showToast('Network error blocking IP', 'danger');
         btn.textContent = 'Block';
+        btn.disabled = false;
+    }
+}
+
+async function unblockIP(ip, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Unblocking...';
+    try {
+        const res = await fetch(`/user/iplists/api/block/${encodeURIComponent(ip)}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (res.ok) {
+            blockedIPs.delete(ip);
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-outline-danger', 'btn-block-ip');
+            btn.classList.remove('btn-unblock-ip');
+            btn.textContent = 'Block';
+            btn.disabled = false;
+            btn.onclick = () => blockIP(ip, btn);
+            // Update status badge
+            const row = btn.closest('tr');
+            if (row) {
+                const statusCell = row.querySelector('td:nth-child(6)');
+                if (statusCell) {
+                    statusCell.innerHTML = '<span class="badge bg-success">OK</span>';
+                }
+            }
+            showToast('IP ' + ip + ' unblocked', 'success');
+        } else {
+            showToast(data.error || 'Failed to unblock IP', 'danger');
+            btn.textContent = 'Unblock';
+            btn.disabled = false;
+        }
+    } catch (err) {
+        showToast('Network error unblocking IP', 'danger');
+        btn.textContent = 'Unblock';
         btn.disabled = false;
     }
 }
@@ -465,6 +524,7 @@ async function refreshReferrers() {
 
 // Poll every 5 seconds
 setInterval(() => {
+    loadBlocklist(); // Refresh blocklist to catch changes
     refreshStats();
     refreshVisits();
     refreshOS();
@@ -477,6 +537,6 @@ setInterval(() => {
 }, 5000);
 
 // Initial block handlers for server-rendered rows
-attachBlockHandlers();
+attachHandlers();
 </script>
 {{end}}
