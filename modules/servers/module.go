@@ -123,6 +123,11 @@ func (m *Module) GetDeployIP() string {
 	return m.service.GetDeployIP()
 }
 
+// GetAllDeployServers returns all ready servers for IP list push.
+func (m *Module) GetAllDeployServers() ([]services.DeployServerInfo, error) {
+	return m.service.GetAllDeployServers()
+}
+
 func (m *Module) Widgets() []module.Widget {
 	return nil
 }

@@ -323,3 +323,31 @@ func (s *ServerService) GetServerForDomain(domainID string) (ip string, port int
 	}
 	return server.IP, server.Port, server.SSHUser, server.SSHPassword, nil
 }
+
+// DeployServerInfo contains SSH connection details for a deploy server.
+type DeployServerInfo struct {
+	IP       string
+	Port     int
+	User     string
+	Password string
+}
+
+// GetAllDeployServers returns all ready servers for IP list push.
+func (s *ServerService) GetAllDeployServers() ([]DeployServerInfo, error) {
+	var servers []models.Server
+	err := s.db.Select(&servers, `SELECT * FROM servers WHERE status = 'ready'`)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]DeployServerInfo, len(servers))
+	for i, srv := range servers {
+		result[i] = DeployServerInfo{
+			IP:       srv.IP,
+			Port:     srv.Port,
+			User:     srv.SSHUser,
+			Password: srv.SSHPassword,
+		}
+	}
+	return result, nil
+}

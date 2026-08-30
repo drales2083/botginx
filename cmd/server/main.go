@@ -18,6 +18,7 @@ import (
 	"github.com/botginx/botginx/modules/dashboard"
 	"github.com/botginx/botginx/modules/domains"
 	"github.com/botginx/botginx/modules/iplists"
+	iplistsvc "github.com/botginx/botginx/modules/iplists/services"
 	modulesmgmt "github.com/botginx/botginx/modules/modules"
 	"github.com/botginx/botginx/modules/redirectlinks"
 	"github.com/botginx/botginx/modules/servers"
@@ -36,6 +37,28 @@ import (
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
+
+// iplistServerAdapter bridges the servers module to the iplists ServerProvider interface.
+type iplistServerAdapter struct {
+	servers *servers.Module
+}
+
+func (a *iplistServerAdapter) GetAllDeployServers() ([]iplistsvc.ServerInfo, error) {
+	srvs, err := a.servers.GetAllDeployServers()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]iplistsvc.ServerInfo, len(srvs))
+	for i, s := range srvs {
+		result[i] = iplistsvc.ServerInfo{
+			IP:       s.IP,
+			Port:     s.Port,
+			User:     s.User,
+			Password: s.Password,
+		}
+	}
+	return result, nil
+}
 
 // Config structure
 type Config struct {
@@ -141,6 +164,7 @@ func main() {
 	analyticsModule.SetLinkDetails(redirectLinksModule)
 	analyticsModule.SetServerProvider(serversModule)
 	redirectLinksModule.SetServerProvider(serversModule)
+	iplistsModule.SetServerProvider(&iplistServerAdapter{servers: serversModule})
 
 	// Run migrations
 	if err := registry.MigrateAll(); err != nil {
