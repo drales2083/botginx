@@ -365,9 +365,20 @@ func (s *VerificationService) SetupDomainNginx(domain string) error {
     }
 }`, domain, domain, domain, domain)
 	} else {
+		// For domains with Let's Encrypt SSL (including wildcard via DNS-01)
+		// Strip wildcard prefix to get base domain for cert path
+		baseDomain := domain
+		if strings.HasPrefix(domain, "*.") {
+			baseDomain = strings.TrimPrefix(domain, "*.")
+		}
+
 		nginxConfig = fmt.Sprintf(`server {
     listen 80;
+    listen 443 ssl;
     server_name %s *.%s;
+
+    ssl_certificate /etc/letsencrypt/live/%s/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/%s/privkey.pem;
 
     location /.well-known/acme-challenge/ {
         root /var/www/sites/%s;
@@ -381,7 +392,7 @@ func (s *VerificationService) SetupDomainNginx(domain string) error {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-}`, domain, domain, domain)
+}`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
 	}
 
 	// Create directories
