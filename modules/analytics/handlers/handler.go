@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -793,16 +794,23 @@ func (h *Handler) TrackingPixel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get real IP from request if not provided
-	ip := req.IP
+	// Get real IP - prioritize Cloudflare's header
+	ip := r.Header.Get("CF-Connecting-IP")
 	if ip == "" {
 		ip = r.Header.Get("X-Real-IP")
-		if ip == "" {
-			ip = r.Header.Get("X-Forwarded-For")
-		}
-		if ip == "" {
-			ip = r.RemoteAddr
-		}
+	}
+	if ip == "" {
+		ip = r.Header.Get("X-Forwarded-For")
+	}
+	if ip == "" && req.IP != "" {
+		ip = req.IP
+	}
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	// Strip port from RemoteAddr if present
+	if host, _, err := net.SplitHostPort(ip); err == nil {
+		ip = host
 	}
 
 	// Get user agent from request header if not in body
