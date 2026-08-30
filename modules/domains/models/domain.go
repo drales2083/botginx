@@ -2,10 +2,24 @@ package models
 
 import "time"
 
+// SetupType indicates how the domain DNS is managed
+const (
+	SetupTypeDirect   = "direct"   // A record points to our server
+	SetupTypeExternal = "external" // cPanel/Cloudflare/other external DNS
+)
+
+// SetupStep tracks the external domain setup wizard progress
+const (
+	SetupStepPending       = "pending"        // Just created, detecting type
+	SetupStepDNSWaiting    = "dns_waiting"    // Waiting for user to add DNS records
+	SetupStepSSLGenerating = "ssl_generating" // DNS verified, generating SSL
+	SetupStepComplete      = "complete"       // Fully set up
+)
+
 type Domain struct {
 	ID          string    `db:"id" json:"id"`
 	UserID      string    `db:"user_id" json:"userId"`
-	Name        string    `db:"name" json:"name"` // e.g., example.com
+	Name        string    `db:"name" json:"name"` // e.g., example.com or *.example.com
 	ServerID    *string   `db:"server_id" json:"serverId,omitempty"`
 	VerifyToken string    `db:"verify_token" json:"verifyToken"`
 	DNSVerified bool      `db:"dns_verified" json:"dnsVerified"`
@@ -14,17 +28,54 @@ type Domain struct {
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
 
+	// External setup fields
+	SetupType          string     `db:"setup_type" json:"setupType"`
+	SetupStep          string     `db:"setup_step" json:"setupStep"`
+	AcmeToken          *string    `db:"acme_token" json:"acmeToken,omitempty"`
+	AcmeTokenExpiresAt *time.Time `db:"acme_token_expires_at" json:"acmeTokenExpiresAt,omitempty"`
+	IsWildcard         bool       `db:"is_wildcard" json:"isWildcard"`
+
 	// Joined fields
 	ServerName string `db:"server_name" json:"serverName,omitempty"`
 }
 
+// SetupStatus represents the current state of DNS records for external setup
+type SetupStatus struct {
+	ARecordFound    bool   `json:"aRecordFound"`
+	ARecordIP       string `json:"aRecordIp,omitempty"`
+	VerifyTXTFound  bool   `json:"verifyTxtFound"`
+	AcmeTXTFound    bool   `json:"acmeTxtFound"`
+	AllRecordsFound bool   `json:"allRecordsFound"`
+	SetupStep       string `json:"setupStep"`
+	SSLReady        bool   `json:"sslReady"`
+	ErrorMessage    string `json:"errorMessage,omitempty"`
+}
+
+// ExternalSetupInfo contains all info needed for the setup wizard
+type ExternalSetupInfo struct {
+	Domain          string `json:"domain"`
+	BaseDomain      string `json:"baseDomain"` // For wildcard, the root domain
+	IsWildcard      bool   `json:"isWildcard"`
+	ServerIP        string `json:"serverIp"`
+	VerifyToken     string `json:"verifyToken"`
+	AcmeToken       string `json:"acmeToken"`
+	AcmeTokenReady  bool   `json:"acmeTokenReady"`
+	SetupStep       string `json:"setupStep"`
+	VerifyTXTName   string `json:"verifyTxtName"`   // _guardbot-verify.domain.com
+	AcmeTXTName     string `json:"acmeTxtName"`     // _acme-challenge.domain.com
+}
+
 type CreateDomainInput struct {
-	Name     string `json:"name" validate:"required,fqdn"`
+	Name     string `json:"name" validate:"required"`
 	ServerID string `json:"serverId"`
 }
 
 type UpdateDomainInput struct {
-	ServerID    *string `json:"serverId"`
-	DNSVerified *bool   `json:"dnsVerified"`
-	SSLEnabled  *bool   `json:"sslEnabled"`
+	ServerID           *string    `json:"serverId"`
+	DNSVerified        *bool      `json:"dnsVerified"`
+	SSLEnabled         *bool      `json:"sslEnabled"`
+	SetupType          *string    `json:"setupType"`
+	SetupStep          *string    `json:"setupStep"`
+	AcmeToken          *string    `json:"acmeToken"`
+	AcmeTokenExpiresAt *time.Time `json:"acmeTokenExpiresAt"`
 }

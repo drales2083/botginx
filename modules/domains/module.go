@@ -79,6 +79,7 @@ func (m *Module) Routes() chi.Router {
 	r.Get("/", m.handler.List)
 	r.Get("/new", m.handler.New)
 	r.Get("/{id}", m.handler.Show)
+	r.Get("/{id}/setup", m.handler.ExternalSetup) // External domain setup wizard
 
 	// API
 	r.Route("/api", func(r chi.Router) {
@@ -91,6 +92,8 @@ func (m *Module) Routes() chi.Router {
 		r.Get("/{id}/ssl", m.handler.APICheckSSL)
 		r.Post("/{id}/setup", m.handler.APISetupDomain)
 		r.Get("/{id}/wildcard-ssl", m.handler.APIGetWildcardSSLInstructions)
+		r.Get("/{id}/setup-status", m.handler.APIGetSetupStatus)    // Polling endpoint
+		r.Post("/{id}/refresh-token", m.handler.APIRefreshAcmeToken) // Refresh ACME token
 	})
 
 	return r

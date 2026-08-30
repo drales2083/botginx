@@ -97,10 +97,15 @@
                 <h5 class="card-title mb-0">Actions</h5>
             </div>
             <div class="card-body">
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                     <a href="/user/redirectlinks/new?domain={{.Domain.ID}}" class="btn btn-success">
                         <i class="bi bi-link-45deg me-1"></i> Create Redirect Link
                     </a>
+                    {{if or (eq .Domain.SetupType "external") (and .Domain.IsWildcard (not .Domain.SSLEnabled))}}
+                    <a href="/user/domains/{{.Domain.ID}}/setup" class="btn btn-primary">
+                        <i class="bi bi-gear me-1"></i> Setup Wizard
+                    </a>
+                    {{end}}
                     <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                         <i class="bi bi-trash me-1"></i> Delete Domain
                     </button>

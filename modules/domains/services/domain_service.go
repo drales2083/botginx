@@ -197,9 +197,20 @@ func (s *DomainService) create(userID string, input models.CreateDomainInput, sh
 		domain.ServerID = &input.ServerID
 	}
 
+	// Detect if wildcard domain
+	if len(domain.Name) > 2 && domain.Name[:2] == "*." {
+		domain.IsWildcard = true
+	}
+
+	// Set default setup values
+	domain.SetupType = models.SetupTypeDirect
+	domain.SetupStep = models.SetupStepComplete
+
 	_, err := s.db.NamedExec(`
-		INSERT INTO domains (id, user_id, name, verify_token, server_id, dns_verified, ssl_enabled, is_shared, created_at, updated_at)
-		VALUES (:id, :user_id, :name, :verify_token, :server_id, :dns_verified, :ssl_enabled, :is_shared, :created_at, :updated_at)
+		INSERT INTO domains (id, user_id, name, verify_token, server_id, dns_verified, ssl_enabled, is_shared,
+			setup_type, setup_step, is_wildcard, created_at, updated_at)
+		VALUES (:id, :user_id, :name, :verify_token, :server_id, :dns_verified, :ssl_enabled, :is_shared,
+			:setup_type, :setup_step, :is_wildcard, :created_at, :updated_at)
 	`, domain)
 
 	return domain, err
@@ -220,6 +231,18 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 	if input.SSLEnabled != nil {
 		domain.SSLEnabled = *input.SSLEnabled
 	}
+	if input.SetupType != nil {
+		domain.SetupType = *input.SetupType
+	}
+	if input.SetupStep != nil {
+		domain.SetupStep = *input.SetupStep
+	}
+	if input.AcmeToken != nil {
+		domain.AcmeToken = input.AcmeToken
+	}
+	if input.AcmeTokenExpiresAt != nil {
+		domain.AcmeTokenExpiresAt = input.AcmeTokenExpiresAt
+	}
 	domain.UpdatedAt = time.Now()
 
 	_, err = s.db.NamedExec(`
@@ -227,6 +250,10 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 			server_id = :server_id,
 			dns_verified = :dns_verified,
 			ssl_enabled = :ssl_enabled,
+			setup_type = :setup_type,
+			setup_step = :setup_step,
+			acme_token = :acme_token,
+			acme_token_expires_at = :acme_token_expires_at,
 			updated_at = :updated_at
 		WHERE id = :id
 	`, domain)

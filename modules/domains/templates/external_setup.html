@@ -1,0 +1,258 @@
+{{define "content"}}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-globe me-2"></i>External Domain Setup: {{.SetupInfo.Domain}}
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Add these DNS records in your cPanel or DNS provider's Zone Editor.
+                    The page will automatically detect when records are added.
+                </p>
+
+                <!-- Step 1: A Record -->
+                <div class="card mb-3" id="step-a-record">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <span><strong>Step 1:</strong> Point domain to our server</span>
+                        <span id="status-a" class="badge bg-secondary">Checking...</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr><th>Type</th><th>Name</th><th>Value</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>A</code></td>
+                                        <td><code>{{if .SetupInfo.IsWildcard}}*{{else}}@{{end}}</code></td>
+                                        <td><code id="server-ip">{{.SetupInfo.ServerIP}}</code></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{.SetupInfo.ServerIP}}')">
+                                                <i class="bi bi-clipboard"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Verify TXT -->
+                <div class="card mb-3" id="step-verify">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <span><strong>Step 2:</strong> Verify domain ownership</span>
+                        <span id="status-verify" class="badge bg-secondary">Checking...</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr><th>Type</th><th>Name</th><th>Value</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>TXT</code></td>
+                                        <td><code>_guardbot-verify</code></td>
+                                        <td><code id="verify-token">{{.SetupInfo.VerifyToken}}</code></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{.SetupInfo.VerifyToken}}')">
+                                                <i class="bi bi-clipboard"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: SSL TXT (for wildcard or external) -->
+                <div class="card mb-3" id="step-ssl">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <span><strong>Step 3:</strong> SSL Certificate (HTTPS)</span>
+                        <span id="status-ssl" class="badge bg-secondary">Checking...</span>
+                    </div>
+                    <div class="card-body">
+                        {{if .SetupInfo.AcmeTokenReady}}
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr><th>Type</th><th>Name</th><th>Value</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>TXT</code></td>
+                                        <td><code>_acme-challenge</code></td>
+                                        <td><code id="acme-token">{{.SetupInfo.AcmeToken}}</code></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{.SetupInfo.AcmeToken}}')">
+                                                <i class="bi bi-clipboard"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        {{else}}
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span>Generating SSL challenge token...</span>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+
+                <!-- cPanel Instructions -->
+                <div class="card mb-4 border-info">
+                    <div class="card-header bg-info text-white">
+                        <i class="bi bi-info-circle me-2"></i>cPanel Instructions
+                    </div>
+                    <div class="card-body">
+                        <ol class="mb-0">
+                            <li>Login to your cPanel account</li>
+                            <li>Go to <strong>Zone Editor</strong> (under Domains section)</li>
+                            <li>Click <strong>Manage</strong> next to <code>{{.SetupInfo.BaseDomain}}</code></li>
+                            <li>Click <strong>+ Add Record</strong> for each record above</li>
+                            <li>Wait ~30 seconds for DNS to propagate</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Status Summary -->
+                <div class="card" id="status-card">
+                    <div class="card-header">
+                        <i class="bi bi-check-circle me-2"></i>Setup Progress
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>A Record</span>
+                                <span id="progress-a" class="text-muted"><i class="bi bi-hourglass-split"></i> Waiting...</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>Verification TXT</span>
+                                <span id="progress-verify" class="text-muted"><i class="bi bi-hourglass-split"></i> Waiting...</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>SSL Challenge TXT</span>
+                                <span id="progress-ssl" class="text-muted"><i class="bi bi-hourglass-split"></i> Waiting...</span>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="text-center">
+                            <div id="overall-status">
+                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                <span>Checking DNS records every 30 seconds...</span>
+                            </div>
+                            <div id="success-message" class="d-none">
+                                <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                                <h5 class="mt-2 text-success">Setup Complete!</h5>
+                                <p class="mb-2">Your domain is now active with SSL.</p>
+                                <a href="/user/domains/{{.Domain.ID}}" class="btn btn-primary">
+                                    <i class="bi bi-arrow-right me-1"></i> Go to Domain
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const domainId = '{{.Domain.ID}}';
+const domain = '{{.SetupInfo.Domain}}';
+let pollInterval;
+let acmeToken = '{{.SetupInfo.AcmeToken}}';
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard!', 'success');
+    });
+}
+
+function updateStatus(elementId, found, icon) {
+    const el = document.getElementById(elementId);
+    if (found) {
+        el.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i> Found';
+        el.className = 'text-success';
+    } else {
+        el.innerHTML = '<i class="bi bi-hourglass-split"></i> Waiting...';
+        el.className = 'text-muted';
+    }
+}
+
+function updateBadge(elementId, found) {
+    const el = document.getElementById(elementId);
+    if (found) {
+        el.textContent = 'Found';
+        el.className = 'badge bg-success';
+    } else {
+        el.textContent = 'Waiting...';
+        el.className = 'badge bg-secondary';
+    }
+}
+
+async function checkStatus() {
+    try {
+        const res = await fetch(`/user/domains/api/${domainId}/setup-status`);
+        if (!res.ok) return;
+
+        const status = await res.json();
+
+        // Update badges
+        updateBadge('status-a', status.aRecordFound);
+        updateBadge('status-verify', status.verifyTxtFound);
+        updateBadge('status-ssl', status.acmeTxtFound);
+
+        // Update progress indicators
+        updateStatus('progress-a', status.aRecordFound);
+        updateStatus('progress-verify', status.verifyTxtFound);
+        updateStatus('progress-ssl', status.acmeTxtFound);
+
+        // Update ACME token if it wasn't ready before
+        if (status.acmeToken && !acmeToken) {
+            acmeToken = status.acmeToken;
+            const tokenEl = document.getElementById('acme-token');
+            if (tokenEl) {
+                tokenEl.textContent = acmeToken;
+            }
+            // Reload page to show the token properly
+            location.reload();
+        }
+
+        // Check if all done
+        if (status.sslReady) {
+            clearInterval(pollInterval);
+            document.getElementById('overall-status').classList.add('d-none');
+            document.getElementById('success-message').classList.remove('d-none');
+            showToast('Domain setup complete!', 'success');
+        }
+
+    } catch (e) {
+        console.error('Status check failed:', e);
+    }
+}
+
+// Poll every 30 seconds
+checkStatus();
+pollInterval = setInterval(checkStatus, 30000);
+
+// Show toast helper (use base template's showToast if available)
+function showToastLocal(message, type) {
+    if (typeof showToast === 'function') {
+        showToast(message, type);
+    } else {
+        console.log(type + ': ' + message);
+    }
+}
+</script>
+{{end}}

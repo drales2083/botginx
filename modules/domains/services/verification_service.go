@@ -456,3 +456,218 @@ fi
 
 	return nil
 }
+
+// DetectDomainType checks if domain A record points to our server
+func (s *VerificationService) DetectDomainType(domain string, ourIP string) string {
+	// For wildcard domains, check the base domain
+	checkDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		checkDomain = strings.TrimPrefix(domain, "*.")
+	}
+
+	// Try to resolve the domain
+	ips, err := net.LookupHost(checkDomain)
+	if err != nil {
+		// Can't resolve = external DNS needed
+		return "external"
+	}
+
+	for _, ip := range ips {
+		if ip == ourIP {
+			return "direct"
+		}
+	}
+
+	return "external"
+}
+
+// CheckARecord checks if a domain's A record points to the expected IP
+func (s *VerificationService) CheckARecord(domain string, expectedIP string) (bool, string) {
+	// For wildcard, check a random subdomain
+	checkDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		checkDomain = "wildcard-check." + strings.TrimPrefix(domain, "*.")
+	}
+
+	ips, err := net.LookupHost(checkDomain)
+	if err != nil {
+		return false, ""
+	}
+
+	for _, ip := range ips {
+		if ip == expectedIP {
+			return true, ip
+		}
+	}
+
+	if len(ips) > 0 {
+		return false, ips[0]
+	}
+	return false, ""
+}
+
+// CheckAcmeTXT checks if the ACME challenge TXT record exists with correct value
+func (s *VerificationService) CheckAcmeTXT(domain string, expectedToken string) bool {
+	// For wildcard, use base domain
+	baseDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		baseDomain = strings.TrimPrefix(domain, "*.")
+	}
+
+	txtHost := "_acme-challenge." + baseDomain
+
+	// Try multiple resolvers
+	resolvers := []string{"8.8.8.8:53", "1.1.1.1:53", ""}
+	for _, resolver := range resolvers {
+		var records []string
+		var err error
+
+		if resolver == "" {
+			records, err = net.LookupTXT(txtHost)
+		} else {
+			r := &net.Resolver{
+				PreferGo: true,
+				Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+					d := net.Dialer{Timeout: 5 * time.Second}
+					return d.DialContext(ctx, "udp", resolver)
+				},
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			records, err = r.LookupTXT(ctx, txtHost)
+			cancel()
+		}
+
+		if err == nil {
+			for _, record := range records {
+				if strings.TrimSpace(record) == expectedToken {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// PreGenerateAcmeToken starts certbot to get an ACME challenge token for wildcard SSL
+// Returns the token that user needs to add as TXT record
+func (s *VerificationService) PreGenerateAcmeToken(domain string) (string, error) {
+	server, err := s.getServer()
+	if err != nil {
+		return "", fmt.Errorf("no deploy server available")
+	}
+
+	// For wildcard domains, use base domain
+	baseDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		baseDomain = strings.TrimPrefix(domain, "*.")
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return "", fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Create auth hook that captures and saves the token, then waits
+	setupCmd := `
+cat > /tmp/dns-auth-capture.sh << 'HOOKEOF'
+#!/bin/bash
+echo "$CERTBOT_VALIDATION" > /tmp/acme-token-$CERTBOT_DOMAIN.txt
+# Wait for external verification (10 minutes max)
+sleep 600
+HOOKEOF
+chmod +x /tmp/dns-auth-capture.sh
+`
+	client.Run(setupCmd)
+
+	// Start certbot in background to capture the token
+	certbotCmd := fmt.Sprintf(`
+rm -f /tmp/acme-token-%s.txt
+nohup certbot certonly --manual --preferred-challenges dns \
+  -d "*.%s" \
+  --agree-tos --email admin@%s \
+  --manual-auth-hook /tmp/dns-auth-capture.sh \
+  > /tmp/certbot-%s.log 2>&1 &
+sleep 3
+cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""
+`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+
+	output, err := client.Run(certbotCmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to start certbot: %w", err)
+	}
+
+	token := strings.TrimSpace(output)
+	if token == "" {
+		return "", fmt.Errorf("token not generated yet, try again in a few seconds")
+	}
+
+	return token, nil
+}
+
+// CompleteWildcardSSL kills the waiting certbot process to let it verify
+// Call this after user has added the TXT record and it has propagated
+func (s *VerificationService) CompleteWildcardSSL(domain string) error {
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
+	}
+
+	baseDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		baseDomain = strings.TrimPrefix(domain, "*.")
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Kill the sleep process to let certbot continue
+	client.Run("pkill -f 'sleep 600'")
+
+	// Wait a moment for certbot to verify
+	time.Sleep(5 * time.Second)
+
+	// Check if certificate was created
+	checkCmd := fmt.Sprintf(`
+if [ -f /etc/letsencrypt/live/%s/fullchain.pem ]; then
+    echo "SUCCESS"
+else
+    cat /tmp/certbot-%s.log 2>/dev/null | tail -10
+fi
+`, baseDomain, baseDomain)
+
+	output, err := client.Run(checkCmd)
+	if err != nil {
+		return fmt.Errorf("failed to check SSL status: %w", err)
+	}
+
+	if strings.Contains(output, "SUCCESS") {
+		// Reload nginx
+		client.Run("nginx -t && systemctl reload nginx 2>/dev/null || true")
+		return nil
+	}
+
+	return fmt.Errorf("SSL generation failed: %s", strings.TrimSpace(output))
+}
+
+// GetBaseDomain returns the base domain for a wildcard or the domain itself
+func GetBaseDomain(domain string) string {
+	if strings.HasPrefix(domain, "*.") {
+		return strings.TrimPrefix(domain, "*.")
+	}
+	return domain
+}

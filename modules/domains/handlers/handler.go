@@ -412,6 +412,160 @@ func (h *Handler) APIGetWildcardSSLInstructions(w http.ResponseWriter, r *http.R
 	h.json(w, http.StatusOK, instructions)
 }
 
+// ExternalSetup shows the setup wizard for external/cPanel domains
+func (h *Handler) ExternalSetup(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		http.Error(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Get deploy server IP
+	deployIP := h.service.GetDeployIP()
+
+	// Build setup info
+	baseDomain := services.GetBaseDomain(domain.Name)
+	isWildcard := domain.IsWildcard || len(domain.Name) > 2 && domain.Name[:2] == "*."
+
+	setupInfo := models.ExternalSetupInfo{
+		Domain:        domain.Name,
+		BaseDomain:    baseDomain,
+		IsWildcard:    isWildcard,
+		ServerIP:      deployIP,
+		VerifyToken:   domain.VerifyToken,
+		SetupStep:     domain.SetupStep,
+		VerifyTXTName: "_guardbot-verify." + baseDomain,
+		AcmeTXTName:   "_acme-challenge." + baseDomain,
+	}
+
+	// Get ACME token if available
+	if domain.AcmeToken != nil && *domain.AcmeToken != "" {
+		setupInfo.AcmeToken = *domain.AcmeToken
+		setupInfo.AcmeTokenReady = true
+	} else if isWildcard || domain.SetupType == models.SetupTypeExternal {
+		// Try to generate ACME token if not ready
+		go h.generateAcmeTokenBackground(domain.ID, baseDomain)
+	}
+
+	module.RenderUserSection(w, r, h.templates, "domains:external_setup.html", map[string]interface{}{
+		"Title":     "Setup " + domain.Name,
+		"Domain":    domain,
+		"SetupInfo": setupInfo,
+	})
+}
+
+// generateAcmeTokenBackground generates ACME token in background
+func (h *Handler) generateAcmeTokenBackground(domainID, baseDomain string) {
+	token, err := h.verification.PreGenerateAcmeToken(baseDomain)
+	if err != nil {
+		return
+	}
+	// Save token to database
+	h.service.Update(domainID, models.UpdateDomainInput{
+		AcmeToken: &token,
+	})
+}
+
+// APIGetSetupStatus returns the current DNS setup status for polling
+func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	deployIP := h.service.GetDeployIP()
+	baseDomain := services.GetBaseDomain(domain.Name)
+
+	status := models.SetupStatus{
+		SetupStep: domain.SetupStep,
+	}
+
+	// Check A record
+	status.ARecordFound, status.ARecordIP = h.verification.CheckARecord(domain.Name, deployIP)
+
+	// Check verify TXT
+	verified, _ := h.verification.VerifyDNS(baseDomain, domain.VerifyToken)
+	status.VerifyTXTFound = verified
+
+	// Check ACME TXT if we have a token
+	if domain.AcmeToken != nil && *domain.AcmeToken != "" {
+		status.AcmeTXTFound = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
+	}
+
+	// Update verification status in DB
+	if verified && !domain.DNSVerified {
+		h.service.Update(id, models.UpdateDomainInput{DNSVerified: &verified})
+	}
+
+	// Check if all records found
+	status.AllRecordsFound = status.ARecordFound && status.VerifyTXTFound && status.AcmeTXTFound
+
+	// If all records found and not yet complete, trigger SSL generation
+	if status.AllRecordsFound && domain.SetupStep == models.SetupStepDNSWaiting {
+		go h.completeExternalSetup(domain)
+		step := models.SetupStepSSLGenerating
+		h.service.Update(id, models.UpdateDomainInput{SetupStep: &step})
+		status.SetupStep = models.SetupStepSSLGenerating
+	}
+
+	// Check if SSL is ready
+	if domain.SSLEnabled {
+		status.SSLReady = true
+		status.SetupStep = models.SetupStepComplete
+	}
+
+	h.json(w, http.StatusOK, status)
+}
+
+// completeExternalSetup finishes SSL setup for external domain
+func (h *Handler) completeExternalSetup(domain *models.Domain) {
+	// Complete the wildcard SSL generation
+	if err := h.verification.CompleteWildcardSSL(domain.Name); err != nil {
+		return
+	}
+
+	// Setup nginx
+	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+		return
+	}
+
+	// Mark as complete
+	step := models.SetupStepComplete
+	sslEnabled := true
+	h.service.Update(domain.ID, models.UpdateDomainInput{
+		SetupStep:  &step,
+		SSLEnabled: &sslEnabled,
+	})
+}
+
+// APIRefreshAcmeToken generates a new ACME token (if expired)
+func (h *Handler) APIRefreshAcmeToken(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	baseDomain := services.GetBaseDomain(domain.Name)
+	token, err := h.verification.PreGenerateAcmeToken(baseDomain)
+	if err != nil {
+		h.jsonError(w, "Failed to generate token: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Save new token
+	h.service.Update(id, models.UpdateDomainInput{AcmeToken: &token})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"token":   token,
+		"txtName": "_acme-challenge." + baseDomain,
+	})
+}
+
 // Helpers
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {
