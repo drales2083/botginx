@@ -261,9 +261,6 @@ async function manualCheck() {
 
         const status = await res.json();
 
-        // Log for debugging
-        console.log('API Response:', JSON.stringify(status, null, 2));
-
         // Update badges
         updateBadge('badge-a', status.aRecordFound);
         updateBadge('badge-verify', status.verifyTxtFound);
