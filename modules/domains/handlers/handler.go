@@ -295,6 +295,24 @@ func (h *Handler) APIVerifyDNS(w http.ResponseWriter, r *http.Request) {
 		result["message"] = verifyErr.Error()
 	}
 
+	// Auto-setup SSL and nginx after successful verification
+	if verified && !domain.SSLEnabled {
+		go func() {
+			// Generate SSL
+			if err := h.verification.GenerateSSL(domain.Name); err != nil {
+				return
+			}
+			// Setup nginx
+			if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+				return
+			}
+			// Mark SSL enabled
+			t := true
+			h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t})
+		}()
+		result["setup_started"] = true
+	}
+
 	h.json(w, http.StatusOK, result)
 }
 

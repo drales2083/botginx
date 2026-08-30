@@ -165,7 +165,11 @@ document.querySelector('.btn-verify')?.addEventListener('click', async function(
     const res = await fetch(`/user/domains/api/{{.Domain.ID}}/verify`, { method: 'POST' });
     const data = await res.json();
     if (res.ok && data.verified) {
-        reloadWithToast('DNS verified!', 'success');
+        if (data.setup_started) {
+            reloadWithToast('DNS verified! SSL setup started automatically.', 'success');
+        } else {
+            reloadWithToast('DNS verified!', 'success');
+        }
     } else {
         showToast(data.message || 'Verification failed. Check your DNS records.', 'danger');
         btn.disabled = false;
