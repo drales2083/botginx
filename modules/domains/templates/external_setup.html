@@ -205,10 +205,15 @@
                     </li>
                 </ul>
             </div>
-            <div class="card-footer text-center" id="poll-status">
-                <small class="text-muted">
-                    <i class="bi bi-arrow-repeat me-1"></i>Checking every 30 seconds...
-                </small>
+            <div class="card-footer" id="poll-status">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-arrow-repeat me-1"></i>Auto-check every 30s
+                    </small>
+                    <button class="btn btn-sm btn-primary" id="btn-check-now" onclick="manualCheck()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Check Now
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -240,6 +245,15 @@ function copyField(id) {
     input.select();
     document.execCommand('copy');
     showToast('Copied!', 'success');
+}
+
+async function manualCheck() {
+    const btn = document.getElementById('btn-check-now');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking...';
+    await checkStatus();
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Check Now';
 }
 
 function updateBadge(id, found) {
