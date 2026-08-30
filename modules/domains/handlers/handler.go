@@ -486,6 +486,17 @@ func (h *Handler) generateAcmeTokenBackground(domainID, baseDomain string) {
 		fmt.Printf("[ACME] Empty token returned for %s\n", baseDomain)
 		return
 	}
+
+	// If cert already exists, skip to completion
+	if token == "CERT_EXISTS" {
+		fmt.Printf("[ACME] SSL cert already exists for %s, completing setup\n", baseDomain)
+		domain, _ := h.service.Get(domainID)
+		if domain != nil {
+			h.completeExternalSetup(domain)
+		}
+		return
+	}
+
 	// Save token to database
 	preview := token
 	if len(preview) > 8 {

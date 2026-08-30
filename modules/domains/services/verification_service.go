@@ -628,6 +628,7 @@ func (s *VerificationService) CheckAcmeTXT(domain string, expectedToken string) 
 // PreGenerateAcmeToken gets an ACME challenge token for wildcard SSL
 // Runs certbot briefly to capture the token, then kills it
 // The actual SSL generation happens in CompleteWildcardSSL
+// Returns "CERT_EXISTS" if SSL cert already exists (no token needed)
 func (s *VerificationService) PreGenerateAcmeToken(domain string) (string, error) {
 	server, err := s.getServer()
 	if err != nil {
@@ -649,6 +650,12 @@ func (s *VerificationService) PreGenerateAcmeToken(domain string) (string, error
 		return "", fmt.Errorf("SSH connection failed: %w", err)
 	}
 	defer client.Close()
+
+	// Check if SSL cert already exists - no need for ACME token
+	checkCert := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "EXISTS"`, baseDomain)
+	if out, _ := client.Run(checkCert); strings.Contains(out, "EXISTS") {
+		return "CERT_EXISTS", nil
+	}
 
 	// Check if we already have a valid token
 	checkCmd := fmt.Sprintf(`cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
