@@ -173,23 +173,22 @@ document.addEventListener('click', async (e) => {
         confirmDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Remove';
         deleteModal.show();
 
-        const checkRes = await fetch(`/admin/domains/api/${deleteId}`, { method: 'DELETE' });
+        // Check if domain has links (GET with check param, not DELETE)
+        const checkRes = await fetch(`/admin/domains/api/${deleteId}?check=true`);
         const checkData = await checkRes.json();
 
-        if (checkRes.status === 409 && checkData.warning) {
+        if (checkData.link_count > 0) {
             forceDelete = true;
             deleteModalBody.innerHTML = `
                 <div class="alert alert-danger mb-3">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
                     <strong>Destructive Action</strong>
                 </div>
-                <p>${checkData.message}</p>
+                <p>This domain has <strong>${checkData.link_count}</strong> redirect link(s). Removing will permanently delete all links and their analytics data.</p>
                 <p class="text-danger fw-bold mb-0">This cannot be undone!</p>
             `;
             confirmDeleteBtn.disabled = false;
             confirmDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Remove Permanently';
-        } else if (checkRes.ok) {
-            reloadWithToast(`${deleteName} removed from the shared pool`, 'success');
         } else {
             deleteModalBody.innerHTML = `
                 <p>Remove <strong>${deleteName}</strong> from the shared pool?</p>
