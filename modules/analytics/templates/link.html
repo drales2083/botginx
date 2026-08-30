@@ -192,9 +192,7 @@
                                     {{if and (not .IsBot) (not .Blocked)}}<span class="badge bg-success">OK</span>{{end}}
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-danger btn-block-ip" data-ip="{{.IP}}" title="Block this IP">
-                                        <i class="bi bi-shield-x"></i>
-                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger btn-block-ip" data-ip="{{.IP}}">Block</button>
                                 </td>
                             </tr>
                             {{else}}
@@ -337,8 +335,7 @@ document.querySelectorAll('.btn-block-ip').forEach(btn => {
             if (res.ok) {
                 btn.classList.remove('btn-outline-danger');
                 btn.classList.add('btn-success');
-                btn.innerHTML = '<i class="bi bi-check-lg"></i>';
-                btn.title = 'Blocked';
+                btn.textContent = 'Blocked';
                 showToast('IP blocked', 'success');
             } else {
                 const data = await res.json();

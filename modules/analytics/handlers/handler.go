@@ -15,6 +15,7 @@ import (
 	"github.com/botginx/botginx/modules/analytics/services"
 	"github.com/botginx/botginx/pkg/antibot"
 	"github.com/botginx/botginx/pkg/ctx"
+	"github.com/botginx/botginx/pkg/geoip"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/settingspush"
 	"github.com/go-chi/chi/v5"
@@ -810,10 +811,25 @@ func (h *Handler) TrackingPixel(w http.ResponseWriter, r *http.Request) {
 		ua = r.Header.Get("User-Agent")
 	}
 
+	// Lookup country from IP
+	ipInfo, _ := geoip.Lookup(ip)
+	var country, city string
+	var lat, lon float64
+	if ipInfo != nil {
+		country = ipInfo.Country
+		city = ipInfo.City
+		lat = ipInfo.Latitude
+		lon = ipInfo.Longitude
+	}
+
 	visit := &models.Visit{
 		LinkID:    req.LinkID,
 		UserID:    owner,
 		IP:        ip,
+		Country:   country,
+		City:      city,
+		Latitude:  lat,
+		Longitude: lon,
 		UserAgent: ua,
 		Referrer:  req.Referrer,
 		Language:  req.Language,
