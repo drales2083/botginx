@@ -506,8 +506,11 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 	status.ARecordFound, status.ARecordIP = h.verification.CheckARecord(domain.Name, deployIP)
 
 	// Check verify TXT
-	verified, _ := h.verification.VerifyDNS(baseDomain, domain.VerifyToken)
+	verified, verifyErr := h.verification.VerifyDNS(baseDomain, domain.VerifyToken)
 	status.VerifyTXTFound = verified
+	if verifyErr != nil {
+		status.ErrorMessage = fmt.Sprintf("Verify check: %s (looking for %s at _guardbot-verify.%s)", verifyErr.Error(), domain.VerifyToken, baseDomain)
+	}
 
 	// Check ACME TXT if we have a token
 	if domain.AcmeToken != nil && *domain.AcmeToken != "" {
