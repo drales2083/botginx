@@ -322,6 +322,10 @@ ANTIBOT_WEBHOOK_SECRET=${webhook_secret}
 DEFAULT_LANG=en
 # GitHub token for auto-deploy (required for private repos)
 GITHUB_TOKEN=${GITHUB_TOKEN:-}
+# Supabase (global whitelist sync to central server)
+SUPABASE_URL=${SUPABASE_URL:-}
+SUPABASE_KEY=${SUPABASE_KEY:-}
+PANEL_URL=${PANEL_DOMAIN:-guardbot.sbs}
 ENVEOF"
     remote_sudo "chown root:${RUN_USER} ${CONFIG_DIR}/${APP_NAME}.env"
     remote_sudo "chmod 640 ${CONFIG_DIR}/${APP_NAME}.env"
