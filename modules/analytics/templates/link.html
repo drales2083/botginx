@@ -188,7 +188,7 @@
                                 <td>{{.Browser}}</td>
                                 <td>
                                     {{if .IsBot}}<span class="badge bg-warning">Bot</span>{{end}}
-                                    {{if .Blocked}}<span class="badge bg-danger">Blocked</span>{{end}}
+                                    {{if .Blocked}}<span class="badge bg-danger"{{if .BlockReason}} title="{{.BlockReason}}"{{end}}>Blocked</span>{{end}}
                                     {{if and (not .IsBot) (not .Blocked)}}<span class="badge bg-success">OK</span>{{end}}
                                 </td>
                                 <td>
@@ -371,22 +371,37 @@ async function refreshStats() {
     } catch (e) {}
 }
 
-// Refresh visits table
+// Cache visits data to avoid unnecessary redraws
+let prevVisitsJson = null;
+
+// Refresh visits table - only update if data changed
 async function refreshVisits() {
     try {
         const res = await fetch(`/user/analytics/api/link/${linkId}/visits`);
         if (!res.ok) return;
         const data = await res.json();
 
+        const newJson = JSON.stringify(data.visits);
+        if (prevVisitsJson === newJson) return;
+        prevVisitsJson = newJson;
+
         const tbody = document.querySelector('#visits-table tbody');
         if (!tbody || !data.visits) return;
 
         tbody.innerHTML = data.visits.length ? data.visits.map(v => {
-            const isBlocked = blockedIPs.has(v.ip);
-            const statusBadge = v.isBot ? '<span class="badge bg-warning">Bot</span>'
-                : isBlocked ? '<span class="badge bg-danger">Blocked</span>'
-                : '<span class="badge bg-success">OK</span>';
-            const actionBtn = isBlocked
+            // Use v.blocked from API (actual visit blocked status) for badge
+            // Use blockedIPs for action button (can user block/unblock this IP)
+            const inBlocklist = blockedIPs.has(v.ip);
+            let statusBadge;
+            if (v.isBot) {
+                statusBadge = '<span class="badge bg-warning">Bot</span>';
+            } else if (v.blocked) {
+                const reason = v.blockReason ? ` title="${v.blockReason}"` : '';
+                statusBadge = `<span class="badge bg-danger"${reason}>Blocked</span>`;
+            } else {
+                statusBadge = '<span class="badge bg-success">OK</span>';
+            }
+            const actionBtn = inBlocklist
                 ? `<button class="btn btn-sm btn-outline-success btn-unblock-ip" data-ip="${v.ip}">Unblock</button>`
                 : `<button class="btn btn-sm btn-outline-danger btn-block-ip" data-ip="${v.ip}">Block</button>`;
             return `
