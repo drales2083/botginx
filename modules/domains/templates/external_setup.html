@@ -238,7 +238,45 @@
 <script>
 const domainId = '{{.Domain.ID}}';
 let acmeToken = '{{.SetupInfo.AcmeToken}}';
+const initialSetupStep = '{{.Domain.SetupStep}}';
+const initialSSLEnabled = {{if .Domain.SSLEnabled}}true{{else}}false{{end}};
 let pollInterval;
+
+// Check if already complete on page load
+if (initialSetupStep === 'complete' || initialSSLEnabled) {
+    document.addEventListener('DOMContentLoaded', () => {
+        showSetupComplete();
+    });
+}
+
+function showSetupComplete() {
+    // Hide DNS cards
+    document.getElementById('card-step1').classList.add('d-none');
+    document.getElementById('card-step2').classList.add('d-none');
+    document.getElementById('card-step3').classList.add('d-none');
+    document.getElementById('stale-warning')?.classList.add('d-none');
+
+    // Update header
+    document.getElementById('setup-status').textContent = 'Complete';
+    document.getElementById('setup-status').className = 'badge bg-success';
+
+    // Show success card
+    document.getElementById('success-card').classList.remove('d-none');
+
+    // Update progress badges
+    ['progress-a', 'progress-verify', 'progress-ssl'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const badge = el.querySelector('.badge');
+            badge.innerHTML = '<i class="bi bi-check-lg"></i>';
+            badge.className = 'badge bg-success';
+        }
+    });
+
+    // Stop polling
+    if (pollInterval) clearInterval(pollInterval);
+    document.getElementById('poll-status').innerHTML = '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Setup complete!</small>';
+}
 
 function copyField(id) {
     const input = document.getElementById(id);
@@ -289,11 +327,7 @@ async function manualCheck() {
 
         // Check if complete
         if (status.sslReady) {
-            clearInterval(pollInterval);
-            document.getElementById('setup-status').textContent = 'Complete';
-            document.getElementById('setup-status').className = 'badge bg-success';
-            document.getElementById('poll-status').innerHTML = '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Setup complete!</small>';
-            document.getElementById('success-card').classList.remove('d-none');
+            showSetupComplete();
             showToast('Domain setup complete!', 'success');
         } else {
             // Show feedback with debug info
@@ -306,7 +340,6 @@ async function manualCheck() {
         }
 
     } catch (e) {
-        console.error('Check error:', e);
         showToast('Network error', 'danger');
     } finally {
         btn.disabled = false;
@@ -371,11 +404,7 @@ async function checkStatus() {
 
         // Check if complete
         if (status.sslReady) {
-            clearInterval(pollInterval);
-            document.getElementById('setup-status').textContent = 'Complete';
-            document.getElementById('setup-status').className = 'badge bg-success';
-            document.getElementById('poll-status').innerHTML = '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Setup complete!</small>';
-            document.getElementById('success-card').classList.remove('d-none');
+            showSetupComplete();
             showToast('Domain setup complete!', 'success');
         }
 
@@ -384,8 +413,10 @@ async function checkStatus() {
     }
 }
 
-// Start polling
-checkStatus();
-pollInterval = setInterval(checkStatus, 30000);
+// Start polling (unless already complete)
+if (initialSetupStep !== 'complete' && !initialSSLEnabled) {
+    checkStatus();
+    pollInterval = setInterval(checkStatus, 30000);
+}
 </script>
 {{end}}
