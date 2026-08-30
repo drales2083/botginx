@@ -251,9 +251,62 @@ async function manualCheck() {
     const btn = document.getElementById('btn-check-now');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking...';
-    await checkStatus();
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Check Now';
+
+    try {
+        const res = await fetch(`/user/domains/api/${domainId}/setup-status`);
+        if (!res.ok) {
+            showToast('Failed to check status', 'danger');
+            return;
+        }
+
+        const status = await res.json();
+
+        // Update badges
+        updateBadge('badge-a', status.aRecordFound);
+        updateBadge('badge-verify', status.verifyTxtFound);
+        updateBadge('badge-ssl', status.acmeTxtFound);
+
+        // Update progress
+        updateProgress('progress-a', status.aRecordFound);
+        updateProgress('progress-verify', status.verifyTxtFound);
+        updateProgress('progress-ssl', status.acmeTxtFound);
+
+        // Update ACME token if available
+        if (status.acmeToken && !acmeToken) {
+            acmeToken = status.acmeToken;
+            location.reload();
+            return;
+        }
+
+        // Show stale warning
+        const staleWarning = document.getElementById('stale-warning');
+        if (status.acmeTxtStale && status.acmeTxtStaleValue) {
+            document.getElementById('stale-value').value = status.acmeTxtStaleValue;
+            staleWarning.classList.remove('d-none');
+        } else {
+            staleWarning.classList.add('d-none');
+        }
+
+        // Check if complete
+        if (status.sslReady) {
+            clearInterval(pollInterval);
+            document.getElementById('setup-status').textContent = 'Complete';
+            document.getElementById('setup-status').className = 'badge bg-success';
+            document.getElementById('poll-status').innerHTML = '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Setup complete!</small>';
+            document.getElementById('success-card').classList.remove('d-none');
+            showToast('Domain setup complete!', 'success');
+        } else {
+            // Show feedback
+            const found = [status.aRecordFound, status.verifyTxtFound, status.acmeTxtFound].filter(Boolean).length;
+            showToast(`Checked: ${found}/3 records verified`, 'info');
+        }
+
+    } catch (e) {
+        showToast('Network error', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Check Now';
+    }
 }
 
 function updateBadge(id, found) {
