@@ -124,12 +124,62 @@
   </div>
 </div>
 
-<script>
-// Restart. The server stops answering mid-request by design, so a failed fetch
-// is the expected outcome rather than an error worth reporting.
-document.getElementById('btn-restart').addEventListener('click', async () => {
-    if (!confirm('Restart the server now? Anyone using the panel will be briefly disconnected.')) return;
+<!-- Restart Confirmation Modal -->
+<div class="modal fade" id="restartModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-warning">
+                <h5 class="modal-title"><i class="bi bi-arrow-clockwise text-warning me-2"></i>Restart Server</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Restart the server now?</p>
+                <p class="text-muted small mb-0">Anyone using the panel will be briefly disconnected.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmRestartBtn">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Restart
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- Deactivate Module Modal -->
+<div class="modal fade" id="disableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Deactivate Module</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Deactivate this module?</p>
+                <p class="text-muted small mb-0">The server will need to be restarted for changes to take effect.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDisableBtn">
+                    <i class="bi bi-x-circle me-1"></i>Deactivate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const restartModal = new bootstrap.Modal(document.getElementById('restartModal'));
+const disableModal = new bootstrap.Modal(document.getElementById('disableModal'));
+let pendingDisableBtn = null;
+
+// Restart server
+document.getElementById('btn-restart').addEventListener('click', () => {
+    restartModal.show();
+});
+
+document.getElementById('confirmRestartBtn').addEventListener('click', async () => {
+    restartModal.hide();
     const btn = document.getElementById('btn-restart');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Restarting...';
@@ -166,9 +216,7 @@ async function waitForServer(attempt = 0) {
     setTimeout(() => waitForServer(attempt + 1), 1000);
 }
 
-async function toggleModule(btn, action, confirmText) {
-    if (confirmText && !confirm(confirmText)) return;
-
+async function toggleModule(btn, action) {
     const id = btn.dataset.id;
     const label = btn.textContent;
     btn.disabled = true;
@@ -196,13 +244,23 @@ async function toggleModule(btn, action, confirmText) {
 document.addEventListener('click', (e) => {
     const enable = e.target.closest('.btn-enable');
     if (enable) {
-        toggleModule(enable, 'enable', null);
+        toggleModule(enable, 'enable');
         return;
     }
 
     const disable = e.target.closest('.btn-disable');
     if (disable) {
-        toggleModule(disable, 'disable', 'Deactivate this module? The server will need to be restarted.');
+        e.preventDefault();
+        pendingDisableBtn = disable;
+        disableModal.show();
+    }
+});
+
+document.getElementById('confirmDisableBtn').addEventListener('click', () => {
+    disableModal.hide();
+    if (pendingDisableBtn) {
+        toggleModule(pendingDisableBtn, 'disable');
+        pendingDisableBtn = null;
     }
 });
 </script>

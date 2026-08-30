@@ -26,11 +26,17 @@ type ServerPool interface {
 	PickRandom() (*servermodels.Server, error)
 }
 
+// ServerProvider returns SSH credentials for a domain's server
+type ServerProvider interface {
+	GetServerForDomain(domainID string) (ip string, port int, user, password string, err error)
+}
+
 type Handler struct {
-	service   *services.RedirectLinkService
-	templates *module.TemplateEngine
-	domains   DomainProvider
-	servers   ServerPool
+	service        *services.RedirectLinkService
+	templates      *module.TemplateEngine
+	domains        DomainProvider
+	servers        ServerPool
+	serverProvider ServerProvider
 }
 
 func NewHandler(
@@ -45,6 +51,11 @@ func NewHandler(
 		domains:   domains,
 		servers:   servers,
 	}
+}
+
+// SetServerProvider sets the server provider for VPS cleanup (called after init)
+func (h *Handler) SetServerProvider(sp ServerProvider) {
+	h.serverProvider = sp
 }
 
 // Page handlers
@@ -158,11 +169,56 @@ func (h *Handler) APIUpdate(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+
+	// Get link info before deleting for VPS cleanup
+	link, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Link not found", http.StatusNotFound)
+		return
+	}
+
+	// Cleanup VPS files (async, don't block response)
+	go h.cleanupVPS(link)
+
+	// Delete from database
 	if err := h.service.Delete(id); err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	h.json(w, http.StatusOK, map[string]interface{}{"deleted": true})
+}
+
+// cleanupVPS removes deployed files from the VPS
+func (h *Handler) cleanupVPS(link *models.RedirectLink) {
+	if h.serverProvider == nil {
+		return
+	}
+
+	// Get server SSH details
+	ip, port, user, password, err := h.serverProvider.GetServerForDomain(link.DomainID)
+	if err != nil || ip == "" {
+		return
+	}
+
+	// Connect to server
+	portStr := fmt.Sprintf("%d", port)
+	if port == 0 {
+		portStr = "22"
+	}
+
+	client, err := sshexec.NewClient(ip, portStr, user, password)
+	if err != nil {
+		return
+	}
+	defer client.Close()
+
+	// Delete botection settings file
+	settingsPath := fmt.Sprintf("/etc/botection/links/%s.json", link.ID)
+	client.Run(fmt.Sprintf("rm -f %s", settingsPath))
+
+	// Delete site directory
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.DomainName, link.Subdomain)
+	client.Run(fmt.Sprintf("rm -rf %s", siteDir))
 }
 
 func (h *Handler) APIUpdateCustomization(w http.ResponseWriter, r *http.Request) {

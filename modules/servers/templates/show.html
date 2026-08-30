@@ -78,7 +78,7 @@
                 <a href="/admin/servers/{{.Server.ID}}/terminal" class="btn btn-outline-secondary">
                     <i class="bi bi-terminal me-2"></i> {{t "servers.terminal"}}
                 </a>
-                <button class="btn btn-outline-danger" onclick="deleteServer()">
+                <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                     <i class="bi bi-trash me-2"></i> {{t "delete"}}
                 </button>
             </div>
@@ -118,13 +118,47 @@ document.querySelector('.btn-test')?.addEventListener('click', async function() 
     btn.innerHTML = '<i class="bi bi-plug me-1"></i> {{t "servers.test_connection"}}';
 });
 
-async function deleteServer() {
-    if (!confirm('Delete this server? This will also remove all deployed redirect links.')) return;
+document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('confirmDeleteBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
 
     const res = await fetch(`/admin/servers/api/{{.Server.ID}}`, { method: 'DELETE' });
     if (res.ok) {
+        flashToast('Server deleted', 'success');
         window.location.href = '/admin/servers';
+    } else {
+        showToast('Failed to delete server', 'danger');
+        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
     }
-}
+});
 </script>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Server</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Destructive Action</strong>
+                </div>
+                <p>Delete this server? This will also remove all deployed redirect links.</p>
+                <p class="text-danger fw-bold mb-0">This cannot be undone!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {{end}}

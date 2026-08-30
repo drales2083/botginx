@@ -138,3 +138,8 @@ func (m *Module) OwnerOf(linkID string) (string, error) {
 func (m *Module) GetLinkHost(linkID string) (host string, domainID string, err error) {
 	return m.service.GetLinkHost(linkID)
 }
+
+// SetServerProvider sets the server provider for VPS cleanup (called after init)
+func (m *Module) SetServerProvider(sp handlers.ServerProvider) {
+	m.handler.SetServerProvider(sp)
+}
