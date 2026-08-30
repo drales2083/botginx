@@ -471,13 +471,31 @@ func (h *Handler) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Parse the webhook payload
-	var payload antibot.WebhookPayload
-	if err := json.Unmarshal(body, &payload); err != nil {
+	// Try to parse as batched format first (antibot sends {"events": [...]})
+	var batch antibot.WebhookBatch
+	if err := json.Unmarshal(body, &batch); err != nil {
 		h.jsonError(w, "Invalid payload", http.StatusBadRequest)
 		return
 	}
 
+	// If events array exists, process each event
+	if len(batch.Events) > 0 {
+		for _, payload := range batch.Events {
+			h.processWebhookEvent(payload)
+		}
+	} else {
+		// Fallback: try single event format for backwards compatibility
+		var payload antibot.WebhookPayload
+		if err := json.Unmarshal(body, &payload); err == nil && payload.Event != "" {
+			h.processWebhookEvent(payload)
+		}
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{"received": true})
+}
+
+// processWebhookEvent handles a single webhook event
+func (h *Handler) processWebhookEvent(payload antibot.WebhookPayload) {
 	// Handle different event types - antibot sends specific event names like "request.blocked"
 	switch payload.Event {
 	case "request", "request.blocked", "request.challenged", "request.challenge_passed", "request.challenge_failed", "request.allowed":
@@ -490,9 +508,9 @@ func (h *Handler) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		h.handlePageViewEvent(payload.Data)
 	case "conversion":
 		h.handleConversionEvent(payload.Data)
+	default:
+		log.Printf("Webhook: unknown event type: %s", payload.Event)
 	}
-
-	h.json(w, http.StatusOK, map[string]interface{}{"received": true})
 }
 
 func (h *Handler) verifySignature(body []byte, signature, secret string) bool {

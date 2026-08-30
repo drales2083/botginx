@@ -118,12 +118,17 @@ func (c *Client) Check(req *CheckRequest) (*CheckResponse, error) {
 	return result.Data, nil
 }
 
-// WebhookPayload is the structure sent by antibot webhooks
+// WebhookPayload is the structure sent by antibot webhooks (single event)
 type WebhookPayload struct {
-	Event      string    `json:"event"`
-	Timestamp  string    `json:"timestamp"`
-	InstanceID string    `json:"instance_id"`
-	Data       any       `json:"data"`
+	Event      string `json:"event"`
+	Timestamp  string `json:"timestamp"`
+	InstanceID string `json:"instance_id"`
+	Data       any    `json:"data"`
+}
+
+// WebhookBatch is the batched format antibot actually sends
+type WebhookBatch struct {
+	Events []WebhookPayload `json:"events"`
 }
 
 // RequestEventData from antibot webhooks
