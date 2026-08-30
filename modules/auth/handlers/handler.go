@@ -9,6 +9,7 @@ import (
 	"github.com/botginx/botginx/modules/auth/services"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/botginx/botginx/pkg/subscription"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -71,6 +72,18 @@ func (h *Handler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) SubscriptionPage(w http.ResponseWriter, r *http.Request) {
+	user := ctx.GetUser(r)
+	if user == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
+
+	module.RenderUserSection(w, r, h.templates, "auth:subscription.html", map[string]interface{}{
+		"Title": "Subscription",
+	})
+}
+
 // Global Whitelist API handlers
 
 func (h *Handler) APIGetGlobalWhitelist(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +114,12 @@ func (h *Handler) APIAddGlobalWhitelist(w http.ResponseWriter, r *http.Request) 
 	userID := ctx.GetUserID(r)
 	if userID == "" {
 		h.jsonError(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	// Subscription required for product features
+	if !subscription.FromRequest(r).Active {
+		h.jsonError(w, "An active subscription is required", http.StatusForbidden)
 		return
 	}
 
@@ -139,6 +158,12 @@ func (h *Handler) APIRemoveGlobalWhitelist(w http.ResponseWriter, r *http.Reques
 	userID := ctx.GetUserID(r)
 	if userID == "" {
 		h.jsonError(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	// Subscription required for product features
+	if !subscription.FromRequest(r).Active {
+		h.jsonError(w, "An active subscription is required", http.StatusForbidden)
 		return
 	}
 

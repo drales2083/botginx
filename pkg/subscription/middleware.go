@@ -57,6 +57,40 @@ func (s *Service) Enforce(next http.Handler) http.Handler {
 	})
 }
 
+// EnforceAll blocks ALL access (reads and writes) from users without an active
+// subscription. Use this for product routes where unsubscribed users should
+// have no access at all, not even view-only.
+func (s *Service) EnforceAll(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if FromRequest(r).Active {
+			next.ServeHTTP(w, r)
+			return
+		}
+		denyAll(w, r)
+	})
+}
+
+func denyAll(w http.ResponseWriter, r *http.Request) {
+	const message = "An active subscription is required to access this feature. Contact an administrator."
+
+	// API callers get JSON; browser requests get redirected to subscription page.
+	if strings.Contains(r.URL.Path, "/api/") ||
+		strings.Contains(r.Header.Get("Accept"), "application/json") ||
+		r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":               message,
+			"subscriptionExpired": true,
+		})
+		return
+	}
+
+	// Redirect to subscription page for page requests
+	http.Redirect(w, r, "/user/subscription", http.StatusSeeOther)
+}
+
 func isRead(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodHead, http.MethodOptions:

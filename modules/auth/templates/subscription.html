@@ -1,0 +1,111 @@
+{{define "content"}}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        {{if not .Subscription.Active}}
+        <div class="alert alert-danger mb-4">
+            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Subscription Required</h5>
+            <p class="mb-0">Your subscription has expired or is inactive. All features are locked until your subscription is renewed.</p>
+        </div>
+        {{end}}
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-credit-card me-2"></i>Subscription Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4 text-muted">Status</dt>
+                            <dd class="col-sm-8">
+                                {{if eq .Subscription.Status "active"}}
+                                <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Active</span>
+                                {{else if eq .Subscription.Status "expiring"}}
+                                <span class="badge bg-warning fs-6"><i class="bi bi-clock me-1"></i>Expiring Soon</span>
+                                {{else if .Subscription.Active}}
+                                <span class="badge bg-success fs-6"><i class="bi bi-shield-check me-1"></i>Admin Access</span>
+                                {{else if eq .Subscription.Status "expired"}}
+                                <span class="badge bg-danger fs-6"><i class="bi bi-x-circle me-1"></i>Expired</span>
+                                {{else}}
+                                <span class="badge bg-secondary fs-6"><i class="bi bi-dash-circle me-1"></i>No Subscription</span>
+                                {{end}}
+                            </dd>
+
+                            {{if .Subscription.Plan}}
+                            <dt class="col-sm-4 text-muted">Plan</dt>
+                            <dd class="col-sm-8">{{.Subscription.Plan}}</dd>
+                            {{else if .Subscription.Active}}
+                            <dt class="col-sm-4 text-muted">Plan</dt>
+                            <dd class="col-sm-8">Admin - No subscription required</dd>
+                            {{end}}
+
+                            {{if and .Subscription.Active (not .Subscription.ExpiresAt.IsZero)}}
+                            <dt class="col-sm-4 text-muted">Expires</dt>
+                            <dd class="col-sm-8">
+                                {{.Subscription.ExpiresAt.Format "January 2, 2006"}}
+                                {{if eq .Subscription.Status "expiring"}}
+                                <span class="text-warning ms-2">({{.Subscription.DaysLeft}} day{{if ne .Subscription.DaysLeft 1}}s{{end}} left)</span>
+                                {{end}}
+                            </dd>
+                            {{end}}
+
+                            {{if not .Subscription.Active}}
+                            <dt class="col-sm-4 text-muted">Expired On</dt>
+                            <dd class="col-sm-8 text-muted">
+                                {{if not .Subscription.ExpiresAt.IsZero}}
+                                {{.Subscription.ExpiresAt.Format "January 2, 2006"}}
+                                {{else}}
+                                Never subscribed
+                                {{end}}
+                            </dd>
+                            {{end}}
+                        </dl>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        {{if .Subscription.Active}}
+                        <div class="display-1 text-success"><i class="bi bi-patch-check-fill"></i></div>
+                        {{else}}
+                        <div class="display-1 text-danger"><i class="bi bi-patch-exclamation-fill"></i></div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-question-circle me-2"></i>How to Subscribe</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">To activate or renew your subscription, please contact an administrator:</p>
+                <div class="d-flex gap-3">
+                    <a href="https://t.me/robertp2083" target="_blank" class="btn btn-primary">
+                        <i class="bi bi-telegram me-2"></i>Contact on Telegram
+                    </a>
+                </div>
+                <hr class="my-4">
+                <p class="text-muted mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Payment methods and self-service subscription management coming soon.
+                </p>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-list-check me-2"></i>What's Included</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Unlimited redirect links</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Custom domains</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Advanced bot protection</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Detailed analytics</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>IP whitelists & blocklists</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Country & device filtering</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

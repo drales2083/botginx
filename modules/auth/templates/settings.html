@@ -88,12 +88,15 @@
                         {{else if eq .Subscription.Status "expiring"}}
                         <span class="badge bg-warning">{{.Subscription.DaysLeft}} days left</span>
                         <div class="text-muted mt-1">Until {{.Subscription.ExpiresAt.Format "2006-01-02"}}</div>
+                        {{else if .Subscription.Active}}
+                        <span class="badge bg-success">Active</span>
+                        <div class="text-muted mt-1">Admin access - no subscription required</div>
                         {{else if eq .Subscription.Status "expired"}}
                         <span class="badge bg-danger">Expired</span>
-                        <div class="text-muted mt-1">Contact an admin on Telegram to renew.</div>
+                        <div class="text-muted mt-1"><a href="/user/subscription">Renew subscription</a></div>
                         {{else}}
                         <span class="badge bg-secondary">None</span>
-                        <div class="text-muted mt-1">Contact an admin on Telegram to subscribe.</div>
+                        <div class="text-muted mt-1"><a href="/user/subscription">Get a subscription</a></div>
                         {{end}}
                     </dd>
 
@@ -127,6 +130,13 @@
                 <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>My Whitelisted IPs</h6>
             </div>
             <div class="card-body">
+                {{if not .Subscription.Active}}
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-lock me-2"></i>
+                    <strong>Subscription required.</strong>
+                    <a href="/user/subscription" class="alert-link">View subscription</a> to manage your whitelisted IPs.
+                </div>
+                {{else}}
                 <p class="text-muted small mb-3">
                     These IPs bypass bot protection when you test your links. Add your device IPs (office, home, mobile).
                 </p>
@@ -181,6 +191,7 @@
                     <i class="bi bi-globe me-1"></i>
                     {{len .GlobalWhitelist}} of {{.MaxWhitelistIPs}} IPs used
                 </div>
+                {{end}}
             </div>
         </div>
     </div>

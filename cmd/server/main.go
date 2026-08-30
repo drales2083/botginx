@@ -237,20 +237,22 @@ func main() {
 	// Called by redirect pages to record visits
 	r.Mount("/api/track", analyticsModule.TrackingRoutes())
 
-	// User routes (/user/*) - require auth, and an active subscription for any
-	// write. Reads stay open so a lapsed user keeps view-only access.
+	// User routes (/user/*) - require auth and active subscription for all
+	// product features. Unsubscribed users are redirected to settings.
 	r.Route("/user", func(r chi.Router) {
 		r.Use(authModule.Handler.AuthMiddleware)
 		// Attached to the whole section so every page can render an accurate
 		// subscription banner, including the ones that stay writable below.
 		r.Use(subscriptions.Attach)
 
-		// Account settings live in the auth module but belong to this section.
-		// Deliberately outside Enforce: changing your own password must not
-		// require an active subscription.
+		// Account settings and subscription pages live in the auth module.
+		// Deliberately outside EnforceAll: users must be able to view their
+		// subscription status and change passwords even when expired.
 		r.Mount("/settings", authModule.SettingsRoutes())
+		r.Mount("/subscription", authModule.SubscriptionRoutes())
 
 		// Product routes: writes require an active subscription.
+		// Unsubscribed users can browse but cannot create, edit, or delete.
 		r.Group(func(r chi.Router) {
 			r.Use(subscriptions.Enforce)
 			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth")

@@ -255,23 +255,28 @@
       </div>
       <div class="app-content">
         <div class="container-fluid">
-          <!-- Access notice. Presentation only: writes are refused by the
-               subscription middleware whatever this shows. -->
+          <!-- Subscription notice. Actions are blocked by middleware; this is presentation.
+               Admins have Active=true regardless of status, so check Active first. -->
           {{if not .IsAdminSection}}
-          {{if eq .Subscription.Status "expired"}}
-          <div class="alert alert-warning" role="alert">
-            Your subscription has expired. You have view-only access until it is renewed —
-            contact an admin on Telegram to reactivate your account.
-          </div>
-          {{else if eq .Subscription.Status "none"}}
-          <div class="alert alert-warning" role="alert">
-            You need an active subscription to use this service. You have view-only access —
-            contact an admin on Telegram to get started.
-          </div>
+          {{if not .Subscription.Active}}
+            {{if eq .Subscription.Status "expired"}}
+            <div class="alert alert-danger" role="alert">
+              <i class="bi bi-lock me-2"></i>
+              <strong>View-only mode.</strong> Your subscription has expired.
+              <a href="/user/subscription" class="alert-link">Renew subscription</a> to create, edit, or delete.
+            </div>
+            {{else}}
+            <div class="alert alert-warning" role="alert">
+              <i class="bi bi-lock me-2"></i>
+              <strong>View-only mode.</strong> You need a subscription to use this service.
+              <a href="/user/subscription" class="alert-link">View subscription options</a>
+            </div>
+            {{end}}
           {{else if eq .Subscription.Status "expiring"}}
           <div class="alert alert-warning" role="alert">
+            <i class="bi bi-clock me-2"></i>
             Your subscription expires in {{.Subscription.DaysLeft}} day{{if ne .Subscription.DaysLeft 1}}s{{end}} —
-            contact an admin on Telegram to renew.
+            <a href="/user/subscription" class="alert-link">renew now</a>.
           </div>
           {{end}}
           {{end}}

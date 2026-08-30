@@ -84,6 +84,15 @@ func (m *Module) SettingsRoutes() chi.Router {
 	return r
 }
 
+// SubscriptionRoutes returns routes for the subscription page.
+// Mounted at /user/subscription, outside EnforceAll so users can view
+// their subscription status even when expired.
+func (m *Module) SubscriptionRoutes() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/", m.Handler.SubscriptionPage)
+	return r
+}
+
 func (m *Module) Routes() chi.Router {
 	r := chi.NewRouter()
 
