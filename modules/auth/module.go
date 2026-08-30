@@ -129,10 +129,17 @@ func (m *Module) Templates() fs.FS {
 }
 
 func (m *Module) MenuItems() []module.MenuItem {
-	// Login and signup stay out of the sidebar, but the account settings page
-	// this module serves under /user/settings belongs there. Ordered last so it
-	// sits below the feature pages.
+	// Login and signup stay out of the sidebar, but the account pages
+	// this module serves under /user belong there. Ordered last so they
+	// sit below the feature pages.
 	return []module.MenuItem{
+		{
+			Title:   "Subscription",
+			Icon:    "bi-credit-card",
+			Path:    "/user/subscription",
+			Order:   85,
+			Section: module.MenuSectionUser,
+		},
 		{
 			Title:   "Settings",
 			Icon:    "bi-gear",
