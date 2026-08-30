@@ -19,8 +19,9 @@ var migrationsFS embed.FS
 
 type Module struct {
 	*module.BaseModule
-	service *services.AuthService
-	Handler *handlers.Handler
+	service          *services.AuthService
+	globalWhitelist  *services.GlobalWhitelistService
+	Handler          *handlers.Handler
 }
 
 func New() *Module {
@@ -37,7 +38,9 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 
 	m.service = services.NewAuthService(deps.DB)
+	m.globalWhitelist = services.NewGlobalWhitelistService(deps.DB)
 	m.Handler = handlers.NewHandler(m.service, deps.Templates)
+	m.Handler.SetGlobalWhitelistService(m.globalWhitelist)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -46,12 +49,21 @@ func (m *Module) Init(deps *module.Dependencies) error {
 }
 
 func (m *Module) Migrate() error {
-	sql, err := fs.ReadFile(migrationsFS, "migrations/001_create_tables.sql")
-	if err != nil {
-		return err
+	migrations := []string{
+		"migrations/001_create_tables.sql",
+		"migrations/002_global_whitelist.sql",
 	}
-	_, err = m.DB().Exec(string(sql))
-	return err
+
+	for _, mig := range migrations {
+		sql, err := fs.ReadFile(migrationsFS, mig)
+		if err != nil {
+			return err
+		}
+		if _, err := m.DB().Exec(string(sql)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SettingsRoutes is the signed-in user's own account page. It is mounted under
@@ -63,6 +75,11 @@ func (m *Module) SettingsRoutes() chi.Router {
 	r.Get("/", m.Handler.SettingsPage)
 	r.Put("/api/profile", m.Handler.APIUpdateProfile)
 	r.Put("/api/password", m.Handler.APIChangePassword)
+
+	// Global whitelist API
+	r.Get("/api/global-whitelist", m.Handler.APIGetGlobalWhitelist)
+	r.Post("/api/global-whitelist", m.Handler.APIAddGlobalWhitelist)
+	r.Delete("/api/global-whitelist/{id}", m.Handler.APIRemoveGlobalWhitelist)
 
 	return r
 }

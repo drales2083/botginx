@@ -9,11 +9,13 @@ import (
 	"github.com/botginx/botginx/modules/auth/services"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/go-chi/chi/v5"
 )
 
 type Handler struct {
-	service   *services.AuthService
-	templates *module.TemplateEngine
+	service          *services.AuthService
+	templates        *module.TemplateEngine
+	globalWhitelist  *services.GlobalWhitelistService
 }
 
 func NewHandler(service *services.AuthService, templates *module.TemplateEngine) *Handler {
@@ -21,6 +23,10 @@ func NewHandler(service *services.AuthService, templates *module.TemplateEngine)
 		service:   service,
 		templates: templates,
 	}
+}
+
+func (h *Handler) SetGlobalWhitelistService(s *services.GlobalWhitelistService) {
+	h.globalWhitelist = s
 }
 
 // Pages
@@ -52,10 +58,107 @@ func (h *Handler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var globalWhitelist []models.GlobalWhitelist
+	if h.globalWhitelist != nil {
+		globalWhitelist, _ = h.globalWhitelist.List(user.ID)
+	}
+
 	module.RenderUserSection(w, r, h.templates, "auth:settings.html", map[string]interface{}{
-		"Title":   "Settings",
-		"Account": account,
+		"Title":           "Settings",
+		"Account":         account,
+		"GlobalWhitelist": globalWhitelist,
+		"MaxWhitelistIPs": services.MaxGlobalWhitelistIPs,
 	})
+}
+
+// Global Whitelist API handlers
+
+func (h *Handler) APIGetGlobalWhitelist(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	if h.globalWhitelist == nil {
+		h.jsonError(w, "Service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	entries, err := h.globalWhitelist.List(userID)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"whitelist": entries,
+		"maxIps":    services.MaxGlobalWhitelistIPs,
+	})
+}
+
+func (h *Handler) APIAddGlobalWhitelist(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	if h.globalWhitelist == nil {
+		h.jsonError(w, "Service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var input struct {
+		IP string `json:"ip"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	input.IP = strings.TrimSpace(input.IP)
+	if input.IP == "" {
+		h.jsonError(w, "IP address is required", http.StatusBadRequest)
+		return
+	}
+
+	entry, err := h.globalWhitelist.Add(userID, input.IP)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	h.json(w, http.StatusCreated, map[string]interface{}{
+		"success": true,
+		"entry":   entry,
+	})
+}
+
+func (h *Handler) APIRemoveGlobalWhitelist(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	if h.globalWhitelist == nil {
+		h.jsonError(w, "Service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		h.jsonError(w, "ID is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.globalWhitelist.Remove(userID, id); err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
 func (h *Handler) APIUpdateProfile(w http.ResponseWriter, r *http.Request) {

@@ -121,6 +121,68 @@
                 </div>
             </div>
         </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>My Whitelisted IPs</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    These IPs bypass bot protection when you test your links. Add your device IPs (office, home, mobile).
+                </p>
+
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>Added</th>
+                                <th style="width:80px">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="whitelist-table">
+                            {{range .GlobalWhitelist}}
+                            <tr data-id="{{.ID}}">
+                                <td><code>{{.IP}}</code></td>
+                                <td class="text-muted">{{.CreatedAt.Format "2006-01-02"}}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger btn-remove-ip" data-id="{{.ID}}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr id="no-ips-row">
+                                <td colspan="3" class="text-center text-muted py-3">No whitelisted IPs</td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+
+                {{if lt (len .GlobalWhitelist) .MaxWhitelistIPs}}
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" class="form-control font-monospace" id="new-ip" placeholder="Enter IP address (e.g. 192.168.1.100)">
+                    <button class="btn btn-primary" id="add-ip-btn">
+                        <i class="bi bi-plus-lg me-1"></i> Add
+                    </button>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" id="add-current-ip-btn">
+                    <i class="bi bi-geo-alt me-1"></i> Add my current IP
+                </button>
+                {{else}}
+                <div class="alert alert-info py-2 small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Maximum {{.MaxWhitelistIPs}} IPs. Remove one to add another.
+                </div>
+                {{end}}
+
+                <div class="text-muted small mt-3">
+                    <i class="bi bi-globe me-1"></i>
+                    {{len .GlobalWhitelist}} of {{.MaxWhitelistIPs}} IPs used
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -192,6 +254,92 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
     }
 
     btn.disabled = false;
+});
+
+// Global Whitelist functionality
+const addIpBtn = document.getElementById('add-ip-btn');
+const addCurrentIpBtn = document.getElementById('add-current-ip-btn');
+const newIpInput = document.getElementById('new-ip');
+
+async function addWhitelistIP(ip) {
+    if (!ip || !ip.trim()) {
+        showToast('Please enter an IP address', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch('/user/settings/api/global-whitelist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip: ip.trim() })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            reloadWithToast('IP added to whitelist', 'success');
+        } else {
+            showToast(data.error || 'Failed to add IP', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+}
+
+async function removeWhitelistIP(id) {
+    try {
+        const res = await fetch(`/user/settings/api/global-whitelist/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            reloadWithToast('IP removed from whitelist', 'success');
+        } else {
+            const data = await res.json();
+            showToast(data.error || 'Failed to remove IP', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+}
+
+if (addIpBtn) {
+    addIpBtn.addEventListener('click', () => {
+        addWhitelistIP(newIpInput.value);
+    });
+
+    newIpInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addWhitelistIP(newIpInput.value);
+        }
+    });
+}
+
+if (addCurrentIpBtn) {
+    addCurrentIpBtn.addEventListener('click', async () => {
+        addCurrentIpBtn.disabled = true;
+        addCurrentIpBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Detecting...';
+
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            const data = await res.json();
+            if (data.ip) {
+                await addWhitelistIP(data.ip);
+            }
+        } catch (err) {
+            showToast('Could not detect your IP address', 'danger');
+        }
+
+        addCurrentIpBtn.disabled = false;
+        addCurrentIpBtn.innerHTML = '<i class="bi bi-geo-alt me-1"></i> Add my current IP';
+    });
+}
+
+document.querySelectorAll('.btn-remove-ip').forEach(btn => {
+    btn.addEventListener('click', () => {
+        removeWhitelistIP(btn.dataset.id);
+    });
 });
 </script>
 {{end}}
