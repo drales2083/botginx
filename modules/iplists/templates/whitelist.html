@@ -1,0 +1,149 @@
+{{define "content"}}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="btn-group">
+            <a href="/user/iplists/whitelist" class="btn btn-primary">
+                <i class="bi bi-shield-check me-1"></i> Whitelist
+            </a>
+            <a href="/user/iplists/blocklist" class="btn btn-outline-secondary">
+                <i class="bi bi-shield-x me-1"></i> Blocklist
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>Visitor IP Whitelist</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Whitelisted visitor IPs bypass bot protection on your redirect links.
+            Use this for trusted visitors or testing partners.
+        </p>
+
+        <div class="table-responsive mb-3">
+            <table class="table table-striped mb-0" data-datatable>
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Note</th>
+                        <th>Added</th>
+                        <th style="width:80px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Whitelist}}
+                    <tr>
+                        <td><code>{{.IP}}</code></td>
+                        <td class="text-muted">{{if .Note}}{{.Note}}{{else}}-{{end}}</td>
+                        <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger btn-remove" data-id="{{.ID}}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">No whitelisted IPs</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        {{if lt (len .Whitelist) .MaxIPs}}
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small">IP Address</label>
+                <input type="text" class="form-control font-monospace" id="new-ip" placeholder="e.g. 192.168.1.100">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">Note (optional)</label>
+                <input type="text" class="form-control" id="new-note" placeholder="e.g. Partner testing">
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" id="add-btn">
+                    <i class="bi bi-plus-lg me-1"></i> Add
+                </button>
+            </div>
+        </div>
+        {{else}}
+        <div class="alert alert-info py-2 small mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Maximum {{.MaxIPs}} IPs. Remove one to add another.
+        </div>
+        {{end}}
+
+        <div class="text-muted small mt-3">
+            {{len .Whitelist}} of {{.MaxIPs}} IPs used
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('add-btn')?.addEventListener('click', async () => {
+    const ip = document.getElementById('new-ip').value.trim();
+    const note = document.getElementById('new-note').value.trim();
+
+    if (!ip) {
+        showToast('Please enter an IP address', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('add-btn');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/user/iplists/api/whitelist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, note })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            reloadWithToast('IP added to whitelist', 'success');
+        } else {
+            showToast(data.error || 'Failed to add IP', 'danger');
+            btn.disabled = false;
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+        btn.disabled = false;
+    }
+});
+
+document.getElementById('new-ip')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('add-btn')?.click();
+    }
+});
+
+document.querySelectorAll('.btn-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`/user/iplists/api/whitelist/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                reloadWithToast('IP removed from whitelist', 'success');
+            } else {
+                const data = await res.json();
+                showToast(data.error || 'Failed to remove IP', 'danger');
+                btn.disabled = false;
+            }
+        } catch (err) {
+            showToast('Network error', 'danger');
+            btn.disabled = false;
+        }
+    });
+});
+</script>
+{{end}}

@@ -17,6 +17,7 @@ import (
 	"github.com/botginx/botginx/modules/auth"
 	"github.com/botginx/botginx/modules/dashboard"
 	"github.com/botginx/botginx/modules/domains"
+	"github.com/botginx/botginx/modules/iplists"
 	modulesmgmt "github.com/botginx/botginx/modules/modules"
 	"github.com/botginx/botginx/modules/redirectlinks"
 	"github.com/botginx/botginx/modules/servers"
@@ -113,12 +114,15 @@ func main() {
 	// Analytics resolves inbound hostnames to links through redirectlinks.
 	analyticsModule := analytics.New(redirectLinksModule)
 
+	iplistsModule := iplists.New()
+
 	registry.Register(authModule)
 	registry.Register(dashboard.New())
 	registry.Register(serversModule)             // Admin module
 	registry.Register(domainsModule)
 	registry.Register(redirectLinksModule)
 	registry.Register(analyticsModule)           // Analytics module
+	registry.Register(iplistsModule)             // IP Lists module
 	registry.Register(users.New())               // Admin module
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
 
