@@ -625,15 +625,15 @@ func (s *VerificationService) CheckAcmeTXT(domain string, expectedToken string) 
 	return false
 }
 
-// PreGenerateAcmeToken starts certbot to get an ACME challenge token for wildcard SSL
-// Returns the token that user needs to add as TXT record
+// PreGenerateAcmeToken gets an ACME challenge token for wildcard SSL
+// Runs certbot briefly to capture the token, then kills it
+// The actual SSL generation happens in CompleteWildcardSSL
 func (s *VerificationService) PreGenerateAcmeToken(domain string) (string, error) {
 	server, err := s.getServer()
 	if err != nil {
 		return "", fmt.Errorf("no deploy server available")
 	}
 
-	// For wildcard domains, use base domain
 	baseDomain := domain
 	if strings.HasPrefix(domain, "*.") {
 		baseDomain = strings.TrimPrefix(domain, "*.")
@@ -650,61 +650,47 @@ func (s *VerificationService) PreGenerateAcmeToken(domain string) (string, error
 	}
 	defer client.Close()
 
-	// Create auth hook that captures and saves the token, then waits
-	setupCmd := `
-cat > /tmp/dns-auth-capture.sh << 'HOOKEOF'
-#!/bin/bash
-echo "$CERTBOT_VALIDATION" > /tmp/acme-token-$CERTBOT_DOMAIN.txt
-# Wait for external verification (10 minutes max)
-sleep 600
-HOOKEOF
-chmod +x /tmp/dns-auth-capture.sh
-`
-	client.Run(setupCmd)
-
-	// Check if token file already exists (certbot may already be running)
+	// Check if we already have a valid token
 	checkCmd := fmt.Sprintf(`cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
 	existing, _ := client.Run(checkCmd)
 	if existingToken := strings.TrimSpace(existing); existingToken != "" && len(existingToken) > 20 {
-		// Token already exists and looks valid (ACME tokens are ~43 chars)
 		return existingToken, nil
 	}
 
-	// Start certbot in background to capture the token
+	// Create auth hook that captures token and exits immediately
+	// We just need the token value, actual SSL generation is separate
+	setupCmd := `cat > /tmp/dns-auth-capture.sh << 'HOOKEOF'
+#!/bin/bash
+echo "$CERTBOT_VALIDATION" > /tmp/acme-token-$CERTBOT_DOMAIN.txt
+# Exit with error to stop certbot - we just needed the token
+exit 1
+HOOKEOF
+chmod +x /tmp/dns-auth-capture.sh`
+	client.Run(setupCmd)
+
+	// Run certbot to get token (will fail after capturing token, that's intentional)
 	certbotCmd := fmt.Sprintf(`
-rm -f /tmp/acme-token-%s.txt /tmp/certbot-%s.log
-nohup certbot certonly --manual --preferred-challenges dns \
+rm -f /tmp/acme-token-%s.txt
+timeout 30 certbot certonly --manual --preferred-challenges dns \
   -d "*.%s" \
   --agree-tos --email admin@%s \
   --manual-auth-hook /tmp/dns-auth-capture.sh \
-  > /tmp/certbot-%s.log 2>&1 &
-`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+  --non-interactive 2>/dev/null || true
+cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""
+`, baseDomain, baseDomain, baseDomain, baseDomain)
 
-	_, err = client.Run(certbotCmd)
-	if err != nil {
-		return "", fmt.Errorf("failed to start certbot: %w", err)
+	output, _ := client.Run(certbotCmd)
+	token := strings.TrimSpace(output)
+
+	if token == "" || len(token) < 20 {
+		return "", fmt.Errorf("failed to generate ACME token")
 	}
 
-	// Poll for token with retries (certbot can take 5-15 seconds to generate token)
-	for i := 0; i < 10; i++ {
-		time.Sleep(2 * time.Second)
-		readCmd := fmt.Sprintf(`cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
-		output, _ := client.Run(readCmd)
-		token := strings.TrimSpace(output)
-		if token != "" {
-			return token, nil
-		}
-	}
-
-	// Check certbot log for errors
-	logCmd := fmt.Sprintf(`tail -5 /tmp/certbot-%s.log 2>/dev/null || echo "no log"`, baseDomain)
-	logOutput, _ := client.Run(logCmd)
-
-	return "", fmt.Errorf("token generation timed out. Log: %s", strings.TrimSpace(logOutput))
+	return token, nil
 }
 
-// CompleteWildcardSSL kills the waiting certbot process to let it verify
-// Call this after user has added the TXT record and it has propagated
+// CompleteWildcardSSL generates wildcard SSL certificate
+// Runs certbot with an auth hook that checks DNS until record propagates
 func (s *VerificationService) CompleteWildcardSSL(domain string) error {
 	server, err := s.getServer()
 	if err != nil {
@@ -727,27 +713,79 @@ func (s *VerificationService) CompleteWildcardSSL(domain string) error {
 	}
 	defer client.Close()
 
-	// Kill the sleep process to let certbot continue
-	client.Run("pkill -f 'sleep 600'")
+	// Check if cert already exists
+	checkExisting := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "EXISTS"`, baseDomain)
+	if out, _ := client.Run(checkExisting); strings.Contains(out, "EXISTS") {
+		return nil // Already have cert
+	}
 
-	// Wait a moment for certbot to verify
-	time.Sleep(5 * time.Second)
+	// Create smart auth hook that:
+	// 1. Saves token to file for UI to display
+	// 2. Checks authoritative NS + public DNS until record propagates
+	// 3. Times out after 10 minutes
+	authHookScript := `cat > /tmp/dns-auth-smart.sh << 'HOOKEOF'
+#!/bin/bash
+DOMAIN="$CERTBOT_DOMAIN"
+TOKEN="$CERTBOT_VALIDATION"
+
+# Save token for UI
+echo "$TOKEN" > /tmp/acme-token-$DOMAIN.txt
+
+# Get authoritative nameserver
+NS=$(dig NS $DOMAIN +short | head -1 | sed 's/\.$//')
+if [ -z "$NS" ]; then
+    NS="ns1.host96.com"
+fi
+
+# Wait up to 10 minutes for DNS propagation
+for i in {1..60}; do
+    # Check authoritative NS first (most up-to-date)
+    AUTH_VAL=$(dig @$NS _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
+    if [ "$AUTH_VAL" = "$TOKEN" ]; then
+        # Also verify at least one public DNS has it
+        GOOGLE_VAL=$(dig @8.8.8.8 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
+        CF_VAL=$(dig @1.1.1.1 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
+        if [ "$GOOGLE_VAL" = "$TOKEN" ] || [ "$CF_VAL" = "$TOKEN" ]; then
+            echo "DNS verified at authoritative and public DNS"
+            exit 0
+        fi
+        echo "Waiting for public DNS propagation..."
+    fi
+    sleep 10
+done
+
+echo "DNS propagation timeout after 10 minutes"
+exit 1
+HOOKEOF
+chmod +x /tmp/dns-auth-smart.sh`
+	client.Run(authHookScript)
+
+	// Run certbot with the smart auth hook
+	certbotCmd := fmt.Sprintf(`
+certbot certonly --manual --preferred-challenges dns \
+  -d "*.%s" \
+  --agree-tos --email admin@%s \
+  --manual-auth-hook /tmp/dns-auth-smart.sh \
+  --non-interactive 2>&1
+`, baseDomain, baseDomain)
+
+	output, err := client.Run(certbotCmd)
+	if err != nil {
+		return fmt.Errorf("certbot failed: %s", output)
+	}
 
 	// Check if certificate was created
 	checkCmd := fmt.Sprintf(`
 if [ -f /etc/letsencrypt/live/%s/fullchain.pem ]; then
     echo "SUCCESS"
 else
-    cat /tmp/certbot-%s.log 2>/dev/null | tail -10
+    echo "FAILED"
 fi
-`, baseDomain, baseDomain)
+`, baseDomain)
 
-	output, err := client.Run(checkCmd)
-	if err != nil {
-		return fmt.Errorf("failed to check SSL status: %w", err)
-	}
+	checkOutput, _ := client.Run(checkCmd)
 
-	if strings.Contains(output, "SUCCESS") {
+	if strings.Contains(checkOutput, "SUCCESS") {
 		// Reload nginx
 		client.Run("nginx -t && systemctl reload nginx 2>/dev/null || true")
 		return nil
