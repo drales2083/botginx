@@ -329,12 +329,12 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", siteDir)
 	client.Run(mkdirCmd)
 
-	// Generate and write the redirect HTML page
-	redirectHTML := generateRedirectHTML(link)
+	// Get HTML content based on link type
+	deployHTML := getDeployHTML(link)
 	htmlPath := fmt.Sprintf("%s/index.html", siteDir)
-	writeHTMLCmd := fmt.Sprintf("cat > %s << 'HTMLEOF'\n%s\nHTMLEOF", htmlPath, redirectHTML)
+	writeHTMLCmd := fmt.Sprintf("cat > %s << 'HTMLEOF'\n%s\nHTMLEOF", htmlPath, deployHTML)
 	if _, err := client.Run(writeHTMLCmd); err != nil {
-		errMsg := "Failed to write redirect page: " + err.Error()
+		errMsg := "Failed to write page: " + err.Error()
 		h.service.SetDeployStatus(id, models.DeployStatusFailed, nil, &errMsg)
 		h.jsonError(w, errMsg, http.StatusInternalServerError)
 		return
@@ -383,16 +383,25 @@ func (h *Handler) autoDeploy(linkID string) {
 	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
 	client.Run(fmt.Sprintf("mkdir -p %s", siteDir))
 
-	redirectHTML := generateRedirectHTML(link)
+	// Get HTML content based on link type
+	deployHTML := getDeployHTML(link)
 	htmlPath := fmt.Sprintf("%s/index.html", siteDir)
-	writeHTMLCmd := fmt.Sprintf("cat > %s << 'HTMLEOF'\n%s\nHTMLEOF", htmlPath, redirectHTML)
+	writeHTMLCmd := fmt.Sprintf("cat > %s << 'HTMLEOF'\n%s\nHTMLEOF", htmlPath, deployHTML)
 	if _, err := client.Run(writeHTMLCmd); err != nil {
-		errMsg := "Failed to write redirect page: " + err.Error()
+		errMsg := "Failed to write page: " + err.Error()
 		h.service.SetDeployStatus(linkID, models.DeployStatusFailed, nil, &errMsg)
 		return
 	}
 
 	h.service.SetDeployStatus(linkID, models.DeployStatusDeployed, &deployedURL, nil)
+}
+
+// getDeployHTML returns the appropriate HTML based on link type
+func getDeployHTML(link *models.RedirectLink) string {
+	if link.Type == models.LinkTypeHTML && link.HTMLContent != nil && *link.HTMLContent != "" {
+		return *link.HTMLContent
+	}
+	return generateRedirectHTML(link)
 }
 
 // generateRedirectHTML creates the redirect splash page HTML using customization settings
