@@ -211,40 +211,64 @@
 const linkId = '{{.LinkID}}';
 const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
+// Track locally blocked IPs (persists across table refreshes)
+const blockedIPs = new Set();
+
+// Cache previous data to avoid unnecessary redraws
+let prevData = {
+    timeline: null,
+    countries: null,
+    devices: null,
+    browsers: null
+};
+
+function dataChanged(key, newData) {
+    const prev = prevData[key];
+    const newJson = JSON.stringify(newData);
+    if (prev === newJson) return false;
+    prevData[key] = newJson;
+    return true;
+}
+
 // Timeline chart
 let timelineChart;
-async function loadTimeline(period) {
-    const res = await fetch(`/user/analytics/api/link/${linkId}/timeline?period=${period}`);
-    const data = await res.json();
+async function loadTimeline(period, force = false) {
+    try {
+        const res = await fetch(`/user/analytics/api/link/${linkId}/timeline?period=${period}`);
+        const data = await res.json();
 
-    if (timelineChart) timelineChart.destroy();
-    timelineChart = new Chart(document.getElementById('timeline-chart'), {
-        type: 'line',
-        data: {
-            labels: data.timeline.map(p => p.time),
-            datasets: [{
-                label: 'Visits',
-                data: data.timeline.map(p => p.count),
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
-        }
-    });
+        if (!force && !dataChanged('timeline', data.timeline)) return;
+
+        if (timelineChart) timelineChart.destroy();
+        timelineChart = new Chart(document.getElementById('timeline-chart'), {
+            type: 'line',
+            data: {
+                labels: data.timeline.map(p => p.time),
+                datasets: [{
+                    label: 'Visits',
+                    data: data.timeline.map(p => p.count),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    } catch (e) {}
 }
 
 document.querySelectorAll('.period-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        loadTimeline(btn.dataset.period);
+        prevData.timeline = null; // Force refresh on period change
+        loadTimeline(btn.dataset.period, true);
     });
 });
 
@@ -256,6 +280,9 @@ async function loadCountryChart() {
     try {
         const res = await fetch(`/user/analytics/api/link/${linkId}/countries`);
         const data = await res.json();
+
+        if (!dataChanged('countries', data.countries)) return;
+
         if (countryChart) countryChart.destroy();
         countryChart = new Chart(document.getElementById('country-chart'), {
             type: 'doughnut',
@@ -273,6 +300,9 @@ async function loadDeviceChart() {
     try {
         const res = await fetch(`/user/analytics/api/link/${linkId}/devices`);
         const data = await res.json();
+
+        if (!dataChanged('devices', data.devices)) return;
+
         if (deviceChart) deviceChart.destroy();
         deviceChart = new Chart(document.getElementById('device-chart'), {
             type: 'doughnut',
@@ -290,6 +320,9 @@ async function loadBrowserChart() {
     try {
         const res = await fetch(`/user/analytics/api/link/${linkId}/browsers`);
         const data = await res.json();
+
+        if (!dataChanged('browsers', data.browsers)) return;
+
         if (browserChart) browserChart.destroy();
         browserChart = new Chart(document.getElementById('browser-chart'), {
             type: 'doughnut',
@@ -302,7 +335,7 @@ async function loadBrowserChart() {
     } catch (e) {}
 }
 
-loadTimeline('{{.Period}}');
+loadTimeline('{{.Period}}', true);
 loadCountryChart();
 loadDeviceChart();
 loadBrowserChart();
@@ -314,14 +347,12 @@ async function refreshStats() {
         if (!res.ok) return;
         const data = await res.json();
 
-        // Update stat cards using data-stat attribute
         document.querySelector('[data-stat="total"]').textContent = data.totalVisits || 0;
         document.querySelector('[data-stat="unique"]').textContent = data.uniqueVisits || 0;
         document.querySelector('[data-stat="bots"]').textContent = data.botVisits || 0;
         document.querySelector('[data-stat="blocked"]').textContent = data.blockedVisits || 0;
         document.querySelector('[data-stat="today"]').textContent = data.todayVisits || 0;
 
-        // Blink live indicator
         const indicator = document.getElementById('live-indicator');
         indicator.style.opacity = '0.5';
         setTimeout(() => indicator.style.opacity = '1', 200);
@@ -338,45 +369,62 @@ async function refreshVisits() {
         const tbody = document.querySelector('#visits-table tbody');
         if (!tbody || !data.visits) return;
 
-        tbody.innerHTML = data.visits.length ? data.visits.map(v => `
+        tbody.innerHTML = data.visits.length ? data.visits.map(v => {
+            const isLocallyBlocked = blockedIPs.has(v.ip);
+            return `
             <tr data-ip="${v.ip}">
                 <td><small>${new Date(v.createdAt).toLocaleString('en-US', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</small></td>
                 <td><code class="small">${v.ip}</code></td>
                 <td>${v.country || '-'}</td>
                 <td>${v.device === 'mobile' ? '<i class="bi bi-phone"></i>' : v.device === 'tablet' ? '<i class="bi bi-tablet"></i>' : '<i class="bi bi-display"></i>'}</td>
                 <td>${v.browser || '-'}</td>
-                <td>${v.isBot ? '<span class="badge bg-warning">Bot</span>' : v.blocked ? '<span class="badge bg-danger">Blocked</span>' : '<span class="badge bg-success">OK</span>'}</td>
-                <td><button class="btn btn-sm btn-outline-danger btn-block-ip" data-ip="${v.ip}">Block</button></td>
-            </tr>
-        `).join('') : '<tr><td colspan="7" class="text-muted text-center py-3">No visits yet</td></tr>';
+                <td>${v.isBot ? '<span class="badge bg-warning">Bot</span>' : (v.blocked || isLocallyBlocked) ? '<span class="badge bg-danger">Blocked</span>' : '<span class="badge bg-success">OK</span>'}</td>
+                <td>${isLocallyBlocked ? '<button class="btn btn-sm btn-success" disabled>Blocked</button>' : '<button class="btn btn-sm btn-outline-danger btn-block-ip" data-ip="' + v.ip + '">Block</button>'}</td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="7" class="text-muted text-center py-3">No visits yet</td></tr>';
 
-        // Re-attach block handlers
-        document.querySelectorAll('.btn-block-ip').forEach(btn => {
-            btn.onclick = () => blockIP(btn.dataset.ip, btn);
-        });
+        attachBlockHandlers();
     } catch (e) {}
+}
+
+function attachBlockHandlers() {
+    document.querySelectorAll('.btn-block-ip').forEach(btn => {
+        btn.onclick = () => blockIP(btn.dataset.ip, btn);
+    });
 }
 
 async function blockIP(ip, btn) {
     btn.disabled = true;
+    btn.textContent = 'Blocking...';
     try {
         const res = await fetch(`/user/iplists/api/block/${encodeURIComponent(ip)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ source: 'analytics' })
         });
+        const data = await res.json();
         if (res.ok) {
+            blockedIPs.add(ip);
             btn.classList.remove('btn-outline-danger');
             btn.classList.add('btn-success');
             btn.textContent = 'Blocked';
-            showToast('IP blocked', 'success');
+            // Update status badge for this IP
+            const row = btn.closest('tr');
+            if (row) {
+                const statusCell = row.querySelector('td:nth-child(6)');
+                if (statusCell && !statusCell.innerHTML.includes('bg-danger')) {
+                    statusCell.innerHTML = '<span class="badge bg-danger">Blocked</span>';
+                }
+            }
+            showToast('IP ' + ip + ' blocked successfully', 'success');
         } else {
-            const data = await res.json();
             showToast(data.error || 'Failed to block IP', 'danger');
+            btn.textContent = 'Block';
             btn.disabled = false;
         }
     } catch (err) {
-        showToast('Network error', 'danger');
+        showToast('Network error blocking IP', 'danger');
+        btn.textContent = 'Block';
         btn.disabled = false;
     }
 }
@@ -421,7 +469,6 @@ setInterval(() => {
     refreshVisits();
     refreshOS();
     refreshReferrers();
-    // Refresh charts
     const activeBtn = document.querySelector('.period-btn.active');
     if (activeBtn) loadTimeline(activeBtn.dataset.period);
     loadCountryChart();
@@ -430,8 +477,6 @@ setInterval(() => {
 }, 5000);
 
 // Initial block handlers for server-rendered rows
-document.querySelectorAll('.btn-block-ip').forEach(btn => {
-    btn.onclick = () => blockIP(btn.dataset.ip, btn);
-});
+attachBlockHandlers();
 </script>
 {{end}}
