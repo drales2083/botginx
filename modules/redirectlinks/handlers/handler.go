@@ -371,27 +371,117 @@ func generateRedirectHTML(link *models.RedirectLink) string {
 		duration = 3
 	}
 
-	// Get customization with defaults
-	c := models.DefaultCustomization
+	// Extract customization with defaults
+	bgColor := "#0a0a0a"
+	bgColorSecondary := "#1a1a1a"
+	gradientEnabled := false
+	textColor := "#ffffff"
+	textSize := 32
+	loaderColor := "#3b82f6"
+	loaderType := "spinner"
+	heading := "Please Wait"
+	subheading := "Redirecting..."
+	pageTitle := "Redirecting"
+
 	if link.Customization != nil {
 		if v, ok := link.Customization["bgColor"].(string); ok && v != "" {
-			c.BgColor = v
+			bgColor = v
 		}
-		if v, ok := link.Customization["heading"].(string); ok {
-			c.Heading = v
+		if v, ok := link.Customization["bgColorSecondary"].(string); ok && v != "" {
+			bgColorSecondary = v
 		}
-		if v, ok := link.Customization["subheading"].(string); ok {
-			c.Subheading = v
+		if v, ok := link.Customization["gradientEnabled"].(bool); ok {
+			gradientEnabled = v
 		}
 		if v, ok := link.Customization["textColor"].(string); ok && v != "" {
-			c.TextColor = v
+			textColor = v
+		}
+		if v, ok := link.Customization["textSize"].(float64); ok && v > 0 {
+			textSize = int(v)
 		}
 		if v, ok := link.Customization["loaderColorPrimary"].(string); ok && v != "" {
-			c.LoaderColorPrimary = v
+			loaderColor = v
+		}
+		if v, ok := link.Customization["loader"].(string); ok && v != "" {
+			loaderType = v
+		}
+		if v, ok := link.Customization["heading"].(string); ok {
+			heading = v
+		}
+		if v, ok := link.Customization["subheading"].(string); ok {
+			subheading = v
 		}
 		if v, ok := link.Customization["pageTitle"].(string); ok && v != "" {
-			c.PageTitle = v
+			pageTitle = v
 		}
+	}
+
+	// Build background style
+	bgStyle := bgColor
+	if gradientEnabled {
+		bgStyle = fmt.Sprintf("linear-gradient(135deg, %s 0%%, %s 100%%)", bgColor, bgColorSecondary)
+	}
+
+	// Build loader HTML based on type
+	loaderHTML := ""
+	loaderCSS := ""
+	switch loaderType {
+	case "dots-bounce":
+		loaderHTML = `<div class="loader-dots"><span></span><span></span><span></span></div>`
+		loaderCSS = fmt.Sprintf(`
+        .loader-dots span {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin: 0 4px;
+            background: %s;
+            border-radius: 50%%;
+            animation: bounce 1.4s ease-in-out infinite both;
+        }
+        .loader-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loader-dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%%, 80%%, 100%% { transform: scale(0); } 40%% { transform: scale(1); } }`, loaderColor)
+	case "pulse":
+		loaderHTML = `<div class="loader-pulse"></div>`
+		loaderCSS = fmt.Sprintf(`
+        .loader-pulse {
+            width: 48px;
+            height: 48px;
+            background: %s;
+            border-radius: 50%%;
+            margin: 0 auto;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%%, 100%% { transform: scale(0.8); opacity: 0.5; } 50%% { transform: scale(1); opacity: 1; } }`, loaderColor)
+	case "bars":
+		loaderHTML = `<div class="loader-bars"><span></span><span></span><span></span><span></span></div>`
+		loaderCSS = fmt.Sprintf(`
+        .loader-bars span {
+            display: inline-block;
+            width: 6px;
+            height: 32px;
+            margin: 0 3px;
+            background: %s;
+            animation: bars 1.2s ease-in-out infinite;
+        }
+        .loader-bars span:nth-child(1) { animation-delay: 0s; }
+        .loader-bars span:nth-child(2) { animation-delay: 0.1s; }
+        .loader-bars span:nth-child(3) { animation-delay: 0.2s; }
+        .loader-bars span:nth-child(4) { animation-delay: 0.3s; }
+        @keyframes bars { 0%%, 40%%, 100%% { transform: scaleY(0.4); } 20%% { transform: scaleY(1); } }`, loaderColor)
+	default: // spinner
+		loaderHTML = `<div class="loader-spinner"></div>`
+		loaderCSS = fmt.Sprintf(`
+        .loader-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: %s;
+            border-radius: 50%%;
+            margin: 0 auto;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }`, loaderColor)
 	}
 
 	return fmt.Sprintf(`<!DOCTYPE html>
@@ -411,25 +501,17 @@ func generateRedirectHTML(link *models.RedirectLink) string {
             color: %s;
             font-family: system-ui, -apple-system, sans-serif;
         }
-        .container { text-align: center; }
-        h1 { font-size: 2rem; margin-bottom: 1rem; font-weight: 600; }
-        p { opacity: 0.7; font-size: 1rem; }
-        .loader {
-            width: 48px;
-            height: 48px;
-            border: 4px solid rgba(255,255,255,0.2);
-            border-top-color: %s;
-            border-radius: 50%%;
-            margin: 1.5rem auto;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .container { text-align: center; padding: 2rem; }
+        h1 { font-size: %dpx; margin-bottom: 1rem; font-weight: 600; }
+        p { opacity: 0.7; font-size: 1rem; margin-top: 1rem; }
+        .loader { margin: 1.5rem 0; }
+        %s
     </style>
 </head>
 <body>
     <div class="container">
         <h1>%s</h1>
-        <div class="loader"></div>
+        <div class="loader">%s</div>
         <p>%s</p>
     </div>
     <script>
@@ -438,7 +520,7 @@ func generateRedirectHTML(link *models.RedirectLink) string {
         }, %d000);
     </script>
 </body>
-</html>`, c.PageTitle, c.BgColor, c.TextColor, c.LoaderColorPrimary, c.Heading, c.Subheading, destURL, duration)
+</html>`, pageTitle, bgStyle, textColor, textSize, loaderCSS, heading, loaderHTML, subheading, destURL, duration)
 }
 
 // Helpers
