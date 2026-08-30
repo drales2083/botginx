@@ -83,7 +83,7 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 
 		if err == nil && len(records) > 0 {
 			for _, record := range records {
-				if record == expectedToken {
+				if strings.TrimSpace(record) == expectedToken {
 					return true, nil
 				}
 			}
