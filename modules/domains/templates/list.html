@@ -51,6 +51,10 @@
                     <td>
                         {{if .SSLEnabled}}
                         <span class="badge bg-success"><i class="bi bi-lock-fill"></i></span>
+                        {{else if and .IsWildcard (ne .SetupStep "complete")}}
+                        <a href="/user/domains/{{.ID}}/setup" class="badge bg-warning text-dark text-decoration-none">
+                            <i class="bi bi-gear-fill me-1"></i>Setup
+                        </a>
                         {{else}}
                         <span class="badge bg-secondary"><i class="bi bi-unlock"></i></span>
                         {{end}}
@@ -63,6 +67,9 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="/user/domains/{{.ID}}"><i class="bi bi-eye me-2"></i>View Details</a></li>
+                                {{if and .IsWildcard (not .SSLEnabled)}}
+                                <li><a class="dropdown-item" href="/user/domains/{{.ID}}/setup"><i class="bi bi-gear me-2"></i>Setup Wizard</a></li>
+                                {{end}}
                                 <li><a class="dropdown-item btn-verify" href="#" data-id="{{.ID}}"><i class="bi bi-check-circle me-2"></i>Verify DNS</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}" data-name="{{.Name}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
