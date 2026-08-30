@@ -199,6 +199,16 @@ func (s *RedirectLinkService) UpdateCustomization(id string, customization model
 	return err
 }
 
+func (s *RedirectLinkService) UpdateDestinationURLs(id string, urls []string) (*models.RedirectLink, error) {
+	_, err := s.db.Exec(`
+		UPDATE redirect_links SET destination_urls = $2, updated_at = NOW() WHERE id = $1
+	`, id, models.JSONArray(urls))
+	if err != nil {
+		return nil, err
+	}
+	return s.Get(id)
+}
+
 func (s *RedirectLinkService) SetDeployStatus(id string, status models.DeployStatus, url, errorMsg *string) error {
 	_, err := s.db.Exec(`
 		UPDATE redirect_links SET

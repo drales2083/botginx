@@ -241,6 +241,35 @@ func (h *Handler) APIUpdateCustomization(w http.ResponseWriter, r *http.Request)
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
+func (h *Handler) APIUpdateURLs(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var input struct {
+		URLs []string `json:"urls"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(input.URLs) == 0 {
+		h.jsonError(w, "At least one destination URL is required", http.StatusBadRequest)
+		return
+	}
+
+	// Update the destination URLs
+	link, err := h.service.UpdateDestinationURLs(id, input.URLs)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Auto-redeploy with new URLs
+	go h.autoDeploy(link.ID)
+
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true, "urls": link.DestinationURLs})
+}
+
 // APIRandomSubdomain suggests a readable subdomain like "amber-canyon". The
 // form fills the field with it; the user is free to edit or ignore it.
 func (h *Handler) APIRandomSubdomain(w http.ResponseWriter, r *http.Request) {

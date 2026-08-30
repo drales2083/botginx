@@ -94,6 +94,7 @@ func (m *Module) Routes() chi.Router {
 		r.Put("/{id}", m.handler.APIUpdate)
 		r.Delete("/{id}", m.handler.APIDelete)
 		r.Put("/{id}/customization", m.handler.APIUpdateCustomization)
+		r.Put("/{id}/urls", m.handler.APIUpdateURLs)
 		r.Post("/{id}/deploy", m.handler.APIDeploy)
 	})
 

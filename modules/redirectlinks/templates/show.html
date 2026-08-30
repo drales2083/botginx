@@ -38,19 +38,54 @@
                     </div>
                 </div>
 
-                {{if .Link.DestinationURLs}}
+                {{if eq .Link.Type "REDIRECT"}}
                 <div class="mb-4">
-                    <h6 class="text-muted">{{t "destinations"}}</h6>
-                    <ul class="list-group">
-                        {{range .Link.DestinationURLs}}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <code>{{.}}</code>
-                            <a href="{{.}}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-box-arrow-up-right"></i>
-                            </a>
-                        </li>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-muted mb-0">{{t "destinations"}}</h6>
+                        <button class="btn btn-sm btn-outline-primary" id="btn-edit-urls">
+                            <i class="bi bi-pencil me-1"></i> Edit
+                        </button>
+                    </div>
+                    <div id="urls-view">
+                        {{if .Link.DestinationURLs}}
+                        <ul class="list-group">
+                            {{range .Link.DestinationURLs}}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <code>{{.}}</code>
+                                <a href="{{.}}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </li>
+                            {{end}}
+                        </ul>
+                        {{else}}
+                        <p class="text-muted small">No destination URLs set</p>
                         {{end}}
-                    </ul>
+                    </div>
+                    <div id="urls-edit" class="d-none">
+                        <div id="urls-container">
+                            {{range .Link.DestinationURLs}}
+                            <div class="input-group mb-2">
+                                <input type="url" class="form-control url-input" value="{{.}}" placeholder="https://example.com">
+                                <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-x"></i></button>
+                            </div>
+                            {{else}}
+                            <div class="input-group mb-2">
+                                <input type="url" class="form-control url-input" placeholder="https://example.com">
+                                <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-x"></i></button>
+                            </div>
+                            {{end}}
+                        </div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-url">
+                                <i class="bi bi-plus me-1"></i> Add URL
+                            </button>
+                            <button type="button" class="btn btn-sm btn-success" id="btn-save-urls">
+                                <i class="bi bi-check me-1"></i> Save
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" id="btn-cancel-urls">Cancel</button>
+                        </div>
+                    </div>
                 </div>
                 {{end}}
 
@@ -139,6 +174,73 @@
 </div>
 
 <script>
+// URL editing
+const btnEditUrls = document.getElementById('btn-edit-urls');
+const urlsView = document.getElementById('urls-view');
+const urlsEdit = document.getElementById('urls-edit');
+const urlsContainer = document.getElementById('urls-container');
+
+btnEditUrls?.addEventListener('click', () => {
+    urlsView.classList.add('d-none');
+    urlsEdit.classList.remove('d-none');
+    btnEditUrls.classList.add('d-none');
+});
+
+document.getElementById('btn-cancel-urls')?.addEventListener('click', () => {
+    urlsView.classList.remove('d-none');
+    urlsEdit.classList.add('d-none');
+    btnEditUrls.classList.remove('d-none');
+});
+
+document.getElementById('btn-add-url')?.addEventListener('click', () => {
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <input type="url" class="form-control url-input" placeholder="https://example.com">
+        <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-x"></i></button>
+    `;
+    urlsContainer.appendChild(div);
+    div.querySelector('.btn-remove-url').addEventListener('click', () => div.remove());
+});
+
+document.querySelectorAll('.btn-remove-url').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (urlsContainer.querySelectorAll('.input-group').length > 1) {
+            btn.closest('.input-group').remove();
+        }
+    });
+});
+
+document.getElementById('btn-save-urls')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-save-urls');
+    const urls = Array.from(urlsContainer.querySelectorAll('.url-input'))
+        .map(input => input.value.trim())
+        .filter(url => url);
+
+    if (urls.length === 0) {
+        showToast('Add at least one destination URL', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    const res = await fetch(`/user/redirectlinks/api/{{.Link.ID}}/urls`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls })
+    });
+
+    if (res.ok) {
+        reloadWithToast('Destination URLs updated', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to update URLs', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check me-1"></i> Save';
+    }
+});
+
 document.querySelector('.btn-deploy')?.addEventListener('click', async function() {
     const btn = this;
     btn.disabled = true;

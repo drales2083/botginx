@@ -15,10 +15,12 @@
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
+    font-family: system-ui, -apple-system, sans-serif;
 }
 .preview-inner {
     text-align: center;
     padding: 2rem;
+    max-width: 90%;
 }
 .form-section {
     background: var(--bs-body-bg);
@@ -50,6 +52,23 @@
     font-family: monospace;
     font-size: 0.85rem;
 }
+/* Preview container - match deployed page exactly */
+.preview-inner h2 {
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+.preview-inner p {
+    opacity: 0.7;
+    font-size: 1rem;
+    margin-top: 1rem;
+}
+/* Loader wrapper */
+#preview-loader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 48px;
+}
 /* Loader animations */
 .loader-spinner {
     width: 48px;
@@ -58,6 +77,11 @@
     border-top-color: var(--loader-color, #3b82f6);
     border-radius: 50%;
     animation: spin 1s linear infinite;
+}
+.loader-dots-bounce {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 .loader-dots-bounce span {
     display: inline-block;
@@ -76,6 +100,12 @@
     background: var(--loader-color, #3b82f6);
     border-radius: 50%;
     animation: pulse 1.5s ease-in-out infinite;
+}
+.loader-bars {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: 32px;
 }
 .loader-bars span {
     display: inline-block;
