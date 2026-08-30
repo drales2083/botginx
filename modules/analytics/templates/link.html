@@ -162,21 +162,23 @@
             <div class="card-header"><h6 class="mb-0">Recent Visits</h6></div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-sm table-striped mb-0" data-datatable data-per-page="10" data-no-sort="2">
+                    <table class="table table-sm table-striped mb-0" data-datatable data-per-page="10" data-no-sort="2,6">
                         <thead>
                             <tr>
                                 <th>Time</th>
+                                <th>IP</th>
                                 <th>Country</th>
                                 <th>Device</th>
                                 <th>Browser</th>
-                                <th>Referrer</th>
                                 <th>Status</th>
+                                <th style="width:70px">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {{range .RecentVisits}}
-                            <tr>
+                            <tr data-ip="{{.IP}}">
                                 <td><small>{{.CreatedAt.Format "01-02 15:04"}}</small></td>
+                                <td><code class="small">{{.IP}}</code></td>
                                 <td>{{if .Country}}{{.Country}}{{else}}-{{end}}</td>
                                 <td>
                                     {{if eq .Device "mobile"}}<i class="bi bi-phone"></i>
@@ -184,15 +186,19 @@
                                     {{else}}<i class="bi bi-display"></i>{{end}}
                                 </td>
                                 <td>{{.Browser}}</td>
-                                <td class="text-truncate" style="max-width: 150px;">{{if .Referrer}}{{.Referrer}}{{else}}Direct{{end}}</td>
                                 <td>
                                     {{if .IsBot}}<span class="badge bg-warning">Bot</span>{{end}}
                                     {{if .Blocked}}<span class="badge bg-danger">Blocked</span>{{end}}
                                     {{if and (not .IsBot) (not .Blocked)}}<span class="badge bg-success">OK</span>{{end}}
                                 </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger btn-block-ip" data-ip="{{.IP}}" title="Block this IP">
+                                        <i class="bi bi-shield-x"></i>
+                                    </button>
+                                </td>
                             </tr>
                             {{else}}
-                            <tr><td colspan="6" class="text-muted text-center py-3">No visits yet</td></tr>
+                            <tr><td colspan="7" class="text-muted text-center py-3">No visits yet</td></tr>
                             {{end}}
                         </tbody>
                     </table>
@@ -314,5 +320,36 @@ async function refreshStats() {
 
 // Poll every 5 seconds
 setInterval(refreshStats, 5000);
+
+// Quick block IP
+document.querySelectorAll('.btn-block-ip').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const ip = btn.dataset.ip;
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`/user/iplists/api/block/${encodeURIComponent(ip)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source: 'analytics' })
+            });
+
+            if (res.ok) {
+                btn.classList.remove('btn-outline-danger');
+                btn.classList.add('btn-success');
+                btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+                btn.title = 'Blocked';
+                showToast('IP blocked', 'success');
+            } else {
+                const data = await res.json();
+                showToast(data.error || 'Failed to block IP', 'danger');
+                btn.disabled = false;
+            }
+        } catch (err) {
+            showToast('Network error', 'danger');
+            btn.disabled = false;
+        }
+    });
+});
 </script>
 {{end}}
