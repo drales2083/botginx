@@ -477,19 +477,12 @@ func (h *Handler) ExternalSetup(w http.ResponseWriter, r *http.Request) {
 // generateAcmeTokenBackground generates ACME token in background
 func (h *Handler) generateAcmeTokenBackground(domainID, baseDomain string) {
 	token, err := h.verification.PreGenerateAcmeToken(baseDomain)
-	if err != nil {
-		// Log error but don't fail - user can retry via refresh button
-		fmt.Printf("[ACME] Failed to generate token for %s: %v\n", baseDomain, err)
-		return
-	}
-	if token == "" {
-		fmt.Printf("[ACME] Empty token returned for %s\n", baseDomain)
+	if err != nil || token == "" {
 		return
 	}
 
 	// If cert already exists, skip to completion
 	if token == "CERT_EXISTS" {
-		fmt.Printf("[ACME] SSL cert already exists for %s, completing setup\n", baseDomain)
 		domain, _ := h.service.Get(domainID)
 		if domain != nil {
 			h.completeExternalSetup(domain)
@@ -498,11 +491,6 @@ func (h *Handler) generateAcmeTokenBackground(domainID, baseDomain string) {
 	}
 
 	// Save token to database
-	preview := token
-	if len(preview) > 8 {
-		preview = token[:8] + "..."
-	}
-	fmt.Printf("[ACME] Token generated for %s: %s\n", baseDomain, preview)
 	h.service.Update(domainID, models.UpdateDomainInput{
 		AcmeToken: &token,
 	})
@@ -578,13 +566,11 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) completeExternalSetup(domain *models.Domain) {
 	// Complete the wildcard SSL generation
 	if err := h.verification.CompleteWildcardSSL(domain.Name); err != nil {
-		fmt.Printf("[SSL] CompleteWildcardSSL failed for %s: %v\n", domain.Name, err)
 		return
 	}
 
 	// Setup nginx
 	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
-		fmt.Printf("[SSL] SetupDomainNginx failed for %s: %v\n", domain.Name, err)
 		return
 	}
 
