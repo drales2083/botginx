@@ -83,7 +83,6 @@
                                 {{if $canWrite}}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/customize"><i class="bi bi-palette me-2"></i>Customize</a></li>
-                                <li><a class="dropdown-item btn-deploy" href="#" data-id="{{.ID}}"><i class="bi bi-cloud-upload me-2"></i>Deploy</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
                                 {{end}}
@@ -142,24 +141,6 @@ document.addEventListener('click', async (e) => {
         icon.className = 'bi bi-check-lg';
         setTimeout(() => icon.className = 'bi bi-clipboard', 1500);
         showToast('URL copied to clipboard', 'success');
-        return;
-    }
-
-    const deploy = e.target.closest('.btn-deploy');
-    if (deploy) {
-        deploy.disabled = true;
-        deploy.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-        const res = await fetch(`/user/redirectlinks/api/${deploy.dataset.id}/deploy`, { method: 'POST' });
-        const data = await res.json();
-
-        if (data.success) {
-            reloadWithToast('Redirect link deployed', 'success');
-        } else {
-            showToast('Deploy failed: ' + (data.error || 'Unknown error'), 'danger');
-            deploy.disabled = false;
-            deploy.innerHTML = '<i class="bi bi-cloud-upload"></i>';
-        }
         return;
     }
 

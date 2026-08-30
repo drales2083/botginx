@@ -11,9 +11,6 @@
                     <a href="/user/redirectlinks/{{.Link.ID}}/customize" class="btn btn-outline-secondary">
                         <i class="bi bi-palette me-1"></i> {{t "customize"}}
                     </a>
-                    <button class="btn btn-outline-success btn-deploy" data-id="{{.Link.ID}}">
-                        <i class="bi bi-cloud-upload me-1"></i> {{t "deploy"}}
-                    </button>
                 </div>
             </div>
             <div class="card-body">
@@ -238,23 +235,6 @@ document.getElementById('btn-save-urls')?.addEventListener('click', async () => 
         showToast(data.error || 'Failed to update URLs', 'danger');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-check me-1"></i> Save';
-    }
-});
-
-document.querySelector('.btn-deploy')?.addEventListener('click', async function() {
-    const btn = this;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-    const res = await fetch(`/user/redirectlinks/api/{{.Link.ID}}/deploy`, { method: 'POST' });
-    const data = await res.json();
-
-    if (data.success) {
-        reloadWithToast('Redirect link deployed', 'success');
-    } else {
-        showToast('Deploy failed: ' + (data.error || 'Unknown error'), 'danger');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> {{t "deploy"}}';
     }
 });
 
