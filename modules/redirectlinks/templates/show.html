@@ -86,29 +86,6 @@
                 </div>
                 {{end}}
 
-                <div class="row mb-4">
-                    <div class="col-md-4">
-                        <h6 class="text-muted">{{t "redirectlinks.turnstile"}}</h6>
-                        {{if .Link.TurnstileEnabled}}
-                        <span class="badge bg-success">{{t "enabled"}}</span>
-                        {{else}}
-                        <span class="badge bg-secondary">{{t "disabled"}}</span>
-                        {{end}}
-                    </div>
-                    <div class="col-md-4">
-                        <h6 class="text-muted">{{t "redirectlinks.bot_protection"}}</h6>
-                        {{if .Link.BotProtection}}
-                        <span class="badge bg-success">{{t "enabled"}}</span>
-                        {{else}}
-                        <span class="badge bg-secondary">{{t "disabled"}}</span>
-                        {{end}}
-                    </div>
-                    <div class="col-md-4">
-                        <h6 class="text-muted">Animation</h6>
-                        <span>{{.Link.AnimationDuration}}s</span>
-                    </div>
-                </div>
-
                 {{if .Link.DeployedURL}}
                 <div class="mb-4">
                     <h6 class="text-muted">Live URL</h6>
