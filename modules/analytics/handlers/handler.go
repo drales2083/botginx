@@ -93,7 +93,7 @@ func (h *Handler) LinkAnalytics(w http.ResponseWriter, r *http.Request) {
 	linkID := chi.URLParam(r, "linkId")
 	period := r.URL.Query().Get("period")
 	if period == "" {
-		period = "daily"
+		period = "hourly" // Default to 24h view
 	}
 
 	stats, _ := h.service.GetLinkStats(linkID)
@@ -476,15 +476,15 @@ func (h *Handler) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle different event types
+	// Handle different event types - antibot sends specific event names like "request.blocked"
 	switch payload.Event {
-	case "request":
+	case "request", "request.blocked", "request.challenged", "request.challenge_passed", "request.challenge_failed", "request.allowed":
 		h.handleRequestEvent(payload.Data)
 	case "session.start":
 		h.handleSessionStartEvent(payload.Data)
 	case "session.end":
 		h.handleSessionEndEvent(payload.Data)
-	case "page.view":
+	case "page.view", "page_view":
 		h.handlePageViewEvent(payload.Data)
 	case "conversion":
 		h.handleConversionEvent(payload.Data)
@@ -558,7 +558,13 @@ func (h *Handler) handleRequestEvent(data any) {
 	action := getString(eventData, "action")
 	visit.Blocked = (action == "block")
 	if visit.Blocked {
-		visit.BlockReason = "blocked_by_antibot"
+		// Use the actual reason from botection if available
+		reason := getString(eventData, "reason")
+		if reason != "" {
+			visit.BlockReason = reason
+		} else {
+			visit.BlockReason = "blocked_by_antibot"
+		}
 	}
 
 	h.service.RecordVisit(visit)
