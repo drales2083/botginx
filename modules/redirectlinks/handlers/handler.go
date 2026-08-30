@@ -226,27 +226,18 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer client.Close()
 
-	// Generate nginx config for the redirect
-	nginxConfig := generateRedirectNginxConfig(link)
-
-	// Create site directory
-	mkdirCmd := fmt.Sprintf("mkdir -p /var/www/sites/%s", fullHost)
+	// Create site directory: /var/www/sites/{domain}/{subdomain}/
+	// This matches the nginx upstream config which parses host as subdomain.domain
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.DomainName, link.Subdomain)
+	mkdirCmd := fmt.Sprintf("mkdir -p %s", siteDir)
 	client.Run(mkdirCmd)
 
-	// Write nginx config
-	configPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", fullHost)
-	writeCmd := fmt.Sprintf("cat > %s << 'NGINXEOF'\n%s\nNGINXEOF", configPath, nginxConfig)
-	if _, err := client.Run(writeCmd); err != nil {
-		errMsg := "Failed to write nginx config: " + err.Error()
-		h.service.SetDeployStatus(id, models.DeployStatusFailed, nil, &errMsg)
-		h.jsonError(w, errMsg, http.StatusInternalServerError)
-		return
-	}
-
-	// Enable site and reload nginx
-	enableCmd := fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx", configPath)
-	if _, err := client.Run(enableCmd); err != nil {
-		errMsg := "Failed to enable site: " + err.Error()
+	// Generate and write the redirect HTML page
+	redirectHTML := generateRedirectHTML(link)
+	htmlPath := fmt.Sprintf("%s/index.html", siteDir)
+	writeHTMLCmd := fmt.Sprintf("cat > %s << 'HTMLEOF'\n%s\nHTMLEOF", htmlPath, redirectHTML)
+	if _, err := client.Run(writeHTMLCmd); err != nil {
+		errMsg := "Failed to write redirect page: " + err.Error()
 		h.service.SetDeployStatus(id, models.DeployStatusFailed, nil, &errMsg)
 		h.jsonError(w, errMsg, http.StatusInternalServerError)
 		return
@@ -262,28 +253,88 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// generateRedirectNginxConfig creates nginx config for a redirect link
-func generateRedirectNginxConfig(link *models.RedirectLink) string {
-	fullHost := link.Subdomain + "." + link.DomainName
+// generateRedirectHTML creates the redirect splash page HTML using customization settings
+func generateRedirectHTML(link *models.RedirectLink) string {
+	// Get first destination URL
+	destURL := "https://example.com"
+	if len(link.DestinationURLs) > 0 {
+		destURL = link.DestinationURLs[0]
+	}
 
-	// For a simple redirect, we proxy to botection which handles the logic
-	// The redirect splash page is served by botection based on link settings
-	return fmt.Sprintf(`server {
-    listen 80;
-    listen 443 ssl;
-    server_name %s;
+	// Animation duration in seconds
+	duration := link.AnimationDuration
+	if duration <= 0 {
+		duration = 3
+	}
 
-    ssl_certificate /etc/nginx/ssl/%s.pem;
-    ssl_certificate_key /etc/nginx/ssl/%s.key;
+	// Get customization with defaults
+	c := models.DefaultCustomization
+	if link.Customization != nil {
+		if v, ok := link.Customization["bgColor"].(string); ok && v != "" {
+			c.BgColor = v
+		}
+		if v, ok := link.Customization["heading"].(string); ok {
+			c.Heading = v
+		}
+		if v, ok := link.Customization["subheading"].(string); ok {
+			c.Subheading = v
+		}
+		if v, ok := link.Customization["textColor"].(string); ok && v != "" {
+			c.TextColor = v
+		}
+		if v, ok := link.Customization["loaderColorPrimary"].(string); ok && v != "" {
+			c.LoaderColorPrimary = v
+		}
+		if v, ok := link.Customization["pageTitle"].(string); ok && v != "" {
+			c.PageTitle = v
+		}
+	}
 
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}`, fullHost, link.DomainName, link.DomainName)
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>%s</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: %s;
+            color: %s;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .container { text-align: center; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; font-weight: 600; }
+        p { opacity: 0.7; font-size: 1rem; }
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: %s;
+            border-radius: 50%%;
+            margin: 1.5rem auto;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>%s</h1>
+        <div class="loader"></div>
+        <p>%s</p>
+    </div>
+    <script>
+        setTimeout(function() {
+            window.location.href = %q;
+        }, %d000);
+    </script>
+</body>
+</html>`, c.PageTitle, c.BgColor, c.TextColor, c.LoaderColorPrimary, c.Heading, c.Subheading, destURL, duration)
 }
 
 // Helpers
