@@ -849,14 +849,10 @@ func (h *Handler) TrackingPixel(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now(),
 	}
 
-	// Check if should be blocked based on settings
-	blocked, reason := h.service.ShouldBlock(
-		visit.LinkID, visit.Country, visit.Device,
-		visit.IsBot, visit.IsTor, visit.IsProxy, visit.IsDatacenter, visit.IsHeadless,
-		visit.BehaviorScore,
-	)
-	visit.Blocked = blocked
-	visit.BlockReason = reason
+	// TrackingPixel is client-side JS - if it fires, visitor reached the page.
+	// blocked=false always for client-side tracking (proof of passage).
+	visit.Blocked = false
+	visit.BlockReason = ""
 
 	if err := h.service.RecordVisit(visit); err != nil {
 		log.Printf("Tracking pixel error: %v", err)
@@ -866,7 +862,7 @@ func (h *Handler) TrackingPixel(w http.ResponseWriter, r *http.Request) {
 
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"ok":      true,
-		"blocked": blocked,
+		"blocked": false,
 	})
 }
 

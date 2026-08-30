@@ -316,37 +316,74 @@ async function refreshStats() {
     } catch (e) {}
 }
 
-// Poll every 5 seconds
-setInterval(refreshStats, 5000);
+// Refresh visits table
+async function refreshVisits() {
+    try {
+        const res = await fetch(`/user/analytics/api/link/${linkId}/visits`);
+        if (!res.ok) return;
+        const data = await res.json();
 
-// Quick block IP
-document.querySelectorAll('.btn-block-ip').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const ip = btn.dataset.ip;
-        btn.disabled = true;
+        const tbody = document.querySelector('table[data-datatable] tbody');
+        if (!tbody || !data.visits) return;
 
-        try {
-            const res = await fetch(`/user/iplists/api/block/${encodeURIComponent(ip)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ source: 'analytics' })
-            });
+        tbody.innerHTML = data.visits.length ? data.visits.map(v => `
+            <tr data-ip="${v.ip}">
+                <td><small>${new Date(v.createdAt).toLocaleString('en-US', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</small></td>
+                <td><code class="small">${v.ip}</code></td>
+                <td>${v.country || '-'}</td>
+                <td>${v.device === 'mobile' ? '<i class="bi bi-phone"></i>' : v.device === 'tablet' ? '<i class="bi bi-tablet"></i>' : '<i class="bi bi-display"></i>'}</td>
+                <td>${v.browser || '-'}</td>
+                <td>${v.isBot ? '<span class="badge bg-warning">Bot</span>' : v.blocked ? '<span class="badge bg-danger">Blocked</span>' : '<span class="badge bg-success">OK</span>'}</td>
+                <td><button class="btn btn-sm btn-outline-danger btn-block-ip" data-ip="${v.ip}">Block</button></td>
+            </tr>
+        `).join('') : '<tr><td colspan="7" class="text-muted text-center py-3">No visits yet</td></tr>';
 
-            if (res.ok) {
-                btn.classList.remove('btn-outline-danger');
-                btn.classList.add('btn-success');
-                btn.textContent = 'Blocked';
-                showToast('IP blocked', 'success');
-            } else {
-                const data = await res.json();
-                showToast(data.error || 'Failed to block IP', 'danger');
-                btn.disabled = false;
-            }
-        } catch (err) {
-            showToast('Network error', 'danger');
+        // Re-attach block handlers
+        document.querySelectorAll('.btn-block-ip').forEach(btn => {
+            btn.onclick = () => blockIP(btn.dataset.ip, btn);
+        });
+    } catch (e) {}
+}
+
+async function blockIP(ip, btn) {
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/user/iplists/api/block/${encodeURIComponent(ip)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source: 'analytics' })
+        });
+        if (res.ok) {
+            btn.classList.remove('btn-outline-danger');
+            btn.classList.add('btn-success');
+            btn.textContent = 'Blocked';
+            showToast('IP blocked', 'success');
+        } else {
+            const data = await res.json();
+            showToast(data.error || 'Failed to block IP', 'danger');
             btn.disabled = false;
         }
-    });
+    } catch (err) {
+        showToast('Network error', 'danger');
+        btn.disabled = false;
+    }
+}
+
+// Poll every 5 seconds
+setInterval(() => {
+    refreshStats();
+    refreshVisits();
+    // Refresh charts
+    const activeBtn = document.querySelector('.period-btn.active');
+    if (activeBtn) loadTimeline(activeBtn.dataset.period);
+    loadCountryChart();
+    loadDeviceChart();
+    loadBrowserChart();
+}, 5000);
+
+// Initial block handlers for server-rendered rows
+document.querySelectorAll('.btn-block-ip').forEach(btn => {
+    btn.onclick = () => blockIP(btn.dataset.ip, btn);
 });
 </script>
 {{end}}
