@@ -84,6 +84,7 @@ func (m *Module) Routes() chi.Router {
 	r.Get("/new", m.handler.New)
 	r.Get("/{id}", m.handler.Show)
 	r.Get("/{id}/customize", m.handler.Customize)
+	r.Get("/{id}/edit-html", m.handler.EditHTML)
 
 	// API
 	r.Route("/api", func(r chi.Router) {

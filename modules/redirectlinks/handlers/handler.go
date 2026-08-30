@@ -111,6 +111,20 @@ func (h *Handler) Customize(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) EditHTML(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	link, err := h.service.Get(id)
+	if err != nil {
+		http.Error(w, "Redirect link not found", http.StatusNotFound)
+		return
+	}
+
+	module.RenderUserSection(w, r, h.templates, "redirectlinks:edit_html.html", map[string]interface{}{
+		"Title": "Edit HTML",
+		"Link":  link,
+	})
+}
+
 // API handlers
 
 func (h *Handler) APIList(w http.ResponseWriter, r *http.Request) {

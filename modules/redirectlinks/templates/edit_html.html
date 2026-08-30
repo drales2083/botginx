@@ -1,0 +1,143 @@
+{{define "content"}}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+<style>
+  .CodeMirror {
+    height: calc(100vh - 300px);
+    min-height: 400px;
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    font-size: 0.875rem;
+  }
+  #html-preview {
+    width: 100%;
+    height: calc(100vh - 300px);
+    min-height: 400px;
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    background: #fff;
+  }
+</style>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">
+                    Edit HTML: <code>{{.Link.Subdomain}}.{{.Link.BaseDomain}}/{{.Link.Path}}</code>
+                </h3>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary active" data-pane="editor">
+                        <i class="bi bi-code-slash me-1"></i> Editor
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-pane="preview">
+                        <i class="bi bi-eye me-1"></i> Preview
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="pane-editor">
+                    <textarea id="htmlContent">{{with .Link.HTMLContent}}{{.}}{{end}}</textarea>
+                </div>
+
+                <div id="pane-preview" class="d-none">
+                    <iframe id="html-preview" title="HTML preview"
+                            sandbox="allow-scripts"
+                            referrerpolicy="no-referrer"></iframe>
+                </div>
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <button type="button" class="btn btn-primary" id="btn-save">
+                    <i class="bi bi-check-lg me-1"></i> Save & Deploy
+                </button>
+                <a href="/user/redirectlinks/{{.Link.ID}}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script>
+let htmlEditor = null;
+
+if (window.CodeMirror) {
+    htmlEditor = CodeMirror.fromTextArea(document.getElementById('htmlContent'), {
+        mode: 'htmlmixed',
+        theme: 'material-darker',
+        lineNumbers: true,
+        lineWrapping: true,
+        autoCloseTags: true,
+        matchBrackets: true,
+        indentUnit: 2,
+        tabSize: 2,
+        viewportMargin: Infinity
+    });
+}
+
+// Preview
+function renderPreview() {
+    const frame = document.getElementById('html-preview');
+    if (!frame) return;
+    frame.srcdoc = htmlEditor ? htmlEditor.getValue() : '';
+}
+
+function showPane(pane) {
+    document.getElementById('pane-editor').classList.toggle('d-none', pane !== 'editor');
+    document.getElementById('pane-preview').classList.toggle('d-none', pane !== 'preview');
+
+    document.querySelectorAll('[data-pane]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.pane === pane);
+    });
+
+    if (pane === 'preview') renderPreview();
+}
+
+document.querySelectorAll('[data-pane]').forEach(btn => {
+    btn.addEventListener('click', () => showPane(btn.dataset.pane));
+});
+
+// Save & Deploy
+document.getElementById('btn-save').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-save');
+    const htmlContent = htmlEditor ? htmlEditor.getValue() : document.getElementById('htmlContent').value;
+
+    if (!htmlContent.trim()) {
+        showToast('HTML content cannot be empty', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    try {
+        // Update HTML content
+        const updateRes = await fetch('/user/redirectlinks/api/{{.Link.ID}}', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ htmlContent })
+        });
+
+        if (!updateRes.ok) {
+            const data = await updateRes.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to save HTML content');
+        }
+
+        // Deploy
+        await fetch('/user/redirectlinks/api/{{.Link.ID}}/deploy', { method: 'POST' });
+
+        flashToast('HTML saved and deployed!', 'success');
+        window.location.href = '/user/redirectlinks/{{.Link.ID}}';
+    } catch (err) {
+        showToast(err.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save & Deploy';
+    }
+});
+</script>
+{{end}}

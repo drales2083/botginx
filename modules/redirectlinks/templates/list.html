@@ -74,7 +74,11 @@
                                 <li><a class="dropdown-item btn-copy" href="#" data-url="{{.FullURL}}"><i class="bi bi-clipboard me-2"></i>Copy URL</a></li>
                                 {{if $canWrite}}
                                 <li><hr class="dropdown-divider"></li>
+                                {{if eq .Type "HTML"}}
+                                <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/edit-html"><i class="bi bi-code-slash me-2"></i>Edit HTML</a></li>
+                                {{else}}
                                 <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/customize"><i class="bi bi-palette me-2"></i>Customize</a></li>
+                                {{end}}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
                                 {{end}}
