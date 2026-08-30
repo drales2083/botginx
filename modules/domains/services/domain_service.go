@@ -317,6 +317,16 @@ func (s *DomainService) GetDeployIP() string {
 	return ip
 }
 
+// GetDeployServerID returns the ID of an available deploy server.
+func (s *DomainService) GetDeployServerID() string {
+	var id string
+	err := s.db.Get(&id, `SELECT id FROM servers WHERE status = 'ready' ORDER BY created_at LIMIT 1`)
+	if err != nil {
+		return ""
+	}
+	return id
+}
+
 // GetDeployServer returns full SSH credentials for an available deploy server.
 func (s *DomainService) GetDeployServer() (ip string, port int, user string, password string, err error) {
 	var server struct {

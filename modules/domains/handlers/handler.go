@@ -567,20 +567,28 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) completeExternalSetup(domain *models.Domain) {
 	// Complete the wildcard SSL generation
 	if err := h.verification.CompleteWildcardSSL(domain.Name); err != nil {
+		fmt.Printf("[SSL] CompleteWildcardSSL failed for %s: %v\n", domain.Name, err)
 		return
 	}
 
 	// Setup nginx
 	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+		fmt.Printf("[SSL] SetupDomainNginx failed for %s: %v\n", domain.Name, err)
 		return
 	}
 
-	// Mark as complete
+	// Get deploy server ID and assign to domain
+	serverID := h.service.GetDeployServerID()
+
+	// Mark as complete with server assignment
 	step := models.SetupStepComplete
 	sslEnabled := true
+	dnsVerified := true
 	h.service.Update(domain.ID, models.UpdateDomainInput{
-		SetupStep:  &step,
-		SSLEnabled: &sslEnabled,
+		SetupStep:   &step,
+		SSLEnabled:  &sslEnabled,
+		DNSVerified: &dnsVerified,
+		ServerID:    &serverID,
 	})
 }
 
