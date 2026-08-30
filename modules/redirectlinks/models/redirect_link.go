@@ -75,13 +75,21 @@ type RedirectLink struct {
 	DomainName string `db:"domain_name" json:"domainName,omitempty"`
 }
 
+// BaseDomain returns the domain name without wildcard prefix
+func (r *RedirectLink) BaseDomain() string {
+	if len(r.DomainName) > 2 && r.DomainName[:2] == "*." {
+		return r.DomainName[2:]
+	}
+	return r.DomainName
+}
+
 // FullURL returns the deployed URL
 func (r *RedirectLink) FullURL() string {
 	if r.DeployedURL != nil {
 		return *r.DeployedURL
 	}
 	if r.DomainName != "" {
-		return "https://" + r.Subdomain + "." + r.DomainName + "/" + r.Path
+		return "https://" + r.Subdomain + "." + r.BaseDomain() + "/" + r.Path
 	}
 	return ""
 }

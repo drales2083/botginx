@@ -32,11 +32,11 @@
                     <td>
                         {{if .DeployedURL}}
                         <a href="{{.FullURL}}" target="_blank" class="text-decoration-none">
-                            <code>{{.Subdomain}}.{{.DomainName}}/{{.Path}}</code>
+                            <code>{{.Subdomain}}.{{.BaseDomain}}/{{.Path}}</code>
                             <i class="bi bi-box-arrow-up-right ms-1 small"></i>
                         </a>
                         {{else}}
-                        <code class="text-muted">{{.Subdomain}}.{{.DomainName}}/{{.Path}}</code>
+                        <code class="text-muted">{{.Subdomain}}.{{.BaseDomain}}/{{.Path}}</code>
                         {{end}}
                     </td>
                     <td>

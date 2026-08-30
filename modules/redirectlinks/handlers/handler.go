@@ -222,7 +222,7 @@ func (h *Handler) cleanupVPS(link *models.RedirectLink) {
 	client.Run(fmt.Sprintf("rm -f %s", settingsPath))
 
 	// Delete site directory
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.DomainName, link.Subdomain)
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
 	client.Run(fmt.Sprintf("rm -rf %s", siteDir))
 }
 
@@ -304,8 +304,8 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build the full hostname
-	fullHost := link.Subdomain + "." + link.DomainName
+	// Build the full hostname (strip wildcard prefix for URL)
+	fullHost := link.Subdomain + "." + link.BaseDomain()
 	deployedURL := "https://" + fullHost + "/" + link.Path
 
 	// Connect to server via SSH
@@ -325,7 +325,7 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 
 	// Create site directory: /var/www/sites/{domain}/{subdomain}/
 	// This matches the nginx upstream config which parses host as subdomain.domain
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.DomainName, link.Subdomain)
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", siteDir)
 	client.Run(mkdirCmd)
 
@@ -364,7 +364,7 @@ func (h *Handler) autoDeploy(linkID string) {
 		return
 	}
 
-	fullHost := link.Subdomain + "." + link.DomainName
+	fullHost := link.Subdomain + "." + link.BaseDomain()
 	deployedURL := "https://" + fullHost + "/" + link.Path
 
 	port := fmt.Sprintf("%d", server.Port)
@@ -380,7 +380,7 @@ func (h *Handler) autoDeploy(linkID string) {
 	}
 	defer client.Close()
 
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.DomainName, link.Subdomain)
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
 	client.Run(fmt.Sprintf("mkdir -p %s", siteDir))
 
 	redirectHTML := generateRedirectHTML(link)
