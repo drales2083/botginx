@@ -43,11 +43,10 @@ func (b *BackgroundVerifier) Stop() {
 }
 
 func (b *BackgroundVerifier) run() {
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	// Run once on startup after a short delay
-	time.Sleep(30 * time.Second)
+	// Run once immediately on startup
 	b.checkAllDomains()
 
 	for {

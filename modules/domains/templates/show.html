@@ -157,6 +157,26 @@ function copyText(id) {
     showToast('Copied!', 'success');
 }
 
+// Auto-verify DNS every 10 seconds if not yet verified
+{{if not .Domain.DNSVerified}}
+let autoVerifyInterval = setInterval(async () => {
+    try {
+        const res = await fetch(`/user/domains/api/{{.Domain.ID}}/verify`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok && data.verified) {
+            clearInterval(autoVerifyInterval);
+            if (data.setup_started) {
+                reloadWithToast('DNS verified automatically! SSL setup started.', 'success');
+            } else {
+                reloadWithToast('DNS verified automatically!', 'success');
+            }
+        }
+    } catch (e) {
+        // Silently retry on next interval
+    }
+}, 10000);
+{{end}}
+
 document.querySelector('.btn-verify')?.addEventListener('click', async function() {
     const btn = this;
     btn.disabled = true;
@@ -165,6 +185,7 @@ document.querySelector('.btn-verify')?.addEventListener('click', async function(
     const res = await fetch(`/user/domains/api/{{.Domain.ID}}/verify`, { method: 'POST' });
     const data = await res.json();
     if (res.ok && data.verified) {
+        {{if not .Domain.DNSVerified}}clearInterval(autoVerifyInterval);{{end}}
         if (data.setup_started) {
             reloadWithToast('DNS verified! SSL setup started automatically.', 'success');
         } else {
