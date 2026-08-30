@@ -511,7 +511,17 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 
 	// Check ACME TXT if we have a token
 	if domain.AcmeToken != nil && *domain.AcmeToken != "" {
+		status.AcmeToken = *domain.AcmeToken
 		status.AcmeTXTFound = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
+
+		// Check for stale ACME record that needs to be deleted
+		if !status.AcmeTXTFound {
+			existingValue := h.verification.GetAcmeTXTValue(domain.Name)
+			if existingValue != "" && existingValue != *domain.AcmeToken {
+				status.AcmeTXTStale = true
+				status.AcmeTXTStaleValue = existingValue
+			}
+		}
 	}
 
 	// Update verification status in DB

@@ -517,6 +517,40 @@ func (s *VerificationService) CheckARecord(domain string, expectedIP string) (bo
 	return false, ""
 }
 
+// GetAcmeTXTValue returns the current value of the ACME challenge TXT record (if any)
+func (s *VerificationService) GetAcmeTXTValue(domain string) string {
+	baseDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		baseDomain = strings.TrimPrefix(domain, "*.")
+	}
+
+	txtHost := "_acme-challenge." + baseDomain
+
+	// Try system resolver first
+	records, err := net.LookupTXT(txtHost)
+	if err == nil && len(records) > 0 {
+		return strings.TrimSpace(records[0])
+	}
+
+	// Try Google DNS
+	r := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{Timeout: 5 * time.Second}
+			return d.DialContext(ctx, "udp", "8.8.8.8:53")
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	records, err = r.LookupTXT(ctx, txtHost)
+	cancel()
+
+	if err == nil && len(records) > 0 {
+		return strings.TrimSpace(records[0])
+	}
+
+	return ""
+}
+
 // CheckAcmeTXT checks if the ACME challenge TXT record exists with correct value
 func (s *VerificationService) CheckAcmeTXT(domain string, expectedToken string) bool {
 	// For wildcard, use base domain

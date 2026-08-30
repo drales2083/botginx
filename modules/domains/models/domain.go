@@ -41,14 +41,17 @@ type Domain struct {
 
 // SetupStatus represents the current state of DNS records for external setup
 type SetupStatus struct {
-	ARecordFound    bool   `json:"aRecordFound"`
-	ARecordIP       string `json:"aRecordIp,omitempty"`
-	VerifyTXTFound  bool   `json:"verifyTxtFound"`
-	AcmeTXTFound    bool   `json:"acmeTxtFound"`
-	AllRecordsFound bool   `json:"allRecordsFound"`
-	SetupStep       string `json:"setupStep"`
-	SSLReady        bool   `json:"sslReady"`
-	ErrorMessage    string `json:"errorMessage,omitempty"`
+	ARecordFound      bool   `json:"aRecordFound"`
+	ARecordIP         string `json:"aRecordIp,omitempty"`
+	VerifyTXTFound    bool   `json:"verifyTxtFound"`
+	AcmeTXTFound      bool   `json:"acmeTxtFound"`
+	AcmeTXTStale      bool   `json:"acmeTxtStale,omitempty"`      // Old ACME record exists that needs deletion
+	AcmeTXTStaleValue string `json:"acmeTxtStaleValue,omitempty"` // The stale value to delete
+	AllRecordsFound   bool   `json:"allRecordsFound"`
+	SetupStep         string `json:"setupStep"`
+	SSLReady          bool   `json:"sslReady"`
+	ErrorMessage      string `json:"errorMessage,omitempty"`
+	AcmeToken         string `json:"acmeToken,omitempty"` // Current expected token
 }
 
 // ExternalSetupInfo contains all info needed for the setup wizard

@@ -107,6 +107,17 @@
                     </div>
                 </div>
 
+                <!-- Stale ACME Warning (shown via JS when detected) -->
+                <div class="alert alert-danger d-none" id="stale-acme-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Old ACME record detected!</strong>
+                    <p class="mb-2 mt-2">You have an old <code>_acme-challenge</code> TXT record that must be deleted first:</p>
+                    <div class="bg-dark text-light p-2 rounded mb-2">
+                        <code id="stale-acme-value"></code>
+                    </div>
+                    <p class="mb-0 small">Delete this record in your DNS settings, then add the new one shown above.</p>
+                </div>
+
                 <!-- cPanel Instructions -->
                 <div class="card mb-4 border-info">
                     <div class="card-header bg-info text-white">
@@ -227,6 +238,15 @@ async function checkStatus() {
             }
             // Reload page to show the token properly
             location.reload();
+        }
+
+        // Show warning if stale ACME record detected
+        const staleWarning = document.getElementById('stale-acme-warning');
+        if (status.acmeTxtStale && status.acmeTxtStaleValue) {
+            document.getElementById('stale-acme-value').textContent = status.acmeTxtStaleValue;
+            staleWarning.classList.remove('d-none');
+        } else {
+            staleWarning.classList.add('d-none');
         }
 
         // Check if all done
