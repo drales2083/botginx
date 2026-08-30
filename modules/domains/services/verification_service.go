@@ -652,8 +652,12 @@ func (s *VerificationService) PreGenerateAcmeToken(domain string) (string, error
 	defer client.Close()
 
 	// Check if SSL cert already exists - no need for ACME token
-	checkCert := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "EXISTS"`, baseDomain)
-	if out, _ := client.Run(checkCert); strings.Contains(out, "EXISTS") {
+	checkCert := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "EXISTS" || echo "NOTFOUND"`, baseDomain)
+	out, err := client.Run(checkCert)
+	if err != nil {
+		return "", fmt.Errorf("SSH cert check failed: %w", err)
+	}
+	if strings.Contains(out, "EXISTS") {
 		return "CERT_EXISTS", nil
 	}
 
