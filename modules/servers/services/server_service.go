@@ -310,17 +310,26 @@ func (s *ServerService) GetDeployIP() string {
 }
 
 // GetServerForDomain returns SSH connection details for the server a domain is deployed to.
+// Falls back to the first ready server if the domain doesn't have a specific server linked.
 // Used by analytics to push settings files to the VPS.
 func (s *ServerService) GetServerForDomain(domainID string) (ip string, port int, user, password string, err error) {
 	var server models.Server
+
+	// Try to get the specific server linked to this domain
 	err = s.db.Get(&server, `
 		SELECT s.* FROM servers s
 		JOIN domains d ON d.server_id = s.id
 		WHERE d.id = $1
 	`, domainID)
+
+	// Fallback to first ready server if no specific link
 	if err != nil {
-		return "", 0, "", "", err
+		err = s.db.Get(&server, `SELECT * FROM servers WHERE status = 'ready' LIMIT 1`)
+		if err != nil {
+			return "", 0, "", "", err
+		}
 	}
+
 	return server.IP, server.Port, server.SSHUser, server.SSHPassword, nil
 }
 
