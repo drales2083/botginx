@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -57,7 +58,19 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 	// Look up TXT record at _guardbot-verify.domain.com
 	txtHost := "_guardbot-verify." + domain
 
-	records, err := net.LookupTXT(txtHost)
+	// Use Google DNS to avoid local caching issues
+	resolver := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{Timeout: 5 * time.Second}
+			return d.DialContext(ctx, "udp", "8.8.8.8:53")
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	records, err := resolver.LookupTXT(ctx, txtHost)
 	if err != nil {
 		return false, fmt.Errorf("TXT record not found. Add: %s TXT %s", txtHost, expectedToken)
 	}
