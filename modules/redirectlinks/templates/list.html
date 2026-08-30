@@ -15,13 +15,12 @@
         <h3 class="card-title">{{t "redirect_links"}}</h3>
     </div>
     <div class="card-body p-0">
-        <table class="table table-striped mb-0" data-datatable data-no-sort="6">
+        <table class="table table-striped mb-0" data-datatable data-no-sort="5">
             <thead>
                 <tr>
                     <th>URL</th>
                     <th>{{t "type"}}</th>
                     <th>{{t "destinations"}}</th>
-                    <th>Turnstile</th>
                     <th>{{t "status"}}</th>
                     <th>{{t "created"}}</th>
                     <th>{{t "actions"}}</th>
@@ -55,13 +54,6 @@
                         {{end}}
                     </td>
                     <td>
-                        {{if .TurnstileEnabled}}
-                        <span class="badge bg-success">{{t "enabled"}}</span>
-                        {{else}}
-                        <span class="badge bg-secondary">{{t "disabled"}}</span>
-                        {{end}}
-                    </td>
-                    <td>
                         {{if eq .DeployStatus "deployed"}}
                         <span class="badge bg-success">{{t "deployed"}}</span>
                         {{else if eq .DeployStatus "pending"}}
@@ -92,7 +84,7 @@
                 </tr>
                 {{else}}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
+                    <td colspan="6" class="text-center text-muted py-4">
                         {{t "no_data"}}. <a href="/user/redirectlinks/new">{{t "create"}} {{t "redirect_link"}}</a>.
                     </td>
                 </tr>

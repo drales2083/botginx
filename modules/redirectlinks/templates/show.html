@@ -1,125 +1,126 @@
 {{define "content"}}
 <div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="card-title mb-0">{{.Link.Subdomain}}.{{.Link.DomainName}}/{{.Link.Path}}</h3>
-                <div class="btn-group btn-group-sm">
-                    <a href="/user/analytics/link/{{.Link.ID}}/settings" class="btn btn-outline-warning" title="Bot protection & traffic settings">
-                        <i class="bi bi-shield-check me-1"></i> Settings
-                    </a>
-                    <a href="/user/redirectlinks/{{.Link.ID}}/customize" class="btn btn-outline-secondary">
-                        <i class="bi bi-palette me-1"></i> {{t "customize"}}
-                    </a>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <h6 class="text-muted">{{t "type"}}</h6>
-                        {{if eq .Link.Type "REDIRECT"}}
-                        <span class="badge bg-primary fs-6">Redirect</span>
-                        {{else}}
-                        <span class="badge bg-info fs-6">HTML</span>
-                        {{end}}
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="text-muted">{{t "status"}}</h6>
-                        {{if eq .Link.DeployStatus "deployed"}}
-                        <span class="badge bg-success fs-6">{{t "deployed"}}</span>
-                        {{else if eq .Link.DeployStatus "pending"}}
-                        <span class="badge bg-warning fs-6">{{t "pending"}}</span>
-                        {{else}}
-                        <span class="badge bg-danger fs-6">{{t "failed"}}</span>
-                        {{end}}
-                    </div>
-                </div>
-
-                {{if eq .Link.Type "REDIRECT"}}
-                <div class="mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="text-muted mb-0">{{t "destinations"}}</h6>
-                        <button class="btn btn-sm btn-outline-primary" id="btn-edit-urls">
-                            <i class="bi bi-pencil me-1"></i> Edit
-                        </button>
-                    </div>
-                    <div id="urls-view">
-                        {{if .Link.DestinationURLs}}
-                        <ul class="list-group">
-                            {{range .Link.DestinationURLs}}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <code>{{.}}</code>
-                                <a href="{{.}}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
-                            </li>
-                            {{end}}
-                        </ul>
-                        {{else}}
-                        <p class="text-muted small">No destination URLs set</p>
-                        {{end}}
-                    </div>
-                    <div id="urls-edit" class="d-none">
-                        <div id="urls-container">
-                            {{range .Link.DestinationURLs}}
-                            <div class="input-group mb-2">
-                                <input type="url" class="form-control url-input" value="{{.}}" placeholder="https://example.com">
-                                <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-x"></i></button>
-                            </div>
-                            {{else}}
-                            <div class="input-group mb-2">
-                                <input type="url" class="form-control url-input" placeholder="https://example.com">
-                                <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-x"></i></button>
-                            </div>
-                            {{end}}
-                        </div>
-                        <div class="d-flex gap-2 mt-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-url">
-                                <i class="bi bi-plus me-1"></i> Add URL
-                            </button>
-                            <button type="button" class="btn btn-sm btn-success" id="btn-save-urls">
-                                <i class="bi bi-check me-1"></i> Save
-                            </button>
-                            <button type="button" class="btn btn-sm btn-secondary" id="btn-cancel-urls">Cancel</button>
-                        </div>
-                    </div>
-                </div>
-                {{end}}
-
-                {{if .Link.DeployedURL}}
-                <div class="mb-4">
-                    <h6 class="text-muted">Live URL</h6>
-                    <div class="input-group">
-                        <input type="text" class="form-control" value="{{.Link.FullURL}}" readonly id="live-url">
-                        <button class="btn btn-outline-primary" onclick="navigator.clipboard.writeText(document.getElementById('live-url').value)">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                        <a href="{{.Link.FullURL}}" target="_blank" class="btn btn-outline-secondary">
-                            <i class="bi bi-box-arrow-up-right"></i>
-                        </a>
-                    </div>
-                </div>
-                {{end}}
-
-                <div class="text-muted small">
-                    {{t "created"}}: {{.Link.CreatedAt.Format "2006-01-02 15:04"}}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
+    <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">{{t "actions"}}</h5>
+                <h3 class="card-title">
+                    <code>{{.Link.Subdomain}}.{{.Link.DomainName}}/{{.Link.Path}}</code>
+                </h3>
+                <div class="card-tools">
+                    <a href="/user/analytics/link/{{.Link.ID}}/settings" class="btn btn-sm btn-warning">
+                        <i class="bi bi-shield-check me-1"></i> Traffic Settings
+                    </a>
+                    <a href="/user/redirectlinks/{{.Link.ID}}/customize" class="btn btn-sm btn-secondary">
+                        <i class="bi bi-palette me-1"></i> {{t "customize"}}
+                    </a>
+                    <a href="/user/analytics/link/{{.Link.ID}}" class="btn btn-sm btn-info">
+                        <i class="bi bi-graph-up me-1"></i> Analytics
+                    </a>
+                </div>
             </div>
-            <div class="card-body d-grid gap-2">
-                <a href="/user/analytics/link/{{.Link.ID}}" class="btn btn-outline-info">
-                    <i class="bi bi-graph-up me-2"></i> Analytics
-                </a>
-                <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                    <i class="bi bi-trash me-2"></i> {{t "delete"}}
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0">
+                    <tbody>
+                        <tr>
+                            <th style="width: 200px">{{t "type"}}</th>
+                            <td>
+                                {{if eq .Link.Type "REDIRECT"}}
+                                <span class="badge bg-primary">Redirect</span>
+                                {{else}}
+                                <span class="badge bg-info">HTML</span>
+                                {{end}}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{t "status"}}</th>
+                            <td>
+                                {{if eq .Link.DeployStatus "deployed"}}
+                                <span class="badge bg-success">{{t "deployed"}}</span>
+                                {{else if eq .Link.DeployStatus "pending"}}
+                                <span class="badge bg-warning">{{t "pending"}}</span>
+                                {{else}}
+                                <span class="badge bg-danger">{{t "failed"}}</span>
+                                {{end}}
+                            </td>
+                        </tr>
+                        {{if .Link.DeployedURL}}
+                        <tr>
+                            <th>Live URL</th>
+                            <td>
+                                <div class="input-group input-group-sm" style="max-width: 500px">
+                                    <input type="text" class="form-control form-control-sm" value="{{.Link.FullURL}}" readonly id="live-url">
+                                    <button class="btn btn-outline-primary btn-copy-url" type="button" title="Copy URL">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                    <a href="{{.Link.FullURL}}" target="_blank" class="btn btn-outline-secondary" title="Open in new tab">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {{end}}
+                        {{if eq .Link.Type "REDIRECT"}}
+                        <tr>
+                            <th>{{t "destinations"}}</th>
+                            <td>
+                                <div id="urls-view">
+                                    {{if .Link.DestinationURLs}}
+                                    <ul class="list-unstyled mb-0">
+                                        {{range .Link.DestinationURLs}}
+                                        <li class="mb-1">
+                                            <code>{{.}}</code>
+                                            <a href="{{.}}" target="_blank" class="text-muted ms-2"><i class="bi bi-box-arrow-up-right small"></i></a>
+                                        </li>
+                                        {{end}}
+                                    </ul>
+                                    <button class="btn btn-sm btn-outline-primary mt-2" id="btn-edit-urls">
+                                        <i class="bi bi-pencil me-1"></i> Edit URLs
+                                    </button>
+                                    {{else}}
+                                    <span class="text-muted">No destination URLs set</span>
+                                    {{end}}
+                                </div>
+                                <div id="urls-edit" class="d-none">
+                                    <div id="urls-container">
+                                        {{range .Link.DestinationURLs}}
+                                        <div class="input-group input-group-sm mb-2" style="max-width: 500px">
+                                            <input type="url" class="form-control url-input" value="{{.}}" placeholder="https://example.com">
+                                            <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-x"></i></button>
+                                        </div>
+                                        {{else}}
+                                        <div class="input-group input-group-sm mb-2" style="max-width: 500px">
+                                            <input type="url" class="form-control url-input" placeholder="https://example.com">
+                                            <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-x"></i></button>
+                                        </div>
+                                        {{end}}
+                                    </div>
+                                    <div class="btn-group btn-group-sm mt-2">
+                                        <button type="button" class="btn btn-outline-secondary" id="btn-add-url">
+                                            <i class="bi bi-plus me-1"></i> Add
+                                        </button>
+                                        <button type="button" class="btn btn-success" id="btn-save-urls">
+                                            <i class="bi bi-check me-1"></i> Save
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" id="btn-cancel-urls">Cancel</button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {{end}}
+                        <tr>
+                            <th>{{t "created"}}</th>
+                            <td>{{.Link.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="bi bi-trash me-1"></i> {{t "delete"}}
                 </button>
+                <a href="/user/redirectlinks" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Back to List
+                </a>
             </div>
         </div>
     </div>
@@ -148,6 +149,13 @@
 </div>
 
 <script>
+// Copy URL
+document.querySelector('.btn-copy-url')?.addEventListener('click', () => {
+    const url = document.getElementById('live-url').value;
+    navigator.clipboard.writeText(url);
+    showToast('URL copied to clipboard', 'success');
+});
+
 // URL editing
 const btnEditUrls = document.getElementById('btn-edit-urls');
 const urlsView = document.getElementById('urls-view');
@@ -157,18 +165,17 @@ const urlsContainer = document.getElementById('urls-container');
 btnEditUrls?.addEventListener('click', () => {
     urlsView.classList.add('d-none');
     urlsEdit.classList.remove('d-none');
-    btnEditUrls.classList.add('d-none');
 });
 
 document.getElementById('btn-cancel-urls')?.addEventListener('click', () => {
     urlsView.classList.remove('d-none');
     urlsEdit.classList.add('d-none');
-    btnEditUrls.classList.remove('d-none');
 });
 
 document.getElementById('btn-add-url')?.addEventListener('click', () => {
     const div = document.createElement('div');
-    div.className = 'input-group mb-2';
+    div.className = 'input-group input-group-sm mb-2';
+    div.style.maxWidth = '500px';
     div.innerHTML = `
         <input type="url" class="form-control url-input" placeholder="https://example.com">
         <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-x"></i></button>
