@@ -351,3 +351,55 @@ systemctl start tor
 # Verify same .onion address
 cat /var/lib/tor/botginx/hostname
 ```
+
+---
+
+## Analytics Setup
+
+For redirect link analytics to work, the deploy VPS's botection must send webhooks to the panel.
+
+### Deploy VPS Setup
+
+When running `deploy-vps-setup.sh`, provide `PANEL_URL`:
+
+```bash
+PANEL_URL=https://your-panel-domain.com ssh root@DEPLOY_VPS 'bash -s' < deploy-vps-setup.sh
+```
+
+This configures:
+- `panel_callback` - botection calls panel for blocking decisions
+- `webhooks` - botection sends visit data to panel
+
+The script outputs a `WEBHOOK_SECRET` - add it to the panel's `.env`:
+
+```bash
+# On panel VPS
+echo "ANTIBOT_WEBHOOK_SECRET=<secret-from-output>" >> /etc/botginx/botginx.env
+systemctl restart botginx
+```
+
+### Panel VPS Botection Bypass Paths
+
+If botection runs in front of the panel, add these to bypass paths:
+
+```yaml
+# /var/www/antibot/config/config.yaml on PANEL VPS
+server:
+  api_bypass_paths:
+    - "/webhooks/"        # Webhook endpoint
+    - "/api/botection/"   # Callback endpoint
+    - "/api/"             # Panel API
+    - "/.well-known/"
+    - "/health"
+```
+
+Then restart: `systemctl restart botection`
+
+### Verification
+
+After setup, visits to redirect links should appear in analytics:
+
+```bash
+# Check visits in database
+sudo -u postgres psql -d botginx -c "SELECT COUNT(*) FROM visits;"
+```

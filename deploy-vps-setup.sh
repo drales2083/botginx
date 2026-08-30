@@ -153,18 +153,23 @@ modules:
 
 webhooks:
   enabled: ${PANEL_ENABLED:-false}
-  url: "${PANEL_URL}/webhooks/antibot/webhook"
-  secret: "${WEBHOOK_SECRET}"
-  events:
-    - "request"
-    - "session.start"
-    - "session.end"
-    - "page.view"
-  batch_size: 10
-  flush_interval: "5s"
-  timeout: "2s"
-  retry_max: 3
+  batch_size: 1
+  flush_interval: "1s"
+  endpoints:
+    - url: "${PANEL_URL}/webhooks/antibot/webhook"
+      secret: "${WEBHOOK_SECRET}"
+      events: ["*"]
+      timeout: "5s"
+      retry_max: 3
+
+link_settings:
+  enabled: true
+  directory: "/etc/botection/links"
+  watch: true
 CONFIGEOF
+
+# Create link settings directory
+mkdir -p /etc/botection/links
 
 # Replace panel enabled based on PANEL_URL presence
 if [ -n "$PANEL_URL" ]; then
