@@ -245,7 +245,7 @@ function copyField(id) {
 function updateBadge(id, found) {
     const el = document.getElementById(id);
     if (found) {
-        el.innerHTML = '<i class="bi bi-check-lg"></i> Found';
+        el.innerHTML = '<i class="bi bi-check-lg"></i> Verified';
         el.className = 'badge bg-success';
     } else {
         el.innerHTML = '<i class="bi bi-hourglass-split"></i> Waiting';
