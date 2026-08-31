@@ -1,198 +1,225 @@
 {{define "content"}}
-<div class="row">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">{{t "settings"}}</h5>
-            </div>
-            <div class="card-body">
-                <form id="profile-form">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">{{t "name"}}</label>
-                        <input type="text" class="form-control" id="name" name="name"
-                               value="{{.Account.Name}}" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="email" class="form-label">{{t "email"}}</label>
-                        <input type="email" class="form-control" id="email" name="email"
-                               value="{{.Account.Email}}" required>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg me-1"></i> {{t "save"}}
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5 class="card-title mb-0">{{t "password"}}</h5>
-            </div>
-            <div class="card-body">
-                <form id="password-form">
-                    <div class="mb-3">
-                        <label for="currentPassword" class="form-label">Current password</label>
-                        <input type="password" class="form-control" id="currentPassword"
-                               name="currentPassword" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="newPassword" class="form-label">New password</label>
-                        <input type="password" class="form-control" id="newPassword"
-                               name="newPassword" minlength="8" required>
-                        <div class="form-text">{{t "password_hint"}}</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="confirmPassword" class="form-label">{{t "confirm_password"}}</label>
-                        <input type="password" class="form-control" id="confirmPassword"
-                               name="confirmPassword" required>
-                    </div>
-
-                    <div class="alert alert-warning py-2 px-3 small">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Changing your password signs you out everywhere, including here.
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-shield-lock me-1"></i> Change password
-                    </button>
-                </form>
-            </div>
+<div class="row g-3">
+    <!-- Left rail -->
+    <div class="col-md-3">
+        <div class="list-group list-group-flush nav nav-pills flex-column" id="settings-nav" role="tablist">
+            <a href="#profile" class="list-group-item list-group-item-action active" data-bs-toggle="pill" role="tab" aria-selected="true">
+                <i class="bi bi-person me-2"></i>Profile
+            </a>
+            <a href="#security" class="list-group-item list-group-item-action" data-bs-toggle="pill" role="tab">
+                <i class="bi bi-shield-lock me-2"></i>Security
+            </a>
+            <a href="#account" class="list-group-item list-group-item-action" data-bs-toggle="pill" role="tab">
+                <i class="bi bi-info-circle me-2"></i>Account
+            </a>
+            {{if .Subscription.Active}}
+            <a href="#whitelist" class="list-group-item list-group-item-action" data-bs-toggle="pill" role="tab">
+                <i class="bi bi-shield-check me-2"></i>Whitelisted IPs
+            </a>
+            {{end}}
         </div>
     </div>
 
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="card-title mb-0">Account</h6>
-            </div>
-            <div class="card-body">
-                <dl class="row mb-0 small">
-                    <dt class="col-sm-4 text-muted">Role</dt>
-                    <dd class="col-sm-8">
-                        {{if eq (printf "%s" .Account.Role) "admin"}}
-                        <span class="badge bg-danger">Admin</span>
-                        {{else}}
-                        <span class="badge bg-secondary">User</span>
-                        {{end}}
-                    </dd>
-
-                    <dt class="col-sm-4 text-muted">Subscription</dt>
-                    <dd class="col-sm-8">
-                        {{if eq .Subscription.Status "active"}}
-                        <span class="badge bg-success">Active</span>
-                        <div class="text-muted mt-1">Until {{.Subscription.ExpiresAt.Format "2006-01-02"}}</div>
-                        {{else if eq .Subscription.Status "expiring"}}
-                        <span class="badge bg-warning">{{.Subscription.DaysLeft}} days left</span>
-                        <div class="text-muted mt-1">Until {{.Subscription.ExpiresAt.Format "2006-01-02"}}</div>
-                        {{else if .Subscription.Active}}
-                        <span class="badge bg-success">Active</span>
-                        <div class="text-muted mt-1">Admin access - no subscription required</div>
-                        {{else if eq .Subscription.Status "expired"}}
-                        <span class="badge bg-danger">Expired</span>
-                        <div class="text-muted mt-1"><a href="/user/subscription">Renew subscription</a></div>
-                        {{else}}
-                        <span class="badge bg-secondary">None</span>
-                        <div class="text-muted mt-1"><a href="/user/subscription">Get a subscription</a></div>
-                        {{end}}
-                    </dd>
-
-                    <dt class="col-sm-4 text-muted">{{t "created"}}</dt>
-                    <dd class="col-sm-8">{{.Account.CreatedAt.Format "2006-01-02"}}</dd>
-
-                    <dt class="col-sm-4 text-muted">ID</dt>
-                    <dd class="col-sm-8"><code>{{.Account.ID}}</code></dd>
-                </dl>
-            </div>
-        </div>
-
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="card-title mb-0">{{t "language"}}</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-flex gap-2 flex-wrap">
-                    {{range languages}}
-                    <a href="?lang={{.}}"
-                       class="btn btn-sm {{if eq . currentLang}}btn-primary{{else}}btn-outline-secondary{{end}}">
-                        {{tLang . (printf "language.%s" .)}}
-                    </a>
-                    {{end}}
+    <!-- Tab content -->
+    <div class="col-md-9">
+        <div class="tab-content">
+            <!-- Profile -->
+            <div class="tab-pane fade show active" id="profile" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Profile</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="profile-form" class="row g-3">
+                            <div class="col-md-6">
+                                <label for="name" class="form-label">{{t "name"}}</label>
+                                <input type="text" class="form-control" id="name" name="name" value="{{.Account.Name}}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">{{t "email"}}</label>
+                                <input type="email" class="form-control" id="email" name="email" value="{{.Account.Email}}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{t "language"}}</label>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    {{range languages}}
+                                    <a href="?lang={{.}}" class="btn btn-sm {{if eq . currentLang}}btn-primary{{else}}btn-outline-secondary{{end}}">
+                                        {{tLang . (printf "language.%s" .)}}
+                                    </a>
+                                    {{end}}
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-lg me-1"></i> {{t "save"}}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>My Whitelisted IPs</h6>
-            </div>
-            <div class="card-body">
-                {{if not .Subscription.Active}}
-                <div class="alert alert-warning mb-0">
-                    <i class="bi bi-lock me-2"></i>
-                    <strong>Subscription required.</strong>
-                    <a href="/user/subscription" class="alert-link">View subscription</a> to manage your whitelisted IPs.
+            <!-- Security -->
+            <div class="tab-pane fade" id="security" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Change Password</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="password-form" class="row g-3">
+                            <div class="col-md-6">
+                                <label for="currentPassword" class="form-label">Current password</label>
+                                <input type="password" class="form-control" id="currentPassword" name="currentPassword" required>
+                            </div>
+                            <div class="col-md-6"></div>
+                            <div class="col-md-6">
+                                <label for="newPassword" class="form-label">New password</label>
+                                <input type="password" class="form-control" id="newPassword" name="newPassword" minlength="8" required>
+                                <div class="form-text">{{t "password_hint"}}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="confirmPassword" class="form-label">{{t "confirm_password"}}</label>
+                                <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                            </div>
+                            <div class="col-12">
+                                <div class="alert alert-warning py-2 px-3 small mb-3">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Changing your password signs you out everywhere, including here.
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-shield-lock me-1"></i> Change password
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                {{else}}
-                <p class="text-muted small mb-3">
-                    These IPs bypass bot protection when you test your links. Add your device IPs (office, home, mobile).
-                </p>
+            </div>
 
-                <div class="table-responsive mb-3">
-                    <table class="table table-sm table-striped mb-0">
-                        <thead>
-                            <tr>
-                                <th>IP Address</th>
-                                <th>Added</th>
-                                <th style="width:80px">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="whitelist-table">
-                            {{range .GlobalWhitelist}}
-                            <tr data-id="{{.ID}}">
-                                <td><code>{{.IP}}</code></td>
-                                <td class="text-muted">{{.CreatedAt.Format "2006-01-02"}}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-danger btn-remove-ip" data-id="{{.ID}}">
-                                        <i class="bi bi-trash"></i>
+            <!-- Account -->
+            <div class="tab-pane fade" id="account" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Account Info</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Role</label>
+                                <div>
+                                    {{if eq (printf "%s" .Account.Role) "admin"}}
+                                    <span class="badge bg-danger">Admin</span>
+                                    {{else}}
+                                    <span class="badge bg-secondary">User</span>
+                                    {{end}}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Subscription</label>
+                                <div>
+                                    {{if eq .Subscription.Status "active"}}
+                                    <span class="badge bg-success">Active</span>
+                                    <div class="text-muted small mt-1">Until {{.Subscription.ExpiresAt.Format "2006-01-02"}}</div>
+                                    {{else if eq .Subscription.Status "expiring"}}
+                                    <span class="badge bg-warning">{{.Subscription.DaysLeft}} days left</span>
+                                    <div class="text-muted small mt-1">Until {{.Subscription.ExpiresAt.Format "2006-01-02"}}</div>
+                                    {{else if .Subscription.Active}}
+                                    <span class="badge bg-success">Active</span>
+                                    <div class="text-muted small mt-1">Admin access - no subscription required</div>
+                                    {{else if eq .Subscription.Status "expired"}}
+                                    <span class="badge bg-danger">Expired</span>
+                                    <div class="mt-1"><a href="/user/subscription">Renew subscription</a></div>
+                                    {{else}}
+                                    <span class="badge bg-secondary">None</span>
+                                    <div class="mt-1"><a href="/user/subscription">Get a subscription</a></div>
+                                    {{end}}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">{{t "created"}}</label>
+                                <div>{{.Account.CreatedAt.Format "2006-01-02"}}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Account ID</label>
+                                <div><code>{{.Account.ID}}</code></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{if .Subscription.Active}}
+            <!-- Whitelisted IPs -->
+            <div class="tab-pane fade" id="whitelist" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">My Whitelisted IPs</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            These IPs bypass bot protection when you test your links. Add your device IPs (office, home, mobile).
+                        </p>
+
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <th>Added</th>
+                                        <th style="width:80px">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="whitelist-table">
+                                    {{range .GlobalWhitelist}}
+                                    <tr data-id="{{.ID}}">
+                                        <td><code>{{.IP}}</code></td>
+                                        <td class="text-muted">{{.CreatedAt.Format "2006-01-02"}}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger btn-remove-ip" data-id="{{.ID}}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {{else}}
+                                    <tr id="no-ips-row">
+                                        <td colspan="3" class="text-center text-muted py-3">No whitelisted IPs</td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{if lt (len .GlobalWhitelist) .MaxWhitelistIPs}}
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label">Add IP Address</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control font-monospace" id="new-ip" placeholder="e.g. 192.168.1.100">
+                                    <button class="btn btn-primary" id="add-ip-btn">
+                                        <i class="bi bi-plus-lg me-1"></i> Add
                                     </button>
-                                </td>
-                            </tr>
-                            {{else}}
-                            <tr id="no-ips-row">
-                                <td colspan="3" class="text-center text-muted py-3">No whitelisted IPs</td>
-                            </tr>
-                            {{end}}
-                        </tbody>
-                    </table>
-                </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn btn-outline-secondary" id="add-current-ip-btn">
+                                    <i class="bi bi-geo-alt me-1"></i> Add my current IP
+                                </button>
+                            </div>
+                        </div>
+                        {{else}}
+                        <div class="alert alert-info py-2 small mb-0">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Maximum {{.MaxWhitelistIPs}} IPs. Remove one to add another.
+                        </div>
+                        {{end}}
 
-                {{if lt (len .GlobalWhitelist) .MaxWhitelistIPs}}
-                <div class="input-group input-group-sm mb-2">
-                    <input type="text" class="form-control font-monospace" id="new-ip" placeholder="Enter IP address (e.g. 192.168.1.100)">
-                    <button class="btn btn-primary" id="add-ip-btn">
-                        <i class="bi bi-plus-lg me-1"></i> Add
-                    </button>
+                        <div class="text-muted small mt-3">
+                            <i class="bi bi-globe me-1"></i>
+                            {{len .GlobalWhitelist}} of {{.MaxWhitelistIPs}} IPs used
+                        </div>
+                    </div>
                 </div>
-                <button class="btn btn-outline-secondary btn-sm" id="add-current-ip-btn">
-                    <i class="bi bi-geo-alt me-1"></i> Add my current IP
-                </button>
-                {{else}}
-                <div class="alert alert-info py-2 small mb-0">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Maximum {{.MaxWhitelistIPs}} IPs. Remove one to add another.
-                </div>
-                {{end}}
-
-                <div class="text-muted small mt-3">
-                    <i class="bi bi-globe me-1"></i>
-                    {{len .GlobalWhitelist}} of {{.MaxWhitelistIPs}} IPs used
-                </div>
-                {{end}}
             </div>
+            {{end}}
         </div>
     </div>
 </div>
@@ -253,8 +280,6 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
         const data = await res.json();
 
         if (res.ok) {
-            // The session was invalidated server-side, so there is nothing to
-            // return to -- send them to log in with the new password.
             flashToast('Password changed. Please sign in again.', 'success');
             window.location.href = '/auth/login';
             return;
