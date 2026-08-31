@@ -43,6 +43,10 @@
     .app-sidebar .brand-text {
       font-size: 1.4rem;
     }
+    .sidebar-brand {
+      justify-content: flex-start !important;
+      padding-left: 1rem !important;
+    }
 
     /* adminlte.js injects the skip links at runtime. Hidden here rather than by
        patching the vendored file, so an AdminLTE upgrade does not bring them back. */
@@ -164,8 +168,8 @@
 
     <!-- Sidebar -->
     <aside class="app-sidebar bg-dark shadow" data-bs-theme="dark">
-      <div class="sidebar-brand text-start ps-3">
-        <a href="/user/dashboard" class="brand-link text-decoration-none">
+      <div class="sidebar-brand">
+        <a href="/user/dashboard" class="brand-link">
           <span class="brand-text fw-bold text-danger">{{appName}}</span>
         </a>
       </div>
