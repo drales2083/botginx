@@ -94,6 +94,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Help",
 			Icon:    "bi-question-circle",
 			Path:    "/user/help",
+			Order:   86, // After Subscription (85), before Settings (90)
 			Section: module.MenuSectionUser,
 		},
 	}
