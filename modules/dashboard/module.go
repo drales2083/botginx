@@ -54,9 +54,12 @@ func (m *Module) Routes() chi.Router {
 }
 
 func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
 	module.RenderUserSection(w, r, m.templates, "dashboard:index.html", map[string]interface{}{
-		"Title": "Dashboard",
-		"Stats": m.stats(ctx.GetUserID(r)),
+		"Title":   "Dashboard",
+		"Stats":   m.stats(userID),
+		"Domains": m.recentDomains(userID),
+		"Links":   m.recentLinks(userID),
 	})
 }
 
@@ -81,6 +84,45 @@ func (m *Module) stats(userID string) map[string]interface{} {
 		"domains":       domains,
 		"live":          live,
 	}
+}
+
+type recentDomain struct {
+	ID        string `db:"id"`
+	Name      string `db:"name"`
+	SSLStatus string `db:"ssl_status"`
+}
+
+func (m *Module) recentDomains(userID string) []recentDomain {
+	var domains []recentDomain
+	m.DB().Select(&domains, `
+		SELECT id, name, ssl_status
+		FROM domains
+		WHERE user_id = $1 AND is_shared = FALSE
+		ORDER BY created_at DESC
+		LIMIT 5
+	`, userID)
+	return domains
+}
+
+type recentLink struct {
+	ID           string `db:"id"`
+	Subdomain    string `db:"subdomain"`
+	DomainName   string `db:"domain_name"`
+	Path         string `db:"path"`
+	DeployStatus string `db:"deploy_status"`
+}
+
+func (m *Module) recentLinks(userID string) []recentLink {
+	var links []recentLink
+	m.DB().Select(&links, `
+		SELECT r.id, r.subdomain, REGEXP_REPLACE(d.name, '^\*\.', '') as domain_name, r.path, r.deploy_status
+		FROM redirect_links r
+		JOIN domains d ON d.id = r.domain_id
+		WHERE r.user_id = $1
+		ORDER BY r.created_at DESC
+		LIMIT 5
+	`, userID)
+	return links
 }
 
 func (m *Module) Templates() fs.FS {

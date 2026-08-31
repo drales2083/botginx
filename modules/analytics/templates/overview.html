@@ -44,8 +44,8 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Traffic Overview</h5>
                 <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-primary period-btn active" data-period="daily">7 Days</button>
-                    <button class="btn btn-outline-primary period-btn" data-period="hourly">24 Hours</button>
+                    <button class="btn btn-outline-primary period-btn" data-period="daily">7 Days</button>
+                    <button class="btn btn-outline-primary period-btn active" data-period="hourly">24 Hours</button>
                     <button class="btn btn-outline-primary period-btn" data-period="monthly">12 Months</button>
                 </div>
             </div>
@@ -72,7 +72,7 @@
                         <tr>
                             <td class="text-truncate" style="max-width: 200px;">
                                 <a href="/user/analytics/link/{{.linkId}}" class="text-decoration-none">
-                                    {{.linkId}}
+                                    {{.displayUrl}}
                                 </a>
                             </td>
                             <td class="text-end">
@@ -136,6 +136,6 @@ document.querySelectorAll('.period-btn').forEach(btn => {
     });
 });
 
-loadChart('daily');
+loadChart('hourly');
 </script>
 {{end}}

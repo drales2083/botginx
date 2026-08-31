@@ -17,6 +17,7 @@ import (
 	"github.com/botginx/botginx/modules/auth"
 	"github.com/botginx/botginx/modules/dashboard"
 	"github.com/botginx/botginx/modules/domains"
+	"github.com/botginx/botginx/modules/help"
 	"github.com/botginx/botginx/modules/iplists"
 	iplistsvc "github.com/botginx/botginx/modules/iplists/services"
 	modulesmgmt "github.com/botginx/botginx/modules/modules"
@@ -147,6 +148,7 @@ func main() {
 	registry.Register(redirectLinksModule)
 	registry.Register(analyticsModule)           // Analytics module
 	registry.Register(iplistsModule)             // IP Lists module
+	registry.Register(help.New())                // Help/FAQ module
 	registry.Register(users.New())               // Admin module
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
 

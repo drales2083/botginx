@@ -406,12 +406,19 @@ func (s *AnalyticsService) GetLinkSettings(linkID string) (*models.LinkSettings,
 	var settings models.LinkSettings
 	err := s.db.Get(&settings, `SELECT * FROM link_settings WHERE link_id = $1`, linkID)
 	if err != nil {
+		// Default settings: bot protection enabled, redirect to Google
 		return &models.LinkSettings{
-			LinkID:      linkID,
-			CountryMode: "all",
-			CountryList: []string{},
-			DeviceMode:  "all",
-			DeviceList:  []string{},
+			LinkID:          linkID,
+			CountryMode:     "all",
+			CountryList:     []string{},
+			DeviceMode:      "all",
+			DeviceList:      []string{},
+			BlockBots:       true,
+			BlockTor:        true,
+			BlockProxy:      true,
+			BlockDatacenter: true,
+			BlockHeadless:   true,
+			RedirectOnBlock: "https://www.google.com",
 		}, nil
 	}
 
@@ -507,13 +514,18 @@ func (s *AnalyticsService) ShouldBlock(linkID, country, device string, isBot, is
 // GetTopLinks returns top performing links for a user
 func (s *AnalyticsService) GetTopLinks(userID string, limit int) ([]map[string]interface{}, error) {
 	rows, err := s.db.Query(`
-		SELECT link_id, COUNT(*) as total_visits,
-			   COUNT(*) FILTER (WHERE is_unique = true) as unique_visits,
-			   COUNT(*) FILTER (WHERE is_bot = true) as bot_visits,
-			   COALESCE(AVG(behavior_score), 0) as avg_behavior
-		FROM visits
-		WHERE user_id = $1
-		GROUP BY link_id
+		SELECT v.link_id, COUNT(*) as total_visits,
+			   COUNT(*) FILTER (WHERE v.is_unique = true) as unique_visits,
+			   COUNT(*) FILTER (WHERE v.is_bot = true) as bot_visits,
+			   COALESCE(AVG(v.behavior_score), 0) as avg_behavior,
+			   COALESCE(r.subdomain, '') as subdomain,
+			   COALESCE(REGEXP_REPLACE(d.name, '^\*\.', ''), '') as domain,
+			   COALESCE(r.path, '') as path
+		FROM visits v
+		LEFT JOIN redirect_links r ON r.id = v.link_id
+		LEFT JOIN domains d ON d.id = r.domain_id
+		WHERE v.user_id = $1
+		GROUP BY v.link_id, r.subdomain, d.name, r.path
 		ORDER BY total_visits DESC
 		LIMIT $2
 	`, userID, limit)
@@ -524,12 +536,23 @@ func (s *AnalyticsService) GetTopLinks(userID string, limit int) ([]map[string]i
 
 	var results []map[string]interface{}
 	for rows.Next() {
-		var linkID string
+		var linkID, subdomain, domain, path string
 		var total, unique, bots int
 		var avgBehavior float64
-		rows.Scan(&linkID, &total, &unique, &bots, &avgBehavior)
+		rows.Scan(&linkID, &total, &unique, &bots, &avgBehavior, &subdomain, &domain, &path)
+
+		// Build display URL
+		displayURL := linkID
+		if subdomain != "" && domain != "" {
+			displayURL = subdomain + "." + domain
+			if path != "" {
+				displayURL += "/" + path
+			}
+		}
+
 		results = append(results, map[string]interface{}{
 			"linkId":       linkID,
+			"displayUrl":   displayURL,
 			"totalVisits":  total,
 			"uniqueVisits": unique,
 			"botVisits":    bots,

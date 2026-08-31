@@ -47,21 +47,63 @@
 <div class="row">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">{{t "domains.title"}}</h3>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">{{t "domains.title"}}</h3>
+                <a href="/user/domains" class="btn btn-sm btn-outline-primary">View All</a>
             </div>
-            <div class="card-body">
-                <p class="text-muted">Add a domain to deploy your links to. <a href="/user/domains/new">{{t "domains.add"}}</a></p>
+            <div class="card-body p-0">
+                {{if .Domains}}
+                <ul class="list-group list-group-flush">
+                    {{range .Domains}}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a href="/user/domains/{{.ID}}" class="text-decoration-none">{{.Name}}</a>
+                        {{if eq .SSLStatus "ready"}}
+                        <span class="badge bg-success">SSL Ready</span>
+                        {{else if eq .SSLStatus "pending"}}
+                        <span class="badge bg-warning">SSL Pending</span>
+                        {{else}}
+                        <span class="badge bg-secondary">{{.SSLStatus}}</span>
+                        {{end}}
+                    </li>
+                    {{end}}
+                </ul>
+                {{else}}
+                <div class="p-3">
+                    <p class="text-muted mb-0">Add a domain to deploy your links to. <a href="/user/domains/new">{{t "domains.add"}}</a></p>
+                </div>
+                {{end}}
             </div>
         </div>
     </div>
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">{{t "redirectlinks.title"}}</h3>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">{{t "redirectlinks.title"}}</h3>
+                <a href="/user/redirectlinks" class="btn btn-sm btn-outline-primary">View All</a>
             </div>
-            <div class="card-body">
-                <p class="text-muted">{{t "redirectlinks.no_links"}} <a href="/user/redirectlinks/new">{{t "redirectlinks.create"}}</a></p>
+            <div class="card-body p-0">
+                {{if .Links}}
+                <ul class="list-group list-group-flush">
+                    {{range .Links}}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a href="/user/redirectlinks/{{.ID}}" class="text-decoration-none text-truncate" style="max-width:200px">
+                            {{.Subdomain}}.{{.DomainName}}{{if .Path}}/{{.Path}}{{end}}
+                        </a>
+                        {{if eq .DeployStatus "deployed"}}
+                        <span class="badge bg-success">Deployed</span>
+                        {{else if eq .DeployStatus "pending"}}
+                        <span class="badge bg-warning">Pending</span>
+                        {{else}}
+                        <span class="badge bg-danger">Failed</span>
+                        {{end}}
+                    </li>
+                    {{end}}
+                </ul>
+                {{else}}
+                <div class="p-3">
+                    <p class="text-muted mb-0">{{t "redirectlinks.no_links"}} <a href="/user/redirectlinks/new">{{t "redirectlinks.create"}}</a></p>
+                </div>
+                {{end}}
             </div>
         </div>
     </div>

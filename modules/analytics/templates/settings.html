@@ -3,9 +3,9 @@
     <div class="col-12">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/user/analytics">Analytics</a></li>
-                <li class="breadcrumb-item"><a href="/user/analytics/link/{{.LinkID}}">{{.LinkID}}</a></li>
-                <li class="breadcrumb-item active">Settings</li>
+                <li class="breadcrumb-item"><a href="/user/redirectlinks">Links</a></li>
+                <li class="breadcrumb-item"><a href="/user/redirectlinks/{{.LinkID}}">View</a></li>
+                <li class="breadcrumb-item active">Traffic Settings</li>
             </ol>
         </nav>
     </div>
@@ -154,8 +154,31 @@
                     <strong>Blacklist:</strong> Visitors from selected countries/devices are blocked.
                 </p>
                 <p class="small text-muted mb-0">
-                    <strong>Bot Protection:</strong> Blocks known search engine bots and crawlers.
+                    <strong>Bot Protection:</strong> Blocks known bots, Tor, VPNs, datacenters, and headless browsers. Enabled by default.
                 </p>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Behavior Score</h6>
+            </div>
+            <div class="card-body small text-muted">
+                <p class="mb-2">Every visitor gets a behavior score from 0 to 100 based on how human-like they act.</p>
+                <p class="mb-2"><strong>What affects the score:</strong></p>
+                <ul class="mb-2 ps-3">
+                    <li>Mouse movements and clicks</li>
+                    <li>Scroll patterns</li>
+                    <li>Time on page</li>
+                    <li>Browser fingerprint</li>
+                </ul>
+                <p class="mb-2"><strong>Recommended thresholds:</strong></p>
+                <ul class="mb-0 ps-3">
+                    <li><code>0</code> - Disabled (default)</li>
+                    <li><code>20-30</code> - Block obvious bots</li>
+                    <li><code>40-50</code> - Moderate filtering</li>
+                    <li><code>60+</code> - Strict (may block some real users)</li>
+                </ul>
             </div>
         </div>
 

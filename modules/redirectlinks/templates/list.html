@@ -1,104 +1,152 @@
 {{define "content"}}
 {{$canWrite := .Subscription.Active}}
-<div class="row mb-3">
-    <div class="col-12">
+
+<!-- Summary cards -->
+<div class="row g-3 mb-3">
+    <div class="col-md-3 col-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Total Links</p>
+                <h3 class="mb-0 fw-bold">{{len .Links}}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Deployed</p>
+                <h3 class="mb-0 fw-bold text-success" id="stat-deployed">0</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Pending</p>
+                <h3 class="mb-0 fw-bold text-warning" id="stat-pending">0</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <p class="text-secondary small mb-1">Failed</p>
+                <h3 class="mb-0 fw-bold text-danger" id="stat-failed">0</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Links table -->
+<div class="card">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center">
+        <h3 class="card-title mb-0 me-auto">{{t "redirect_links"}}</h3>
         {{if $canWrite}}
-        <a href="/user/redirectlinks/new" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i> {{t "create"}} {{t "redirect_link"}}
+        <a href="/user/redirectlinks/new" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i> {{t "create"}}
         </a>
         {{end}}
     </div>
-</div>
-
-<div class="card">
-    <div class="card-header">
-        <h3 class="card-title">{{t "redirect_links"}}</h3>
-    </div>
     <div class="card-body p-0">
-        <table class="table table-striped mb-0" data-datatable data-no-sort="5">
-            <thead>
-                <tr>
-                    <th>URL</th>
-                    <th>{{t "type"}}</th>
-                    <th>{{t "destinations"}}</th>
-                    <th>{{t "status"}}</th>
-                    <th>{{t "created"}}</th>
-                    <th>{{t "actions"}}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .Links}}
-                <tr>
-                    <td>
-                        {{if .DeployedURL}}
-                        <a href="{{.FullURL}}" target="_blank" class="text-decoration-none">
-                            <code>{{.Subdomain}}.{{.BaseDomain}}/{{.Path}}</code>
-                            <i class="bi bi-box-arrow-up-right ms-1 small"></i>
-                        </a>
-                        {{else}}
-                        <code class="text-muted">{{.Subdomain}}.{{.BaseDomain}}/{{.Path}}</code>
-                        {{end}}
-                    </td>
-                    <td>
-                        {{if eq .Type "REDIRECT"}}
-                        <span class="badge bg-primary">Redirect</span>
-                        {{else}}
-                        <span class="badge bg-info">HTML</span>
-                        {{end}}
-                    </td>
-                    <td>
-                        {{if .DestinationURLs}}
-                        {{len .DestinationURLs}} URL(s)
-                        {{else}}
-                        -
-                        {{end}}
-                    </td>
-                    <td>
-                        {{if eq .DeployStatus "deployed"}}
-                        <span class="badge bg-success">{{t "deployed"}}</span>
-                        {{else if eq .DeployStatus "pending"}}
-                        <span class="badge bg-warning">{{t "pending"}}</span>
-                        {{else}}
-                        <span class="badge bg-danger" title="{{.DeployError}}">{{t "failed"}}</span>
-                        {{end}}
-                    </td>
-                    <td>{{.CreatedAt.Format "2006-01-02"}}</td>
-                    <td>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-dark dropdown-toggle" data-bs-toggle="dropdown">
-                                Actions
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}"><i class="bi bi-eye me-2"></i>View</a></li>
-                                <li><a class="dropdown-item" href="/user/analytics/link/{{.ID}}"><i class="bi bi-graph-up me-2"></i>Analytics</a></li>
-                                <li><a class="dropdown-item btn-copy" href="#" data-url="{{.FullURL}}"><i class="bi bi-clipboard me-2"></i>Copy URL</a></li>
-                                {{if $canWrite}}
-                                <li><hr class="dropdown-divider"></li>
-                                {{if eq .Type "HTML"}}
-                                <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/edit-html"><i class="bi bi-code-slash me-2"></i>Edit HTML</a></li>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="5">
+                <thead>
+                    <tr>
+                        <th>Link</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Links}}
+                    <tr data-status="{{.DeployStatus}}">
+                        <td>
+                            {{if .DeployedURL}}
+                            <a href="{{.FullURL}}" target="_blank" class="fw-semibold text-decoration-none">
+                                {{.Subdomain}}.{{.BaseDomain}}/{{.Path}}
+                            </a>
+                            {{else}}
+                            <span class="fw-semibold text-muted">{{.Subdomain}}.{{.BaseDomain}}/{{.Path}}</span>
+                            {{end}}
+                            <div class="small text-secondary">
+                                {{if .DestinationURLs}}
+                                {{len .DestinationURLs}} destination{{if gt (len .DestinationURLs) 1}}s{{end}}
+                                {{else if eq .Type "HTML"}}
+                                Custom HTML
                                 {{else}}
-                                <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/customize"><i class="bi bi-palette me-2"></i>Customize</a></li>
+                                No destinations
                                 {{end}}
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                            </div>
+                        </td>
+                        <td>
+                            {{if eq .Type "REDIRECT"}}
+                            <span class="badge text-bg-primary">Redirect</span>
+                            {{else}}
+                            <span class="badge text-bg-info">HTML</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            {{if eq .DeployStatus "deployed"}}
+                            <span class="badge text-bg-success">Deployed</span>
+                            {{else if eq .DeployStatus "pending"}}
+                            <span class="badge text-bg-warning">Pending</span>
+                            {{else}}
+                            <span class="badge text-bg-danger" title="{{.DeployError}}">Failed</span>
+                            {{end}}
+                        </td>
+                        <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="/user/redirectlinks/{{.ID}}" class="btn btn-outline-secondary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/user/analytics/link/{{.ID}}" class="btn btn-outline-secondary" title="Analytics">
+                                    <i class="bi bi-graph-up"></i>
+                                </a>
+                                <a href="/user/analytics/link/{{.ID}}/settings" class="btn btn-outline-secondary" title="Traffic Settings">
+                                    <i class="bi bi-shield-check"></i>
+                                </a>
+                                <button class="btn btn-outline-secondary btn-copy" title="Copy URL" data-url="{{.FullURL}}">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                {{if $canWrite}}
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="More">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        {{if eq .Type "HTML"}}
+                                        <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/edit-html"><i class="bi bi-code-slash me-2"></i>Edit HTML</a></li>
+                                        {{else}}
+                                        <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/customize"><i class="bi bi-palette me-2"></i>Customize</a></li>
+                                        {{end}}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                    </ul>
+                                </div>
                                 {{end}}
-                            </ul>
-                        </div>
-                    </td>
-                </tr>
-                {{else}}
-                <tr>
-                    <td colspan="6" class="text-center text-muted py-4">
-                        {{t "no_data"}}. <a href="/user/redirectlinks/new">{{t "create"}} {{t "redirect_link"}}</a>.
-                    </td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
+                            </div>
+                        </td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            No redirect links yet.
+                            {{if $canWrite}}
+                            <a href="/user/redirectlinks/new">Create your first link</a>.
+                            {{end}}
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
+<!-- Delete Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -121,27 +169,38 @@
 </div>
 
 <script>
+// Calculate stats
+let deployed = 0, pending = 0, failed = 0;
+document.querySelectorAll('tr[data-status]').forEach(row => {
+    const status = row.dataset.status;
+    if (status === 'deployed') deployed++;
+    else if (status === 'pending') pending++;
+    else if (status === 'failed') failed++;
+});
+document.getElementById('stat-deployed').textContent = deployed;
+document.getElementById('stat-pending').textContent = pending;
+document.getElementById('stat-failed').textContent = failed;
+
 let deleteId = null;
 let deleteModal = null;
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-// Initialize modal after Bootstrap loads
 document.addEventListener('DOMContentLoaded', () => {
     deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 });
 
-// Delegated: paging swaps rows in and out of the DOM, so listeners bound to
-// individual buttons at load would stop working past page one.
+// Delegated event handlers
 document.addEventListener('click', async (e) => {
     const copy = e.target.closest('.btn-copy');
     if (copy) {
+        e.preventDefault();
         const url = copy.dataset.url;
         if (!url) return;
         navigator.clipboard.writeText(url);
         const icon = copy.querySelector('i');
         icon.className = 'bi bi-check-lg';
         setTimeout(() => icon.className = 'bi bi-clipboard', 1500);
-        showToast('URL copied to clipboard', 'success');
+        showToast('URL copied', 'success');
         return;
     }
 
@@ -161,10 +220,10 @@ confirmDeleteBtn.addEventListener('click', async () => {
 
     const res = await fetch(`/user/redirectlinks/api/${deleteId}`, { method: 'DELETE' });
     if (res.ok) {
-        reloadWithToast('Redirect link deleted', 'success');
+        reloadWithToast('Link deleted', 'success');
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Failed to delete redirect link', 'danger');
+        showToast(data.error || 'Failed to delete', 'danger');
         deleteModal.hide();
         confirmDeleteBtn.disabled = false;
         confirmDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
