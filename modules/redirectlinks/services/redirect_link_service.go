@@ -36,7 +36,7 @@ func (s *RedirectLinkService) ResolveByHost(host string) (linkID, userID string,
 		SELECT rl.id, rl.user_id
 		FROM redirect_links rl
 		JOIN domains d ON d.id = rl.domain_id
-		WHERE LOWER(rl.subdomain || '.' || d.name) = $1
+		WHERE LOWER(rl.subdomain || '.' || REGEXP_REPLACE(d.name, '^\*\.', '')) = $1
 		LIMIT 1
 	`, host)
 	if err != nil {
