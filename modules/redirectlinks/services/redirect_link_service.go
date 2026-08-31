@@ -66,6 +66,15 @@ func normalizeHost(host string) string {
 	return host
 }
 
+// stripWildcard removes the "*." prefix from wildcard domain names.
+// e.g., "*.example.com" -> "example.com"
+func stripWildcard(domain string) string {
+	if len(domain) > 2 && domain[:2] == "*." {
+		return domain[2:]
+	}
+	return domain
+}
+
 func NewRedirectLinkService(db *sqlx.DB) *RedirectLinkService {
 	return &RedirectLinkService{db: db}
 }
@@ -244,7 +253,7 @@ func (s *RedirectLinkService) GetLinkHost(linkID string) (host string, domainID 
 	if err != nil {
 		return "", "", err
 	}
-	host = row.Subdomain + "." + row.DomainName
+	host = row.Subdomain + "." + stripWildcard(row.DomainName)
 	return host, row.DomainID, nil
 }
 
