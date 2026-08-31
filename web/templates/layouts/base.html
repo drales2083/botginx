@@ -84,6 +84,15 @@
     .datatable-wrapper .datatable-empty {
       color: var(--bs-secondary-color);
     }
+    /* Accordion: dark background when expanded instead of red */
+    .accordion-button:not(.collapsed) {
+      background-color: var(--bs-dark-bg-subtle);
+      color: var(--bs-body-color);
+    }
+    .accordion-button:focus {
+      box-shadow: none;
+      border-color: var(--bs-accordion-border-color);
+    }
   </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
