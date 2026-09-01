@@ -865,3 +865,30 @@ func GetBaseDomain(domain string) string {
 	}
 	return domain
 }
+
+// GetSavedAcmeToken retrieves the latest ACME token saved on the VPS
+func (s *VerificationService) GetSavedAcmeToken(baseDomain string) string {
+	server, err := s.getServer()
+	if err != nil {
+		return ""
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return ""
+	}
+	defer client.Close()
+
+	cmd := fmt.Sprintf(`cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
+	output, err := client.Run(cmd)
+	if err != nil {
+		return ""
+	}
+
+	return strings.TrimSpace(output)
+}
