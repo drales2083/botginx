@@ -708,7 +708,8 @@ cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""
 }
 
 // CompleteWildcardSSL generates wildcard SSL certificate
-// Runs certbot with an auth hook that checks DNS until record propagates
+// First checks if the ACME token from PreGenerateAcmeToken is in DNS
+// If so, runs certbot with immediate success hook (DNS already configured)
 func (s *VerificationService) CompleteWildcardSSL(domain string) error {
 	server, err := s.getServer()
 	if err != nil {
@@ -737,58 +738,63 @@ func (s *VerificationService) CompleteWildcardSSL(domain string) error {
 		return nil // Already have cert
 	}
 
-	// Create smart auth hook that:
-	// 1. Saves token to file for UI to display
-	// 2. Checks authoritative NS + public DNS until record propagates
-	// 3. Times out after 10 minutes
-	authHookScript := `cat > /tmp/dns-auth-smart.sh << 'HOOKEOF'
+	// Get the saved ACME token (from PreGenerateAcmeToken)
+	getTokenCmd := fmt.Sprintf(`cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
+	savedToken, _ := client.Run(getTokenCmd)
+	savedToken = strings.TrimSpace(savedToken)
+
+	// Verify the saved token is in DNS before proceeding
+	if savedToken != "" {
+		dnsCheckCmd := fmt.Sprintf(`dig @8.8.8.8 _acme-challenge.%s TXT +short 2>/dev/null | tr -d '"'`, baseDomain)
+		dnsToken, _ := client.Run(dnsCheckCmd)
+		dnsToken = strings.TrimSpace(dnsToken)
+
+		if dnsToken != savedToken {
+			return fmt.Errorf("ACME token mismatch: DNS has '%s', expected '%s'", dnsToken, savedToken)
+		}
+	}
+
+	// Create auth hook that checks if certbot's token matches what's in DNS
+	// If yes, success. If no (new token), save it and fail so UI can show new token.
+	authHookScript := fmt.Sprintf(`cat > /tmp/dns-auth-verify.sh << 'HOOKEOF'
 #!/bin/bash
 DOMAIN="$CERTBOT_DOMAIN"
 TOKEN="$CERTBOT_VALIDATION"
 
-# Save token for UI
-echo "$TOKEN" > /tmp/acme-token-$DOMAIN.txt
+# Check if token is already in DNS (from previous setup)
+GOOGLE_VAL=$(dig @8.8.8.8 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
+CF_VAL=$(dig @1.1.1.1 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
 
-# Get authoritative nameserver
-NS=$(dig NS $DOMAIN +short | head -1 | sed 's/\.$//')
-if [ -z "$NS" ]; then
-    NS="ns1.host96.com"
+if [ "$GOOGLE_VAL" = "$TOKEN" ] || [ "$CF_VAL" = "$TOKEN" ]; then
+    echo "DNS already has correct token"
+    exit 0
 fi
 
-# Wait up to 10 minutes for DNS propagation
-for i in {1..60}; do
-    # Check authoritative NS first (most up-to-date)
-    AUTH_VAL=$(dig @$NS _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
-    if [ "$AUTH_VAL" = "$TOKEN" ]; then
-        # Also verify at least one public DNS has it
-        GOOGLE_VAL=$(dig @8.8.8.8 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
-        CF_VAL=$(dig @1.1.1.1 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
-        if [ "$GOOGLE_VAL" = "$TOKEN" ] || [ "$CF_VAL" = "$TOKEN" ]; then
-            echo "DNS verified at authoritative and public DNS"
-            exit 0
-        fi
-        echo "Waiting for public DNS propagation..."
-    fi
-    sleep 10
-done
-
-echo "DNS propagation timeout after 10 minutes"
+# Token doesn't match - save new token for UI to display
+echo "$TOKEN" > /tmp/acme-token-$DOMAIN.txt
+echo "Token mismatch. New token saved: $TOKEN (DNS has: $GOOGLE_VAL)"
 exit 1
 HOOKEOF
-chmod +x /tmp/dns-auth-smart.sh`
+chmod +x /tmp/dns-auth-verify.sh`)
 	client.Run(authHookScript)
 
-	// Run certbot with the smart auth hook
+	// Run certbot - if DNS already has the right token, this will succeed
 	certbotCmd := fmt.Sprintf(`
 certbot certonly --manual --preferred-challenges dns \
   -d "*.%s" \
   --agree-tos --email admin@%s \
-  --manual-auth-hook /tmp/dns-auth-smart.sh \
+  --manual-auth-hook /tmp/dns-auth-verify.sh \
   --non-interactive 2>&1
 `, baseDomain, baseDomain)
 
 	output, err := client.Run(certbotCmd)
 	if err != nil {
+		// Check if we saved a new token (means certbot wanted different token)
+		newToken, _ := client.Run(getTokenCmd)
+		newToken = strings.TrimSpace(newToken)
+		if newToken != "" && newToken != savedToken {
+			return fmt.Errorf("ACME token changed. Please update DNS with new token: %s", newToken)
+		}
 		return fmt.Errorf("SSL generation failed: %s", parseCertbotError(output))
 	}
 
