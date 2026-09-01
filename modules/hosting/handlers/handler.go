@@ -25,6 +25,44 @@ func NewHandler(service *services.HostingService, templates *module.TemplateEngi
 	}
 }
 
+// requireAccountOwner verifies the current user owns the account, returns the account or writes an error
+func (h *Handler) requireAccountOwner(w http.ResponseWriter, r *http.Request) (*models.HostingAccount, bool) {
+	accountID := chi.URLParam(r, "accountID")
+	userID := ctx.GetUserID(r)
+
+	account, err := h.service.GetAccount(accountID)
+	if err != nil {
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return nil, false
+	}
+
+	if account.UserID != userID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return nil, false
+	}
+
+	return account, true
+}
+
+// requireAccountOwnerJSON is like requireAccountOwner but returns JSON errors for API endpoints
+func (h *Handler) requireAccountOwnerJSON(w http.ResponseWriter, r *http.Request) (*models.HostingAccount, bool) {
+	accountID := chi.URLParam(r, "accountID")
+	userID := ctx.GetUserID(r)
+
+	account, err := h.service.GetAccount(accountID)
+	if err != nil {
+		h.jsonError(w, "Account not found", http.StatusNotFound)
+		return nil, false
+	}
+
+	if account.UserID != userID {
+		h.jsonError(w, "Forbidden", http.StatusForbidden)
+		return nil, false
+	}
+
+	return account, true
+}
+
 // ========== User Page Handlers ==========
 
 // UserIndex lists the user's hosting accounts
@@ -76,14 +114,12 @@ func (h *Handler) UserDoPurchase(w http.ResponseWriter, r *http.Request) {
 
 // UserOverview shows the account overview/dashboard
 func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
-	account, err := h.service.GetAccount(accountID)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
 		return
 	}
 
-	domains, _ := h.service.ListDomains(accountID)
+	domains, _ := h.service.ListDomains(account.ID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:overview.html", map[string]interface{}{
 		"Title":     "Account Overview",
@@ -95,14 +131,12 @@ func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
 
 // UserDomains shows the domains management page
 func (h *Handler) UserDomains(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
-	account, err := h.service.GetAccount(accountID)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
 		return
 	}
 
-	domains, _ := h.service.ListDomains(accountID)
+	domains, _ := h.service.ListDomains(account.ID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:domains.html", map[string]interface{}{
 		"Title":     "Domains",
@@ -114,14 +148,11 @@ func (h *Handler) UserDomains(w http.ResponseWriter, r *http.Request) {
 
 // UserDomainSettings shows antibot settings for a domain
 func (h *Handler) UserDomainSettings(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
-	domainID := chi.URLParam(r, "domainID")
-
-	account, err := h.service.GetAccount(accountID)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
 		return
 	}
+	domainID := chi.URLParam(r, "domainID")
 
 	settings, err := h.service.GetDomainSettings(domainID)
 	if err != nil {
@@ -139,15 +170,13 @@ func (h *Handler) UserDomainSettings(w http.ResponseWriter, r *http.Request) {
 
 // UserEmails shows the email accounts management page
 func (h *Handler) UserEmails(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
-	account, err := h.service.GetAccount(accountID)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
 		return
 	}
 
-	emails, _ := h.service.ListEmails(accountID)
-	domains, _ := h.service.ListDomains(accountID)
+	emails, _ := h.service.ListEmails(account.ID)
+	domains, _ := h.service.ListDomains(account.ID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:emails.html", map[string]interface{}{
 		"Title":     "Email Accounts",
@@ -160,14 +189,12 @@ func (h *Handler) UserEmails(w http.ResponseWriter, r *http.Request) {
 
 // UserDatabases shows the databases management page
 func (h *Handler) UserDatabases(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
-	account, err := h.service.GetAccount(accountID)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
 		return
 	}
 
-	databases, _ := h.service.ListDatabases(accountID)
+	databases, _ := h.service.ListDatabases(account.ID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:databases.html", map[string]interface{}{
 		"Title":     "Databases",
@@ -179,14 +206,12 @@ func (h *Handler) UserDatabases(w http.ResponseWriter, r *http.Request) {
 
 // UserFTP shows the FTP accounts management page
 func (h *Handler) UserFTP(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
-	account, err := h.service.GetAccount(accountID)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
 		return
 	}
 
-	ftpAccounts, _ := h.service.ListFTP(accountID)
+	ftpAccounts, _ := h.service.ListFTP(account.ID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:ftp.html", map[string]interface{}{
 		"Title":       "FTP Accounts",
@@ -235,7 +260,10 @@ func (h *Handler) AdminAccounts(w http.ResponseWriter, r *http.Request) {
 
 // APIAddDomain adds a domain to an account
 func (h *Handler) APIAddDomain(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 
 	var input struct {
 		Domain string `json:"domain"`
@@ -245,7 +273,7 @@ func (h *Handler) APIAddDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	domain, err := h.service.AddDomain(accountID, input.Domain)
+	domain, err := h.service.AddDomain(account.ID, input.Domain)
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -256,10 +284,13 @@ func (h *Handler) APIAddDomain(w http.ResponseWriter, r *http.Request) {
 
 // APIDeleteDomain removes a domain from an account
 func (h *Handler) APIDeleteDomain(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 	domainID := chi.URLParam(r, "domainID")
 
-	if err := h.service.DeleteDomain(accountID, domainID); err != nil {
+	if err := h.service.DeleteDomain(account.ID, domainID); err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -269,10 +300,13 @@ func (h *Handler) APIDeleteDomain(w http.ResponseWriter, r *http.Request) {
 
 // APIEnableSSL enables SSL for a domain
 func (h *Handler) APIEnableSSL(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 	domainID := chi.URLParam(r, "domainID")
 
-	if err := h.service.EnableSSL(accountID, domainID); err != nil {
+	if err := h.service.EnableSSL(account.ID, domainID); err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -282,6 +316,10 @@ func (h *Handler) APIEnableSSL(w http.ResponseWriter, r *http.Request) {
 
 // APIUpdateDomainSettings updates antibot settings for a domain
 func (h *Handler) APIUpdateDomainSettings(w http.ResponseWriter, r *http.Request) {
+	_, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 	domainID := chi.URLParam(r, "domainID")
 
 	var input models.UpdateDomainSettingsInput
@@ -300,7 +338,10 @@ func (h *Handler) APIUpdateDomainSettings(w http.ResponseWriter, r *http.Request
 
 // APIAddEmail creates an email account
 func (h *Handler) APIAddEmail(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 
 	var input models.AddEmailInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -308,7 +349,7 @@ func (h *Handler) APIAddEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, err := h.service.AddEmail(accountID, input)
+	email, err := h.service.AddEmail(account.ID, input)
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -319,10 +360,13 @@ func (h *Handler) APIAddEmail(w http.ResponseWriter, r *http.Request) {
 
 // APIDeleteEmail removes an email account
 func (h *Handler) APIDeleteEmail(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 	emailID := chi.URLParam(r, "emailID")
 
-	if err := h.service.DeleteEmail(accountID, emailID); err != nil {
+	if err := h.service.DeleteEmail(account.ID, emailID); err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -332,7 +376,10 @@ func (h *Handler) APIDeleteEmail(w http.ResponseWriter, r *http.Request) {
 
 // APIAddDatabase creates a database
 func (h *Handler) APIAddDatabase(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 
 	var input models.AddDatabaseInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -340,7 +387,7 @@ func (h *Handler) APIAddDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database, err := h.service.AddDatabase(accountID, input)
+	database, err := h.service.AddDatabase(account.ID, input)
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -351,10 +398,13 @@ func (h *Handler) APIAddDatabase(w http.ResponseWriter, r *http.Request) {
 
 // APIDeleteDatabase removes a database
 func (h *Handler) APIDeleteDatabase(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 	dbID := chi.URLParam(r, "dbID")
 
-	if err := h.service.DeleteDatabase(accountID, dbID); err != nil {
+	if err := h.service.DeleteDatabase(account.ID, dbID); err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -364,7 +414,10 @@ func (h *Handler) APIDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 
 // APIAddFTP creates an FTP account
 func (h *Handler) APIAddFTP(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 
 	var input models.AddFTPInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -372,7 +425,7 @@ func (h *Handler) APIAddFTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ftp, err := h.service.AddFTP(accountID, input)
+	ftp, err := h.service.AddFTP(account.ID, input)
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -383,10 +436,13 @@ func (h *Handler) APIAddFTP(w http.ResponseWriter, r *http.Request) {
 
 // APIDeleteFTP removes an FTP account
 func (h *Handler) APIDeleteFTP(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
 	ftpID := chi.URLParam(r, "ftpID")
 
-	if err := h.service.DeleteFTP(accountID, ftpID); err != nil {
+	if err := h.service.DeleteFTP(account.ID, ftpID); err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -396,14 +452,11 @@ func (h *Handler) APIDeleteFTP(w http.ResponseWriter, r *http.Request) {
 
 // APIReactivate reactivates a suspended account by paying the balance
 func (h *Handler) APIReactivate(w http.ResponseWriter, r *http.Request) {
-	accountID := chi.URLParam(r, "accountID")
-	userID := ctx.GetUserID(r)
-
-	account, err := h.service.GetAccount(accountID)
-	if err != nil {
-		h.jsonError(w, "Account not found", http.StatusNotFound)
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
 		return
 	}
+	userID := ctx.GetUserID(r)
 
 	// Get package price
 	pkg, err := h.service.GetPackage(*account.PackageID)
@@ -420,7 +473,7 @@ func (h *Handler) APIReactivate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unsuspend and deduct
-	if err := h.service.UnsuspendAccount(accountID); err != nil {
+	if err := h.service.UnsuspendAccount(account.ID); err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
