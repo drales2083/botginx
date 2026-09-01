@@ -59,6 +59,14 @@ func (m *Module) Migrate() error {
 	return err
 }
 
+// RoutesForSection returns routes for the requested section (user or admin)
+func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
+	if section == module.MenuSectionAdmin {
+		return m.AdminRoutes()
+	}
+	return m.Routes()
+}
+
 // Routes returns user-facing routes mounted at /user/hosting
 func (m *Module) Routes() chi.Router {
 	r := chi.NewRouter()
