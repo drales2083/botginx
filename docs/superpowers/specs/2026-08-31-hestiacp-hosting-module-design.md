@@ -180,8 +180,19 @@ modules/hosting/
 ├── migrations/
 │   └── 001_create_tables.sql
 ├── templates/
-│   ├── admin.html            # Admin dashboard with tabs (Servers, Packages, Accounts)
-│   └── user.html             # User dashboard with tabs (Overview, Domains, Emails, Databases, FTP, Settings)
+│   ├── partials/
+│   │   ├── user_nav.html     # User sidebar nav partial
+│   │   └── admin_nav.html    # Admin sidebar nav partial
+│   ├── user_overview.html    # Overview page
+│   ├── user_domains.html     # Domains management
+│   ├── user_domain_settings.html  # Per-domain antibot settings
+│   ├── user_emails.html      # Email accounts
+│   ├── user_databases.html   # Databases
+│   ├── user_ftp.html         # FTP accounts
+│   ├── user_purchase.html    # Buy hosting (shown if no account)
+│   ├── admin_servers.html    # Server management
+│   ├── admin_packages.html   # Package management
+│   └── admin_accounts.html   # All accounts, custom quotes
 
 pkg/hestia/
 ├── client.go                 # SSH connection pool
@@ -190,27 +201,51 @@ pkg/hestia/
 
 ## Menu Structure
 
-**User sidebar** (single item):
+**Main sidebar** (single item each):
 ```
-Hosting (bi-shield-check) → /user/hosting
-```
-
-Inside /user/hosting - tabs:
-- Overview (account status, usage, credentials)
-- Domains (add/remove, SSL, antibot settings per domain)
-- Emails (mail accounts)
-- Databases (MySQL databases)
-- FTP (FTP accounts)
-
-**Admin sidebar** (single item):
-```
-Hosting (bi-shield-check) → /admin/hosting
+User:  Hosting (bi-shield-check) → /user/hosting
+Admin: Hosting (bi-shield-check) → /admin/hosting
 ```
 
-Inside /admin/hosting - tabs:
-- Servers (HestiaCP server management)
-- Packages (hosting plans)
-- Accounts (all user accounts, custom quotes)
+**Inside pages - compact sidebar nav** (like settings page, but each is a full page reload):
+
+User hosting pages:
+```
+/user/hosting           → Overview (status, usage, credentials)
+/user/hosting/domains   → Domains (add/remove, SSL, antibot settings)
+/user/hosting/emails    → Emails (mail accounts)
+/user/hosting/databases → Databases (MySQL)
+/user/hosting/ftp       → FTP accounts
+```
+
+Admin hosting pages:
+```
+/admin/hosting          → Servers (HestiaCP nodes)
+/admin/hosting/packages → Packages (hosting plans)
+/admin/hosting/accounts → Accounts (all users, custom quotes)
+```
+
+**Sidebar nav layout** (compact, left side):
+```html
+<div class="row">
+  <div class="col-md-3">
+    <div class="card">
+      <div class="list-group list-group-flush">
+        <a href="/user/hosting" class="list-group-item list-group-item-action active">
+          <i class="bi bi-speedometer2 me-2"></i>Overview
+        </a>
+        <a href="/user/hosting/domains" class="list-group-item list-group-item-action">
+          <i class="bi bi-globe me-2"></i>Domains
+        </a>
+        <!-- etc -->
+      </div>
+    </div>
+  </div>
+  <div class="col-md-9">
+    <!-- Page content -->
+  </div>
+</div>
+```
 
 Balance management stays in existing /admin/users page (add balance column + top up button).
 
