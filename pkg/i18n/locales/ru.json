@@ -130,5 +130,9 @@
 
   "modules": "Модули",
   "modules.title": "Управление модулями",
-  "modules.status": "Статус"
+  "modules.status": "Статус",
+
+  "balance": "Баланс",
+  "replenish_balance": "Пополнить баланс",
+  "contact_admin_balance": "Свяжитесь с администратором для пополнения баланса."
 }

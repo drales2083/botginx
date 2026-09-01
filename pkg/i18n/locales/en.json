@@ -130,5 +130,9 @@
 
   "modules": "Modules",
   "modules.title": "Module Management",
-  "modules.status": "Status"
+  "modules.status": "Status",
+
+  "balance": "Balance",
+  "replenish_balance": "Replenish Balance",
+  "contact_admin_balance": "Contact admin for balance replenishment."
 }

@@ -136,7 +136,7 @@ func (m *Module) Templates() fs.FS {
 	return tmplFS
 }
 
-// MenuItems returns the user menu items for this module
+// MenuItems returns menu items for this module (both user and admin sections)
 func (m *Module) MenuItems() []module.MenuItem {
 	return []module.MenuItem{
 		{
@@ -146,16 +146,11 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Order:   50,
 			Section: module.MenuSectionUser,
 		},
-	}
-}
-
-// AdminMenuItems returns the admin menu items for this module
-func (m *Module) AdminMenuItems() []module.MenuItem {
-	return []module.MenuItem{
 		{
 			Title:   "Hosting",
 			Icon:    "bi-shield-check",
 			Path:    "/admin/hosting",
+			Order:   50,
 			Section: module.MenuSectionAdmin,
 		},
 	}
