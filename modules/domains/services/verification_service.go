@@ -304,7 +304,7 @@ func (s *VerificationService) GenerateSSL(domain string) error {
 		if strings.Contains(output, "Certificate not yet due for renewal") {
 			return nil
 		}
-		return fmt.Errorf("certbot failed: %s", output)
+		return fmt.Errorf("SSL failed: %s", parseCertbotError(output))
 	}
 
 	client.Run("nginx -t && systemctl reload nginx")
@@ -782,7 +782,7 @@ certbot certonly --manual --preferred-challenges dns \
 
 	output, err := client.Run(certbotCmd)
 	if err != nil {
-		return fmt.Errorf("certbot failed: %s", output)
+		return fmt.Errorf("SSL generation failed: %s", parseCertbotError(output))
 	}
 
 	// Check if certificate was created
@@ -802,7 +802,47 @@ fi
 		return nil
 	}
 
-	return fmt.Errorf("SSL generation failed: %s", strings.TrimSpace(output))
+	return fmt.Errorf("SSL generation failed: %s", parseCertbotError(output))
+}
+
+// parseCertbotError extracts a user-friendly message from certbot output
+func parseCertbotError(output string) string {
+	output = strings.TrimSpace(output)
+
+	// Check for common error patterns and return friendly messages
+	switch {
+	case strings.Contains(output, "NXDOMAIN") && strings.Contains(output, "_acme-challenge"):
+		return "DNS TXT record not found. Please add the _acme-challenge TXT record and wait for DNS propagation (up to 10 minutes)."
+
+	case strings.Contains(output, "DNS problem") && strings.Contains(output, "SERVFAIL"):
+		return "DNS server error. Please check your DNS configuration and try again."
+
+	case strings.Contains(output, "Timeout during connect"):
+		return "Connection timeout. The server could not reach the certificate authority."
+
+	case strings.Contains(output, "too many certificates") || strings.Contains(output, "rate limit"):
+		return "Rate limit reached. Too many certificate requests for this domain. Please wait 1 hour and try again."
+
+	case strings.Contains(output, "propagation timeout") || strings.Contains(output, "timeout after"):
+		return "DNS propagation timeout. The TXT record was not detected within 10 minutes. Please verify the record is correct and try again."
+
+	case strings.Contains(output, "failed to authenticate"):
+		return "DNS verification failed. Please ensure the _acme-challenge TXT record is set correctly with the exact value shown."
+
+	case strings.Contains(output, "Could not bind"):
+		return "Port 80 is in use. Please ensure the web server is properly configured."
+
+	case strings.Contains(output, "unauthorized"):
+		return "Domain verification failed. Please check that the domain points to this server."
+
+	default:
+		// For unknown errors, return a generic message
+		// Log the full output for debugging
+		if len(output) > 200 {
+			return "SSL generation failed. Please check DNS records and try again."
+		}
+		return output
+	}
 }
 
 // GetBaseDomain returns the base domain for a wildcard or the domain itself
