@@ -20,6 +20,7 @@ var migrationsFS embed.FS
 type Module struct {
 	*module.BaseModule
 	service *services.HostingService
+	billing *services.BillingService
 	handler *handlers.Handler
 }
 
@@ -39,7 +40,8 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 
 	m.service = services.NewHostingService(deps.DB)
-	m.handler = handlers.NewHandler(m.service, deps.Templates)
+	m.billing = services.NewBillingService(deps.DB, m.service)
+	m.handler = handlers.NewHandler(m.service, m.billing, deps.Templates)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -157,6 +159,13 @@ func (m *Module) AdminMenuItems() []module.MenuItem {
 			Section: module.MenuSectionAdmin,
 		},
 	}
+}
+
+// CronRoutes returns internal routes for cron jobs (localhost only)
+func (m *Module) CronRoutes() chi.Router {
+	r := chi.NewRouter()
+	r.Post("/billing", m.handler.RunBilling)
+	return r
 }
 
 // Service returns the hosting service for use by other modules

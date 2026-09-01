@@ -314,6 +314,10 @@ setup() {
     local webhook_secret
     webhook_secret=$(openssl rand -hex 32)
 
+    # Generate encryption key for hosting passwords
+    local encryption_key
+    encryption_key=$(openssl rand -hex 32)
+
     # Written only if absent, so a redeploy never clobbers live secrets.
     remote_sudo "test -f ${CONFIG_DIR}/${APP_NAME}.env || cat > ${CONFIG_DIR}/${APP_NAME}.env <<ENVEOF
 # botginx environment. Secrets belong here, not in config.yaml or git.
@@ -328,6 +332,8 @@ SUPABASE_KEY=${SUPABASE_KEY:-}
 PANEL_URL=${PANEL_DOMAIN:-guardbot.sbs}
 # UI display name
 UI_APP_NAME=${UI_APP_NAME:-GuardBot}
+# Hosting module: AES-256-GCM encryption key for HestiaCP passwords
+HOSTING_ENCRYPTION_KEY=${encryption_key}
 ENVEOF"
     remote_sudo "chown root:${RUN_USER} ${CONFIG_DIR}/${APP_NAME}.env"
     remote_sudo "chmod 640 ${CONFIG_DIR}/${APP_NAME}.env"
@@ -434,12 +440,16 @@ setup_autodeploy() {
     fi
 
     remote_sudo "chmod 755 ${APP_DIR}/auto-deploy.sh"
+    remote_sudo "mkdir -p ${APP_DIR}/logs"
 
-    # Add cron job (every 2 minutes) - preserve other crons
-    local cron_job="*/2 * * * * ${APP_DIR}/auto-deploy.sh >> ${APP_DIR}/logs/auto-deploy.log 2>&1"
-    remote_sudo "(crontab -l 2>/dev/null | grep -v '${APP_DIR}/auto-deploy.sh'; echo '${cron_job}') | crontab -"
+    # Add cron jobs - preserve other crons, remove our old entries first
+    local autodeploy_cron="*/2 * * * * ${APP_DIR}/auto-deploy.sh >> ${APP_DIR}/logs/auto-deploy.log 2>&1"
+    local billing_cron="0 * * * * curl -fsS -X POST http://127.0.0.1:${APP_PORT}/api/cron/hosting/billing >> ${APP_DIR}/logs/billing.log 2>&1"
 
-    log "cron: every 2 minutes"
+    remote_sudo "(crontab -l 2>/dev/null | grep -v '${APP_DIR}/auto-deploy.sh' | grep -v '/api/cron/hosting/billing'; echo '${autodeploy_cron}'; echo '${billing_cron}') | crontab -"
+
+    log "cron: auto-deploy every 2 minutes"
+    log "cron: hosting billing every hour"
 }
 
 install_systemd_unit() {

@@ -266,6 +266,10 @@ func main() {
 	// Used by botection to get per-link blocking decisions before taking action
 	r.Mount("/api/botection", analyticsModule.BotectionRoutes())
 
+	// Internal cron routes (no auth, localhost only)
+	// POST /api/cron/hosting/billing - process monthly billing
+	r.Mount("/api/cron/hosting", hostingModule.CronRoutes())
+
 	// Public tracking API (no auth, CORS enabled)
 	// Called by redirect pages to record visits
 	r.Mount("/api/track", analyticsModule.TrackingRoutes())

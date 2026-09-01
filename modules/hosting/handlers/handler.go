@@ -14,13 +14,15 @@ import (
 // Handler provides HTTP handlers for hosting operations
 type Handler struct {
 	service   *services.HostingService
+	billing   *services.BillingService
 	templates *module.TemplateEngine
 }
 
 // NewHandler creates a new hosting handler instance
-func NewHandler(service *services.HostingService, templates *module.TemplateEngine) *Handler {
+func NewHandler(service *services.HostingService, billing *services.BillingService, templates *module.TemplateEngine) *Handler {
 	return &Handler{
 		service:   service,
+		billing:   billing,
 		templates: templates,
 	}
 }
@@ -642,6 +644,15 @@ func (h *Handler) APITopUpBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
+// ========== Cron Handlers ==========
+
+// RunBilling processes monthly billing for all accounts due
+// This endpoint is called by cron and restricted to localhost
+func (h *Handler) RunBilling(w http.ResponseWriter, r *http.Request) {
+	h.billing.ProcessMonthlyBilling()
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
