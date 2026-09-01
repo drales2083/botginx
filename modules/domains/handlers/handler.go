@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/botginx/botginx/modules/domains/models"
@@ -546,11 +547,15 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 	status.AllRecordsFound = status.ARecordFound && status.VerifyTXTFound && status.AcmeTXTFound
 
 	// If all records found and not yet complete, trigger SSL generation
-	if status.AllRecordsFound && domain.SetupStep == models.SetupStepDNSWaiting {
+	// Also retry if stuck at ssl_generating (previous attempt may have failed)
+	if status.AllRecordsFound && !domain.SSLEnabled &&
+		(domain.SetupStep == models.SetupStepDNSWaiting || domain.SetupStep == models.SetupStepSSLGenerating) {
 		go h.completeExternalSetup(domain)
-		step := models.SetupStepSSLGenerating
-		h.service.Update(id, models.UpdateDomainInput{SetupStep: &step})
-		status.SetupStep = models.SetupStepSSLGenerating
+		if domain.SetupStep == models.SetupStepDNSWaiting {
+			step := models.SetupStepSSLGenerating
+			h.service.Update(id, models.UpdateDomainInput{SetupStep: &step})
+			status.SetupStep = models.SetupStepSSLGenerating
+		}
 	}
 
 	// Check if SSL is ready
@@ -564,13 +569,17 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 
 // completeExternalSetup finishes SSL setup for external domain
 func (h *Handler) completeExternalSetup(domain *models.Domain) {
+	log.Printf("[domains] completing SSL setup for %s", domain.Name)
+
 	// Complete the wildcard SSL generation
 	if err := h.verification.CompleteWildcardSSL(domain.Name); err != nil {
+		log.Printf("[domains] SSL generation failed for %s: %v", domain.Name, err)
 		return
 	}
 
 	// Setup nginx
 	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+		log.Printf("[domains] nginx setup failed for %s: %v", domain.Name, err)
 		return
 	}
 
@@ -587,6 +596,8 @@ func (h *Handler) completeExternalSetup(domain *models.Domain) {
 		DNSVerified: &dnsVerified,
 		ServerID:    &serverID,
 	})
+
+	log.Printf("[domains] SSL setup complete for %s", domain.Name)
 }
 
 // APIRefreshAcmeToken generates a new ACME token (if expired)

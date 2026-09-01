@@ -2,6 +2,7 @@ package services
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/botginx/botginx/modules/domains/models"
@@ -89,6 +90,7 @@ func (b *BackgroundVerifier) checkAllDomains() {
 
 func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 	isCloudflare := b.verifyService.IsCloudflare(domainName)
+	isWildcard := strings.HasPrefix(domainName, "*.")
 
 	if isCloudflare {
 		log.Printf("[domains] %s is behind Cloudflare - setting up origin SSL", domainName)
@@ -97,27 +99,43 @@ func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 		if err := b.verifyService.GenerateSSL(domainName); err != nil {
 			log.Printf("[domains] self-signed cert failed for %s: %v", domainName, err)
 		}
+
+		// Setup nginx config
+		if err := b.verifyService.SetupDomainNginx(domainName); err != nil {
+			log.Printf("[domains] nginx setup failed for %s: %v", domainName, err)
+			return
+		}
+
+		log.Printf("[domains] %s SSL ready (Cloudflare)", domainName)
+		t := true
+		b.domainService.Update(domainID, models.UpdateDomainInput{SSLEnabled: &t})
+		return
 	}
 
-	// Setup nginx config (with or without SSL based on Cloudflare detection)
+	// For non-Cloudflare: generate SSL FIRST, then nginx config
+	if isWildcard {
+		// Wildcard domains need DNS-01 challenge via CompleteWildcardSSL
+		// Skip auto-setup - wildcard SSL requires manual ACME token verification
+		// The user must complete the setup wizard which handles the ACME flow
+		log.Printf("[domains] %s is wildcard - skipping auto SSL (requires ACME flow)", domainName)
+		return
+	}
+
+	// Non-wildcard: use HTTP-01 challenge
+	log.Printf("[domains] %s generating Let's Encrypt SSL", domainName)
+	if err := b.verifyService.GenerateSSL(domainName); err != nil {
+		log.Printf("[domains] SSL generation failed for %s: %v", domainName, err)
+		return
+	}
+
+	// Now setup nginx (cert exists)
 	if err := b.verifyService.SetupDomainNginx(domainName); err != nil {
 		log.Printf("[domains] nginx setup failed for %s: %v", domainName, err)
 		return
 	}
 
-	if isCloudflare {
-		// For Cloudflare, mark SSL enabled immediately
-		log.Printf("[domains] %s SSL ready (Cloudflare)", domainName)
-		t := true
-		b.domainService.Update(domainID, models.UpdateDomainInput{SSLEnabled: &t})
-	} else {
-		// For non-Cloudflare, generate Let's Encrypt cert
-		if err := b.verifyService.GenerateSSL(domainName); err != nil {
-			log.Printf("[domains] SSL generation failed for %s: %v", domainName, err)
-		}
-		// Check if SSL exists and enable
-		b.checkAndEnableSSL(domainID, domainName)
-	}
+	// Check if SSL exists and enable
+	b.checkAndEnableSSL(domainID, domainName)
 }
 
 func (b *BackgroundVerifier) checkAndEnableSSL(domainID, domainName string) {
