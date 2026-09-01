@@ -55,8 +55,14 @@ func (s *VerificationService) getServer() (*ServerInfo, error) {
 // VerifyDNS checks if domain has the correct TXT record for verification.
 // This works with Cloudflare proxy enabled.
 func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, error) {
+	// For wildcard domains, use the base domain
+	baseDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		baseDomain = strings.TrimPrefix(domain, "*.")
+	}
+
 	// Look up TXT record at _guardbot-verify.domain.com
-	txtHost := "_guardbot-verify." + domain
+	txtHost := "_guardbot-verify." + baseDomain
 
 	// Helper to query a specific DNS server
 	queryDNS := func(dnsServer string) ([]string, error) {
@@ -77,7 +83,7 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 
 	// First, try to get authoritative nameservers and query them directly
 	// This bypasses public DNS caching issues
-	nsRecords, _ := net.LookupNS(domain)
+	nsRecords, _ := net.LookupNS(baseDomain)
 	for _, ns := range nsRecords {
 		nsHost := strings.TrimSuffix(ns.Host, ".")
 		// Resolve NS hostname to IP
