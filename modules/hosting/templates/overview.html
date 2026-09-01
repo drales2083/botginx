@@ -1,0 +1,190 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-3">
+        {{template "hosting_user_nav" .}}
+    </div>
+    <div class="col-md-9">
+        <!-- Status -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        {{if eq .Account.Status "active"}}
+                        <i class="bi bi-check-circle-fill display-4 text-success mb-2"></i>
+                        <h5 class="text-success">Active</h5>
+                        {{else if eq .Account.Status "suspended"}}
+                        <i class="bi bi-pause-circle-fill display-4 text-warning mb-2"></i>
+                        <h5 class="text-warning">Suspended</h5>
+                        {{else}}
+                        <i class="bi bi-x-circle-fill display-4 text-danger mb-2"></i>
+                        <h5 class="text-danger">Cancelled</h5>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <p class="text-secondary small mb-1">Package</p>
+                        <h5 class="mb-0">{{.Account.PackageName}}</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <p class="text-secondary small mb-1">Monthly Cost</p>
+                        <h5 class="mb-0 text-primary">${{printf "%.2f" .Account.PackagePrice}}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3 col-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3 class="mb-0 fw-bold">{{len .Domains}}</h3>
+                        <p class="text-secondary small mb-0">Domains</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3 class="mb-0 fw-bold" id="stat-emails">0</h3>
+                        <p class="text-secondary small mb-0">Emails</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3 class="mb-0 fw-bold" id="stat-databases">0</h3>
+                        <p class="text-secondary small mb-0">Databases</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3 class="mb-0 fw-bold" id="stat-ftp">0</h3>
+                        <p class="text-secondary small mb-0">FTP</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Account Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr>
+                                    <th>Username</th>
+                                    <td>
+                                        <code>{{.Account.HestiaUsername}}</code>
+                                        <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="{{.Account.HestiaUsername}}" title="Copy">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Server</th>
+                                    <td>{{.Account.ServerName}}</td>
+                                </tr>
+                                <tr>
+                                    <th>Created</th>
+                                    <td>{{.Account.CreatedAt.Format "Jan 02, 2006"}}</td>
+                                </tr>
+                                {{if .Account.NextBillingAt}}
+                                <tr>
+                                    <th>Next Billing</th>
+                                    <td>{{.Account.NextBillingAt.Format "Jan 02, 2006"}}</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-shield-check me-2"></i>
+                            <strong>Antibot Protection Active</strong>
+                            <p class="small mb-0 mt-1">All domains are protected from bots, Tor, VPN, datacenter IPs, and headless browsers by default.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Domains -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Domains</h5>
+                <a href="/user/hosting/{{.Account.ID}}/domains" class="btn btn-outline-primary btn-sm">
+                    Manage All <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Domain</th>
+                                <th>SSL</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Domains}}
+                            <tr>
+                                <td>
+                                    <a href="https://{{.Domain}}" target="_blank" class="text-decoration-none">
+                                        {{.Domain}} <i class="bi bi-box-arrow-up-right small ms-1"></i>
+                                    </a>
+                                </td>
+                                <td>
+                                    {{if .SSLEnabled}}
+                                    <span class="badge text-bg-success"><i class="bi bi-lock-fill me-1"></i>Enabled</span>
+                                    {{else}}
+                                    <span class="badge text-bg-secondary">Disabled</span>
+                                    {{end}}
+                                </td>
+                                <td>{{.CreatedAt.Format "Jan 02, 2006"}}</td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="3" class="text-center text-secondary py-4">
+                                    No domains yet. <a href="/user/hosting/{{$.Account.ID}}/domains">Add your first domain</a>.
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Copy button handler
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-copy');
+    if (btn) {
+        e.preventDefault();
+        navigator.clipboard.writeText(btn.dataset.value);
+        const icon = btn.querySelector('i');
+        icon.className = 'bi bi-check-lg text-success';
+        setTimeout(() => icon.className = 'bi bi-clipboard', 1500);
+        showToast('Copied to clipboard', 'success');
+    }
+});
+</script>
+{{end}}

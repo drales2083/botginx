@@ -1,0 +1,18 @@
+{{define "hosting_admin_nav"}}
+<div class="card">
+    <div class="list-group list-group-flush">
+        <a href="/admin/hosting"
+           class="list-group-item list-group-item-action {{if eq .NavActive "servers"}}active{{end}}">
+            <i class="bi bi-hdd-rack me-2"></i>Servers
+        </a>
+        <a href="/admin/hosting/packages"
+           class="list-group-item list-group-item-action {{if eq .NavActive "packages"}}active{{end}}">
+            <i class="bi bi-box me-2"></i>Packages
+        </a>
+        <a href="/admin/hosting/accounts"
+           class="list-group-item list-group-item-action {{if eq .NavActive "accounts"}}active{{end}}">
+            <i class="bi bi-people me-2"></i>Accounts
+        </a>
+    </div>
+</div>
+{{end}}

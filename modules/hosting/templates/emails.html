@@ -1,0 +1,329 @@
+{{define "content"}}
+{{$canWrite := .Subscription.Active}}
+
+<div class="row">
+    <div class="col-md-3">
+        {{template "hosting_user_nav" .}}
+    </div>
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Email Accounts</h5>
+                {{if $canWrite}}
+                {{if .Domains}}
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEmailModal">
+                    <i class="bi bi-plus-lg me-1"></i>Create Email
+                </button>
+                {{end}}
+                {{end}}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="3">
+                        <thead>
+                            <tr>
+                                <th>Email Address</th>
+                                <th>Quota</th>
+                                <th>Created</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Emails}}
+                            <tr>
+                                <td>
+                                    <code class="fw-semibold">{{.Email}}</code>
+                                    <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="{{.Email}}" title="Copy">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                                <td>
+                                    {{if ge .QuotaMB 1024}}
+                                    {{printf "%.1f" (divf .QuotaMB 1024)}} GB
+                                    {{else}}
+                                    {{.QuotaMB}} MB
+                                    {{end}}
+                                </td>
+                                <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
+                                <td class="text-end">
+                                    {{if $canWrite}}
+                                    <button class="btn btn-sm btn-outline-danger btn-delete-email" data-id="{{.ID}}" data-email="{{.Email}}" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {{end}}
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="4" class="text-center text-secondary py-4">
+                                    {{if not .Domains}}
+                                    Add a domain first to create email accounts.
+                                    <a href="/user/hosting/{{$.Account.ID}}/domains">Add Domain</a>
+                                    {{else}}
+                                    No email accounts yet.
+                                    {{if $canWrite}}
+                                    <a href="#" data-bs-toggle="modal" data-bs-target="#addEmailModal">Create your first email</a>.
+                                    {{end}}
+                                    {{end}}
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email client config -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Email Client Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Incoming Mail (IMAP)</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th>Server</th>
+                                    <td><code>mail.{{if .Domains}}{{(index .Domains 0).Domain}}{{else}}yourdomain.com{{end}}</code></td>
+                                </tr>
+                                <tr>
+                                    <th>Port</th>
+                                    <td><code>993</code> (SSL)</td>
+                                </tr>
+                                <tr>
+                                    <th>Username</th>
+                                    <td>Full email address</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Outgoing Mail (SMTP)</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th>Server</th>
+                                    <td><code>mail.{{if .Domains}}{{(index .Domains 0).Domain}}{{else}}yourdomain.com{{end}}</code></td>
+                                </tr>
+                                <tr>
+                                    <th>Port</th>
+                                    <td><code>465</code> (SSL) or <code>587</code> (TLS)</td>
+                                </tr>
+                                <tr>
+                                    <th>Username</th>
+                                    <td>Full email address</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Email Modal -->
+<div class="modal fade" id="addEmailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-envelope text-primary me-2"></i>Create Email Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addEmailForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Domain</label>
+                        <select class="form-select" id="emailDomainSelect" required>
+                            {{range .Domains}}
+                            <option value="{{.ID}}">{{.Domain}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Account Name</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="emailAccountInput" placeholder="info" required>
+                            <span class="input-group-text" id="emailDomainSuffix">@</span>
+                        </div>
+                        <small class="text-secondary">e.g., info, support, admin</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="emailPasswordInput" required minlength="8">
+                            <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button" id="generatePasswordBtn">
+                                <i class="bi bi-magic"></i>
+                            </button>
+                        </div>
+                        <small class="text-secondary">Minimum 8 characters</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="addEmailBtn">
+                        <i class="bi bi-plus-lg me-1"></i>Create Email
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Email Modal -->
+<div class="modal fade" id="deleteEmailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Email Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="deleteEmailAddress">this email</strong>?</p>
+                <p class="text-muted small mb-0">This will delete all emails in this mailbox.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteEmailBtn">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const accountID = '{{.Account.ID}}';
+let deleteModal = null;
+let addModal = null;
+let deleteEmailId = null;
+
+// Domain lookup for suffix
+const domains = {
+    {{range .Domains}}
+    '{{.ID}}': '{{.Domain}}',
+    {{end}}
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteEmailModal'));
+    addModal = new bootstrap.Modal(document.getElementById('addEmailModal'));
+
+    // Update domain suffix when selection changes
+    const domainSelect = document.getElementById('emailDomainSelect');
+    const domainSuffix = document.getElementById('emailDomainSuffix');
+    if (domainSelect && domainSuffix) {
+        const updateSuffix = () => {
+            domainSuffix.textContent = '@' + (domains[domainSelect.value] || '');
+        };
+        domainSelect.addEventListener('change', updateSuffix);
+        updateSuffix();
+    }
+});
+
+// Copy button
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-copy');
+    if (btn) {
+        e.preventDefault();
+        navigator.clipboard.writeText(btn.dataset.value);
+        const icon = btn.querySelector('i');
+        icon.className = 'bi bi-check-lg text-success';
+        setTimeout(() => icon.className = 'bi bi-clipboard', 1500);
+        showToast('Copied to clipboard', 'success');
+    }
+});
+
+// Toggle password visibility
+document.getElementById('togglePasswordBtn')?.addEventListener('click', () => {
+    const input = document.getElementById('emailPasswordInput');
+    const icon = document.querySelector('#togglePasswordBtn i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+});
+
+// Generate random password
+document.getElementById('generatePasswordBtn')?.addEventListener('click', () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let password = '';
+    for (let i = 0; i < 16; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById('emailPasswordInput').value = password;
+    document.getElementById('emailPasswordInput').type = 'text';
+    document.querySelector('#togglePasswordBtn i').className = 'bi bi-eye-slash';
+});
+
+// Add email
+document.getElementById('addEmailForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = document.getElementById('addEmailBtn');
+    const domainId = document.getElementById('emailDomainSelect').value;
+    const account = document.getElementById('emailAccountInput').value.trim();
+    const password = document.getElementById('emailPasswordInput').value;
+
+    if (!domainId || !account || !password) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+
+    const res = await fetch(`/user/hosting/api/${accountID}/emails`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domainId, account, password })
+    });
+
+    if (res.ok) {
+        reloadWithToast('Email account created', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to create email', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Create Email';
+    }
+});
+
+// Delete email
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-delete-email');
+    if (btn) {
+        e.preventDefault();
+        deleteEmailId = btn.dataset.id;
+        document.getElementById('deleteEmailAddress').textContent = btn.dataset.email;
+        deleteModal.show();
+    }
+});
+
+document.getElementById('confirmDeleteEmailBtn').addEventListener('click', async () => {
+    if (!deleteEmailId) return;
+
+    const btn = document.getElementById('confirmDeleteEmailBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+
+    const res = await fetch(`/user/hosting/api/${accountID}/emails/${deleteEmailId}`, { method: 'DELETE' });
+
+    if (res.ok) {
+        reloadWithToast('Email account deleted', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to delete email', 'danger');
+        deleteModal.hide();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+    }
+});
+</script>
+{{end}}

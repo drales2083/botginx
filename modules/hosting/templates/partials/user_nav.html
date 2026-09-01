@@ -1,0 +1,31 @@
+{{define "hosting_user_nav"}}
+<div class="card">
+    <div class="list-group list-group-flush">
+        <a href="/user/hosting/{{.Account.ID}}"
+           class="list-group-item list-group-item-action {{if eq .NavActive "overview"}}active{{end}}">
+            <i class="bi bi-speedometer2 me-2"></i>Overview
+        </a>
+        <a href="/user/hosting/{{.Account.ID}}/domains"
+           class="list-group-item list-group-item-action {{if eq .NavActive "domains"}}active{{end}}">
+            <i class="bi bi-globe me-2"></i>Domains
+        </a>
+        <a href="/user/hosting/{{.Account.ID}}/emails"
+           class="list-group-item list-group-item-action {{if eq .NavActive "emails"}}active{{end}}">
+            <i class="bi bi-envelope me-2"></i>Emails
+        </a>
+        <a href="/user/hosting/{{.Account.ID}}/databases"
+           class="list-group-item list-group-item-action {{if eq .NavActive "databases"}}active{{end}}">
+            <i class="bi bi-database me-2"></i>Databases
+        </a>
+        <a href="/user/hosting/{{.Account.ID}}/ftp"
+           class="list-group-item list-group-item-action {{if eq .NavActive "ftp"}}active{{end}}">
+            <i class="bi bi-folder me-2"></i>FTP Accounts
+        </a>
+    </div>
+</div>
+<div class="mt-3">
+    <a href="/user/hosting" class="btn btn-outline-secondary btn-sm w-100">
+        <i class="bi bi-arrow-left me-1"></i>All Accounts
+    </a>
+</div>
+{{end}}

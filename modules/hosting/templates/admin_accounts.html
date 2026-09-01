@@ -1,0 +1,323 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-3">
+        {{template "hosting_admin_nav" .}}
+    </div>
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">All Hosting Accounts</h5>
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#topUpModal">
+                    <i class="bi bi-wallet2 me-1"></i>Top Up Balance
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0" data-datatable data-per-page="25" data-no-sort="7">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Username</th>
+                                <th>Package</th>
+                                <th>Server</th>
+                                <th>Domains</th>
+                                <th>Status</th>
+                                <th>Next Billing</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Accounts}}
+                            <tr>
+                                <td>
+                                    <span class="fw-semibold">{{.UserEmail}}</span>
+                                </td>
+                                <td><code>{{.HestiaUsername}}</code></td>
+                                <td>
+                                    {{.PackageName}}
+                                    <br><small class="text-primary">${{printf "%.2f" .PackagePrice}}/mo</small>
+                                </td>
+                                <td>{{.ServerName}}</td>
+                                <td>
+                                    <span class="badge bg-secondary rounded-pill">{{.DomainCount}}</span>
+                                </td>
+                                <td>
+                                    {{if eq .Status "active"}}
+                                    <span class="badge text-bg-success">Active</span>
+                                    {{else if eq .Status "suspended"}}
+                                    <span class="badge text-bg-warning">Suspended</span>
+                                    {{else}}
+                                    <span class="badge text-bg-danger">Cancelled</span>
+                                    {{end}}
+                                </td>
+                                <td class="text-nowrap">
+                                    {{if .NextBillingAt}}
+                                    {{.NextBillingAt.Format "Jan 02, 2006"}}
+                                    {{else}}
+                                    -
+                                    {{end}}
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        {{if eq .Status "active"}}
+                                        <button class="btn btn-outline-warning btn-suspend" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="Suspend">
+                                            <i class="bi bi-pause-circle"></i>
+                                        </button>
+                                        {{else if eq .Status "suspended"}}
+                                        <button class="btn btn-outline-success btn-unsuspend" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="Unsuspend">
+                                            <i class="bi bi-play-circle"></i>
+                                        </button>
+                                        {{end}}
+                                    </div>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="8" class="text-center text-secondary py-4">
+                                    No hosting accounts yet.
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="row mt-4 g-3">
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h3 class="mb-0" id="stat-active">0</h3>
+                        <small>Active</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body text-center">
+                        <h3 class="mb-0" id="stat-suspended">0</h3>
+                        <small>Suspended</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h3 class="mb-0" id="stat-cancelled">0</h3>
+                        <small>Cancelled</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h3 class="mb-0" id="stat-total">0</h3>
+                        <small>Total</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Up Balance Modal -->
+<div class="modal fade" id="topUpModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-wallet2 text-success me-2"></i>Top Up User Balance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="topUpForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">User Email</label>
+                        <input type="text" class="form-control" id="topUpUserInput" placeholder="user@example.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount ($)</label>
+                        <input type="number" class="form-control" id="topUpAmountInput" step="0.01" min="0.01" placeholder="50.00" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description (optional)</label>
+                        <input type="text" class="form-control" id="topUpDescriptionInput" placeholder="Payment received">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" id="topUpBtn">
+                        <i class="bi bi-plus-lg me-1"></i>Add Balance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Suspend Modal -->
+<div class="modal fade" id="suspendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-warning">
+                <h5 class="modal-title"><i class="bi bi-pause-circle text-warning me-2"></i>Suspend Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to suspend the hosting account for <strong id="suspendEmail">this user</strong>?</p>
+                <p class="text-muted small mb-0">The user's websites will be temporarily unavailable.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmSuspendBtn">
+                    <i class="bi bi-pause-circle me-1"></i>Suspend
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unsuspend Modal -->
+<div class="modal fade" id="unsuspendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-success">
+                <h5 class="modal-title"><i class="bi bi-play-circle text-success me-2"></i>Unsuspend Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to unsuspend the hosting account for <strong id="unsuspendEmail">this user</strong>?</p>
+                <p class="text-muted small mb-0">The user's websites will be restored.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmUnsuspendBtn">
+                    <i class="bi bi-play-circle me-1"></i>Unsuspend
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let suspendModal = null;
+let unsuspendModal = null;
+let suspendId = null;
+let unsuspendId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    suspendModal = new bootstrap.Modal(document.getElementById('suspendModal'));
+    unsuspendModal = new bootstrap.Modal(document.getElementById('unsuspendModal'));
+
+    // Calculate stats
+    let active = 0, suspended = 0, cancelled = 0;
+    document.querySelectorAll('tbody tr').forEach(row => {
+        const badge = row.querySelector('.badge');
+        if (badge) {
+            if (badge.textContent.includes('Active')) active++;
+            else if (badge.textContent.includes('Suspended')) suspended++;
+            else if (badge.textContent.includes('Cancelled')) cancelled++;
+        }
+    });
+    document.getElementById('stat-active').textContent = active;
+    document.getElementById('stat-suspended').textContent = suspended;
+    document.getElementById('stat-cancelled').textContent = cancelled;
+    document.getElementById('stat-total').textContent = active + suspended + cancelled;
+});
+
+// Top up balance
+document.getElementById('topUpForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = document.getElementById('topUpBtn');
+    const data = {
+        user_id: document.getElementById('topUpUserInput').value.trim(), // This is user email, handler needs to resolve
+        amount: parseFloat(document.getElementById('topUpAmountInput').value) || 0,
+        description: document.getElementById('topUpDescriptionInput').value.trim() || 'Admin top-up'
+    };
+
+    if (!data.user_id || data.amount <= 0) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+
+    const res = await fetch('/admin/hosting/api/balance/topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+        reloadWithToast('Balance added', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to add balance', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Balance';
+    }
+});
+
+// Suspend account
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-suspend');
+    if (btn) {
+        e.preventDefault();
+        suspendId = btn.dataset.id;
+        document.getElementById('suspendEmail').textContent = btn.dataset.email;
+        suspendModal.show();
+    }
+});
+
+document.getElementById('confirmSuspendBtn').addEventListener('click', async () => {
+    if (!suspendId) return;
+
+    const btn = document.getElementById('confirmSuspendBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Suspending...';
+
+    const res = await fetch(`/admin/hosting/api/accounts/${suspendId}/suspend`, { method: 'PUT' });
+
+    if (res.ok) {
+        reloadWithToast('Account suspended', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to suspend account', 'danger');
+        suspendModal.hide();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-pause-circle me-1"></i>Suspend';
+    }
+});
+
+// Unsuspend account
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-unsuspend');
+    if (btn) {
+        e.preventDefault();
+        unsuspendId = btn.dataset.id;
+        document.getElementById('unsuspendEmail').textContent = btn.dataset.email;
+        unsuspendModal.show();
+    }
+});
+
+document.getElementById('confirmUnsuspendBtn').addEventListener('click', async () => {
+    if (!unsuspendId) return;
+
+    const btn = document.getElementById('confirmUnsuspendBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Unsuspending...';
+
+    const res = await fetch(`/admin/hosting/api/accounts/${unsuspendId}/unsuspend`, { method: 'PUT' });
+
+    if (res.ok) {
+        reloadWithToast('Account unsuspended', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to unsuspend account', 'danger');
+        unsuspendModal.hide();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Unsuspend';
+    }
+});
+</script>
+{{end}}

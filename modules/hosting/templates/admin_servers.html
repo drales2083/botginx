@@ -1,0 +1,287 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-3">
+        {{template "hosting_admin_nav" .}}
+    </div>
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">HestiaCP Servers</h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addServerModal">
+                    <i class="bi bi-plus-lg me-1"></i>Add Server
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="5">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Hostname</th>
+                                <th>Accounts</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Servers}}
+                            <tr>
+                                <td class="fw-semibold">{{.Name}}</td>
+                                <td><code>{{.Hostname}}:{{.Port}}</code></td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress flex-grow-1 me-2" style="width: 100px; height: 8px;">
+                                            {{$pct := 0}}
+                                            {{if gt .MaxAccounts 0}}
+                                            {{$pct = mulf (divf .CurrentAccounts .MaxAccounts) 100}}
+                                            {{end}}
+                                            <div class="progress-bar {{if ge $pct 90}}bg-danger{{else if ge $pct 70}}bg-warning{{else}}bg-success{{end}}"
+                                                 style="width: {{$pct}}%"></div>
+                                        </div>
+                                        <small class="text-nowrap">{{.CurrentAccounts}}/{{.MaxAccounts}}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    {{if .IsActive}}
+                                    <span class="badge text-bg-success">Active</span>
+                                    {{else}}
+                                    <span class="badge text-bg-secondary">Disabled</span>
+                                    {{end}}
+                                </td>
+                                <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-info btn-test-server" data-id="{{.ID}}" title="Test Connection">
+                                            <i class="bi bi-plug"></i>
+                                        </button>
+                                        {{if .IsActive}}
+                                        <button class="btn btn-outline-warning btn-toggle-server" data-id="{{.ID}}" data-active="false" title="Disable">
+                                            <i class="bi bi-pause"></i>
+                                        </button>
+                                        {{else}}
+                                        <button class="btn btn-outline-success btn-toggle-server" data-id="{{.ID}}" data-active="true" title="Enable">
+                                            <i class="bi bi-play"></i>
+                                        </button>
+                                        {{end}}
+                                        <button class="btn btn-outline-danger btn-delete-server" data-id="{{.ID}}" data-name="{{.Name}}" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="6" class="text-center text-secondary py-4">
+                                    No servers configured yet.
+                                    <a href="#" data-bs-toggle="modal" data-bs-target="#addServerModal">Add your first server</a>.
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Server Modal -->
+<div class="modal fade" id="addServerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-hdd-rack text-primary me-2"></i>Add HestiaCP Server</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addServerForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Server Name</label>
+                        <input type="text" class="form-control" id="serverNameInput" placeholder="US-East-1" required>
+                        <small class="text-secondary">A friendly name for this server</small>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-8">
+                            <label class="form-label">Hostname</label>
+                            <input type="text" class="form-control" id="serverHostnameInput" placeholder="host1.example.com" required>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">SSH Port</label>
+                            <input type="number" class="form-control" id="serverPortInput" value="22" min="1" max="65535">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">SSH Username</label>
+                        <input type="text" class="form-control" id="serverUsernameInput" placeholder="root" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">SSH Password</label>
+                        <input type="password" class="form-control" id="serverPasswordInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Max Accounts</label>
+                        <input type="number" class="form-control" id="serverMaxAccountsInput" value="100" min="1">
+                        <small class="text-secondary">Maximum number of hosting accounts on this server</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="addServerBtn">
+                        <i class="bi bi-plus-lg me-1"></i>Add Server
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Server Modal -->
+<div class="modal fade" id="deleteServerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Server</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete server <strong id="deleteServerName">this server</strong>?</p>
+                <p class="text-danger small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>This server must have no hosting accounts.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteServerBtn">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let deleteModal = null;
+let deleteServerId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteServerModal'));
+});
+
+// Add server
+document.getElementById('addServerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = document.getElementById('addServerBtn');
+    const data = {
+        name: document.getElementById('serverNameInput').value.trim(),
+        hostname: document.getElementById('serverHostnameInput').value.trim(),
+        port: parseInt(document.getElementById('serverPortInput').value) || 22,
+        username: document.getElementById('serverUsernameInput').value.trim(),
+        password: document.getElementById('serverPasswordInput').value,
+        maxAccounts: parseInt(document.getElementById('serverMaxAccountsInput').value) || 100
+    };
+
+    if (!data.name || !data.hostname || !data.username || !data.password) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
+
+    const res = await fetch('/admin/hosting/api/servers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+        reloadWithToast('Server added', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to add server', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Server';
+    }
+});
+
+// Test server connection
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-test-server');
+    if (btn) {
+        e.preventDefault();
+        const serverId = btn.dataset.id;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        const res = await fetch(`/admin/hosting/api/servers/${serverId}/test`, { method: 'POST' });
+
+        if (res.ok) {
+            showToast('Connection successful', 'success');
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Connection failed', 'danger');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plug"></i>';
+    }
+});
+
+// Toggle server
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-toggle-server');
+    if (btn) {
+        e.preventDefault();
+        const serverId = btn.dataset.id;
+        const active = btn.dataset.active === 'true';
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        const res = await fetch(`/admin/hosting/api/servers/${serverId}/toggle`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active })
+        });
+
+        if (res.ok) {
+            reloadWithToast(active ? 'Server enabled' : 'Server disabled', 'success');
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Failed to update server', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = active ? '<i class="bi bi-play"></i>' : '<i class="bi bi-pause"></i>';
+        }
+    }
+});
+
+// Delete server
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-delete-server');
+    if (btn) {
+        e.preventDefault();
+        deleteServerId = btn.dataset.id;
+        document.getElementById('deleteServerName').textContent = btn.dataset.name;
+        deleteModal.show();
+    }
+});
+
+document.getElementById('confirmDeleteServerBtn').addEventListener('click', async () => {
+    if (!deleteServerId) return;
+
+    const btn = document.getElementById('confirmDeleteServerBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+
+    const res = await fetch(`/admin/hosting/api/servers/${deleteServerId}`, { method: 'DELETE' });
+
+    if (res.ok) {
+        reloadWithToast('Server deleted', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to delete server', 'danger');
+        deleteModal.hide();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+    }
+});
+</script>
+{{end}}

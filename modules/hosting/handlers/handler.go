@@ -86,9 +86,10 @@ func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
 	domains, _ := h.service.ListDomains(accountID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:overview.html", map[string]interface{}{
-		"Title":   "Account Overview",
-		"Account": account,
-		"Domains": domains,
+		"Title":     "Account Overview",
+		"Account":   account,
+		"Domains":   domains,
+		"NavActive": "overview",
 	})
 }
 
@@ -104,9 +105,10 @@ func (h *Handler) UserDomains(w http.ResponseWriter, r *http.Request) {
 	domains, _ := h.service.ListDomains(accountID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:domains.html", map[string]interface{}{
-		"Title":   "Domains",
-		"Account": account,
-		"Domains": domains,
+		"Title":     "Domains",
+		"Account":   account,
+		"Domains":   domains,
+		"NavActive": "domains",
 	})
 }
 
@@ -128,9 +130,10 @@ func (h *Handler) UserDomainSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	module.RenderUserSection(w, r, h.templates, "hosting:domain_settings.html", map[string]interface{}{
-		"Title":    "Domain Settings",
-		"Account":  account,
-		"Settings": settings,
+		"Title":     "Domain Settings",
+		"Account":   account,
+		"Settings":  settings,
+		"NavActive": "domains",
 	})
 }
 
@@ -147,10 +150,11 @@ func (h *Handler) UserEmails(w http.ResponseWriter, r *http.Request) {
 	domains, _ := h.service.ListDomains(accountID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:emails.html", map[string]interface{}{
-		"Title":   "Email Accounts",
-		"Account": account,
-		"Emails":  emails,
-		"Domains": domains,
+		"Title":     "Email Accounts",
+		"Account":   account,
+		"Emails":    emails,
+		"Domains":   domains,
+		"NavActive": "emails",
 	})
 }
 
@@ -169,6 +173,7 @@ func (h *Handler) UserDatabases(w http.ResponseWriter, r *http.Request) {
 		"Title":     "Databases",
 		"Account":   account,
 		"Databases": databases,
+		"NavActive": "databases",
 	})
 }
 
@@ -187,6 +192,7 @@ func (h *Handler) UserFTP(w http.ResponseWriter, r *http.Request) {
 		"Title":       "FTP Accounts",
 		"Account":     account,
 		"FTPAccounts": ftpAccounts,
+		"NavActive":   "ftp",
 	})
 }
 
@@ -197,8 +203,9 @@ func (h *Handler) AdminServers(w http.ResponseWriter, r *http.Request) {
 	servers, _ := h.service.ListServers()
 
 	module.Render(w, r, h.templates, "hosting:admin_servers.html", map[string]interface{}{
-		"Title":   "Hosting Servers",
-		"Servers": servers,
+		"Title":     "Hosting Servers",
+		"Servers":   servers,
+		"NavActive": "servers",
 	})
 }
 
@@ -207,8 +214,9 @@ func (h *Handler) AdminPackages(w http.ResponseWriter, r *http.Request) {
 	packages, _ := h.service.ListPackages()
 
 	module.Render(w, r, h.templates, "hosting:admin_packages.html", map[string]interface{}{
-		"Title":    "Hosting Packages",
-		"Packages": packages,
+		"Title":     "Hosting Packages",
+		"Packages":  packages,
+		"NavActive": "packages",
 	})
 }
 
@@ -217,8 +225,9 @@ func (h *Handler) AdminAccounts(w http.ResponseWriter, r *http.Request) {
 	accounts, _ := h.service.ListAllAccounts()
 
 	module.Render(w, r, h.templates, "hosting:admin_accounts.html", map[string]interface{}{
-		"Title":    "All Hosting Accounts",
-		"Accounts": accounts,
+		"Title":     "All Hosting Accounts",
+		"Accounts":  accounts,
+		"NavActive": "accounts",
 	})
 }
 

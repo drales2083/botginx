@@ -1,0 +1,262 @@
+{{define "content"}}
+{{$canWrite := .Subscription.Active}}
+
+<div class="row">
+    <div class="col-md-3">
+        {{template "hosting_user_nav" .}}
+    </div>
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Domains</h5>
+                {{if $canWrite}}
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDomainModal">
+                    <i class="bi bi-plus-lg me-1"></i>Add Domain
+                </button>
+                {{end}}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="4">
+                        <thead>
+                            <tr>
+                                <th>Domain</th>
+                                <th>SSL</th>
+                                <th>Protection</th>
+                                <th>Created</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Domains}}
+                            <tr>
+                                <td>
+                                    <a href="https://{{.Domain}}" target="_blank" class="text-decoration-none fw-semibold">
+                                        {{.Domain}}
+                                    </a>
+                                </td>
+                                <td>
+                                    {{if .SSLEnabled}}
+                                    <span class="badge text-bg-success"><i class="bi bi-lock-fill me-1"></i>Enabled</span>
+                                    {{else}}
+                                    <span class="badge text-bg-secondary">Disabled</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    <span class="badge text-bg-success"><i class="bi bi-shield-check me-1"></i>Active</span>
+                                </td>
+                                <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/user/hosting/{{$.Account.ID}}/domains/{{.ID}}/settings" class="btn btn-outline-secondary" title="Traffic Settings">
+                                            <i class="bi bi-shield-check"></i>
+                                        </a>
+                                        {{if not .SSLEnabled}}
+                                        <button class="btn btn-outline-success btn-enable-ssl" data-id="{{.ID}}" title="Enable SSL">
+                                            <i class="bi bi-lock"></i>
+                                        </button>
+                                        {{end}}
+                                        {{if $canWrite}}
+                                        <button class="btn btn-outline-danger btn-delete-domain" data-id="{{.ID}}" data-domain="{{.Domain}}" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {{end}}
+                                    </div>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="5" class="text-center text-secondary py-4">
+                                    No domains yet.
+                                    {{if $canWrite}}
+                                    <a href="#" data-bs-toggle="modal" data-bs-target="#addDomainModal">Add your first domain</a>.
+                                    {{end}}
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- DNS Instructions -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>DNS Setup Instructions</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">Point your domain to our servers by adding these DNS records:</p>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Name</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>A</code></td>
+                            <td><code>@</code></td>
+                            <td><code id="server-ip">Loading...</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>CNAME</code></td>
+                            <td><code>www</code></td>
+                            <td><code>@</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="small text-secondary mb-0">DNS changes may take up to 24-48 hours to propagate.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Domain Modal -->
+<div class="modal fade" id="addDomainModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-globe text-primary me-2"></i>Add Domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addDomainForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Domain Name</label>
+                        <input type="text" class="form-control" id="domainInput" placeholder="example.com" required>
+                        <small class="text-secondary">Enter the root domain without www or https</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="addDomainBtn">
+                        <i class="bi bi-plus-lg me-1"></i>Add Domain
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Domain Modal -->
+<div class="modal fade" id="deleteDomainModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="deleteDomainName">this domain</strong>?</p>
+                <p class="text-muted small mb-0">This will remove all associated emails and settings.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteDomainBtn">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const accountID = '{{.Account.ID}}';
+let deleteModal = null;
+let addModal = null;
+let deleteDomainId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteDomainModal'));
+    addModal = new bootstrap.Modal(document.getElementById('addDomainModal'));
+
+    // Mock server IP for display
+    document.getElementById('server-ip').textContent = '{{.Account.ServerName}}';
+});
+
+// Add domain
+document.getElementById('addDomainForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = document.getElementById('addDomainBtn');
+    const domain = document.getElementById('domainInput').value.trim();
+
+    if (!domain) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
+
+    const res = await fetch(`/user/hosting/api/${accountID}/domains`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain })
+    });
+
+    if (res.ok) {
+        reloadWithToast('Domain added', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to add domain', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Domain';
+    }
+});
+
+// Enable SSL
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-enable-ssl');
+    if (btn) {
+        e.preventDefault();
+        const domainId = btn.dataset.id;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainId}/ssl`, { method: 'POST' });
+
+        if (res.ok) {
+            reloadWithToast('SSL enabled', 'success');
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Failed to enable SSL', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-lock"></i>';
+        }
+    }
+});
+
+// Delete domain
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-delete-domain');
+    if (btn) {
+        e.preventDefault();
+        deleteDomainId = btn.dataset.id;
+        document.getElementById('deleteDomainName').textContent = btn.dataset.domain;
+        deleteModal.show();
+    }
+});
+
+document.getElementById('confirmDeleteDomainBtn').addEventListener('click', async () => {
+    if (!deleteDomainId) return;
+
+    const btn = document.getElementById('confirmDeleteDomainBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+
+    const res = await fetch(`/user/hosting/api/${accountID}/domains/${deleteDomainId}`, { method: 'DELETE' });
+
+    if (res.ok) {
+        reloadWithToast('Domain deleted', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to delete domain', 'danger');
+        deleteModal.hide();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+    }
+});
+</script>
+{{end}}
