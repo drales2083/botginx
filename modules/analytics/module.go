@@ -178,3 +178,8 @@ func (m *Module) SetLinkDetails(linkInfo handlers.LinkDetails) {
 func (m *Module) SetServerProvider(servers handlers.ServerProvider) {
 	m.handler.SetServerProvider(servers)
 }
+
+// SetHostingSettingsProvider sets the hosting settings provider for should-block callback
+func (m *Module) SetHostingSettingsProvider(hosting handlers.HostingSettingsProvider) {
+	m.handler.SetHostingSettingsProvider(hosting)
+}

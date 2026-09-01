@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/botginx/botginx/modules/analytics"
+	analyticshandlers "github.com/botginx/botginx/modules/analytics/handlers"
 	"github.com/botginx/botginx/modules/auth"
 	"github.com/botginx/botginx/modules/dashboard"
 	"github.com/botginx/botginx/modules/domains"
@@ -60,6 +61,31 @@ func (a *iplistServerAdapter) GetAllDeployServers() ([]iplistsvc.ServerInfo, err
 		}
 	}
 	return result, nil
+}
+
+// hostingSettingsAdapter bridges the hosting module to the analytics HostingSettingsProvider interface.
+type hostingSettingsAdapter struct {
+	hosting *hosting.Module
+}
+
+func (a *hostingSettingsAdapter) GetDomainSettingsByHost(host string) (*analyticshandlers.HostingSettings, error) {
+	settings, err := a.hosting.Service().GetDomainSettingsByHost(host)
+	if err != nil {
+		return nil, err
+	}
+	return &analyticshandlers.HostingSettings{
+		CountryMode:      settings.CountryMode,
+		CountryList:      settings.CountryList,
+		DeviceMode:       settings.DeviceMode,
+		DeviceList:       settings.DeviceList,
+		BlockBots:        settings.BlockBots,
+		BlockTor:         settings.BlockTor,
+		BlockProxy:       settings.BlockProxy,
+		BlockDatacenter:  settings.BlockDatacenter,
+		BlockHeadless:    settings.BlockHeadless,
+		MinBehaviorScore: settings.MinBehaviorScore,
+		RedirectOnBlock:  settings.RedirectOnBlock,
+	}, nil
 }
 
 // Config structure
@@ -142,6 +168,8 @@ func main() {
 
 	iplistsModule := iplists.New()
 
+	hostingModule := hosting.New()
+
 	registry.Register(authModule)
 	registry.Register(dashboard.New())
 	registry.Register(serversModule)             // Admin module
@@ -149,7 +177,7 @@ func main() {
 	registry.Register(redirectLinksModule)
 	registry.Register(analyticsModule)           // Analytics module
 	registry.Register(iplistsModule)             // IP Lists module
-	registry.Register(hosting.New())             // Bullet Proof Hosting module
+	registry.Register(hostingModule)             // Bullet Proof Hosting module
 	registry.Register(help.New())                // Help/FAQ module
 	registry.Register(users.New())               // Admin module
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
@@ -168,6 +196,7 @@ func main() {
 	// Wire up dependencies after init to avoid circular imports
 	analyticsModule.SetLinkDetails(redirectLinksModule)
 	analyticsModule.SetServerProvider(serversModule)
+	analyticsModule.SetHostingSettingsProvider(&hostingSettingsAdapter{hosting: hostingModule})
 	redirectLinksModule.SetServerProvider(serversModule)
 	iplistsModule.SetServerProvider(&iplistServerAdapter{servers: serversModule})
 

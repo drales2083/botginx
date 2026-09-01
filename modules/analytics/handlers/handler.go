@@ -38,12 +38,33 @@ type ServerProvider interface {
 	GetServerForDomain(domainID string) (ip string, port int, user, password string, err error)
 }
 
+// HostingSettings represents antibot settings for a hosting domain
+type HostingSettings struct {
+	CountryMode      string
+	CountryList      []string
+	DeviceMode       string
+	DeviceList       []string
+	BlockBots        bool
+	BlockTor         bool
+	BlockProxy       bool
+	BlockDatacenter  bool
+	BlockHeadless    bool
+	MinBehaviorScore int
+	RedirectOnBlock  string
+}
+
+// HostingSettingsProvider provides antibot settings lookup for hosting domains
+type HostingSettingsProvider interface {
+	GetDomainSettingsByHost(host string) (*HostingSettings, error)
+}
+
 type Handler struct {
 	service   *services.AnalyticsService
 	templates *module.TemplateEngine
 	links     LinkResolver
 	linkInfo  LinkDetails
 	servers   ServerProvider
+	hosting   HostingSettingsProvider
 	pusher    *settingspush.Pusher
 }
 
@@ -68,6 +89,11 @@ func (h *Handler) SetLinkDetails(linkInfo LinkDetails) {
 // SetServerProvider sets the server provider (called after init to avoid circular deps)
 func (h *Handler) SetServerProvider(servers ServerProvider) {
 	h.servers = servers
+}
+
+// SetHostingSettingsProvider sets the hosting settings provider (called after init to avoid circular deps)
+func (h *Handler) SetHostingSettingsProvider(hosting HostingSettingsProvider) {
+	h.hosting = hosting
 }
 
 // Pages
@@ -397,6 +423,16 @@ func (h *Handler) ShouldBlockCallback(w http.ResponseWriter, r *http.Request) {
 	// Resolve host to link
 	linkID, _, err := h.links.ResolveByHost(req.Host)
 	if err != nil || linkID == "" {
+		// Not a redirect link - check if it's a hosting domain
+		if h.hosting != nil {
+			hostingSettings, err := h.hosting.GetDomainSettingsByHost(req.Host)
+			if err == nil && hostingSettings != nil {
+				// Found hosting domain settings - apply blocking rules
+				h.handleHostingDomainBlock(w, req, hostingSettings)
+				return
+			}
+		}
+
 		// Unknown host - tell botection to use its local rules
 		h.json(w, http.StatusOK, map[string]interface{}{
 			"block":          false,
@@ -446,6 +482,132 @@ func (h *Handler) ShouldBlockCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.json(w, http.StatusOK, resp)
+}
+
+// handleHostingDomainBlock applies blocking rules for a hosting domain.
+// This is similar to the redirect link blocking but uses hosting domain settings.
+func (h *Handler) handleHostingDomainBlock(w http.ResponseWriter, req struct {
+	Host         string `json:"host"`
+	IP           string `json:"ip"`
+	Country      string `json:"country"`
+	IsTor        bool   `json:"is_tor"`
+	IsProxy      bool   `json:"is_proxy"`
+	IsDatacenter bool   `json:"is_datacenter"`
+	IsHeadless   bool   `json:"is_headless"`
+	UserAgent    string `json:"user_agent"`
+	Score        int    `json:"score"`
+}, settings *HostingSettings) {
+	// Detect device from user agent
+	device := h.detectDevice(req.UserAgent)
+
+	// Note: isBot comes from botection's score threshold, we treat score >= 70 as bot
+	isBot := req.Score >= 70
+
+	// Apply blocking rules
+	block, reason := h.shouldBlockWithHostingSettings(
+		settings,
+		req.Country,
+		device,
+		isBot,
+		req.IsTor,
+		req.IsProxy,
+		req.IsDatacenter,
+		req.IsHeadless,
+		req.Score,
+	)
+
+	resp := map[string]interface{}{
+		"block": block,
+	}
+	if block {
+		resp["reason"] = reason
+		if settings.RedirectOnBlock != "" {
+			resp["redirect"] = settings.RedirectOnBlock
+		}
+	}
+
+	h.json(w, http.StatusOK, resp)
+}
+
+// shouldBlockWithHostingSettings checks if a visit should be blocked based on hosting domain settings.
+// This mirrors the logic in AnalyticsService.ShouldBlock but uses HostingSettings.
+func (h *Handler) shouldBlockWithHostingSettings(
+	settings *HostingSettings,
+	country, device string,
+	isBot, isTor, isProxy, isDatacenter, isHeadless bool,
+	behaviorScore int,
+) (bool, string) {
+	if settings.BlockBots && isBot {
+		return true, "bot_blocked"
+	}
+	if settings.BlockTor && isTor {
+		return true, "tor_blocked"
+	}
+	if settings.BlockProxy && isProxy {
+		return true, "proxy_blocked"
+	}
+	if settings.BlockDatacenter && isDatacenter {
+		return true, "datacenter_blocked"
+	}
+	if settings.BlockHeadless && isHeadless {
+		return true, "headless_blocked"
+	}
+	// Only check behavior score if we actually have one (> 0 means data was provided)
+	if settings.MinBehaviorScore > 0 && behaviorScore > 0 && behaviorScore < settings.MinBehaviorScore {
+		return true, "low_behavior_score"
+	}
+
+	// Country filtering
+	if settings.CountryMode == "whitelist" && len(settings.CountryList) > 0 && country != "" {
+		if !containsIgnoreCase(settings.CountryList, country) {
+			return true, "country_not_whitelisted"
+		}
+	}
+	if settings.CountryMode == "blacklist" && len(settings.CountryList) > 0 && country != "" {
+		if containsIgnoreCase(settings.CountryList, country) {
+			return true, "country_blacklisted"
+		}
+	}
+
+	// Device filtering
+	if settings.DeviceMode == "whitelist" && len(settings.DeviceList) > 0 {
+		if !containsIgnoreCase(settings.DeviceList, device) {
+			return true, "device_not_whitelisted"
+		}
+	}
+	if settings.DeviceMode == "blacklist" && len(settings.DeviceList) > 0 {
+		if containsIgnoreCase(settings.DeviceList, device) {
+			return true, "device_blacklisted"
+		}
+	}
+
+	return false, ""
+}
+
+// containsIgnoreCase checks if slice contains item, case-insensitive.
+func containsIgnoreCase(slice []string, item string) bool {
+	for _, s := range slice {
+		if len(s) == len(item) {
+			match := true
+			for i := 0; i < len(s); i++ {
+				c1, c2 := s[i], item[i]
+				if c1 >= 'A' && c1 <= 'Z' {
+					c1 += 'a' - 'A'
+				}
+				if c2 >= 'A' && c2 <= 'Z' {
+					c2 += 'a' - 'A'
+				}
+				if c1 != c2 {
+					match = false
+					break
+				}
+			}
+			if match {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Webhook handlers for antibot events
