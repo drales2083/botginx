@@ -88,7 +88,8 @@ func (s *RedirectLinkService) generateID() string {
 func (s *RedirectLinkService) List(userID string) ([]models.RedirectLink, error) {
 	var links []models.RedirectLink
 	err := s.db.Select(&links, `
-		SELECT r.*, d.name as domain_name
+		SELECT r.*, d.name as domain_name,
+			COALESCE((SELECT COUNT(*) FROM visits v WHERE v.link_id = r.id), 0) as view_count
 		FROM redirect_links r
 		LEFT JOIN domains d ON d.id = r.domain_id
 		WHERE r.user_id = $1 AND r.is_active = true

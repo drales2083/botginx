@@ -49,11 +49,12 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="5">
+            <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="6">
                 <thead>
                     <tr>
                         <th>Link</th>
                         <th>Type</th>
+                        <th>Views</th>
                         <th>Status</th>
                         <th>Created</th>
                         <th class="text-end">Actions</th>
@@ -86,6 +87,9 @@
                             {{else}}
                             <span class="badge text-bg-info">HTML</span>
                             {{end}}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary rounded-pill">{{.ViewCount}}</span>
                         </td>
                         <td>
                             {{if eq .DeployStatus "deployed"}}
@@ -132,7 +136,7 @@
                     </tr>
                     {{else}}
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">
+                        <td colspan="6" class="text-center text-muted py-4">
                             No redirect links yet.
                             {{if $canWrite}}
                             <a href="/user/redirectlinks/new">Create your first link</a>.

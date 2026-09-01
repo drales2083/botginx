@@ -73,6 +73,7 @@ type RedirectLink struct {
 
 	// Joined fields
 	DomainName string `db:"domain_name" json:"domainName,omitempty"`
+	ViewCount  int    `db:"view_count" json:"viewCount,omitempty"`
 }
 
 // BaseDomain returns the domain name without wildcard prefix
