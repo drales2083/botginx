@@ -398,3 +398,46 @@ func PickServer() (*HostingServer, error) {
 ```
 HOSTING_ENCRYPTION_KEY=<32-byte-key>
 ```
+
+## UI Components (AdminLTE)
+
+Use AdminLTE 4.x components consistently throughout:
+
+**Layout:**
+- Tabbed interfaces using Bootstrap 5 nav-pills (like settings page)
+- Cards with card-header, card-body, card-footer
+- Sidebar nav within pages for sub-navigation
+
+**Data Display:**
+- simple-datatables for all tables (search, sort, pagination)
+- Small-box widgets for stats (like dashboard)
+- Badges for status (text-bg-success, text-bg-warning, text-bg-danger)
+- Progress bars for usage (disk, bandwidth)
+
+**Forms:**
+- Bootstrap 5 form controls with floating labels or standard labels
+- Form switches for toggles (block_bots, etc.)
+- Input groups with icons
+- Select dropdowns for country/device lists
+
+**Feedback:**
+- Toast notifications (showToast, reloadWithToast)
+- Modal confirmations for destructive actions
+- Loading spinners on async operations
+- Alert boxes for important notices
+
+**Actions:**
+- Button groups for table row actions (view, edit, delete)
+- Dropdown menus for overflow actions
+- Copy-to-clipboard buttons for credentials
+
+**Specific Components:**
+- Accordion for FAQ/help sections
+- Callouts for DNS setup instructions
+- Timeline for billing/transaction history
+- List groups for domain/email/database lists
+
+**Dark Mode:**
+- All components respect data-bs-theme="dark"
+- Use CSS variables (--bs-body-color, --bs-body-bg, etc.)
+- Primary color is red (danger) per app theme
