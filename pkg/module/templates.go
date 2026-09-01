@@ -110,11 +110,32 @@ func (te *TemplateEngine) RegisterModule(moduleID string, tmplFS fs.FS) error {
 	te.mu.Lock()
 	defer te.mu.Unlock()
 
+	// Collect partials first (files in partials/ directory)
+	var partials [][]byte
+	fs.WalkDir(tmplFS, "partials", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) != ".html" {
+			return nil
+		}
+		content, err := fs.ReadFile(tmplFS, path)
+		if err != nil {
+			return nil
+		}
+		partials = append(partials, content)
+		return nil
+	})
+
 	return fs.WalkDir(tmplFS, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
 		if filepath.Ext(path) != ".html" {
+			return nil
+		}
+		// Skip partials directory - they're included in other templates
+		if filepath.Dir(path) == "partials" {
 			return nil
 		}
 
@@ -136,6 +157,11 @@ func (te *TemplateEngine) RegisterModule(moduleID string, tmplFS fs.FS) error {
 				}
 				tmpl, _ = tmpl.Parse(string(lContent))
 			}
+		}
+
+		// Parse module partials
+		for _, partial := range partials {
+			tmpl, _ = tmpl.Parse(string(partial))
 		}
 
 		// Parse module template
