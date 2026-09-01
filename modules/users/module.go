@@ -87,6 +87,9 @@ func (m *Module) Routes() chi.Router {
 		// Subscriptions
 		r.Post("/{id}/subscription", m.handler.APIGrantSubscription)
 		r.Delete("/{id}/subscription", m.handler.APIRevokeSubscription)
+
+		// Balance
+		r.Post("/{id}/topup", m.handler.APITopUpBalance)
 	})
 
 	return r

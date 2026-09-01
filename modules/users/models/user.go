@@ -16,6 +16,7 @@ type User struct {
 	Name         string    `db:"name" json:"name"`
 	Role         UserRole  `db:"role" json:"role"`
 	IsActive     bool      `db:"is_active" json:"isActive"`
+	Balance      float64   `db:"balance" json:"balance"`
 	CreatedAt    time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time `db:"updated_at" json:"updatedAt"`
 }

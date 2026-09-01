@@ -214,6 +214,47 @@ func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{"deleted": true})
 }
 
+// APITopUpBalance adds funds to a user's balance
+func (h *Handler) APITopUpBalance(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "id")
+
+	var input struct {
+		Amount      float64 `json:"amount"`
+		Description string  `json:"description"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if input.Amount <= 0 {
+		h.jsonError(w, "Amount must be greater than 0", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := h.service.Get(userID); err != nil {
+		h.jsonError(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	description := input.Description
+	if description == "" {
+		description = "Admin top-up"
+	}
+
+	if err := h.service.TopUpBalance(userID, input.Amount, description); err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	balance, _ := h.service.GetBalance(userID)
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"balance": balance,
+	})
+}
+
 // Helpers
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {

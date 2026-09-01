@@ -32,7 +32,7 @@ func (s *UserService) generateID() string {
 
 func (s *UserService) List() ([]models.User, error) {
 	var users []models.User
-	err := s.db.Select(&users, `SELECT * FROM users ORDER BY created_at DESC`)
+	err := s.db.Select(&users, `SELECT id, email, password_hash, name, role, is_active, COALESCE(balance, 0) as balance, created_at, updated_at FROM users ORDER BY created_at DESC`)
 	return users, err
 }
 
@@ -138,4 +138,35 @@ func (s *UserService) CountActive() (int, error) {
 	var count int
 	err := s.db.Get(&count, `SELECT COUNT(*) FROM users WHERE is_active = true`)
 	return count, err
+}
+
+// GetBalance returns a user's current balance
+func (s *UserService) GetBalance(userID string) (float64, error) {
+	var balance float64
+	err := s.db.Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
+	return balance, err
+}
+
+// TopUpBalance adds funds to a user's balance
+func (s *UserService) TopUpBalance(userID string, amount float64, description string) error {
+	tx, err := s.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE id = $2`, amount, userID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO balance_transactions (id, user_id, amount, type, description, created_at)
+		VALUES ($1, $2, $3, 'topup', $4, $5)
+	`, s.generateID(), userID, amount, description, time.Now())
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
