@@ -404,10 +404,11 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 
 		// Add user to context using shared ctx package
 		ctxUser := &ctx.User{
-			ID:    user.ID,
-			Email: user.Email,
-			Name:  user.Name,
-			Role:  user.Role,
+			ID:      user.ID,
+			Email:   user.Email,
+			Name:    user.Name,
+			Role:    user.Role,
+			Balance: user.Balance,
 		}
 		newCtx := ctx.WithUser(r.Context(), ctxUser)
 		next.ServeHTTP(w, r.WithContext(newCtx))
@@ -449,10 +450,11 @@ func (h *Handler) OptionalAuthMiddleware(next http.Handler) http.Handler {
 		if token != "" {
 			if user, err := h.service.ValidateSession(token); err == nil {
 				ctxUser := &ctx.User{
-					ID:    user.ID,
-					Email: user.Email,
-					Name:  user.Name,
-					Role:  user.Role,
+					ID:      user.ID,
+					Email:   user.Email,
+					Name:    user.Name,
+					Role:    user.Role,
+					Balance: user.Balance,
 				}
 				r = r.WithContext(ctx.WithUser(r.Context(), ctxUser))
 			}
