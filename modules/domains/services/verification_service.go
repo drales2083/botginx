@@ -680,13 +680,14 @@ chmod +x /tmp/dns-auth-capture.sh`
 	client.Run(setupCmd)
 
 	// Run certbot to get token (will fail after capturing token, that's intentional)
+	// Redirect both stdout and stderr to /dev/null so only the final cat output is returned
 	certbotCmd := fmt.Sprintf(`
 rm -f /tmp/acme-token-%s.txt
 timeout 30 certbot certonly --manual --preferred-challenges dns \
   -d "*.%s" \
   --agree-tos --email admin@%s \
   --manual-auth-hook /tmp/dns-auth-capture.sh \
-  --non-interactive 2>/dev/null || true
+  --non-interactive >/dev/null 2>&1 || true
 cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""
 `, baseDomain, baseDomain, baseDomain, baseDomain)
 
