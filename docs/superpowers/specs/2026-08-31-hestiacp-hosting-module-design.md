@@ -1,16 +1,16 @@
-# HestiaCP Hosting Module Design
+# Bullet Proof Hosting Module Design
 
 ## Overview
 
-White-label hosting reseller module for botginx. Users purchase hosting packages using balance, system provisions accounts on HestiaCP servers via SSH API. Users manage domains, emails, databases, and FTP from botginx UI. HestiaCP branding is invisible to end users.
+White-label bulletproof hosting for botginx. Each hosting account is protected by antibot (same protection as redirect links - blocks bots, Tor, VPN, datacenter IPs, headless browsers). Users purchase hosting using balance, system provisions on HestiaCP servers via SSH. Users manage everything from botginx UI - HestiaCP is invisible.
 
-## Requirements
+## Key Features
 
-- **Balance system**: Admin tops up user balance manually, users spend on hosting
-- **Packages**: Fixed plans created by admin + custom quotes for individual users
-- **Servers**: Multiple HestiaCP servers with automatic load balancing
-- **User control**: Full management (domains, emails, databases, FTP, SSL) from botginx
-- **Billing**: Monthly recurring, auto-deduct from balance, suspend if insufficient
+- **Antibot Protected**: Every hosted domain routes through antibot with configurable settings
+- **Balance System**: Admin tops up, users spend
+- **Auto Load Balance**: Multiple HestiaCP servers, auto-distribute accounts
+- **Full Control**: Domains, emails, databases, FTP, SSL - all from one UI
+- **Monthly Billing**: Auto-deduct, suspend if no balance
 
 ## Database Schema
 
@@ -29,6 +29,7 @@ CREATE TABLE balance_transactions (
     description TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+CREATE INDEX idx_balance_tx_user ON balance_transactions(user_id);
 ```
 
 ### hosting_servers
@@ -82,6 +83,8 @@ CREATE TABLE hosting_accounts (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+CREATE INDEX idx_hosting_accounts_user ON hosting_accounts(user_id);
+CREATE INDEX idx_hosting_accounts_status ON hosting_accounts(status);
 ```
 
 ### hosting_domains
@@ -93,6 +96,33 @@ CREATE TABLE hosting_domains (
     ssl_enabled BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
+CREATE INDEX idx_hosting_domains_account ON hosting_domains(account_id);
+```
+
+### hosting_domain_settings (antibot protection per domain)
+```sql
+CREATE TABLE hosting_domain_settings (
+    id VARCHAR(24) PRIMARY KEY,
+    domain_id VARCHAR(24) NOT NULL REFERENCES hosting_domains(id) ON DELETE CASCADE,
+    -- Country filtering
+    country_mode VARCHAR(20) DEFAULT 'all', -- 'all', 'whitelist', 'blacklist'
+    country_list TEXT DEFAULT '[]', -- JSON array
+    -- Device filtering  
+    device_mode VARCHAR(20) DEFAULT 'all',
+    device_list TEXT DEFAULT '[]',
+    -- Bot protection (ON by default for bulletproof hosting)
+    block_bots BOOLEAN DEFAULT TRUE,
+    block_tor BOOLEAN DEFAULT TRUE,
+    block_proxy BOOLEAN DEFAULT TRUE,
+    block_datacenter BOOLEAN DEFAULT TRUE,
+    block_headless BOOLEAN DEFAULT TRUE,
+    -- Behavior score
+    min_behavior_score INT DEFAULT 0,
+    -- Redirect when blocked
+    redirect_on_block VARCHAR(500) DEFAULT 'https://www.google.com',
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_hosting_domain_settings_domain ON hosting_domain_settings(domain_id);
 ```
 
 ### hosting_emails
@@ -137,43 +167,97 @@ CREATE TABLE hosting_ftp (
 modules/hosting/
 ├── module.go                 # Routes, menu items, migrations
 ├── handlers/
-│   ├── admin.go              # Server/package/account management
-│   ├── user.go               # Purchase, dashboard, resource management
-│   └── api.go                # JSON endpoints for AJAX operations
+│   ├── admin.go              # All admin handlers (servers, packages, accounts, balance)
+│   ├── user.go               # All user handlers (dashboard, domains, emails, etc.)
+│   └── api.go                # JSON endpoints for AJAX
 ├── services/
 │   ├── hosting_service.go    # Core business logic
-│   ├── hestia_client.go      # SSH commands to HestiaCP API
-│   ├── billing_service.go    # Monthly deductions, suspensions
-│   └── loadbalancer.go       # Pick best server for new account
+│   ├── hestia_client.go      # SSH commands to HestiaCP
+│   ├── billing_service.go    # Monthly billing, suspension
+│   └── loadbalancer.go       # Server selection
 ├── models/
-│   └── models.go             # All structs, inputs, enums
+│   └── models.go             # All structs
 ├── migrations/
 │   └── 001_create_tables.sql
 ├── templates/
-│   ├── admin_servers.html    # Manage HestiaCP servers
-│   ├── admin_packages.html   # Manage hosting packages
-│   ├── admin_accounts.html   # View all accounts, custom quotes
-│   ├── user_index.html       # User hosting dashboard
-│   ├── user_purchase.html    # Buy package
-│   ├── user_domains.html     # Manage domains
-│   ├── user_emails.html      # Manage email accounts
-│   ├── user_databases.html   # Manage databases
-│   └── user_ftp.html         # Manage FTP accounts
+│   ├── admin.html            # Admin dashboard with tabs (Servers, Packages, Accounts)
+│   └── user.html             # User dashboard with tabs (Overview, Domains, Emails, Databases, FTP, Settings)
 
 pkg/hestia/
-├── client.go                 # SSH connection, command execution
-└── commands.go               # v-add-user, v-add-domain, etc.
+├── client.go                 # SSH connection pool
+└── commands.go               # HestiaCP CLI wrappers
 ```
 
-## HestiaCP API Commands
+## Menu Structure
+
+**User sidebar** (single item):
+```
+Hosting (bi-shield-check) → /user/hosting
+```
+
+Inside /user/hosting - tabs:
+- Overview (account status, usage, credentials)
+- Domains (add/remove, SSL, antibot settings per domain)
+- Emails (mail accounts)
+- Databases (MySQL databases)
+- FTP (FTP accounts)
+
+**Admin sidebar** (single item):
+```
+Hosting (bi-shield-check) → /admin/hosting
+```
+
+Inside /admin/hosting - tabs:
+- Servers (HestiaCP server management)
+- Packages (hosting plans)
+- Accounts (all user accounts, custom quotes)
+
+Balance management stays in existing /admin/users page (add balance column + top up button).
+
+## Antibot Integration
+
+Each hosted domain gets antibot protection. When user adds a domain:
+
+1. Domain added to HestiaCP via `v-add-domain`
+2. Create `hosting_domain_settings` record with defaults:
+   - block_bots: TRUE
+   - block_tor: TRUE
+   - block_proxy: TRUE
+   - block_datacenter: TRUE
+   - block_headless: TRUE
+   - redirect_on_block: "https://www.google.com"
+
+3. Domain config pushed to antibot (same as redirect links)
+
+User can customize per-domain from Domains tab → Settings button.
+
+### Antibot Callback
+
+Extend existing `/api/botection/should-block` endpoint to also check `hosting_domain_settings` table. When antibot queries:
+
+```
+POST /api/botection/should-block
+{
+  "host": "client-domain.com",
+  "ip": "...",
+  "country": "US",
+  ...
+}
+```
+
+System checks:
+1. Is this a redirect link domain? → Use link_settings
+2. Is this a hosting domain? → Use hosting_domain_settings
+3. Neither? → Default allow
+
+## HestiaCP Commands
 
 ```bash
-# Account management
+# Account
 v-add-user {username} {password} {email} {package} {name}
 v-delete-user {username}
 v-suspend-user {username}
 v-unsuspend-user {username}
-v-change-user-package {username} {package}
 
 # Domains
 v-add-domain {username} {domain}
@@ -182,7 +266,6 @@ v-list-domains {username} json
 
 # SSL
 v-add-letsencrypt-domain {username} {domain}
-v-delete-letsencrypt-domain {username} {domain}
 
 # Email
 v-add-mail-domain {username} {domain}
@@ -206,76 +289,89 @@ v-list-user {username} json
 ## User Flows
 
 ### Purchase Flow
-1. User visits /user/hosting
-2. Sees packages list (if no account yet)
-3. Clicks "Buy" on a package
-4. System checks balance >= price
-5. If sufficient:
-   - Loadbalancer picks server (least accounts, under max)
-   - Generate username (e.g., u12345)
-   - Generate secure password (16 chars)
-   - SSH: v-add-user on selected server
-   - Create hosting_account record
-   - Deduct balance, log transaction
-   - Set next_billing_at = now + 30 days
-   - Show credentials + dashboard
-6. If insufficient: "Insufficient balance, contact admin"
-
-### Monthly Billing Flow (cron every hour)
-1. Find accounts where next_billing_at <= now AND status = active
-2. For each account:
-   - Get price (custom_price or package.price_monthly)
-   - Check user balance >= price
-   - If sufficient:
-     - Deduct balance, log transaction
-     - Set next_billing_at += 30 days
-   - If insufficient:
-     - SSH: v-suspend-user
-     - Set status = suspended
-
-### Reactivation Flow
-1. Admin tops up user balance
-2. User visits /user/hosting (sees "Suspended")
-3. Clicks "Reactivate"
-4. System checks balance >= price
-5. If sufficient:
+1. User visits /user/hosting (no account yet)
+2. Sees packages with pricing
+3. Clicks "Buy" → checks balance
+4. If OK:
+   - Load balancer picks server
+   - Generate username (bp_XXXXX)
+   - Generate password (16 chars)
+   - SSH: v-add-user
    - Deduct balance
-   - SSH: v-unsuspend-user
-   - Set status = active, next_billing_at = now + 30 days
+   - Set next_billing_at = +30 days
+   - Show dashboard with credentials
+5. If insufficient: "Top up your balance to continue"
+
+### Add Domain Flow
+1. User goes to Domains tab
+2. Enters domain name
+3. System:
+   - SSH: v-add-domain
+   - Create hosting_domains record
+   - Create hosting_domain_settings with antibot ON
+   - Push config to antibot
+4. Show domain with "Setup DNS" instructions
+5. User can click "Enable SSL" → v-add-letsencrypt-domain
+6. User can click "Traffic Settings" → same UI as redirect link settings
+
+### Monthly Billing (cron hourly)
+1. Find accounts: next_billing_at <= now AND status = active
+2. For each:
+   - Price = custom_price OR package.price_monthly
+   - If balance >= price:
+     - Deduct, log transaction
+     - next_billing_at += 30 days
+   - Else:
+     - v-suspend-user
+     - status = suspended
+
+### Reactivation
+1. User with suspended account visits /user/hosting
+2. Sees "Suspended - Reactivate" button
+3. Clicks → checks balance
+4. If OK:
+   - Deduct balance
+   - v-unsuspend-user
+   - status = active
+   - next_billing_at = +30 days
 
 ## Admin Flows
 
-### Server Management (/admin/hosting/servers)
-- List all HestiaCP servers (name, hostname, accounts used/max, status)
-- Add server: hostname, port, SSH user, password, max accounts
-- Test connection button (SSH handshake + v-list-users)
-- Edit/disable server
-- View accounts on server
+### /admin/hosting (tabbed interface)
 
-### Package Management (/admin/hosting/packages)
-- List packages (name, price, specs, active/inactive)
-- Add/edit package with all resource limits
-- Reorder packages
-- Disable package (existing accounts keep it)
+**Servers Tab:**
+- List servers (name, host, accounts used/max, status)
+- Add/edit server (hostname, port, user, password, max accounts)
+- Test connection button
+- Disable server (no new accounts)
 
-### Accounts Overview (/admin/hosting/accounts)
-- List all hosting accounts with filters
+**Packages Tab:**
+- List packages (name, price, specs)
+- Add/edit package
+- Reorder, disable
+
+**Accounts Tab:**
+- List all accounts (user, server, package, status, next billing)
+- Filter by server, status
 - Actions: suspend, unsuspend, cancel
-- Create custom quote: select user, server, custom resources + price
+- Create custom quote for user
 
-### Balance Management (extend /admin/users)
-- Add "Balance" column to users table
-- "Top Up" button per user with amount modal
-- Balance transaction history
+### Balance (in /admin/users)
+- Add Balance column
+- Top Up button → modal with amount
+- View transaction history
 
 ## Load Balancer
 
 ```go
-func (lb *LoadBalancer) PickServer() (*HostingServer, error) {
-    // 1. Get all active servers
-    // 2. Filter: current_accounts < max_accounts
-    // 3. Sort by: current_accounts ASC (least loaded first)
-    // 4. Return first, or error if none available
+func PickServer() (*HostingServer, error) {
+    servers := GetActiveServers()
+    available := filter(servers, s => s.CurrentAccounts < s.MaxAccounts)
+    sort(available, by: CurrentAccounts ASC)
+    if len(available) == 0 {
+        return nil, errors.New("no servers available")
+    }
+    return available[0], nil
 }
 ```
 
@@ -283,33 +379,22 @@ func (lb *LoadBalancer) PickServer() (*HostingServer, error) {
 
 | Scenario | Action |
 |----------|--------|
-| SSH connection fails | Retry 2x, mark server unhealthy, alert admin |
-| HestiaCP command fails | Parse error, user-friendly message, log full output |
-| No servers available | "No hosting servers available, contact admin" |
-| Server at capacity | Skip to next server |
-| User creation fails | Don't deduct balance, rollback, show error |
-| Domain already exists | "Domain already in use on this server" |
-| SSL fails | Domain added, SSL marked pending, user can retry |
+| SSH fails | Retry 2x, mark unhealthy, alert |
+| Command fails | Parse error, show message, log |
+| No servers | "No servers available" |
+| Domain exists | "Domain already in use" |
+| SSL fails | Mark pending, user retries |
+| Insufficient balance | Block action, show message |
 
 ## Security
 
-- Server passwords: AES-256 encrypted in DB, key from HOSTING_ENCRYPTION_KEY env
-- User passwords: 16 chars, alphanumeric + symbols, stored encrypted
-- SSH timeouts: 10s connection, 30s command
-- Input validation: domain format, email format, username alphanumeric
+- Passwords: AES-256 encrypted (HOSTING_ENCRYPTION_KEY env)
+- Generated passwords: 16 chars alphanumeric + symbols
+- SSH: 10s connect timeout, 30s command timeout
+- Input validation: domain format, email format
 
 ## Environment Variables
 
 ```
-HOSTING_ENCRYPTION_KEY=<32-byte-key-for-aes-256>
+HOSTING_ENCRYPTION_KEY=<32-byte-key>
 ```
-
-## Menu Items
-
-**User sidebar:**
-- Hosting (icon: bi-hdd-stack) → /user/hosting
-
-**Admin sidebar:**
-- Hosting Servers → /admin/hosting/servers
-- Hosting Packages → /admin/hosting/packages
-- Hosting Accounts → /admin/hosting/accounts
