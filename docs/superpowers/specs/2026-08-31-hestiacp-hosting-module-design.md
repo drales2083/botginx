@@ -8,9 +8,10 @@ White-label bulletproof hosting for botginx. Each hosting account is protected b
 
 - **Antibot Protected**: Every hosted domain routes through antibot with configurable settings
 - **Balance System**: Admin tops up, users spend
+- **Multiple Accounts**: Users can purchase multiple hosting accounts (different packages/servers)
 - **Auto Load Balance**: Multiple HestiaCP servers, auto-distribute accounts
 - **Full Control**: Domains, emails, databases, FTP, SSL - all from one UI
-- **Monthly Billing**: Auto-deduct, suspend if no balance
+- **Monthly Billing**: Auto-deduct per account, suspend individually if insufficient
 
 ## Database Schema
 
@@ -211,12 +212,23 @@ Admin: Hosting (bi-shield-check) → /admin/hosting
 
 User hosting pages:
 ```
-/user/hosting           → Overview (status, usage, credentials)
-/user/hosting/domains   → Domains (add/remove, SSL, antibot settings)
-/user/hosting/emails    → Emails (mail accounts)
-/user/hosting/databases → Databases (MySQL)
-/user/hosting/ftp       → FTP accounts
+/user/hosting                       → Account list (if multiple) or redirect to first account
+/user/hosting/buy                   → Purchase new hosting account
+/user/hosting/{account_id}          → Overview (status, usage, credentials)
+/user/hosting/{account_id}/domains  → Domains (add/remove, SSL, antibot settings)
+/user/hosting/{account_id}/emails   → Emails (mail accounts)
+/user/hosting/{account_id}/databases → Databases (MySQL)
+/user/hosting/{account_id}/ftp      → FTP accounts
 ```
+
+If user has multiple accounts, /user/hosting shows account cards:
+┌─────────────────┐ ┌─────────────────┐
+│ Pro Hosting     │ │ Starter         │
+│ mysite.com +2   │ │ blog.test.io    │
+│ ● Active        │ │ ● Active        │
+│ [Manage]        │ │ [Manage]        │
+└─────────────────┘ └─────────────────┘
+                    [+ Buy New Hosting]
 
 Admin hosting pages:
 ```
