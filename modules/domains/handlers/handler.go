@@ -21,6 +21,23 @@ type Handler struct {
 	templates    *module.TemplateEngine
 }
 
+// canAccessDomain checks if the user can access a domain (owns it or is admin)
+func (h *Handler) canAccessDomain(r *http.Request, domain *models.Domain) bool {
+	user := ctx.GetUser(r)
+	if user == nil {
+		return false
+	}
+	// User owns the domain
+	if domain.UserID == user.ID {
+		return true
+	}
+	// Admin can access any domain
+	if user.IsAdmin() {
+		return true
+	}
+	return false
+}
+
 func NewHandler(service *services.DomainService, templates *module.TemplateEngine) *Handler {
 	vs := services.NewVerificationService()
 
@@ -63,6 +80,12 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	domain, err := h.service.Get(id)
 	if err != nil {
 		http.Error(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership - users can only view their own domains
+	if !h.canAccessDomain(r, domain) {
+		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -223,6 +246,12 @@ func (h *Handler) APIGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check ownership - users can only view their own domains
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
 	// If check param is set, include link count for delete confirmation
 	if r.URL.Query().Get("check") == "true" {
 		linkCount, _ := h.service.CountRedirectLinks(id)
@@ -239,13 +268,24 @@ func (h *Handler) APIGet(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APIUpdate(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
+	// Check ownership first
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
 	var input models.UpdateDomainInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	domain, err := h.service.Update(id, input)
+	domain, err = h.service.Update(id, input)
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -261,6 +301,12 @@ func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 	domain, err := h.service.Get(id)
 	if err != nil {
 		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership - users can only delete their own domains
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -305,6 +351,12 @@ func (h *Handler) APIVerifyDNS(w http.ResponseWriter, r *http.Request) {
 	domain, err := h.service.Get(id)
 	if err != nil {
 		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -359,6 +411,12 @@ func (h *Handler) APICheckSSL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
 	status, err := h.verification.CheckSSL(domain.Name)
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -386,6 +444,12 @@ func (h *Handler) APISetupDomain(w http.ResponseWriter, r *http.Request) {
 	domain, err := h.service.Get(id)
 	if err != nil {
 		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -422,6 +486,12 @@ func (h *Handler) APIGetWildcardSSLInstructions(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
 	// Get email from query or use default
 	email := r.URL.Query().Get("email")
 
@@ -440,6 +510,12 @@ func (h *Handler) ExternalSetup(w http.ResponseWriter, r *http.Request) {
 	domain, err := h.service.Get(id)
 	if err != nil {
 		http.Error(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -535,6 +611,12 @@ func (h *Handler) APIRegisterAcmeDNS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
 	// Already registered?
 	if domain.AcmeSubdomain != nil && *domain.AcmeSubdomain != "" {
 		h.json(w, http.StatusOK, map[string]interface{}{
@@ -569,6 +651,12 @@ func (h *Handler) APICheckAcmeCname(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
 	if domain.AcmeFulldomain == nil || *domain.AcmeFulldomain == "" {
 		h.jsonError(w, "Domain not registered with acme-dns", http.StatusBadRequest)
 		return
@@ -595,6 +683,12 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 	domain, err := h.service.Get(id)
 	if err != nil {
 		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -770,6 +864,12 @@ func (h *Handler) APIRefreshAcmeToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
 	baseDomain := services.GetBaseDomain(domain.Name)
 	token, err := h.verification.PreGenerateAcmeToken(baseDomain)
 	if err != nil {
@@ -792,6 +892,12 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 	domain, err := h.service.Get(id)
 	if err != nil {
 		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
