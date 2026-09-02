@@ -73,8 +73,8 @@
                                         <button class="btn btn-outline-secondary btn-view-creds" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="View Credentials">
                                             <i class="bi bi-key"></i>
                                         </button>
-                                        <button class="btn btn-outline-primary btn-link-account" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="Link to Server">
-                                            <i class="bi bi-link-45deg"></i>
+                                        <button class="btn btn-outline-primary btn-retry" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="Retry Auto-Provisioning">
+                                            <i class="bi bi-arrow-clockwise"></i>
                                         </button>
                                         {{else if eq .Status "active"}}
                                         <button class="btn btn-outline-warning btn-suspend" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="Suspend">
@@ -85,6 +85,9 @@
                                             <i class="bi bi-play-circle"></i>
                                         </button>
                                         {{end}}
+                                        <button class="btn btn-outline-danger btn-delete-account" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -162,37 +165,24 @@
     </div>
 </div>
 
-<!-- Link Account Modal -->
-<div class="modal fade" id="linkAccountModal" tabindex="-1">
+<!-- Delete Account Modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-link-45deg text-primary me-2"></i>Link to Server</h5>
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Account</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="linkAccountForm">
-                <div class="modal-body">
-                    <div class="alert alert-info mb-3 small">
-                        <i class="bi bi-info-circle me-1"></i>
-                        After creating the account in the control panel, select the server to activate for <strong id="linkAccountEmail">user</strong>.
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Server</label>
-                        <select class="form-select" id="linkServerInput" required>
-                            <option value="">Select server...</option>
-                            {{range .Servers}}
-                            <option value="{{.ID}}">{{.Name}}</option>
-                            {{end}}
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="linkAccountBtn">
-                        <i class="bi bi-check-lg me-1"></i>Activate Account
-                    </button>
-                </div>
-            </form>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the hosting account for <strong id="deleteAccountEmail">this user</strong>?</p>
+                <p class="text-danger small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>This will permanently delete the account and all associated domains. This cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteAccountBtn">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -278,16 +268,16 @@
 <script>
 let suspendModal = null;
 let unsuspendModal = null;
-let linkAccountModal = null;
+let deleteAccountModal = null;
 let credsModal = null;
 let suspendId = null;
 let unsuspendId = null;
-let linkAccountId = null;
+let deleteAccountId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     suspendModal = new bootstrap.Modal(document.getElementById('suspendModal'));
     unsuspendModal = new bootstrap.Modal(document.getElementById('unsuspendModal'));
-    linkAccountModal = new bootstrap.Modal(document.getElementById('linkAccountModal'));
+    deleteAccountModal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
     credsModal = new bootstrap.Modal(document.getElementById('credsModal'));
 
     // Calculate stats
@@ -375,43 +365,57 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Link account
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-link-account');
+// Retry provisioning
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-retry');
     if (btn) {
         e.preventDefault();
-        linkAccountId = btn.dataset.id;
-        document.getElementById('linkAccountEmail').textContent = btn.dataset.email;
-        document.getElementById('linkServerInput').value = '';
-        linkAccountModal.show();
+        const accountId = btn.dataset.id;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        const res = await fetch(`/user/hosting/api/${accountId}/retry`, { method: 'POST' });
+
+        if (res.ok) {
+            showToast('Retrying auto-provisioning...', 'info');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Failed to retry', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+        }
     }
 });
 
-document.getElementById('linkAccountForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!linkAccountId) return;
+// Delete account
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-delete-account');
+    if (btn) {
+        e.preventDefault();
+        deleteAccountId = btn.dataset.id;
+        document.getElementById('deleteAccountEmail').textContent = btn.dataset.email;
+        deleteAccountModal.show();
+    }
+});
 
-    const btn = document.getElementById('linkAccountBtn');
-    const serverId = document.getElementById('linkServerInput').value;
+document.getElementById('confirmDeleteAccountBtn').addEventListener('click', async () => {
+    if (!deleteAccountId) return;
 
-    if (!serverId) return;
-
+    const btn = document.getElementById('confirmDeleteAccountBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Activating...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
 
-    const res = await fetch(`/admin/hosting/api/accounts/${linkAccountId}/link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serverId: serverId })
-    });
+    const res = await fetch(`/admin/hosting/api/accounts/${deleteAccountId}`, { method: 'DELETE' });
 
     if (res.ok) {
-        reloadWithToast('Account activated successfully', 'success');
+        reloadWithToast('Account deleted', 'success');
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Failed to activate account', 'danger');
+        showToast(data.error || 'Failed to delete account', 'danger');
+        deleteAccountModal.hide();
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Activate Account';
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
     }
 });
 
