@@ -46,11 +46,11 @@ CREATE TABLE IF NOT EXISTS hosting_packages (
 -- Hosting accounts
 CREATE TABLE IF NOT EXISTS hosting_accounts (
     id VARCHAR(24) PRIMARY KEY,
-    user_id VARCHAR(24) NOT NULL REFERENCES users(id),
-    server_id VARCHAR(24) NOT NULL REFERENCES hosting_servers(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    server_id VARCHAR(24) REFERENCES hosting_servers(id),
     package_id VARCHAR(24) REFERENCES hosting_packages(id),
-    hestia_username VARCHAR(50) NOT NULL,
-    hestia_password_encrypted TEXT NOT NULL,
+    panel_username VARCHAR(50) NOT NULL DEFAULT '',
+    panel_password_encrypted TEXT NOT NULL DEFAULT '',
     status VARCHAR(20) DEFAULT 'active',
     custom_price DECIMAL(10,2),
     next_billing_at TIMESTAMP,
