@@ -351,6 +351,19 @@ print_summary() {
     echo
     echo "No separate antibot-dashboard needed - all features in botginx."
     echo
+    echo "=========================================="
+    printf '%s Custom Branding (Optional) %s\n' "$BLUE" "$RESET"
+    echo "=========================================="
+    echo
+    echo "To customize CloudPanel with your branding:"
+    echo "  scp scripts/cloudpanel-branding.sh root@${ip}:/opt/"
+    echo "  ssh root@${ip} 'PANEL_NAME=YourBrand bash /opt/cloudpanel-branding.sh'"
+    echo
+    echo "Options:"
+    echo "  PANEL_NAME=GuardHost        # Custom panel name"
+    echo "  PRIMARY_COLOR=#dc3545       # Theme color (hex)"
+    echo "  FORCE_DARK_THEME=true       # Dark mode default"
+    echo
 }
 
 # ----------------------------------------------------------------------------
