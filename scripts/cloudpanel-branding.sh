@@ -200,16 +200,14 @@ footer ul li:last-child::before {
     font-size: 0.875rem;
 }
 
-/* Change only header nav "Dashboard" link to "Bullet Proof Hosting" */
-.nav-link-container a[href="/dashboard"],
-.nav-link-container a[href*="dashboard"] {
+/* Change page title "Dashboard" to "Bullet Proof Hosting" */
+.page-title h1 {
     font-size: 0;
 }
 
-.nav-link-container a[href="/dashboard"]::after,
-.nav-link-container a[href*="dashboard"]::after {
+.page-title h1::after {
     content: "Bullet Proof Hosting";
-    font-size: 1rem;
+    font-size: 1.5rem;
 }
 EOF
 
