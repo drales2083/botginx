@@ -2,6 +2,7 @@ package cloudpanel
 
 import (
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -87,8 +88,10 @@ func (c *Client) DeleteUser(username string) error {
 // siteUserPassword: password for the site user
 // phpVersion: PHP version (e.g., "8.2")
 func (c *Client) AddSite(domain, siteUser, siteUserPassword string, phpVersion PHPVersion) error {
+	log.Printf("[cloudpanel] AddSite called with domain=%s user=%s passwordLen=%d", domain, siteUser, len(siteUserPassword))
 	cmd := fmt.Sprintf("clpctl site:add:php --domainName=%s --phpVersion=%s --vhostTemplate='Generic' --siteUser=%s --siteUserPassword=%s",
 		shellEscape(domain), string(phpVersion), shellEscape(siteUser), shellEscape(siteUserPassword))
+	log.Printf("[cloudpanel] executing: %s", cmd)
 	output, err := c.Execute(cmd)
 	if err != nil {
 		if output != "" {

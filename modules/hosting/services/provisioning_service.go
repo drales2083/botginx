@@ -83,6 +83,7 @@ func (p *ProvisioningService) ProvisionAccount(accountID string) error {
 		log.Printf("[provisioning] failed to decrypt panel credentials: %v", err)
 		return errors.New("failed to decrypt panel credentials - check encryption key")
 	}
+	log.Printf("[provisioning] panel password decrypted, length: %d chars", len(panelPassword))
 
 	// Connect to CloudPanel
 	log.Printf("[provisioning] connecting to %s:%d as %s", server.Hostname, server.Port, server.Username)
