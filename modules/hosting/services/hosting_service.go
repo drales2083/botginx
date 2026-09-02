@@ -552,6 +552,8 @@ func (s *HostingService) UnsuspendAccount(id string) error {
 
 // DeleteAccount deletes a hosting account and cleans up on CloudPanel
 func (s *HostingService) DeleteAccount(id string) error {
+	fmt.Printf("[hosting] DeleteAccount starting for %s\n", id)
+
 	// Get account with server info
 	var account struct {
 		ID                     string  `db:"id"`
@@ -611,12 +613,20 @@ func (s *HostingService) DeleteAccount(id string) error {
 	// Delete domains from our database
 	_, err = s.db.Exec(`DELETE FROM hosting_domains WHERE account_id = $1`, id)
 	if err != nil {
+		fmt.Printf("[hosting] DeleteAccount failed to delete domains for %s: %v\n", id, err)
 		return err
 	}
+	fmt.Printf("[hosting] DeleteAccount deleted domains for %s\n", id)
 
 	// Delete the account from our database
-	_, err = s.db.Exec(`DELETE FROM hosting_accounts WHERE id = $1`, id)
-	return err
+	result, err := s.db.Exec(`DELETE FROM hosting_accounts WHERE id = $1`, id)
+	if err != nil {
+		fmt.Printf("[hosting] DeleteAccount failed to delete account %s: %v\n", id, err)
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	fmt.Printf("[hosting] DeleteAccount deleted account %s (rows affected: %d)\n", id, rows)
+	return nil
 }
 
 // ========== Balance ==========
