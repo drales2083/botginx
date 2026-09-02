@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/botginx/botginx/modules/hosting/models"
@@ -150,11 +151,27 @@ func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
 		go h.service.FixAccountStatus(account.ID, models.AccountStatusActive)
 	}
 
+	// Check if setup is complete (all domains have SSL and DNS verified)
+	domains, _ := h.service.ListDomains(account.ID)
+	setupComplete := true
+	if len(domains) == 0 {
+		setupComplete = false // No domains yet
+	} else {
+		for _, d := range domains {
+			if !d.DNSVerified || !d.SSLEnabled {
+				setupComplete = false
+				break
+			}
+		}
+	}
+
 	module.RenderUserSection(w, r, h.templates, "hosting:overview.html", map[string]interface{}{
 		"Title":             account.PackageName + " Hosting",
 		"Account":           account,
 		"StatusString":      statusString,
 		"ProvisioningError": provisioningError,
+		"SetupComplete":     setupComplete,
+		"Domains":           domains,
 	})
 }
 
@@ -847,11 +864,22 @@ func (h *Handler) APIEnableSSL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check DNS first
+	// Check DNS using HTTP verification (works for direct and proxied domains)
 	serverIP := account.ServerHostname
 	ips, _ := net.LookupHost(domain.Domain)
-	if len(ips) == 0 || ips[0] != serverIP {
-		h.jsonError(w, "DNS not configured. Point your domain to "+serverIP+" first.", http.StatusBadRequest)
+	dnsResolved := len(ips) > 0
+
+	if !dnsResolved {
+		h.jsonError(w, "Domain does not resolve. Configure DNS first.", http.StatusBadRequest)
+		return
+	}
+
+	// Check if domain is reachable (direct IP match OR HTTP verification for proxied)
+	directMatch := ips[0] == serverIP
+	httpReachable := h.checkHTTPReachable(domain.Domain)
+
+	if !directMatch && !httpReachable {
+		h.jsonError(w, "Domain not reachable. Point DNS to "+serverIP+" or ensure your proxy forwards to our server.", http.StatusBadRequest)
 		return
 	}
 
@@ -867,17 +895,40 @@ func (h *Handler) APIEnableSSL(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// generateSSL runs SSL generation in background
+// generateSSL runs SSL generation in background with retry logic (DirectAdmin-inspired)
 func (h *Handler) generateSSL(account *models.HostingAccount, domain *models.HostingDomain) {
-	// Get server credentials and run Let's Encrypt
-	err := h.service.GenerateSSLForDomain(account, domain)
-	if err != nil {
-		errMsg := err.Error()
-		h.service.UpdateDomainStatus(domain.ID, true, models.DomainStatusPendingDNS, &errMsg)
-	} else {
-		h.service.UpdateDomainStatus(domain.ID, true, models.DomainStatusActive, nil)
-		h.service.SetDomainSSLEnabled(domain.ID, true)
+	maxRetries := 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := h.service.GenerateSSLForDomain(account, domain)
+		if err == nil {
+			// Success
+			h.service.UpdateDomainStatus(domain.ID, true, models.DomainStatusActive, nil)
+			h.service.SetDomainSSLEnabled(domain.ID, true)
+			return
+		}
+
+		lastErr = err
+		errStr := strings.ToLower(err.Error())
+
+		// Don't retry on permanent errors
+		if strings.Contains(errStr, "not found") ||
+			strings.Contains(errStr, "auth") ||
+			strings.Contains(errStr, "permission") ||
+			strings.Contains(errStr, "rate limit") {
+			break
+		}
+
+		// Wait before retry (exponential backoff: 10s, 20s, 40s)
+		if attempt < maxRetries {
+			time.Sleep(time.Duration(10*attempt) * time.Second)
+		}
 	}
+
+	// All retries failed
+	errMsg := lastErr.Error()
+	h.service.UpdateDomainStatus(domain.ID, true, models.DomainStatusPendingDNS, &errMsg)
 }
 
 // JSON helpers

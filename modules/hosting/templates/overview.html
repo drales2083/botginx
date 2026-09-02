@@ -79,8 +79,8 @@
         }
         </script>
         {{else}}
-        <!-- Setup Wizard (show if server IP available but may need DNS setup) -->
-        {{if .Account.ServerName}}
+        <!-- Setup Wizard (only show if setup is NOT complete) -->
+        {{if and .Account.ServerName (not .SetupComplete)}}
         <div class="card mb-4 border-primary" id="setupWizard">
             <div class="card-header bg-primary text-white">
                 <h5 class="card-title mb-0"><i class="bi bi-rocket-takeoff me-2"></i>Complete Your Setup</h5>
@@ -102,8 +102,8 @@
                             <tr>
                                 <th>Value</th>
                                 <td>
-                                    <code id="serverIP">Loading...</code>
-                                    <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="" title="Copy">
+                                    <code id="serverIP">{{.Account.ServerHostname}}</code>
+                                    <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="{{.Account.ServerHostname}}" title="Copy">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
                                 </td>
@@ -114,21 +114,29 @@
                         <h6><i class="bi bi-2-circle-fill text-primary me-2"></i>SSL Certificate</h6>
                         <p class="text-secondary small">SSL will be automatically enabled once DNS propagates.</p>
                         <div id="sslStatus" class="alert alert-info small">
-                            <i class="bi bi-hourglass-split me-2"></i>Waiting for DNS propagation...
+                            <i class="bi bi-hourglass-split me-2"></i>Configure DNS, then enable SSL from the Domains page.
                         </div>
-                        <h6 class="mt-3"><i class="bi bi-3-circle-fill text-primary me-2"></i>Access Control Panel</h6>
-                        <button class="btn btn-primary btn-sm" onclick="showCredentials()">
-                            <i class="bi bi-key me-2"></i>View Credentials
-                        </button>
+                        <h6 class="mt-3"><i class="bi bi-3-circle-fill text-primary me-2"></i>Enable Protection</h6>
+                        <a href="/user/hosting/{{.Account.ID}}/domains" class="btn btn-primary btn-sm">
+                            <i class="bi bi-shield-check me-2"></i>Manage Domains
+                        </a>
                     </div>
                 </div>
                 <hr>
                 <div class="text-end">
                     <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('setupWizard').remove()">
-                        <i class="bi bi-check-lg me-2"></i>I've completed setup - hide this
+                        <i class="bi bi-check-lg me-2"></i>Hide this for now
                     </button>
                 </div>
             </div>
+        </div>
+        {{end}}
+
+        <!-- Setup Complete Banner (show when all domains have SSL) -->
+        {{if and .Account.ServerName .SetupComplete}}
+        <div class="alert alert-success mb-4">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <strong>Setup Complete!</strong> All domains have DNS configured and SSL enabled.
         </div>
         {{end}}
 
@@ -173,30 +181,42 @@
 
         <!-- Quick Actions -->
         <div class="card mb-4">
-            <div class="card-header bg-primary bg-opacity-10">
+            <div class="card-header">
                 <h5 class="card-title mb-0"><i class="bi bi-lightning-charge me-2"></i>Quick Actions</h5>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="d-flex flex-column gap-2">
-                            <a href="/user/hosting/{{.Account.ID}}/domains" class="btn btn-outline-primary text-start">
-                                <i class="bi bi-globe me-2"></i>Manage Domains
-                            </a>
-                            <a href="/user/hosting/{{.Account.ID}}/domains" class="btn btn-outline-primary text-start">
-                                <i class="bi bi-shield-check me-2"></i>Traffic Protection
-                            </a>
-                        </div>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
+                        <a href="/user/hosting/{{.Account.ID}}/domains" class="card h-100 text-decoration-none border-0 bg-light">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-globe display-6 text-primary mb-2"></i>
+                                <h6 class="mb-0">Manage Domains</h6>
+                            </div>
+                        </a>
                     </div>
-                    <div class="col-md-6">
-                        <div class="d-flex flex-column gap-2">
-                            <button class="btn btn-outline-primary text-start" onclick="showCredentials()">
-                                <i class="bi bi-key me-2"></i>View Credentials
-                            </button>
-                            <button class="btn btn-outline-primary text-start" onclick="loginToPanel()">
-                                <i class="bi bi-box-arrow-up-right me-2"></i>Open CloudPanel
-                            </button>
-                        </div>
+                    <div class="col-md-6 col-lg-3">
+                        <a href="/user/hosting/{{.Account.ID}}/domains" class="card h-100 text-decoration-none border-0 bg-light">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-shield-check display-6 text-success mb-2"></i>
+                                <h6 class="mb-0">Traffic Protection</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <a href="#" onclick="showCredentials(); return false;" class="card h-100 text-decoration-none border-0 bg-light">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-key display-6 text-warning mb-2"></i>
+                                <h6 class="mb-0">View Credentials</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <a href="#" onclick="loginToPanel(); return false;" class="card h-100 text-decoration-none border-0 bg-light">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-box-arrow-up-right display-6 text-info mb-2"></i>
+                                <h6 class="mb-0">Open CloudPanel</h6>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </div>
