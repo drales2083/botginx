@@ -155,6 +155,13 @@ img[src*="logo"] {
     display: none !important;
 }
 
+/* Hide theme toggle - force dark mode only */
+.theme-switcher,
+#theme-switch,
+li.theme-switcher {
+    display: none !important;
+}
+
 /* ===== FOOTER CLEANUP ===== */
 
 /* Hide Blog, Docs, Issues, Contact links */
@@ -203,42 +210,19 @@ EOF
 # ----------------------------------------------------------------------------
 
 create_js() {
-    info "Creating dark mode default JavaScript"
+    info "Creating dark mode JavaScript"
 
     mkdir -p "$BRANDING_DIR/js"
     cat > "$BRANDING_DIR/js/custom-branding.js" << 'EOF'
-// GaurdBotPanel - Set dark mode as default
+// GaurdBotPanel - Force dark mode (toggle hidden via CSS)
 (function() {
-    function getCookie(name) {
-        var value = "; " + document.cookie;
-        var parts = value.split("; " + name + "=");
-        if (parts.length == 2) return parts.pop().split(";").shift();
-        return null;
-    }
+    // Always set dark theme cookie
+    document.cookie = "theme=dark; expires=" + new Date(Date.now() + 180*24*60*60*1000).toUTCString() + "; path=/; secure";
 
-    // If no theme cookie, set dark as default
-    if (!getCookie('theme')) {
-        document.cookie = "theme=dark; expires=" + new Date(Date.now() + 180*24*60*60*1000).toUTCString() + "; path=/; secure";
-    }
-
-    // Apply dark theme immediately if cookie is dark (or just set)
-    var theme = getCookie('theme');
-    if (theme === 'dark' || !theme) {
-        // Target: <html id="html" lang="en" data-bs-theme="dark" class="dark">
-        document.documentElement.id = 'html';
-        document.documentElement.setAttribute('data-bs-theme', 'dark');
-        document.documentElement.classList.add('dark');
-    }
-
-    // Also on DOM ready to sync toggle icons
-    document.addEventListener('DOMContentLoaded', function() {
-        if (getCookie('theme') === 'dark') {
-            var darkIcon = document.getElementById('dark-mode');
-            var lightIcon = document.getElementById('light-mode');
-            if (darkIcon) darkIcon.style.display = 'none';
-            if (lightIcon) lightIcon.style.display = 'block';
-        }
-    });
+    // Apply dark theme: <html id="html" data-bs-theme="dark" class="dark">
+    document.documentElement.id = 'html';
+    document.documentElement.setAttribute('data-bs-theme', 'dark');
+    document.documentElement.classList.add('dark');
 })();
 EOF
 
