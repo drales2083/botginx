@@ -137,7 +137,7 @@ img[alt*="CloudPanel"],
 img[src*="cloudpanel"],
 img[src*="logo"] {
     content: url("/images/guardbotpanel-logo.png") !important;
-    max-height: 40px !important;
+    max-height: 21px !important;
     width: auto !important;
 }
 
@@ -145,7 +145,7 @@ img[src*="logo"] {
 .login-logo img,
 .text-center img[src*="logo"] {
     content: url("/images/guardbotpanel-logo.png") !important;
-    max-height: 60px !important;
+    max-height: 30px !important;
     width: auto !important;
 }
 
@@ -207,19 +207,38 @@ create_js() {
 
     mkdir -p "$BRANDING_DIR/js"
     cat > "$BRANDING_DIR/js/custom-branding.js" << 'EOF'
-// GaurdBotPanel - Set dark mode as default for new users
+// GaurdBotPanel - Set dark mode as default
 (function() {
-    // Only set default if user hasn't chosen a theme yet
-    if (!localStorage.getItem('theme')) {
-        // Set dark as default
-        localStorage.setItem('theme', 'dark');
+    function getCookie(name) {
+        var value = "; " + document.cookie;
+        var parts = value.split("; " + name + "=");
+        if (parts.length == 2) return parts.pop().split(";").shift();
+        return null;
     }
 
-    // Apply theme from localStorage on page load (before DOM ready)
-    var savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.documentElement.setAttribute('data-bs-theme', 'dark');
+    // If no theme cookie, set dark as default
+    if (!getCookie('theme')) {
+        document.cookie = "theme=dark; expires=" + new Date(Date.now() + 180*24*60*60*1000).toUTCString() + "; path=/; secure";
     }
+
+    // Apply dark theme immediately if cookie is dark (or just set)
+    var theme = getCookie('theme');
+    if (theme === 'dark' || !theme) {
+        // Target: <html id="html" lang="en" data-bs-theme="dark" class="dark">
+        document.documentElement.id = 'html';
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+        document.documentElement.classList.add('dark');
+    }
+
+    // Also on DOM ready to sync toggle icons
+    document.addEventListener('DOMContentLoaded', function() {
+        if (getCookie('theme') === 'dark') {
+            var darkIcon = document.getElementById('dark-mode');
+            var lightIcon = document.getElementById('light-mode');
+            if (darkIcon) darkIcon.style.display = 'none';
+            if (lightIcon) lightIcon.style.display = 'block';
+        }
+    });
 })();
 EOF
 
