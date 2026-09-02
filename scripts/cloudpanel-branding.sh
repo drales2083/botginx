@@ -205,40 +205,25 @@ EOF
 create_js() {
     info "Creating dark mode default JavaScript"
 
+    mkdir -p "$BRANDING_DIR/js"
     cat > "$BRANDING_DIR/js/custom-branding.js" << 'EOF'
-// GaurdBotPanel - Set dark mode as default
+// GaurdBotPanel - Set dark mode as default for new users
 (function() {
-    // Check if theme is already set in localStorage
-    var currentTheme = localStorage.getItem('theme');
-
-    // If no theme set, default to dark
-    if (!currentTheme) {
+    // Only set default if user hasn't chosen a theme yet
+    if (!localStorage.getItem('theme')) {
+        // Set dark as default
         localStorage.setItem('theme', 'dark');
-        document.documentElement.setAttribute('data-bs-theme', 'dark');
     }
 
-    // On page load, ensure dark mode is applied if set
-    document.addEventListener('DOMContentLoaded', function() {
-        var theme = localStorage.getItem('theme') || 'dark';
-        document.documentElement.setAttribute('data-bs-theme', theme);
-
-        // Update toggle icons to match current state
-        var darkIcon = document.getElementById('dark-mode');
-        var lightIcon = document.getElementById('light-mode');
-
-        if (darkIcon && lightIcon) {
-            if (theme === 'dark') {
-                darkIcon.style.display = 'none';
-                lightIcon.style.display = 'block';
-            } else {
-                darkIcon.style.display = 'block';
-                lightIcon.style.display = 'none';
-            }
-        }
-    });
+    // Apply theme from localStorage on page load (before DOM ready)
+    var savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+    }
 })();
 EOF
 
+    mkdir -p "$PUBLIC_DIR/js"
     cp "$BRANDING_DIR/js/custom-branding.js" "$PUBLIC_DIR/js/"
     ok "JavaScript created"
 }
