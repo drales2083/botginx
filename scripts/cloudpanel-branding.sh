@@ -199,6 +199,18 @@ footer ul li:last-child::before {
     content: "© 2026 All Rights Reserved";
     font-size: 0.875rem;
 }
+
+/* Change only header nav "Dashboard" link to "Bullet Proof Hosting" */
+.nav-link-container a[href="/dashboard"],
+.nav-link-container a[href*="dashboard"] {
+    font-size: 0;
+}
+
+.nav-link-container a[href="/dashboard"]::after,
+.nav-link-container a[href*="dashboard"]::after {
+    content: "Bullet Proof Hosting";
+    font-size: 1rem;
+}
 EOF
 
     cp "$BRANDING_DIR/css/custom-branding.css" "$PUBLIC_DIR/css/"
@@ -211,16 +223,8 @@ EOF
 
 update_translations() {
     info "Updating translations"
-
-    local trans_file="$CLOUDPANEL_DIR/files/translations/messages.en.xlf"
-
-    if [[ -f "$trans_file" ]]; then
-        # Replace Dashboard with Bullet Proof Hosting
-        sed -i 's|<target>Dashboard</target>|<target>Bullet Proof Hosting</target>|g' "$trans_file"
-        ok "Dashboard -> Bullet Proof Hosting"
-    else
-        warn "Translation file not found"
-    fi
+    # No translation changes needed - using CSS for nav link only
+    ok "translations unchanged"
 }
 
 # ----------------------------------------------------------------------------
@@ -353,7 +357,7 @@ print_summary() {
     echo "Panel Name:  GaurdBotPanel"
     echo "Theme Color: Purple (#6c5ce7)"
     echo "Dark Mode:   Forced (toggle hidden)"
-    echo "Dashboard:   Bullet Proof Hosting"
+    echo "Nav Link:    Bullet Proof Hosting (page title stays Dashboard)"
     echo
     echo "Files:"
     echo "  Logo: $PUBLIC_DIR/images/guardbotpanel-logo.png"
