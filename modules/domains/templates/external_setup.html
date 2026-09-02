@@ -295,16 +295,24 @@ let pollInterval;
 
 // Two-phase SSL: Start challenge (get token)
 async function startSSLChallenge() {
+    const btn = document.querySelector('#ssl-phase1 button');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating token...';
+
     try {
         const res = await fetch(`/user/domains/api/${domainId}/ssl/start`, { method: 'POST' });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
             showToast(data.error || `Server error: ${res.status}`, 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-key me-1"></i>Get SSL Token';
             return;
         }
         const data = await res.json();
         if (data.error) {
             showToast(data.error, 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-key me-1"></i>Get SSL Token';
             return;
         }
 
@@ -318,7 +326,9 @@ async function startSSLChallenge() {
 
         showToast(data.message || 'Token generated! Add the TXT record.', 'success');
     } catch (e) {
-        showToast('Failed to start SSL challenge', 'danger');
+        showToast('Request timed out. The server may be installing dependencies. Please try again.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-key me-1"></i>Get SSL Token';
     }
 }
 

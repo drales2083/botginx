@@ -49,6 +49,19 @@ apt-get install -y -qq nginx redis-server jq curl certbot python3-certbot-nginx 
 systemctl enable nginx redis-server cron
 systemctl start nginx redis-server cron
 
+# Install lego (for wildcard SSL via DNS-01 challenge)
+if [ ! -x /usr/local/bin/lego ]; then
+    echo "Installing lego ACME client..."
+    cd /tmp
+    LEGO_VERSION="v4.14.2"
+    curl -fsSL "https://github.com/go-acme/lego/releases/download/${LEGO_VERSION}/lego_${LEGO_VERSION}_linux_amd64.tar.gz" -o lego.tar.gz
+    tar xzf lego.tar.gz lego
+    mv lego /usr/local/bin/
+    chmod +x /usr/local/bin/lego
+    rm -f lego.tar.gz
+    echo "lego installed: $(lego --version)"
+fi
+
 # Fix nginx for long domain names
 if ! grep -q "^[[:space:]]*server_names_hash_bucket_size 128;" /etc/nginx/nginx.conf; then
     sed -i '/server_names_hash_bucket_size/d' /etc/nginx/nginx.conf

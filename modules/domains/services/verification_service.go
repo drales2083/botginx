@@ -1105,6 +1105,11 @@ func (s *VerificationService) EnsureLegoInstalled() error {
 	}
 	defer client.Close()
 
+	return s.ensureLegoInstalledWithClient(client)
+}
+
+// ensureLegoInstalledWithClient installs lego using an existing SSH client
+func (s *VerificationService) ensureLegoInstalledWithClient(client *sshexec.Client) error {
 	// Check if lego is installed
 	checkCmd := "which lego >/dev/null 2>&1 && lego --version | head -1"
 	if out, err := client.Run(checkCmd); err == nil && strings.Contains(out, "lego") {
@@ -1150,8 +1155,8 @@ func (s *VerificationService) LegoStartChallenge(domain, email string) (*LegoCha
 	}
 	defer client.Close()
 
-	// Ensure lego is installed
-	if err := s.EnsureLegoInstalled(); err != nil {
+	// Ensure lego is installed (reuse this connection)
+	if err := s.ensureLegoInstalledWithClient(client); err != nil {
 		return nil, err
 	}
 
