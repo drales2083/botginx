@@ -4,7 +4,7 @@
 #
 # Customizes CloudPanel with:
 # - GaurdBotPanel logo
-# - Red theme (#dc3545)
+# - Purple theme (#6c5ce7)
 # - Dark mode as default (via JS, uses native toggle)
 #
 # Usage:
@@ -21,7 +21,7 @@ set -euo pipefail
 # ----------------------------------------------------------------------------
 
 PANEL_NAME="${PANEL_NAME:-GaurdBotPanel}"
-PRIMARY_COLOR="${PRIMARY_COLOR:-#dc3545}"  # Red to match logo
+PRIMARY_COLOR="${PRIMARY_COLOR:-#6c5ce7}"  # Purple to match logo
 
 # ----------------------------------------------------------------------------
 # Output helpers
@@ -80,54 +80,54 @@ create_css() {
     cat > "$BRANDING_DIR/css/custom-branding.css" << 'EOF'
 /*
  * CloudPanel Custom Branding - GaurdBotPanel
- * Red theme + logo only - dark mode handled by JS
+ * Purple theme + logo only - dark mode handled by JS
  */
 
-/* Primary color - Red */
+/* Primary color - Purple */
 :root {
-    --bs-primary: #dc3545 !important;
-    --bs-primary-rgb: 220, 53, 69 !important;
+    --bs-primary: #6c5ce7 !important;
+    --bs-primary-rgb: 108, 92, 231 !important;
 }
 
 /* Button colors */
 .btn-primary {
-    background-color: #dc3545 !important;
-    border-color: #dc3545 !important;
+    background-color: #6c5ce7 !important;
+    border-color: #6c5ce7 !important;
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
-    background-color: #bb2d3b !important;
-    border-color: #bb2d3b !important;
+    background-color: #5b4cdb !important;
+    border-color: #5b4cdb !important;
 }
 
 .btn-outline-primary {
-    color: #dc3545 !important;
-    border-color: #dc3545 !important;
+    color: #6c5ce7 !important;
+    border-color: #6c5ce7 !important;
 }
 
 .btn-outline-primary:hover {
-    background-color: #dc3545 !important;
+    background-color: #6c5ce7 !important;
     color: #fff !important;
 }
 
 /* Link colors */
 a:not(.btn) {
-    color: #dc3545;
+    color: #6c5ce7;
 }
 
 a:not(.btn):hover {
-    color: #bb2d3b;
+    color: #5b4cdb;
 }
 
 /* Sidebar active */
 .nav-link.active {
-    background-color: #dc3545 !important;
+    background-color: #6c5ce7 !important;
 }
 
 /* Progress bars */
 .progress-bar {
-    background-color: #dc3545 !important;
+    background-color: #6c5ce7 !important;
 }
 
 /* Replace CloudPanel logo with GaurdBotPanel logo */
@@ -351,7 +351,7 @@ print_summary() {
     echo "=========================================="
     echo
     echo "Panel Name:  GaurdBotPanel"
-    echo "Theme Color: Red (#dc3545)"
+    echo "Theme Color: Purple (#6c5ce7)"
     echo "Dark Mode:   Forced (toggle hidden)"
     echo "Dashboard:   Bullet Proof Hosting"
     echo
