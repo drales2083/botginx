@@ -896,7 +896,7 @@ func (s *VerificationService) CompleteWildcardSSL(domain string, savedACMEToken 
 
 	// Create auth hook that:
 	// 1. Saves certbot's NEW token to a file (so UI can show it)
-	// 2. Polls DNS for up to 5 minutes waiting for user to update
+	// 2. Polls DNS for up to 10 minutes waiting for user to update
 	// 3. Exits success when DNS matches certbot's token
 	authHookScript := fmt.Sprintf(`cat > /tmp/dns-auth-poll.sh << 'HOOKEOF'
 #!/bin/bash
@@ -908,10 +908,10 @@ echo "$TOKEN" > /tmp/acme-token-%s-live.txt
 
 echo "ACME Challenge Token: $TOKEN"
 echo "Waiting for DNS TXT record at _acme-challenge.$DOMAIN"
-echo "Please set this TXT record value in your DNS and wait for propagation..."
+echo "Add TXT record: _acme-challenge.$DOMAIN = $TOKEN"
 
-# Poll DNS for up to 5 minutes (30 attempts, 10 seconds apart)
-for i in $(seq 1 30); do
+# Poll DNS for up to 10 minutes (60 attempts, 10 seconds apart)
+for i in $(seq 1 60); do
     GOOGLE_VAL=$(dig @8.8.8.8 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
     CF_VAL=$(dig @1.1.1.1 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
 
@@ -920,11 +920,11 @@ for i in $(seq 1 30); do
         exit 0
     fi
 
-    echo "Attempt $i/30: DNS has '$GOOGLE_VAL', waiting for '$TOKEN'..."
+    echo "Attempt $i/60: waiting for TXT record..."
     sleep 10
 done
 
-echo "Timeout: DNS not updated within 5 minutes"
+echo "Timeout: DNS not updated within 10 minutes"
 exit 1
 HOOKEOF
 chmod +x /tmp/dns-auth-poll.sh`, baseDomain)

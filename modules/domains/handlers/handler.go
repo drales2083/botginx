@@ -795,20 +795,10 @@ func (h *Handler) completeExternalSetup(domain *models.Domain) {
 
 	var sslErr error
 	if domain.IsWildcard {
-		// Wildcard domains need DNS-01 challenge
-		// Prefer acme-dns if available (100% reliable)
-		if domain.AcmeSubdomain != nil && domain.AcmeUsername != nil && domain.AcmePassword != nil && domain.AcmeCnameVerified {
-			log.Printf("[domains] using acme-dns for %s", domain.Name)
-			sslErr = h.verification.GenerateWildcardSSLWithAcmeDNS(domain.Name, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword)
-		} else {
-			// Fallback to old method (less reliable)
-			log.Printf("[domains] using legacy DNS-01 for %s (acme-dns not configured)", domain.Name)
-			acmeToken := ""
-			if domain.AcmeToken != nil {
-				acmeToken = *domain.AcmeToken
-			}
-			sslErr = h.verification.CompleteWildcardSSL(domain.Name, acmeToken)
-		}
+		// Wildcard domains need DNS-01 challenge with manual TXT record
+		// User has 10 minutes to add TXT record while certbot polls
+		log.Printf("[domains] using manual DNS-01 for wildcard %s (10 min timeout)", domain.Name)
+		sslErr = h.verification.CompleteWildcardSSL(domain.Name, "")
 	} else {
 		// Non-wildcard domains use HTTP-01 challenge (simpler, no ACME TXT needed)
 		sslErr = h.verification.GenerateHTTPSSL(domain.Name)
@@ -905,19 +895,8 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 	aRecordFound, _ := h.verification.CheckARecord(domain.Name, deployIP)
 	verifyFound, _ := h.verification.VerifyDNS(baseDomain, domain.VerifyToken)
 
-	// Wildcard domains need either acme-dns CNAME or legacy ACME TXT
-	acmeReady := true
-	if domain.IsWildcard {
-		if domain.AcmeSubdomain != nil && domain.AcmePassword != nil {
-			// acme-dns method - check CNAME verification
-			acmeReady = domain.AcmeCnameVerified
-		} else if domain.AcmeToken != nil && *domain.AcmeToken != "" {
-			// Legacy method - check ACME TXT record
-			acmeReady = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
-		} else {
-			acmeReady = false
-		}
-	}
+	// For wildcard SSL, user will add TXT record during generation (10 min polling window)
+	// No pre-check needed - certbot will generate fresh token each time
 
 	missing := []string{}
 	if !aRecordFound {
@@ -925,13 +904,6 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 	}
 	if !verifyFound {
 		missing = append(missing, "verify TXT")
-	}
-	if domain.IsWildcard && !acmeReady {
-		if domain.AcmeSubdomain != nil {
-			missing = append(missing, "ACME CNAME")
-		} else {
-			missing = append(missing, "ACME TXT")
-		}
 	}
 
 	if len(missing) > 0 {

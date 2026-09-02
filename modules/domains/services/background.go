@@ -114,44 +114,9 @@ func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 
 	// For non-Cloudflare: generate SSL FIRST, then nginx config
 	if isWildcard {
-		// Check if this wildcard has acme-dns configured and CNAME verified
-		domain, err := b.domainService.Get(domainID)
-		if err != nil {
-			log.Printf("[domains] %s wildcard - failed to get domain: %v", domainName, err)
-			return
-		}
-
-		// If acme-dns is configured and CNAME is verified, we can generate SSL
-		if domain.AcmeSubdomain != nil && domain.AcmeUsername != nil && domain.AcmePassword != nil && domain.AcmeCnameVerified {
-			log.Printf("[domains] %s wildcard with acme-dns CNAME verified - generating SSL", domainName)
-			if err := b.verifyService.GenerateWildcardSSLWithAcmeDNS(domainName, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword); err != nil {
-				log.Printf("[domains] SSL generation failed for %s: %v", domainName, err)
-				errMsg := err.Error()
-				b.domainService.Update(domainID, models.UpdateDomainInput{SSLError: &errMsg})
-				return
-			}
-
-			// Setup nginx
-			if err := b.verifyService.SetupDomainNginx(domainName); err != nil {
-				log.Printf("[domains] nginx setup failed for %s: %v", domainName, err)
-				return
-			}
-
-			// Mark as complete
-			t := true
-			step := models.SetupStepComplete
-			serverID := b.domainService.GetDeployServerID()
-			b.domainService.Update(domainID, models.UpdateDomainInput{
-				SSLEnabled: &t,
-				SetupStep:  &step,
-				ServerID:   &serverID,
-			})
-			log.Printf("[domains] %s SSL ready (acme-dns wildcard)", domainName)
-			return
-		}
-
-		// Legacy wildcard without acme-dns - skip (requires manual ACME flow)
-		log.Printf("[domains] %s is wildcard without acme-dns - skipping auto SSL", domainName)
+		// Wildcard domains require DNS-01 challenge with manual TXT record
+		// Skip auto SSL - user must trigger via UI after adding TXT record
+		log.Printf("[domains] %s is wildcard - requires manual TXT record, skipping auto SSL", domainName)
 		return
 	}
 
