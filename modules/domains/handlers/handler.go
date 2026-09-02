@@ -810,12 +810,17 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 	aRecordFound, _ := h.verification.CheckARecord(domain.Name, deployIP)
 	verifyFound, _ := h.verification.VerifyDNS(baseDomain, domain.VerifyToken)
 
-	// ACME TXT only needed for wildcard domains (non-wildcard uses HTTP-01)
-	acmeFound := true
+	// Wildcard domains need either acme-dns CNAME or legacy ACME TXT
+	acmeReady := true
 	if domain.IsWildcard {
-		acmeFound = false
-		if domain.AcmeToken != nil && *domain.AcmeToken != "" {
-			acmeFound = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
+		if domain.AcmeSubdomain != nil && domain.AcmePassword != nil {
+			// acme-dns method - check CNAME verification
+			acmeReady = domain.AcmeCnameVerified
+		} else if domain.AcmeToken != nil && *domain.AcmeToken != "" {
+			// Legacy method - check ACME TXT record
+			acmeReady = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
+		} else {
+			acmeReady = false
 		}
 	}
 
@@ -826,8 +831,12 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 	if !verifyFound {
 		missing = append(missing, "verify TXT")
 	}
-	if domain.IsWildcard && !acmeFound {
-		missing = append(missing, "ACME TXT")
+	if domain.IsWildcard && !acmeReady {
+		if domain.AcmeSubdomain != nil {
+			missing = append(missing, "ACME CNAME")
+		} else {
+			missing = append(missing, "ACME TXT")
+		}
 	}
 
 	if len(missing) > 0 {
