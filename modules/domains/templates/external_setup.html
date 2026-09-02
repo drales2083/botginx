@@ -297,6 +297,11 @@ let pollInterval;
 async function startSSLChallenge() {
     try {
         const res = await fetch(`/user/domains/api/${domainId}/ssl/start`, { method: 'POST' });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || `Server error: ${res.status}`, 'danger');
+            return;
+        }
         const data = await res.json();
         if (data.error) {
             showToast(data.error, 'danger');
