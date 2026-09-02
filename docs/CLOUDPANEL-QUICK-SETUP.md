@@ -8,18 +8,22 @@ Quick reference for setting up new CloudPanel VPS servers for botginx hosting.
 ssh root@NEW_SERVER 'bash -s' < deploy-cloudpanel.sh
 ```
 
-## 2. Apply Branding (GuardBotPanel)
+## 2. Apply GaurdBotPanel Branding
 
 ```bash
-# Upload and run branding script
+# Upload logo first
+scp assets/logos/guardbotpanel-logo.png root@SERVER:/opt/cloudpanel-branding/logos/
+
+# Then run branding script (handles everything)
 scp scripts/cloudpanel-branding.sh root@SERVER:/opt/
 ssh root@SERVER 'bash /opt/cloudpanel-branding.sh'
 ```
 
 This applies:
-- **Name:** GuardBotPanel (replaces CloudPanel)
-- **Theme:** Dark mode default
-- **Color:** Red (#dc3545)
+- **Logo:** GaurdBotPanel purple logo
+- **Theme:** Dark mode default (via JS, toggle still works)
+- **Color:** Purple (#6c5ce7)
+- **Footer:** "© 2026 All Rights Reserved" (CloudPanel links removed)
 
 ## 3. Deploy Botection
 
@@ -64,8 +68,11 @@ SERVER=root@1.2.3.4
 # Step 1: CloudPanel
 ssh $SERVER 'bash -s' < deploy-cloudpanel.sh
 
-# Step 2: Branding
-scp scripts/cloudpanel-branding.sh $SERVER:/opt/ && ssh $SERVER 'bash /opt/cloudpanel-branding.sh'
+# Step 2: Branding (logo + script)
+ssh $SERVER 'mkdir -p /opt/cloudpanel-branding/logos'
+scp assets/logos/guardbotpanel-logo.png $SERVER:/opt/cloudpanel-branding/logos/
+scp scripts/cloudpanel-branding.sh $SERVER:/opt/
+ssh $SERVER 'bash /opt/cloudpanel-branding.sh'
 
 # Step 3: Botection
 ssh $SERVER 'cd /var/www && git clone https://github.com/robertp2083/antibot.git && SERVER_TYPE=cloudpanel bash /var/www/antibot/packaging/deploy.sh'
@@ -84,9 +91,10 @@ Or it auto-reapplies daily via cron.
 ## Verify Branding
 
 1. Open `https://SERVER_IP:8443`
-2. Should show "GuardBotPanel" name
-3. Dark theme should be default
-4. Red accent colors
+2. Should show GaurdBotPanel purple logo
+3. Dark theme should be default (toggle still works)
+4. Purple accent colors (#6c5ce7)
+5. Footer shows "© 2026 All Rights Reserved" only
 
 ## Troubleshooting
 
