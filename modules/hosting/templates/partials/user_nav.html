@@ -5,22 +5,12 @@
            class="list-group-item list-group-item-action {{if eq .NavActive "overview"}}active{{end}}">
             <i class="bi bi-speedometer2 me-2"></i>Overview
         </a>
+        {{if ne .Account.Status "pending"}}
         <a href="/user/hosting/{{.Account.ID}}/domains"
            class="list-group-item list-group-item-action {{if eq .NavActive "domains"}}active{{end}}">
-            <i class="bi bi-globe me-2"></i>Domains
+            <i class="bi bi-shield-check me-2"></i>Domain Protection
         </a>
-        <a href="/user/hosting/{{.Account.ID}}/emails"
-           class="list-group-item list-group-item-action {{if eq .NavActive "emails"}}active{{end}}">
-            <i class="bi bi-envelope me-2"></i>Emails
-        </a>
-        <a href="/user/hosting/{{.Account.ID}}/databases"
-           class="list-group-item list-group-item-action {{if eq .NavActive "databases"}}active{{end}}">
-            <i class="bi bi-database me-2"></i>Databases
-        </a>
-        <a href="/user/hosting/{{.Account.ID}}/ftp"
-           class="list-group-item list-group-item-action {{if eq .NavActive "ftp"}}active{{end}}">
-            <i class="bi bi-folder me-2"></i>FTP Accounts
-        </a>
+        {{end}}
     </div>
 </div>
 <div class="mt-3">

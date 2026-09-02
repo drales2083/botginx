@@ -6,7 +6,7 @@
     <div class="col-md-9">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">HestiaCP Servers</h5>
+                <h5 class="card-title mb-0">Hosting Servers</h5>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addServerModal">
                     <i class="bi bi-plus-lg me-1"></i>Add Server
                 </button>
@@ -17,7 +17,7 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
-                                <th>Hostname</th>
+                                <th>Panel URL</th>
                                 <th>Accounts</th>
                                 <th>Status</th>
                                 <th>Created</th>
@@ -28,7 +28,15 @@
                             {{range .Servers}}
                             <tr>
                                 <td class="fw-semibold">{{.Name}}</td>
-                                <td><code>{{.Hostname}}:{{.Port}}</code></td>
+                                <td>
+                                    {{if .PanelURL}}
+                                    <a href="{{.PanelURL}}" target="_blank" class="text-decoration-none">
+                                        {{.PanelURL}} <i class="bi bi-box-arrow-up-right small"></i>
+                                    </a>
+                                    {{else}}
+                                    <span class="text-secondary">Not set</span>
+                                    {{end}}
+                                </td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="progress flex-grow-1 me-2" style="width: 100px; height: 8px;">
@@ -36,7 +44,7 @@
                                             {{if gt .MaxAccounts 0}}
                                             {{$pct = mulf (divf .CurrentAccounts .MaxAccounts) 100}}
                                             {{end}}
-                                            <div class="progress-bar {{if ge $pct 90}}bg-danger{{else if ge $pct 70}}bg-warning{{else}}bg-success{{end}}"
+                                            <div class="progress-bar {{if ge $pct 90.0}}bg-danger{{else if ge $pct 70.0}}bg-warning{{else}}bg-success{{end}}"
                                                  style="width: {{$pct}}%"></div>
                                         </div>
                                         <small class="text-nowrap">{{.CurrentAccounts}}/{{.MaxAccounts}}</small>
@@ -52,9 +60,6 @@
                                 <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
                                 <td class="text-end">
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-info btn-test-server" data-id="{{.ID}}" title="Test Connection">
-                                            <i class="bi bi-plug"></i>
-                                        </button>
                                         {{if .IsActive}}
                                         <button class="btn btn-outline-warning btn-toggle-server" data-id="{{.ID}}" data-active="false" title="Disable">
                                             <i class="bi bi-pause"></i>
@@ -91,7 +96,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-hdd-rack text-primary me-2"></i>Add HestiaCP Server</h5>
+                <h5 class="modal-title"><i class="bi bi-hdd-rack text-primary me-2"></i>Add Hosting Server</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addServerForm">
@@ -101,10 +106,16 @@
                         <input type="text" class="form-control" id="serverNameInput" placeholder="US-East-1" required>
                         <small class="text-secondary">A friendly name for this server</small>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Panel URL</label>
+                        <input type="url" class="form-control" id="serverPanelUrlInput" placeholder="https://panel.example.com:8443" required>
+                        <small class="text-secondary">Full URL to the control panel login page</small>
+                    </div>
                     <div class="row mb-3">
                         <div class="col-8">
                             <label class="form-label">Hostname</label>
                             <input type="text" class="form-control" id="serverHostnameInput" placeholder="host1.example.com" required>
+                            <small class="text-secondary">For internal reference</small>
                         </div>
                         <div class="col-4">
                             <label class="form-label">SSH Port</label>
@@ -173,6 +184,7 @@ document.getElementById('addServerForm').addEventListener('submit', async (e) =>
     const btn = document.getElementById('addServerBtn');
     const data = {
         name: document.getElementById('serverNameInput').value.trim(),
+        panelUrl: document.getElementById('serverPanelUrlInput').value.trim(),
         hostname: document.getElementById('serverHostnameInput').value.trim(),
         port: parseInt(document.getElementById('serverPortInput').value) || 22,
         username: document.getElementById('serverUsernameInput').value.trim(),
@@ -180,7 +192,7 @@ document.getElementById('addServerForm').addEventListener('submit', async (e) =>
         maxAccounts: parseInt(document.getElementById('serverMaxAccountsInput').value) || 100
     };
 
-    if (!data.name || !data.hostname || !data.username || !data.password) return;
+    if (!data.name || !data.panelUrl || !data.hostname || !data.username || !data.password) return;
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
@@ -198,30 +210,6 @@ document.getElementById('addServerForm').addEventListener('submit', async (e) =>
         showToast(data.error || 'Failed to add server', 'danger');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Server';
-    }
-});
-
-// Test server connection
-document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.btn-test-server');
-    if (btn) {
-        e.preventDefault();
-        const serverId = btn.dataset.id;
-
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-        const res = await fetch(`/admin/hosting/api/servers/${serverId}/test`, { method: 'POST' });
-
-        if (res.ok) {
-            showToast('Connection successful', 'success');
-        } else {
-            const data = await res.json().catch(() => ({}));
-            showToast(data.error || 'Connection failed', 'danger');
-        }
-
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-plug"></i>';
     }
 });
 

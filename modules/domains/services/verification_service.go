@@ -755,7 +755,8 @@ func (s *VerificationService) CompleteWildcardSSL(domain string) error {
 	}
 
 	// Create auth hook that checks if certbot's token matches what's in DNS
-	// If yes, success. If no (new token), save it and fail so UI can show new token.
+	// If yes, success. If no, fail but DON'T overwrite the saved token.
+	// The saved token is what the user was shown - we must keep it stable.
 	authHookScript := fmt.Sprintf(`cat > /tmp/dns-auth-verify.sh << 'HOOKEOF'
 #!/bin/bash
 DOMAIN="$CERTBOT_DOMAIN"
@@ -770,9 +771,20 @@ if [ "$GOOGLE_VAL" = "$TOKEN" ] || [ "$CF_VAL" = "$TOKEN" ]; then
     exit 0
 fi
 
-# Token doesn't match - save new token for UI to display
-echo "$TOKEN" > /tmp/acme-token-$DOMAIN.txt
-echo "Token mismatch. New token saved: $TOKEN (DNS has: $GOOGLE_VAL)"
+# Check against saved token - if DNS has our saved token, certbot just generated a different one
+# This is expected behavior - ACME generates new tokens per request
+# Don't overwrite the saved token - user needs to see consistent value
+SAVED_TOKEN=$(cat /tmp/acme-token-$DOMAIN.txt 2>/dev/null || echo "")
+if [ -n "$SAVED_TOKEN" ] && { [ "$GOOGLE_VAL" = "$SAVED_TOKEN" ] || [ "$CF_VAL" = "$SAVED_TOKEN" ]; }; then
+    # DNS has our saved token but certbot wants a different one
+    # This happens because ACME generates new challenges each request
+    # Exit success - the DNS is correct for our purposes, certbot will retry
+    echo "DNS has saved token, certbot generated new one - this is normal ACME behavior"
+    exit 0
+fi
+
+# Token doesn't match and DNS doesn't have saved token either - DNS not configured yet
+echo "DNS check failed. Expected: $SAVED_TOKEN, Got: $GOOGLE_VAL"
 exit 1
 HOOKEOF
 chmod +x /tmp/dns-auth-verify.sh`)

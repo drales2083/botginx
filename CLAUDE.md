@@ -49,6 +49,8 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 | `deploy.sh` | Production deploy with SSL (local build → remote VPS) |
 | `deploy-onion.sh` | Full Tor VPS setup (PostgreSQL, Go, Nginx, systemd) |
 | `auto-deploy.sh` | Auto-update from GitHub releases (cron every 2 min) |
+| `deploy-cloudpanel.sh` | Provision CloudPanel hosting server for botginx |
+| `deploy-hestia.sh` | Provision HestiaCP hosting server (legacy) |
 
 Usage:
 ```bash

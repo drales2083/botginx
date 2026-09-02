@@ -17,10 +17,9 @@
                         <thead>
                             <tr>
                                 <th>User</th>
-                                <th>Username</th>
+                                <th>Domain</th>
                                 <th>Package</th>
                                 <th>Server</th>
-                                <th>Domains</th>
                                 <th>Status</th>
                                 <th>Next Billing</th>
                                 <th class="text-end">Actions</th>
@@ -32,17 +31,28 @@
                                 <td>
                                     <span class="fw-semibold">{{.UserEmail}}</span>
                                 </td>
-                                <td><code>{{.HestiaUsername}}</code></td>
+                                <td>
+                                    {{if .DomainCount}}
+                                    <span class="badge bg-secondary rounded-pill">{{.DomainCount}} domain{{if gt .DomainCount 1}}s{{end}}</span>
+                                    {{else}}
+                                    <span class="text-secondary">-</span>
+                                    {{end}}
+                                </td>
                                 <td>
                                     {{.PackageName}}
                                     <br><small class="text-primary">${{printf "%.2f" .PackagePrice}}/mo</small>
                                 </td>
-                                <td>{{.ServerName}}</td>
                                 <td>
-                                    <span class="badge bg-secondary rounded-pill">{{.DomainCount}}</span>
+                                    {{if .ServerName}}
+                                    {{.ServerName}}
+                                    {{else}}
+                                    <span class="text-secondary">Unassigned</span>
+                                    {{end}}
                                 </td>
                                 <td>
-                                    {{if eq .Status "active"}}
+                                    {{if eq .Status "pending"}}
+                                    <span class="badge text-bg-info">Pending Setup</span>
+                                    {{else if eq .Status "active"}}
                                     <span class="badge text-bg-success">Active</span>
                                     {{else if eq .Status "suspended"}}
                                     <span class="badge text-bg-warning">Suspended</span>
@@ -59,7 +69,14 @@
                                 </td>
                                 <td class="text-end">
                                     <div class="btn-group btn-group-sm">
-                                        {{if eq .Status "active"}}
+                                        {{if eq .Status "pending"}}
+                                        <button class="btn btn-outline-secondary btn-view-creds" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="View Credentials">
+                                            <i class="bi bi-key"></i>
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-link-account" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="Link to Server">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </button>
+                                        {{else if eq .Status "active"}}
                                         <button class="btn btn-outline-warning btn-suspend" data-id="{{.ID}}" data-email="{{.UserEmail}}" title="Suspend">
                                             <i class="bi bi-pause-circle"></i>
                                         </button>
@@ -73,7 +90,7 @@
                             </tr>
                             {{else}}
                             <tr>
-                                <td colspan="8" class="text-center text-secondary py-4">
+                                <td colspan="7" class="text-center text-secondary py-4">
                                     No hosting accounts yet.
                                 </td>
                             </tr>
@@ -86,6 +103,14 @@
 
         <!-- Quick Stats -->
         <div class="row mt-4 g-3">
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h3 class="mb-0" id="stat-pending">0</h3>
+                        <small>Pending</small>
+                    </div>
+                </div>
+            </div>
             <div class="col-md-3">
                 <div class="card bg-success text-white">
                     <div class="card-body text-center">
@@ -103,14 +128,6 @@
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card bg-danger text-white">
-                    <div class="card-body text-center">
-                        <h3 class="mb-0" id="stat-cancelled">0</h3>
-                        <small>Cancelled</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
                 <div class="card bg-primary text-white">
                     <div class="card-body text-center">
                         <h3 class="mb-0" id="stat-total">0</h3>
@@ -118,6 +135,64 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Credentials Modal -->
+<div class="modal fade" id="credsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-key text-primary me-2"></i>Account Credentials</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3 small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Create an account in the control panel using these credentials for <strong id="credsEmail">user</strong>.
+                </div>
+                <div id="credsContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Link Account Modal -->
+<div class="modal fade" id="linkAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-link-45deg text-primary me-2"></i>Link to Server</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="linkAccountForm">
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3 small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        After creating the account in the control panel, select the server to activate for <strong id="linkAccountEmail">user</strong>.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Server</label>
+                        <select class="form-select" id="linkServerInput" required>
+                            <option value="">Select server...</option>
+                            {{range .Servers}}
+                            <option value="{{.ID}}">{{.Name}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="linkAccountBtn">
+                        <i class="bi bi-check-lg me-1"></i>Activate Account
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -203,27 +278,141 @@
 <script>
 let suspendModal = null;
 let unsuspendModal = null;
+let linkAccountModal = null;
+let credsModal = null;
 let suspendId = null;
 let unsuspendId = null;
+let linkAccountId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     suspendModal = new bootstrap.Modal(document.getElementById('suspendModal'));
     unsuspendModal = new bootstrap.Modal(document.getElementById('unsuspendModal'));
+    linkAccountModal = new bootstrap.Modal(document.getElementById('linkAccountModal'));
+    credsModal = new bootstrap.Modal(document.getElementById('credsModal'));
 
     // Calculate stats
-    let active = 0, suspended = 0, cancelled = 0;
+    let pending = 0, active = 0, suspended = 0;
     document.querySelectorAll('tbody tr').forEach(row => {
-        const badge = row.querySelector('.badge');
+        const badge = row.querySelector('.badge.text-bg-info, .badge.text-bg-success, .badge.text-bg-warning, .badge.text-bg-danger');
         if (badge) {
-            if (badge.textContent.includes('Active')) active++;
+            if (badge.textContent.includes('Pending')) pending++;
+            else if (badge.textContent.includes('Active')) active++;
             else if (badge.textContent.includes('Suspended')) suspended++;
-            else if (badge.textContent.includes('Cancelled')) cancelled++;
         }
     });
+    document.getElementById('stat-pending').textContent = pending;
     document.getElementById('stat-active').textContent = active;
     document.getElementById('stat-suspended').textContent = suspended;
-    document.getElementById('stat-cancelled').textContent = cancelled;
-    document.getElementById('stat-total').textContent = active + suspended + cancelled;
+    document.getElementById('stat-total').textContent = pending + active + suspended;
+});
+
+// View credentials
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-view-creds');
+    if (btn) {
+        e.preventDefault();
+        const accountId = btn.dataset.id;
+        document.getElementById('credsEmail').textContent = btn.dataset.email;
+        document.getElementById('credsContent').innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status"></div>
+            </div>
+        `;
+        credsModal.show();
+
+        const res = await fetch(`/admin/hosting/api/accounts/${accountId}/credentials`);
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('credsContent').innerHTML = `
+                <table class="table table-bordered mb-0">
+                    <tr>
+                        <th width="100">Domain</th>
+                        <td>
+                            <code>${data.domain || 'Not set'}</code>
+                            <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="${data.domain}" title="Copy">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Username</th>
+                        <td>
+                            <code>${data.username}</code>
+                            <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="${data.username}" title="Copy">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Password</th>
+                        <td>
+                            <code>${data.password}</code>
+                            <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="${data.password}" title="Copy">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </table>
+            `;
+        } else {
+            document.getElementById('credsContent').innerHTML = `
+                <div class="alert alert-danger mb-0">Failed to load credentials</div>
+            `;
+        }
+    }
+});
+
+// Copy button handler
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-copy');
+    if (btn) {
+        e.preventDefault();
+        navigator.clipboard.writeText(btn.dataset.value);
+        const icon = btn.querySelector('i');
+        icon.className = 'bi bi-check-lg text-success';
+        setTimeout(() => icon.className = 'bi bi-clipboard', 1500);
+        showToast('Copied to clipboard', 'success');
+    }
+});
+
+// Link account
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-link-account');
+    if (btn) {
+        e.preventDefault();
+        linkAccountId = btn.dataset.id;
+        document.getElementById('linkAccountEmail').textContent = btn.dataset.email;
+        document.getElementById('linkServerInput').value = '';
+        linkAccountModal.show();
+    }
+});
+
+document.getElementById('linkAccountForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!linkAccountId) return;
+
+    const btn = document.getElementById('linkAccountBtn');
+    const serverId = document.getElementById('linkServerInput').value;
+
+    if (!serverId) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Activating...';
+
+    const res = await fetch(`/admin/hosting/api/accounts/${linkAccountId}/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serverId: serverId })
+    });
+
+    if (res.ok) {
+        reloadWithToast('Account activated successfully', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to activate account', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Activate Account';
+    }
 });
 
 // Top up balance
@@ -232,7 +421,7 @@ document.getElementById('topUpForm').addEventListener('submit', async (e) => {
 
     const btn = document.getElementById('topUpBtn');
     const data = {
-        user_id: document.getElementById('topUpUserInput').value.trim(), // This is user email, handler needs to resolve
+        user_id: document.getElementById('topUpUserInput').value.trim(),
         amount: parseFloat(document.getElementById('topUpAmountInput').value) || 0,
         description: document.getElementById('topUpDescriptionInput').value.trim() || 'Admin top-up'
     };

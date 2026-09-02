@@ -4,6 +4,17 @@
         {{template "hosting_user_nav" .}}
     </div>
     <div class="col-md-9">
+        {{if eq .Account.Status "pending"}}
+        <!-- Pending Account -->
+        <div class="card mb-4">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-hourglass-split display-1 text-warning mb-3"></i>
+                <h4>Account Setup in Progress</h4>
+                <p class="text-secondary mb-0">Your hosting account is being set up. You will be notified when it's ready.</p>
+                <p class="text-secondary small mt-2">This usually takes less than 24 hours.</p>
+            </div>
+        </div>
+        {{else}}
         <!-- Status -->
         <div class="row g-3 mb-4">
             <div class="col-md-4">
@@ -15,6 +26,9 @@
                         {{else if eq .Account.Status "suspended"}}
                         <i class="bi bi-pause-circle-fill display-4 text-warning mb-2"></i>
                         <h5 class="text-warning">Suspended</h5>
+                        <button class="btn btn-warning btn-sm mt-2" onclick="reactivateAccount()">
+                            Reactivate Account
+                        </button>
                         {{else}}
                         <i class="bi bi-x-circle-fill display-4 text-danger mb-2"></i>
                         <h5 class="text-danger">Cancelled</h5>
@@ -40,38 +54,20 @@
             </div>
         </div>
 
-        <!-- Quick Stats -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-3 col-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h3 class="mb-0 fw-bold">{{len .Domains}}</h3>
-                        <p class="text-secondary small mb-0">Domains</p>
-                    </div>
-                </div>
+        <!-- Control Panel Access -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-terminal me-2"></i>Control Panel</h5>
             </div>
-            <div class="col-md-3 col-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h3 class="mb-0 fw-bold" id="stat-emails">0</h3>
-                        <p class="text-secondary small mb-0">Emails</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h3 class="mb-0 fw-bold" id="stat-databases">0</h3>
-                        <p class="text-secondary small mb-0">Databases</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h3 class="mb-0 fw-bold" id="stat-ftp">0</h3>
-                        <p class="text-secondary small mb-0">FTP</p>
-                    </div>
+            <div class="card-body">
+                <p class="text-secondary mb-3">Access your hosting control panel to manage files, databases, emails, and more.</p>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" onclick="loginToPanel()">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Open Control Panel
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="showCredentials()">
+                        <i class="bi bi-key me-2"></i>View Credentials
+                    </button>
                 </div>
             </div>
         </div>
@@ -86,15 +82,6 @@
                     <div class="col-md-6">
                         <table class="table table-sm mb-0">
                             <tbody>
-                                <tr>
-                                    <th>Username</th>
-                                    <td>
-                                        <code>{{.Account.HestiaUsername}}</code>
-                                        <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="{{.Account.HestiaUsername}}" title="Copy">
-                                            <i class="bi bi-clipboard"></i>
-                                        </button>
-                                    </td>
-                                </tr>
                                 <tr>
                                     <th>Server</th>
                                     <td>{{.Account.ServerName}}</td>
@@ -123,50 +110,38 @@
             </div>
         </div>
 
-        <!-- Recent Domains -->
+        <!-- Domains -->
+        {{if .Account.DomainCount}}
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Domains</h5>
+                <h5 class="card-title mb-0">Protected Domains</h5>
                 <a href="/user/hosting/{{.Account.ID}}/domains" class="btn btn-outline-primary btn-sm">
-                    Manage All <i class="bi bi-arrow-right ms-1"></i>
+                    Manage Protection <i class="bi bi-arrow-right ms-1"></i>
                 </a>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Domain</th>
-                                <th>SSL</th>
-                                <th>Created</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{range .Domains}}
-                            <tr>
-                                <td>
-                                    <a href="https://{{.Domain}}" target="_blank" class="text-decoration-none">
-                                        {{.Domain}} <i class="bi bi-box-arrow-up-right small ms-1"></i>
-                                    </a>
-                                </td>
-                                <td>
-                                    {{if .SSLEnabled}}
-                                    <span class="badge text-bg-success"><i class="bi bi-lock-fill me-1"></i>Enabled</span>
-                                    {{else}}
-                                    <span class="badge text-bg-secondary">Disabled</span>
-                                    {{end}}
-                                </td>
-                                <td>{{.CreatedAt.Format "Jan 02, 2006"}}</td>
-                            </tr>
-                            {{else}}
-                            <tr>
-                                <td colspan="3" class="text-center text-secondary py-4">
-                                    No domains yet. <a href="/user/hosting/{{$.Account.ID}}/domains">Add your first domain</a>.
-                                </td>
-                            </tr>
-                            {{end}}
-                        </tbody>
-                    </table>
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{.Account.DomainCount}}</h3>
+                <p class="text-secondary mb-0">domains with antibot protection</p>
+            </div>
+        </div>
+        {{end}}
+        {{end}}
+    </div>
+</div>
+
+<!-- Credentials Modal -->
+<div class="modal fade" id="credentialsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Control Panel Credentials</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="credentialsContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -174,6 +149,96 @@
 </div>
 
 <script>
+const accountID = '{{.Account.ID}}';
+const panelUrl = '{{.Account.PanelURL}}';
+
+async function loginToPanel() {
+    try {
+        const resp = await fetch(`/user/hosting/api/${accountID}/credentials`);
+        const data = await resp.json();
+        if (data.error) {
+            showToast(data.error, 'danger');
+            return;
+        }
+        // Open panel in new tab
+        window.open(data.panelUrl, '_blank');
+    } catch (err) {
+        showToast('Failed to open control panel', 'danger');
+    }
+}
+
+async function showCredentials() {
+    const modal = new bootstrap.Modal(document.getElementById('credentialsModal'));
+    modal.show();
+
+    try {
+        const resp = await fetch(`/user/hosting/api/${accountID}/credentials`);
+        const data = await resp.json();
+        if (data.error) {
+            document.getElementById('credentialsContent').innerHTML = `
+                <div class="alert alert-danger mb-0">${data.error}</div>
+            `;
+            return;
+        }
+        document.getElementById('credentialsContent').innerHTML = `
+            <table class="table table-bordered mb-0">
+                <tr>
+                    <th>Panel URL</th>
+                    <td>
+                        <a href="${data.panelUrl}" target="_blank">${data.panelUrl}</a>
+                        <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="${data.panelUrl}" title="Copy">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Username</th>
+                    <td>
+                        <code>${data.username}</code>
+                        <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="${data.username}" title="Copy">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Password</th>
+                    <td>
+                        <code>${data.password}</code>
+                        <button class="btn btn-sm btn-link p-0 ms-2 btn-copy" data-value="${data.password}" title="Copy">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </td>
+                </tr>
+            </table>
+            <div class="alert alert-warning mt-3 mb-0 small">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Keep these credentials secure. Do not share them with anyone.
+            </div>
+        `;
+    } catch (err) {
+        document.getElementById('credentialsContent').innerHTML = `
+            <div class="alert alert-danger mb-0">Failed to load credentials</div>
+        `;
+    }
+}
+
+async function reactivateAccount() {
+    if (!confirm('Reactivate your account? The monthly fee will be charged from your balance.')) return;
+
+    try {
+        const resp = await fetch(`/user/hosting/api/${accountID}/reactivate`, {method: 'POST'});
+        const data = await resp.json();
+        if (data.error) {
+            showToast(data.error, 'danger');
+            return;
+        }
+        showToast('Account reactivated!', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch (err) {
+        showToast('Failed to reactivate account', 'danger');
+    }
+}
+
 // Copy button handler
 document.addEventListener('click', (e) => {
     const btn = e.target.closest('.btn-copy');

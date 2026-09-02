@@ -5,13 +5,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/botginx/botginx/modules/hosting/models"
 	"github.com/botginx/botginx/pkg/crypto"
-	"github.com/botginx/botginx/pkg/hestia"
 	"github.com/jmoiron/sqlx"
 )
+
+var domainRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$`)
 
 // HostingService provides business logic for hosting operations
 type HostingService struct {
@@ -50,7 +53,7 @@ func (s *HostingService) GetServer(id string) (*models.HostingServer, error) {
 	return &server, err
 }
 
-// CreateServer creates a new hosting server with encrypted password
+// CreateServer creates a new hosting server
 func (s *HostingService) CreateServer(input models.CreateServerInput) (*models.HostingServer, error) {
 	encPass, err := crypto.Encrypt(input.Password)
 	if err != nil {
@@ -65,11 +68,17 @@ func (s *HostingService) CreateServer(input models.CreateServerInput) (*models.H
 	if maxAccounts == 0 {
 		maxAccounts = 100
 	}
+	serverType := input.Type
+	if serverType == "" {
+		serverType = models.ServerTypeCloudPanel
+	}
 
 	server := &models.HostingServer{
 		ID:                s.generateID(),
 		Name:              input.Name,
+		Type:              serverType,
 		Hostname:          input.Hostname,
+		PanelURL:          input.PanelURL,
 		Port:              port,
 		Username:          input.Username,
 		PasswordEncrypted: encPass,
@@ -79,28 +88,10 @@ func (s *HostingService) CreateServer(input models.CreateServerInput) (*models.H
 	}
 
 	_, err = s.db.NamedExec(`
-		INSERT INTO hosting_servers (id, name, hostname, port, username, password_encrypted, max_accounts, is_active, created_at)
-		VALUES (:id, :name, :hostname, :port, :username, :password_encrypted, :max_accounts, :is_active, :created_at)
+		INSERT INTO hosting_servers (id, name, type, hostname, panel_url, port, username, password_encrypted, max_accounts, is_active, created_at)
+		VALUES (:id, :name, :type, :hostname, :panel_url, :port, :username, :password_encrypted, :max_accounts, :is_active, :created_at)
 	`, server)
 	return server, err
-}
-
-// TestServerConnection verifies SSH connectivity to a server
-func (s *HostingService) TestServerConnection(id string) error {
-	server, err := s.GetServer(id)
-	if err != nil {
-		return err
-	}
-
-	password, err := crypto.Decrypt(server.PasswordEncrypted)
-	if err != nil {
-		return err
-	}
-
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, password)
-	defer client.Close()
-
-	return client.TestConnection()
 }
 
 // ToggleServer enables or disables a server
@@ -198,7 +189,7 @@ func (s *HostingService) TogglePackage(id string, active bool) error {
 func (s *HostingService) ListAccountsByUser(userID string) ([]models.HostingAccount, error) {
 	var accounts []models.HostingAccount
 	err := s.db.Select(&accounts, `
-		SELECT a.*, s.name as server_name, p.name as package_name, p.price_monthly as package_price,
+		SELECT a.*, s.name as server_name, s.panel_url, p.name as package_name, p.price_monthly as package_price,
 			(SELECT COUNT(*) FROM hosting_domains WHERE account_id = a.id) as domain_count
 		FROM hosting_accounts a
 		LEFT JOIN hosting_servers s ON s.id = a.server_id
@@ -213,7 +204,7 @@ func (s *HostingService) ListAccountsByUser(userID string) ([]models.HostingAcco
 func (s *HostingService) ListAllAccounts() ([]models.HostingAccount, error) {
 	var accounts []models.HostingAccount
 	err := s.db.Select(&accounts, `
-		SELECT a.*, s.name as server_name, p.name as package_name, p.price_monthly as package_price,
+		SELECT a.*, s.name as server_name, s.panel_url, p.name as package_name, p.price_monthly as package_price,
 			u.email as user_email,
 			(SELECT COUNT(*) FROM hosting_domains WHERE account_id = a.id) as domain_count
 		FROM hosting_accounts a
@@ -225,11 +216,25 @@ func (s *HostingService) ListAllAccounts() ([]models.HostingAccount, error) {
 	return accounts, err
 }
 
+// ListPendingAccounts returns accounts waiting for admin to link
+func (s *HostingService) ListPendingAccounts() ([]models.HostingAccount, error) {
+	var accounts []models.HostingAccount
+	err := s.db.Select(&accounts, `
+		SELECT a.*, p.name as package_name, p.price_monthly as package_price, u.email as user_email
+		FROM hosting_accounts a
+		LEFT JOIN hosting_packages p ON p.id = a.package_id
+		LEFT JOIN users u ON u.id = a.user_id
+		WHERE a.status = 'pending'
+		ORDER BY a.created_at ASC
+	`)
+	return accounts, err
+}
+
 // GetAccount retrieves an account by ID with joined data
 func (s *HostingService) GetAccount(id string) (*models.HostingAccount, error) {
 	var account models.HostingAccount
 	err := s.db.Get(&account, `
-		SELECT a.*, s.name as server_name, p.name as package_name, p.price_monthly as package_price,
+		SELECT a.*, s.name as server_name, s.panel_url, p.name as package_name, p.price_monthly as package_price,
 			(SELECT COUNT(*) FROM hosting_domains WHERE account_id = a.id) as domain_count
 		FROM hosting_accounts a
 		LEFT JOIN hosting_servers s ON s.id = a.server_id
@@ -239,18 +244,47 @@ func (s *HostingService) GetAccount(id string) (*models.HostingAccount, error) {
 	return &account, err
 }
 
-// GetAccountPassword decrypts and returns the HestiaCP password for an account
-func (s *HostingService) GetAccountPassword(id string) (string, error) {
-	var encrypted string
-	err := s.db.Get(&encrypted, `SELECT hestia_password_encrypted FROM hosting_accounts WHERE id = $1`, id)
-	if err != nil {
-		return "", err
+// GetPanelCredentials returns the decrypted panel username and password for user login
+func (s *HostingService) GetPanelCredentials(accountID string) (username, password string, err error) {
+	var account struct {
+		Username          string `db:"panel_username"`
+		PasswordEncrypted string `db:"panel_password_encrypted"`
 	}
-	return crypto.Decrypt(encrypted)
+	err = s.db.Get(&account, `SELECT panel_username, panel_password_encrypted FROM hosting_accounts WHERE id = $1`, accountID)
+	if err != nil {
+		return "", "", err
+	}
+	if account.PasswordEncrypted == "" {
+		return "", "", errors.New("credentials not available")
+	}
+	password, err = crypto.Decrypt(account.PasswordEncrypted)
+	return account.Username, password, err
 }
 
-// PurchaseHosting creates a new hosting account on the least loaded server
-func (s *HostingService) PurchaseHosting(userID string, packageID string) (*models.HostingAccount, error) {
+// GetAccountWithCredentials returns account with decrypted credentials (admin view)
+func (s *HostingService) GetAccountWithCredentials(accountID string) (*models.HostingAccount, string, error) {
+	account, err := s.GetAccount(accountID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Decrypt password
+	password := ""
+	if account.PanelPasswordEncrypted != "" {
+		password, _ = crypto.Decrypt(account.PanelPasswordEncrypted)
+	}
+
+	return account, password, nil
+}
+
+// PurchaseHosting creates a pending hosting account with auto-generated credentials
+func (s *HostingService) PurchaseHosting(userID string, packageID string, domain string) (*models.HostingAccount, error) {
+	// Validate domain format
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	if !domainRegex.MatchString(domain) {
+		return nil, errors.New("invalid domain format")
+	}
+
 	// Get package
 	pkg, err := s.GetPackage(packageID)
 	if err != nil {
@@ -260,115 +294,193 @@ func (s *HostingService) PurchaseHosting(userID string, packageID string) (*mode
 		return nil, errors.New("package not available")
 	}
 
-	// Check user balance
-	var balance float64
-	s.db.Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
-	if balance < pkg.PriceMonthly {
-		return nil, errors.New("insufficient balance")
-	}
+	// Generate username from domain (first 8 chars of domain + random suffix)
+	username := s.generateUsername(domain)
 
-	// Pick server
-	server, err := s.lb.PickServer()
-	if err != nil {
-		return nil, err
-	}
+	// Generate random password (16 chars)
+	password := s.generatePassword()
 
-	// Generate credentials
-	username := crypto.GenerateUsername("bp_")
-	password := crypto.GeneratePassword(16)
+	// Encrypt password
 	encPassword, err := crypto.Encrypt(password)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get user email
-	var email string
-	s.db.Get(&email, `SELECT email FROM users WHERE id = $1`, userID)
-
-	// Create on HestiaCP
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	if err := client.AddUser(username, password, email, "default", username); err != nil {
-		return nil, errors.New("failed to create hosting account: " + err.Error())
-	}
-
-	// Create account record
+	// Create pending account with auto-generated credentials
 	nextBilling := time.Now().AddDate(0, 0, 30)
 	account := &models.HostingAccount{
-		ID:                      s.generateID(),
-		UserID:                  userID,
-		ServerID:                server.ID,
-		PackageID:               &packageID,
-		HestiaUsername:          username,
-		HestiaPasswordEncrypted: encPassword,
-		Status:                  models.AccountStatusActive,
-		NextBillingAt:           &nextBilling,
-		CreatedAt:               time.Now(),
-		UpdatedAt:               time.Now(),
+		ID:                     s.generateID(),
+		UserID:                 userID,
+		PackageID:              &packageID,
+		PanelUsername:          username,
+		PanelPasswordEncrypted: encPassword,
+		Status:                 models.AccountStatusPending,
+		NextBillingAt:          &nextBilling,
+		CreatedAt:              time.Now(),
+		UpdatedAt:              time.Now(),
 	}
 
-	_, err = s.db.NamedExec(`
-		INSERT INTO hosting_accounts (id, user_id, server_id, package_id, hestia_username, hestia_password_encrypted, status, next_billing_at, created_at, updated_at)
-		VALUES (:id, :user_id, :server_id, :package_id, :hestia_username, :hestia_password_encrypted, :status, :next_billing_at, :created_at, :updated_at)
+	// Use transaction to ensure atomicity
+	tx, err := s.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Check and lock user balance within transaction to prevent race condition
+	var balance float64
+	err = tx.Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1 FOR UPDATE`, userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+	if balance < pkg.PriceMonthly {
+		return nil, errors.New("insufficient balance")
+	}
+
+	// Check domain not already used (inside transaction to prevent race)
+	var exists int
+	tx.Get(&exists, `SELECT COUNT(*) FROM hosting_domains WHERE domain = $1`, domain)
+	if exists > 0 {
+		return nil, errors.New("domain already registered")
+	}
+
+	_, err = tx.NamedExec(`
+		INSERT INTO hosting_accounts (id, user_id, package_id, panel_username, panel_password_encrypted, status, next_billing_at, created_at, updated_at)
+		VALUES (:id, :user_id, :package_id, :panel_username, :panel_password_encrypted, :status, :next_billing_at, :created_at, :updated_at)
 	`, account)
 	if err != nil {
 		return nil, err
 	}
 
-	// Deduct balance
-	s.DeductBalance(userID, pkg.PriceMonthly, "Hosting purchase: "+pkg.Name)
+	// Create the domain record
+	domainID := s.generateID()
+	_, err = tx.Exec(`
+		INSERT INTO hosting_domains (id, account_id, domain, created_at)
+		VALUES ($1, $2, $3, $4)
+	`, domainID, account.ID, domain, time.Now())
+	if err != nil {
+		return nil, errors.New("domain already registered")
+	}
 
-	// Increment server count
-	s.lb.IncrementServerCount(server.ID)
+	// Create default antibot settings for the domain
+	settingsID := s.generateID()
+	_, err = tx.Exec(`
+		INSERT INTO hosting_domain_settings (id, domain_id, country_mode, country_list, device_mode, device_list,
+			block_bots, block_tor, block_proxy, block_datacenter, block_headless, min_behavior_score, redirect_on_block, updated_at)
+		VALUES ($1, $2, 'all', '[]', 'all', '[]', true, true, true, true, true, 0, 'https://www.google.com', $3)
+	`, settingsID, domainID, time.Now())
+	if err != nil {
+		return nil, errors.New("failed to create domain settings")
+	}
+
+	// Deduct balance
+	_, err = tx.Exec(`UPDATE users SET balance = COALESCE(balance, 0) - $1 WHERE id = $2`, pkg.PriceMonthly, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO balance_transactions (id, user_id, amount, type, description, created_at)
+		VALUES ($1, $2, $3, 'deduct', $4, $5)
+	`, s.generateID(), userID, -pkg.PriceMonthly, "Hosting purchase: "+pkg.Name, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
 
 	return account, nil
 }
 
-// SuspendAccount suspends a hosting account on HestiaCP
-func (s *HostingService) SuspendAccount(id string) error {
-	account, err := s.GetAccount(id)
+// generateUsername creates a panel username from domain
+func (s *HostingService) generateUsername(domain string) string {
+	// Remove TLD and take first part
+	parts := strings.Split(domain, ".")
+	base := parts[0]
+
+	// Keep only alphanumeric, max 8 chars
+	clean := ""
+	for _, c := range base {
+		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') {
+			clean += string(c)
+		}
+		if len(clean) >= 8 {
+			break
+		}
+	}
+	if len(clean) < 3 {
+		clean = "user"
+	}
+
+	// Add random suffix
+	suffix := make([]byte, 4)
+	rand.Read(suffix)
+	return clean + hex.EncodeToString(suffix)[:4]
+}
+
+// generatePassword creates a secure random password
+func (s *HostingService) generatePassword() string {
+	const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%"
+	b := make([]byte, 16)
+	rand.Read(b)
+	password := make([]byte, 16)
+	for i := range password {
+		password[i] = chars[int(b[i])%len(chars)]
+	}
+	return string(password)
+}
+
+// LinkAccount links a pending account to a server and activates it (admin action)
+func (s *HostingService) LinkAccount(accountID string, input models.LinkAccountInput) error {
+	// Verify account exists and is pending
+	account, err := s.GetAccount(accountID)
+	if err != nil {
+		return errors.New("account not found")
+	}
+	if account.Status != models.AccountStatusPending {
+		return errors.New("account is not pending")
+	}
+
+	// Update account with server and activate
+	_, err = s.db.Exec(`
+		UPDATE hosting_accounts SET
+			server_id = $2, status = $3, updated_at = $4
+		WHERE id = $1
+	`, accountID, input.ServerID, models.AccountStatusActive, time.Now())
 	if err != nil {
 		return err
 	}
 
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
+	// Increment server count
+	s.lb.IncrementServerCount(input.ServerID)
 
-	if err := client.SuspendUser(account.HestiaUsername); err != nil {
-		return err
-	}
+	return nil
+}
 
-	_, err = s.db.Exec(`UPDATE hosting_accounts SET status = $1, updated_at = $2 WHERE id = $3`,
+// SuspendAccount suspends a hosting account
+func (s *HostingService) SuspendAccount(id string) error {
+	_, err := s.db.Exec(`UPDATE hosting_accounts SET status = $1, updated_at = $2 WHERE id = $3`,
 		models.AccountStatusSuspended, time.Now(), id)
 	return err
 }
 
 // UnsuspendAccount reactivates a suspended hosting account
 func (s *HostingService) UnsuspendAccount(id string) error {
-	account, err := s.GetAccount(id)
-	if err != nil {
-		return err
-	}
-
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	if err := client.UnsuspendUser(account.HestiaUsername); err != nil {
-		return err
-	}
-
-	_, err = s.db.Exec(`UPDATE hosting_accounts SET status = $1, updated_at = $2 WHERE id = $3`,
+	_, err := s.db.Exec(`UPDATE hosting_accounts SET status = $1, updated_at = $2 WHERE id = $3`,
 		models.AccountStatusActive, time.Now(), id)
 	return err
 }
 
 // ========== Balance ==========
+
+// GetUserIDByEmail looks up a user by their email address
+func (s *HostingService) GetUserIDByEmail(email string) (string, error) {
+	var userID string
+	err := s.db.Get(&userID, `SELECT id FROM users WHERE email = $1`, email)
+	return userID, err
+}
 
 // GetUserBalance returns a user's current balance
 func (s *HostingService) GetUserBalance(userID string) float64 {
@@ -428,7 +540,7 @@ func (s *HostingService) GetBalanceTransactions(userID string) ([]models.Balance
 	return txs, err
 }
 
-// ========== Domains ==========
+// ========== Domains (for antibot settings tracking) ==========
 
 // ListDomains returns all domains for an account
 func (s *HostingService) ListDomains(accountID string) ([]models.HostingDomain, error) {
@@ -437,22 +549,8 @@ func (s *HostingService) ListDomains(accountID string) ([]models.HostingDomain, 
 	return domains, err
 }
 
-// AddDomain adds a domain to an account on HestiaCP
+// AddDomain adds a domain to an account (admin action for antibot tracking)
 func (s *HostingService) AddDomain(accountID, domain string) (*models.HostingDomain, error) {
-	account, err := s.GetAccount(accountID)
-	if err != nil {
-		return nil, err
-	}
-
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	if err := client.AddDomain(account.HestiaUsername, domain); err != nil {
-		return nil, errors.New("failed to add domain: " + err.Error())
-	}
-
 	d := &models.HostingDomain{
 		ID:        s.generateID(),
 		AccountID: accountID,
@@ -460,7 +558,7 @@ func (s *HostingService) AddDomain(accountID, domain string) (*models.HostingDom
 		CreatedAt: time.Now(),
 	}
 
-	_, err = s.db.NamedExec(`
+	_, err := s.db.NamedExec(`
 		INSERT INTO hosting_domains (id, account_id, domain, created_at)
 		VALUES (:id, :account_id, :domain, :created_at)
 	`, d)
@@ -497,43 +595,7 @@ func (s *HostingService) AddDomain(accountID, domain string) (*models.HostingDom
 
 // DeleteDomain removes a domain from an account
 func (s *HostingService) DeleteDomain(accountID, domainID string) error {
-	var domain models.HostingDomain
-	err := s.db.Get(&domain, `SELECT * FROM hosting_domains WHERE id = $1 AND account_id = $2`, domainID, accountID)
-	if err != nil {
-		return errors.New("domain not found")
-	}
-
-	account, _ := s.GetAccount(accountID)
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	client.DeleteDomain(account.HestiaUsername, domain.Domain)
-
-	_, err = s.db.Exec(`DELETE FROM hosting_domains WHERE id = $1`, domainID)
-	return err
-}
-
-// EnableSSL enables Let's Encrypt SSL for a domain
-func (s *HostingService) EnableSSL(accountID, domainID string) error {
-	var domain models.HostingDomain
-	err := s.db.Get(&domain, `SELECT * FROM hosting_domains WHERE id = $1 AND account_id = $2`, domainID, accountID)
-	if err != nil {
-		return errors.New("domain not found")
-	}
-
-	account, _ := s.GetAccount(accountID)
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	if err := client.AddLetsEncrypt(account.HestiaUsername, domain.Domain); err != nil {
-		return err
-	}
-
-	_, err = s.db.Exec(`UPDATE hosting_domains SET ssl_enabled = TRUE WHERE id = $1`, domainID)
+	_, err := s.db.Exec(`DELETE FROM hosting_domains WHERE id = $1 AND account_id = $2`, domainID, accountID)
 	return err
 }
 
@@ -582,244 +644,187 @@ func (s *HostingService) GetDomainSettingsByHost(host string) (*models.HostingDo
 	return &settings, nil
 }
 
-// ========== Email Accounts ==========
+// ========== Analytics (for Antibot Dashboard) ==========
 
-// ListEmails returns all email accounts for a hosting account
-func (s *HostingService) ListEmails(accountID string) ([]models.HostingEmail, error) {
-	var emails []models.HostingEmail
-	err := s.db.Select(&emails, `
-		SELECT e.*, d.domain as domain_name
-		FROM hosting_emails e
-		JOIN hosting_domains d ON d.id = e.domain_id
-		WHERE e.account_id = $1
-		ORDER BY e.created_at
-	`, accountID)
-	return emails, err
+// AnalyticsSummary contains overview stats
+type AnalyticsSummary struct {
+	TotalVisits  int     `json:"totalVisits"`
+	BotBlocks    int     `json:"botBlocks"`
+	HumanVisits  int     `json:"humanVisits"`
+	BlockRate    float64 `json:"blockRate"`
 }
 
-// AddEmail creates an email account on HestiaCP
-func (s *HostingService) AddEmail(accountID string, input models.AddEmailInput) (*models.HostingEmail, error) {
-	account, err := s.GetAccount(accountID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get domain
-	var domain models.HostingDomain
-	err = s.db.Get(&domain, `SELECT * FROM hosting_domains WHERE id = $1 AND account_id = $2`, input.DomainID, accountID)
-	if err != nil {
-		return nil, errors.New("domain not found")
-	}
-
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	// Ensure mail domain exists
-	client.AddMailDomain(account.HestiaUsername, domain.Domain)
-
-	// Create mail account
-	if err := client.AddMailAccount(account.HestiaUsername, domain.Domain, input.Account, input.Password); err != nil {
-		return nil, errors.New("failed to create email: " + err.Error())
-	}
-
-	email := &models.HostingEmail{
-		ID:        s.generateID(),
-		AccountID: accountID,
-		DomainID:  input.DomainID,
-		Email:     input.Account + "@" + domain.Domain,
-		QuotaMB:   500, // Default quota
-		CreatedAt: time.Now(),
-	}
-
-	_, err = s.db.NamedExec(`
-		INSERT INTO hosting_emails (id, account_id, domain_id, email, quota_mb, created_at)
-		VALUES (:id, :account_id, :domain_id, :email, :quota_mb, :created_at)
-	`, email)
-	return email, err
+// Analytics contains detailed traffic data
+type Analytics struct {
+	Summary      AnalyticsSummary `json:"summary"`
+	ByCountry    []CountryStats   `json:"byCountry"`
+	ByDevice     []DeviceStats    `json:"byDevice"`
+	ByDay        []DayStats       `json:"byDay"`
+	RecentBlocks []BlockEvent     `json:"recentBlocks"`
 }
 
-// DeleteEmail removes an email account from HestiaCP
-func (s *HostingService) DeleteEmail(accountID, emailID string) error {
-	var email models.HostingEmail
-	err := s.db.Get(&email, `
-		SELECT e.*, d.domain as domain_name
-		FROM hosting_emails e
-		JOIN hosting_domains d ON d.id = e.domain_id
-		WHERE e.id = $1 AND e.account_id = $2
-	`, emailID, accountID)
-	if err != nil {
-		return errors.New("email not found")
-	}
-
-	account, _ := s.GetAccount(accountID)
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	// Extract local part from email
-	localPart := email.Email[:len(email.Email)-len(email.DomainName)-1]
-	client.DeleteMailAccount(account.HestiaUsername, email.DomainName, localPart)
-
-	_, err = s.db.Exec(`DELETE FROM hosting_emails WHERE id = $1`, emailID)
-	return err
+// CountryStats represents visits by country
+type CountryStats struct {
+	Country string `json:"country" db:"country"`
+	Visits  int    `json:"visits" db:"visits"`
+	Blocks  int    `json:"blocks" db:"blocks"`
 }
 
-// ========== Databases ==========
-
-// ListDatabases returns all databases for a hosting account
-func (s *HostingService) ListDatabases(accountID string) ([]models.HostingDatabase, error) {
-	var dbs []models.HostingDatabase
-	err := s.db.Select(&dbs, `SELECT * FROM hosting_databases WHERE account_id = $1 ORDER BY created_at`, accountID)
-	return dbs, err
+// DeviceStats represents visits by device
+type DeviceStats struct {
+	Device string `json:"device" db:"device"`
+	Visits int    `json:"visits" db:"visits"`
 }
 
-// AddDatabase creates a database on HestiaCP
-func (s *HostingService) AddDatabase(accountID string, input models.AddDatabaseInput) (*models.HostingDatabase, error) {
-	account, err := s.GetAccount(accountID)
-	if err != nil {
-		return nil, err
-	}
-
-	encPassword, err := crypto.Encrypt(input.Password)
-	if err != nil {
-		return nil, err
-	}
-
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	if err := client.AddDatabase(account.HestiaUsername, input.DBName, input.DBUser, input.Password); err != nil {
-		return nil, errors.New("failed to create database: " + err.Error())
-	}
-
-	db := &models.HostingDatabase{
-		ID:                  s.generateID(),
-		AccountID:           accountID,
-		DBName:              input.DBName,
-		DBUser:              input.DBUser,
-		DBPasswordEncrypted: encPassword,
-		CreatedAt:           time.Now(),
-	}
-
-	_, err = s.db.NamedExec(`
-		INSERT INTO hosting_databases (id, account_id, db_name, db_user, db_password_encrypted, created_at)
-		VALUES (:id, :account_id, :db_name, :db_user, :db_password_encrypted, :created_at)
-	`, db)
-	return db, err
+// DayStats represents daily visits
+type DayStats struct {
+	Date   string `json:"date" db:"date"`
+	Visits int    `json:"visits" db:"visits"`
+	Blocks int    `json:"blocks" db:"blocks"`
 }
 
-// GetDatabasePassword decrypts and returns a database password
-func (s *HostingService) GetDatabasePassword(accountID, databaseID string) (string, error) {
-	var encrypted string
-	err := s.db.Get(&encrypted, `SELECT db_password_encrypted FROM hosting_databases WHERE id = $1 AND account_id = $2`, databaseID, accountID)
-	if err != nil {
-		return "", err
-	}
-	return crypto.Decrypt(encrypted)
+// BlockEvent represents a blocked request
+type BlockEvent struct {
+	Time    string `json:"time" db:"time"`
+	IP      string `json:"ip" db:"ip"`
+	Country string `json:"country" db:"country"`
+	Reason  string `json:"reason" db:"reason"`
+	Domain  string `json:"domain" db:"domain"`
 }
 
-// DeleteDatabase removes a database from HestiaCP
-func (s *HostingService) DeleteDatabase(accountID, databaseID string) error {
-	var db models.HostingDatabase
-	err := s.db.Get(&db, `SELECT * FROM hosting_databases WHERE id = $1 AND account_id = $2`, databaseID, accountID)
-	if err != nil {
-		return errors.New("database not found")
+// GetAnalyticsSummary returns summary stats for an account's domains
+func (s *HostingService) GetAnalyticsSummary(accountID string) *AnalyticsSummary {
+	summary := &AnalyticsSummary{}
+
+	// Get domains for this account
+	domains, _ := s.ListDomains(accountID)
+	if len(domains) == 0 {
+		return summary
 	}
 
-	account, _ := s.GetAccount(accountID)
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
+	// Build domain list for query
+	domainNames := make([]string, len(domains))
+	for i, d := range domains {
+		domainNames[i] = d.Domain
+	}
 
-	client.DeleteDatabase(account.HestiaUsername, db.DBName)
+	// Query visits from analytics table (last 7 days)
+	query := `
+		SELECT
+			COUNT(*) as total,
+			COUNT(*) FILTER (WHERE is_bot = true OR blocked = true) as blocked
+		FROM visits
+		WHERE domain = ANY($1)
+		AND visited_at > NOW() - INTERVAL '7 days'
+	`
+	var stats struct {
+		Total   int `db:"total"`
+		Blocked int `db:"blocked"`
+	}
+	s.db.Get(&stats, query, domainNames)
 
-	_, err = s.db.Exec(`DELETE FROM hosting_databases WHERE id = $1`, databaseID)
-	return err
+	summary.TotalVisits = stats.Total
+	summary.BotBlocks = stats.Blocked
+	summary.HumanVisits = stats.Total - stats.Blocked
+	if stats.Total > 0 {
+		summary.BlockRate = float64(stats.Blocked) / float64(stats.Total) * 100
+	}
+
+	return summary
 }
 
-// ========== FTP Accounts ==========
-
-// ListFTP returns all FTP accounts for a hosting account
-func (s *HostingService) ListFTP(accountID string) ([]models.HostingFTP, error) {
-	var ftps []models.HostingFTP
-	err := s.db.Select(&ftps, `SELECT * FROM hosting_ftp WHERE account_id = $1 ORDER BY created_at`, accountID)
-	return ftps, err
-}
-
-// AddFTP creates an FTP account on HestiaCP
-func (s *HostingService) AddFTP(accountID string, input models.AddFTPInput) (*models.HostingFTP, error) {
-	account, err := s.GetAccount(accountID)
-	if err != nil {
-		return nil, err
+// GetAnalytics returns detailed analytics for an account's domains
+func (s *HostingService) GetAnalytics(accountID, period string) *Analytics {
+	analytics := &Analytics{
+		ByCountry:    []CountryStats{},
+		ByDevice:     []DeviceStats{},
+		ByDay:        []DayStats{},
+		RecentBlocks: []BlockEvent{},
 	}
 
-	encPassword, err := crypto.Encrypt(input.Password)
-	if err != nil {
-		return nil, err
+	// Get domains for this account
+	domains, _ := s.ListDomains(accountID)
+	if len(domains) == 0 {
+		return analytics
 	}
 
-	path := input.Path
-	if path == "" {
-		path = "/"
+	// Build domain list
+	domainNames := make([]string, len(domains))
+	for i, d := range domains {
+		domainNames[i] = d.Domain
 	}
 
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	if err := client.AddFTP(account.HestiaUsername, input.Username, input.Password, path); err != nil {
-		return nil, errors.New("failed to create FTP account: " + err.Error())
+	// Determine time interval
+	interval := "7 days"
+	switch period {
+	case "24h":
+		interval = "24 hours"
+	case "30d":
+		interval = "30 days"
 	}
 
-	ftp := &models.HostingFTP{
-		ID:                s.generateID(),
-		AccountID:         accountID,
-		Username:          input.Username,
-		PasswordEncrypted: encPassword,
-		Path:              path,
-		CreatedAt:         time.Now(),
+	// Summary
+	var summaryStats struct {
+		Total   int `db:"total"`
+		Blocked int `db:"blocked"`
+	}
+	s.db.Get(&summaryStats, `
+		SELECT
+			COUNT(*) as total,
+			COUNT(*) FILTER (WHERE is_bot = true OR blocked = true) as blocked
+		FROM visits
+		WHERE domain = ANY($1)
+		AND visited_at > NOW() - INTERVAL '`+interval+`'
+	`, domainNames)
+
+	analytics.Summary.TotalVisits = summaryStats.Total
+	analytics.Summary.BotBlocks = summaryStats.Blocked
+	analytics.Summary.HumanVisits = summaryStats.Total - summaryStats.Blocked
+	if summaryStats.Total > 0 {
+		analytics.Summary.BlockRate = float64(summaryStats.Blocked) / float64(summaryStats.Total) * 100
 	}
 
-	_, err = s.db.NamedExec(`
-		INSERT INTO hosting_ftp (id, account_id, username, password_encrypted, path, created_at)
-		VALUES (:id, :account_id, :username, :password_encrypted, :path, :created_at)
-	`, ftp)
-	return ftp, err
-}
+	// By country
+	s.db.Select(&analytics.ByCountry, `
+		SELECT
+			COALESCE(country, 'Unknown') as country,
+			COUNT(*) as visits,
+			COUNT(*) FILTER (WHERE is_bot = true OR blocked = true) as blocks
+		FROM visits
+		WHERE domain = ANY($1)
+		AND visited_at > NOW() - INTERVAL '`+interval+`'
+		GROUP BY country
+		ORDER BY visits DESC
+		LIMIT 10
+	`, domainNames)
 
-// GetFTPPassword decrypts and returns an FTP password
-func (s *HostingService) GetFTPPassword(accountID, ftpID string) (string, error) {
-	var encrypted string
-	err := s.db.Get(&encrypted, `SELECT password_encrypted FROM hosting_ftp WHERE id = $1 AND account_id = $2`, ftpID, accountID)
-	if err != nil {
-		return "", err
-	}
-	return crypto.Decrypt(encrypted)
-}
+	// By device
+	s.db.Select(&analytics.ByDevice, `
+		SELECT
+			COALESCE(device_type, 'unknown') as device,
+			COUNT(*) as visits
+		FROM visits
+		WHERE domain = ANY($1)
+		AND visited_at > NOW() - INTERVAL '`+interval+`'
+		GROUP BY device_type
+		ORDER BY visits DESC
+	`, domainNames)
 
-// DeleteFTP removes an FTP account from HestiaCP
-func (s *HostingService) DeleteFTP(accountID, ftpID string) error {
-	var ftp models.HostingFTP
-	err := s.db.Get(&ftp, `SELECT * FROM hosting_ftp WHERE id = $1 AND account_id = $2`, ftpID, accountID)
-	if err != nil {
-		return errors.New("FTP account not found")
-	}
+	// Recent blocks
+	s.db.Select(&analytics.RecentBlocks, `
+		SELECT
+			TO_CHAR(visited_at, 'YYYY-MM-DD HH24:MI') as time,
+			ip,
+			COALESCE(country, 'Unknown') as country,
+			COALESCE(block_reason, 'bot') as reason,
+			domain
+		FROM visits
+		WHERE domain = ANY($1)
+		AND (is_bot = true OR blocked = true)
+		AND visited_at > NOW() - INTERVAL '`+interval+`'
+		ORDER BY visited_at DESC
+		LIMIT 20
+	`, domainNames)
 
-	account, _ := s.GetAccount(accountID)
-	server, _ := s.GetServer(account.ServerID)
-	serverPass, _ := crypto.Decrypt(server.PasswordEncrypted)
-	client := hestia.NewClient(server.Hostname, server.Port, server.Username, serverPass)
-	defer client.Close()
-
-	client.DeleteFTP(account.HestiaUsername, ftp.Username)
-
-	_, err = s.db.Exec(`DELETE FROM hosting_ftp WHERE id = $1`, ftpID)
-	return err
+	return analytics
 }

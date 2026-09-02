@@ -109,21 +109,30 @@
                 <h5 class="modal-title"><i class="bi bi-cart-check text-primary me-2"></i>Confirm Purchase</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <p>You are about to purchase:</p>
-                <p class="fs-5"><strong id="purchaseName">Package</strong></p>
-                <p class="mb-3">Monthly cost: <strong class="text-primary" id="purchasePrice">$0.00</strong></p>
-                <p class="small text-secondary mb-0">
-                    <i class="bi bi-info-circle me-1"></i>
-                    The first month will be charged immediately from your balance.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirmPurchaseBtn">
-                    <i class="bi bi-cart-check me-1"></i>Confirm Purchase
-                </button>
-            </div>
+            <form id="purchaseForm">
+                <div class="modal-body">
+                    <p>You are about to purchase:</p>
+                    <p class="fs-5"><strong id="purchaseName">Package</strong></p>
+                    <p class="mb-3">Monthly cost: <strong class="text-primary" id="purchasePrice">$0.00</strong></p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Primary Domain <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="purchaseDomain" placeholder="example.com" required>
+                        <small class="text-secondary">Enter your main domain name (without www or http)</small>
+                    </div>
+
+                    <div class="alert alert-info small mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Your account credentials will be generated automatically. The first month will be charged from your balance.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="confirmPurchaseBtn">
+                        <i class="bi bi-cart-check me-1"></i>Confirm Purchase
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -143,12 +152,26 @@ document.addEventListener('click', (e) => {
         purchaseId = btn.dataset.id;
         document.getElementById('purchaseName').textContent = btn.dataset.name;
         document.getElementById('purchasePrice').textContent = '$' + btn.dataset.price;
+        document.getElementById('purchaseDomain').value = '';
         purchaseModal.show();
     }
 });
 
-document.getElementById('confirmPurchaseBtn').addEventListener('click', async () => {
+document.getElementById('purchaseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
     if (!purchaseId) return;
+
+    const domain = document.getElementById('purchaseDomain').value.trim().toLowerCase();
+    if (!domain) {
+        showToast('Please enter your domain name', 'warning');
+        return;
+    }
+
+    // Basic domain validation
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(domain)) {
+        showToast('Please enter a valid domain name', 'warning');
+        return;
+    }
 
     const btn = document.getElementById('confirmPurchaseBtn');
     btn.disabled = true;
@@ -157,7 +180,7 @@ document.getElementById('confirmPurchaseBtn').addEventListener('click', async ()
     const res = await fetch('/user/hosting/buy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ package_id: purchaseId })
+        body: JSON.stringify({ packageId: purchaseId, domain: domain })
     });
 
     if (res.ok) {

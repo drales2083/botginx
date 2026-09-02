@@ -5,27 +5,38 @@ import (
 	"time"
 )
 
+// ServerType represents the hosting panel type
+type ServerType string
+
+const (
+	ServerTypeCloudPanel ServerType = "cloudpanel"
+	ServerTypeHestiaCP   ServerType = "hestiacp"
+)
+
 // AccountStatus represents the status of a hosting account
 type AccountStatus string
 
 const (
-	AccountStatusActive    AccountStatus = "active"
-	AccountStatusSuspended AccountStatus = "suspended"
-	AccountStatusCancelled AccountStatus = "cancelled"
+	AccountStatusPending   AccountStatus = "pending"   // Purchased, waiting for admin to link
+	AccountStatusActive    AccountStatus = "active"    // Linked and active
+	AccountStatusSuspended AccountStatus = "suspended" // Suspended (billing or manual)
+	AccountStatusCancelled AccountStatus = "cancelled" // Cancelled
 )
 
-// HostingServer represents a HestiaCP server node
+// HostingServer represents a hosting panel server node
 type HostingServer struct {
-	ID                string    `db:"id" json:"id"`
-	Name              string    `db:"name" json:"name"`
-	Hostname          string    `db:"hostname" json:"hostname"`
-	Port              int       `db:"port" json:"port"`
-	Username          string    `db:"username" json:"username"`
-	PasswordEncrypted string    `db:"password_encrypted" json:"-"`
-	MaxAccounts       int       `db:"max_accounts" json:"maxAccounts"`
-	CurrentAccounts   int       `db:"current_accounts" json:"currentAccounts"`
-	IsActive          bool      `db:"is_active" json:"isActive"`
-	CreatedAt         time.Time `db:"created_at" json:"createdAt"`
+	ID                string     `db:"id" json:"id"`
+	Name              string     `db:"name" json:"name"`
+	Type              ServerType `db:"type" json:"type"` // cloudpanel or hestiacp
+	Hostname          string     `db:"hostname" json:"hostname"`
+	PanelURL          string     `db:"panel_url" json:"panelUrl"`
+	Port              int        `db:"port" json:"port"`
+	Username          string     `db:"username" json:"username"`
+	PasswordEncrypted string     `db:"password_encrypted" json:"-"`
+	MaxAccounts       int        `db:"max_accounts" json:"maxAccounts"`
+	CurrentAccounts   int        `db:"current_accounts" json:"currentAccounts"`
+	IsActive          bool       `db:"is_active" json:"isActive"`
+	CreatedAt         time.Time  `db:"created_at" json:"createdAt"`
 }
 
 // HostingPackage represents a hosting plan with resource limits
@@ -46,22 +57,23 @@ type HostingPackage struct {
 	CreatedAt       time.Time `db:"created_at" json:"createdAt"`
 }
 
-// HostingAccount represents a user's hosting account on a HestiaCP server
+// HostingAccount represents a user's hosting account on a panel server
 type HostingAccount struct {
-	ID                      string        `db:"id" json:"id"`
-	UserID                  string        `db:"user_id" json:"userId"`
-	ServerID                string        `db:"server_id" json:"serverId"`
-	PackageID               *string       `db:"package_id" json:"packageId,omitempty"`
-	HestiaUsername          string        `db:"hestia_username" json:"hestiaUsername"`
-	HestiaPasswordEncrypted string        `db:"hestia_password_encrypted" json:"-"`
-	Status                  AccountStatus `db:"status" json:"status"`
-	CustomPrice             *float64      `db:"custom_price" json:"customPrice,omitempty"`
-	NextBillingAt           *time.Time    `db:"next_billing_at" json:"nextBillingAt,omitempty"`
-	CreatedAt               time.Time     `db:"created_at" json:"createdAt"`
-	UpdatedAt               time.Time     `db:"updated_at" json:"updatedAt"`
+	ID                     string        `db:"id" json:"id"`
+	UserID                 string        `db:"user_id" json:"userId"`
+	ServerID               *string       `db:"server_id" json:"serverId,omitempty"`
+	PackageID              *string       `db:"package_id" json:"packageId,omitempty"`
+	PanelUsername          string        `db:"panel_username" json:"panelUsername"`
+	PanelPasswordEncrypted string        `db:"panel_password_encrypted" json:"-"`
+	Status                 AccountStatus `db:"status" json:"status"`
+	CustomPrice            *float64      `db:"custom_price" json:"customPrice,omitempty"`
+	NextBillingAt          *time.Time    `db:"next_billing_at" json:"nextBillingAt,omitempty"`
+	CreatedAt              time.Time     `db:"created_at" json:"createdAt"`
+	UpdatedAt              time.Time     `db:"updated_at" json:"updatedAt"`
 
 	// Joined fields (populated by queries with JOINs)
 	ServerName   string  `db:"server_name" json:"serverName,omitempty"`
+	PanelURL     string  `db:"panel_url" json:"panelUrl,omitempty"`
 	PackageName  string  `db:"package_name" json:"packageName,omitempty"`
 	PackagePrice float64 `db:"package_price" json:"packagePrice,omitempty"`
 	UserEmail    string  `db:"user_email" json:"userEmail,omitempty"`
@@ -97,38 +109,6 @@ type HostingDomainSettings struct {
 	UpdatedAt        time.Time `db:"updated_at" json:"updatedAt"`
 }
 
-// HostingEmail represents an email account on a hosted domain
-type HostingEmail struct {
-	ID        string    `db:"id" json:"id"`
-	AccountID string    `db:"account_id" json:"accountId"`
-	DomainID  string    `db:"domain_id" json:"domainId"`
-	Email     string    `db:"email" json:"email"`
-	QuotaMB   int       `db:"quota_mb" json:"quotaMb"`
-	CreatedAt time.Time `db:"created_at" json:"createdAt"`
-
-	// Joined field
-	DomainName string `db:"domain_name" json:"domainName,omitempty"`
-}
-
-// HostingDatabase represents a database on a hosting account
-type HostingDatabase struct {
-	ID                  string    `db:"id" json:"id"`
-	AccountID           string    `db:"account_id" json:"accountId"`
-	DBName              string    `db:"db_name" json:"dbName"`
-	DBUser              string    `db:"db_user" json:"dbUser"`
-	DBPasswordEncrypted string    `db:"db_password_encrypted" json:"-"`
-	CreatedAt           time.Time `db:"created_at" json:"createdAt"`
-}
-
-// HostingFTP represents an FTP account on a hosting account
-type HostingFTP struct {
-	ID                string    `db:"id" json:"id"`
-	AccountID         string    `db:"account_id" json:"accountId"`
-	Username          string    `db:"username" json:"username"`
-	PasswordEncrypted string    `db:"password_encrypted" json:"-"`
-	Path              string    `db:"path" json:"path"`
-	CreatedAt         time.Time `db:"created_at" json:"createdAt"`
-}
 
 // BalanceTransaction represents a balance top-up or deduction
 type BalanceTransaction struct {
@@ -144,12 +124,14 @@ type BalanceTransaction struct {
 
 // CreateServerInput is the input for creating a hosting server
 type CreateServerInput struct {
-	Name        string `json:"name" validate:"required"`
-	Hostname    string `json:"hostname" validate:"required"`
-	Port        int    `json:"port"`
-	Username    string `json:"username" validate:"required"`
-	Password    string `json:"password" validate:"required"`
-	MaxAccounts int    `json:"maxAccounts"`
+	Name        string     `json:"name" validate:"required"`
+	Type        ServerType `json:"type"` // cloudpanel (default) or hestiacp
+	Hostname    string     `json:"hostname" validate:"required"`
+	PanelURL    string     `json:"panelUrl" validate:"required"`
+	Port        int        `json:"port"`
+	Username    string     `json:"username" validate:"required"`
+	Password    string     `json:"password" validate:"required"`
+	MaxAccounts int        `json:"maxAccounts"`
 }
 
 // CreatePackageInput is the input for creating a hosting package
@@ -171,30 +153,14 @@ type PurchaseInput struct {
 	PackageID string `json:"packageId" validate:"required"`
 }
 
-// AddDomainInput is the input for adding a domain
+// AddDomainInput is the input for adding a domain (admin only)
 type AddDomainInput struct {
 	Domain string `json:"domain" validate:"required"`
 }
 
-// AddEmailInput is the input for creating an email account
-type AddEmailInput struct {
-	DomainID string `json:"domainId" validate:"required"`
-	Account  string `json:"account" validate:"required"`
-	Password string `json:"password" validate:"required"`
-}
-
-// AddDatabaseInput is the input for creating a database
-type AddDatabaseInput struct {
-	DBName   string `json:"dbName" validate:"required"`
-	DBUser   string `json:"dbUser" validate:"required"`
-	Password string `json:"password" validate:"required"`
-}
-
-// AddFTPInput is the input for creating an FTP account
-type AddFTPInput struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
-	Path     string `json:"path"`
+// LinkAccountInput is the input for admin linking an account to a server
+type LinkAccountInput struct {
+	ServerID string `json:"serverId" validate:"required"`
 }
 
 // UpdateDomainSettingsInput is the input for updating domain antibot settings
@@ -214,6 +180,6 @@ type UpdateDomainSettingsInput struct {
 
 // TopUpInput is the input for admin balance top-up
 type TopUpInput struct {
-	UserID string  `json:"userId" validate:"required"`
+	UserID string  `json:"user_id" validate:"required"`
 	Amount float64 `json:"amount" validate:"required"`
 }

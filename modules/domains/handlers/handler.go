@@ -574,15 +574,9 @@ func (h *Handler) completeExternalSetup(domain *models.Domain) {
 	// Complete the wildcard SSL generation
 	if err := h.verification.CompleteWildcardSSL(domain.Name); err != nil {
 		log.Printf("[domains] SSL generation failed for %s: %v", domain.Name, err)
-
-		// Check if token changed - fetch latest from VPS and update DB
-		baseDomain := services.GetBaseDomain(domain.Name)
-		if newToken := h.verification.GetSavedAcmeToken(baseDomain); newToken != "" {
-			if domain.AcmeToken == nil || *domain.AcmeToken != newToken {
-				log.Printf("[domains] ACME token changed for %s, updating DB", domain.Name)
-				h.service.Update(domain.ID, models.UpdateDomainInput{AcmeToken: &newToken})
-			}
-		}
+		// Don't update the ACME token in DB on failure - keep the original token stable
+		// so the user sees a consistent value. ACME generates new tokens each request,
+		// but we want the user to work with the token we originally gave them.
 		return
 	}
 

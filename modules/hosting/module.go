@@ -51,11 +51,30 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 // Migrate runs database migrations
 func (m *Module) Migrate() error {
-	sql, err := fs.ReadFile(migrationsFS, "migrations/001_create_tables.sql")
+	// Run initial schema
+	sql1, err := fs.ReadFile(migrationsFS, "migrations/001_create_tables.sql")
 	if err != nil {
 		return err
 	}
-	_, err = m.DB().Exec(string(sql))
+	if _, err = m.DB().Exec(string(sql1)); err != nil {
+		return err
+	}
+
+	// Run simplification migration
+	sql2, err := fs.ReadFile(migrationsFS, "migrations/002_simplify_hosting.sql")
+	if err != nil {
+		return err
+	}
+	if _, err = m.DB().Exec(string(sql2)); err != nil {
+		return err
+	}
+
+	// Add server type column
+	sql3, err := fs.ReadFile(migrationsFS, "migrations/003_add_server_type.sql")
+	if err != nil {
+		return err
+	}
+	_, err = m.DB().Exec(string(sql3))
 	return err
 }
 
@@ -81,25 +100,17 @@ func (m *Module) Routes() chi.Router {
 		r.Get("/", m.handler.UserOverview)
 		r.Get("/domains", m.handler.UserDomains)
 		r.Get("/domains/{domainID}/settings", m.handler.UserDomainSettings)
-		r.Get("/emails", m.handler.UserEmails)
-		r.Get("/databases", m.handler.UserDatabases)
-		r.Get("/ftp", m.handler.UserFTP)
 	})
 
 	// API
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/{accountID}", func(r chi.Router) {
-			r.Post("/domains", m.handler.APIAddDomain)
-			r.Delete("/domains/{domainID}", m.handler.APIDeleteDomain)
-			r.Post("/domains/{domainID}/ssl", m.handler.APIEnableSSL)
+			r.Get("/credentials", m.handler.APIGetPanelCredentials)
 			r.Put("/domains/{domainID}/settings", m.handler.APIUpdateDomainSettings)
-			r.Post("/emails", m.handler.APIAddEmail)
-			r.Delete("/emails/{emailID}", m.handler.APIDeleteEmail)
-			r.Post("/databases", m.handler.APIAddDatabase)
-			r.Delete("/databases/{dbID}", m.handler.APIDeleteDatabase)
-			r.Post("/ftp", m.handler.APIAddFTP)
-			r.Delete("/ftp/{ftpID}", m.handler.APIDeleteFTP)
 			r.Post("/reactivate", m.handler.APIReactivate)
+			// Analytics for antibot dashboard
+			r.Get("/analytics/summary", m.handler.APIAnalyticsSummary)
+			r.Get("/analytics", m.handler.APIAnalytics)
 		})
 	})
 
@@ -118,7 +129,6 @@ func (m *Module) AdminRoutes() chi.Router {
 	r.Route("/api", func(r chi.Router) {
 		// Servers
 		r.Post("/servers", m.handler.APICreateServer)
-		r.Post("/servers/{id}/test", m.handler.APITestServer)
 		r.Put("/servers/{id}/toggle", m.handler.APIToggleServer)
 		r.Delete("/servers/{id}", m.handler.APIDeleteServer)
 
@@ -128,6 +138,10 @@ func (m *Module) AdminRoutes() chi.Router {
 		r.Put("/packages/{id}/toggle", m.handler.APITogglePackage)
 
 		// Accounts
+		r.Get("/accounts/{id}/credentials", m.handler.APIGetAccountCredentials)
+		r.Post("/accounts/{id}/link", m.handler.APILinkAccount)
+		r.Post("/accounts/{id}/domains", m.handler.APIAddDomain)
+		r.Delete("/accounts/{id}/domains/{domainID}", m.handler.APIDeleteDomain)
 		r.Put("/accounts/{id}/suspend", m.handler.APISuspendAccount)
 		r.Put("/accounts/{id}/unsuspend", m.handler.APIUnsuspendAccount)
 
