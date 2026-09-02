@@ -95,6 +95,10 @@ func (m *Module) Routes() chi.Router {
 		r.Get("/{id}/setup-status", m.handler.APIGetSetupStatus)    // Polling endpoint
 		r.Post("/{id}/refresh-token", m.handler.APIRefreshAcmeToken) // Refresh ACME token
 		r.Post("/{id}/retry-ssl", m.handler.APIRetrySSL)             // Force retry SSL generation
+
+		// acme-dns delegation (100% reliable wildcard SSL)
+		r.Post("/{id}/acme-dns/register", m.handler.APIRegisterAcmeDNS) // Register with acme-dns
+		r.Get("/{id}/acme-dns/check-cname", m.handler.APICheckAcmeCname) // Check CNAME record
 	})
 
 	return r

@@ -4,9 +4,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/botginx/botginx/modules/domains/models"
+	"github.com/botginx/botginx/pkg/acmedns"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -246,6 +248,19 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 	if input.SSLError != nil {
 		domain.SSLError = input.SSLError
 	}
+	// acme-dns fields
+	if input.AcmeSubdomain != nil {
+		domain.AcmeSubdomain = input.AcmeSubdomain
+	}
+	if input.AcmePassword != nil {
+		domain.AcmePassword = input.AcmePassword
+	}
+	if input.AcmeFulldomain != nil {
+		domain.AcmeFulldomain = input.AcmeFulldomain
+	}
+	if input.AcmeCnameVerified != nil {
+		domain.AcmeCnameVerified = *input.AcmeCnameVerified
+	}
 	domain.UpdatedAt = time.Now()
 
 	_, err = s.db.NamedExec(`
@@ -258,6 +273,10 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 			acme_token = :acme_token,
 			acme_token_expires_at = :acme_token_expires_at,
 			ssl_error = :ssl_error,
+			acme_subdomain = :acme_subdomain,
+			acme_password = :acme_password,
+			acme_fulldomain = :acme_fulldomain,
+			acme_cname_verified = :acme_cname_verified,
 			updated_at = :updated_at
 		WHERE id = :id
 	`, domain)
@@ -349,4 +368,67 @@ func (s *DomainService) GetDeployServer() (ip string, port int, user string, pas
 		return "", 0, "", "", err
 	}
 	return server.IP, server.Port, server.User, server.Password, nil
+}
+
+// RegisterWithAcmeDNS registers a domain with acme-dns on the Deploy VPS
+// Returns the registration info to be stored in the domain record
+func (s *DomainService) RegisterWithAcmeDNS(domainID string) (*acmedns.Registration, error) {
+	// Get Deploy VPS credentials
+	ip, port, user, password, err := s.GetDeployServer()
+	if err != nil {
+		return nil, fmt.Errorf("no deploy server available: %w", err)
+	}
+
+	// Connect to Deploy VPS
+	client, err := acmedns.NewClient(ip, port, user, password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to deploy server: %w", err)
+	}
+	defer client.Close()
+
+	// Check if acme-dns is installed
+	if !client.IsInstalled() {
+		// Try to set it up
+		if err := client.Setup("acme.guardbot.sbs"); err != nil {
+			return nil, fmt.Errorf("acme-dns not installed and setup failed: %w", err)
+		}
+	}
+
+	// Register new subdomain
+	reg, err := client.Register()
+	if err != nil {
+		return nil, fmt.Errorf("acme-dns registration failed: %w", err)
+	}
+
+	// Store registration in database
+	_, err = s.db.Exec(`
+		UPDATE domains SET
+			acme_subdomain = $1,
+			acme_password = $2,
+			acme_fulldomain = $3,
+			updated_at = NOW()
+		WHERE id = $4
+	`, reg.Subdomain, reg.Password, reg.Fulldomain, domainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store acme-dns credentials: %w", err)
+	}
+
+	return reg, nil
+}
+
+// GetAcmeDNSRegistration returns the acme-dns registration info for a domain
+func (s *DomainService) GetAcmeDNSRegistration(domainID string) (subdomain, password, fulldomain string, err error) {
+	var reg struct {
+		Subdomain  *string `db:"acme_subdomain"`
+		Password   *string `db:"acme_password"`
+		Fulldomain *string `db:"acme_fulldomain"`
+	}
+	err = s.db.Get(&reg, `SELECT acme_subdomain, acme_password, acme_fulldomain FROM domains WHERE id = $1`, domainID)
+	if err != nil {
+		return "", "", "", err
+	}
+	if reg.Subdomain == nil || reg.Password == nil {
+		return "", "", "", fmt.Errorf("domain not registered with acme-dns")
+	}
+	return *reg.Subdomain, *reg.Password, *reg.Fulldomain, nil
 }

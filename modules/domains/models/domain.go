@@ -36,6 +36,12 @@ type Domain struct {
 	IsWildcard         bool       `db:"is_wildcard" json:"isWildcard"`
 	SSLError           *string    `db:"ssl_error" json:"sslError,omitempty"`
 
+	// acme-dns delegation fields (for 100% reliable wildcard SSL)
+	AcmeSubdomain     *string `db:"acme_subdomain" json:"acmeSubdomain,omitempty"`
+	AcmePassword      *string `db:"acme_password" json:"-"` // Never expose in JSON
+	AcmeFulldomain    *string `db:"acme_fulldomain" json:"acmeFulldomain,omitempty"`
+	AcmeCnameVerified bool    `db:"acme_cname_verified" json:"acmeCnameVerified"`
+
 	// Joined fields
 	ServerName string `db:"server_name" json:"serverName,omitempty"`
 }
@@ -65,8 +71,13 @@ type ExternalSetupInfo struct {
 	AcmeToken       string `json:"acmeToken"`
 	AcmeTokenReady  bool   `json:"acmeTokenReady"`
 	SetupStep       string `json:"setupStep"`
-	VerifyTXTName   string `json:"verifyTxtName"`   // _guardbot-verify.domain.com
-	AcmeTXTName     string `json:"acmeTxtName"`     // _acme-challenge.domain.com
+	VerifyTXTName   string `json:"verifyTxtName"` // _guardbot-verify.domain.com
+	AcmeTXTName     string `json:"acmeTxtName"`   // _acme-challenge.domain.com (legacy)
+
+	// acme-dns CNAME delegation (new - 100% reliable)
+	AcmeCnameTarget   string `json:"acmeCnameTarget,omitempty"`   // abc123.acme.guardbot.sbs
+	AcmeCnameVerified bool   `json:"acmeCnameVerified"`
+	UseAcmeDns        bool   `json:"useAcmeDns"` // true = use CNAME delegation
 }
 
 type CreateDomainInput struct {
@@ -83,4 +94,10 @@ type UpdateDomainInput struct {
 	AcmeToken          *string    `json:"acmeToken"`
 	AcmeTokenExpiresAt *time.Time `json:"acmeTokenExpiresAt"`
 	SSLError           *string    `json:"sslError"`
+
+	// acme-dns fields
+	AcmeSubdomain     *string `json:"acmeSubdomain"`
+	AcmePassword      *string `json:"acmePassword"`
+	AcmeFulldomain    *string `json:"acmeFulldomain"`
+	AcmeCnameVerified *bool   `json:"acmeCnameVerified"`
 }

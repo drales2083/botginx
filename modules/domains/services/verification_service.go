@@ -317,6 +317,160 @@ func (s *VerificationService) GenerateSSL(domain string) error {
 	return nil
 }
 
+// GenerateHTTPSSL generates SSL using HTTP-01 challenge (for non-wildcard domains)
+// This is simpler than DNS-01 - no TXT records needed, just A record pointing to server
+func (s *VerificationService) GenerateHTTPSSL(domain string) error {
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Ensure webroot directory exists
+	webrootCmd := fmt.Sprintf(`mkdir -p /var/www/sites/%s/_root/.well-known/acme-challenge`, domain)
+	client.Run(webrootCmd)
+
+	// Try nginx plugin first (most reliable), fallback to webroot
+	cmd := fmt.Sprintf(`
+# First try nginx plugin
+if certbot certonly --nginx -d %s --non-interactive --agree-tos --email admin@%s 2>&1; then
+    echo "SUCCESS_NGINX"
+    exit 0
+fi
+
+# Fallback to webroot
+if certbot certonly --webroot -w /var/www/sites/%s/_root -d %s --non-interactive --agree-tos --email admin@%s 2>&1; then
+    echo "SUCCESS_WEBROOT"
+    exit 0
+fi
+
+# Fallback to standalone (stops nginx temporarily)
+systemctl stop nginx 2>/dev/null || true
+if certbot certonly --standalone -d %s --non-interactive --agree-tos --email admin@%s 2>&1; then
+    systemctl start nginx
+    echo "SUCCESS_STANDALONE"
+    exit 0
+fi
+systemctl start nginx
+echo "FAILED"
+exit 1
+`, domain, domain, domain, domain, domain, domain, domain)
+
+	output, err := client.Run(cmd)
+	if err != nil {
+		if strings.Contains(output, "Certificate not yet due for renewal") {
+			return nil
+		}
+		return fmt.Errorf("SSL failed: %s", parseCertbotError(output))
+	}
+
+	// Reload nginx to pick up new cert
+	client.Run("nginx -t && systemctl reload nginx")
+	return nil
+}
+
+// GenerateWildcardSSLWithAcmeDNS generates wildcard SSL using acme-dns CNAME delegation
+// This is 100% reliable - we control the TXT record via acme-dns API
+func (s *VerificationService) GenerateWildcardSSLWithAcmeDNS(domain, acmeSubdomain, acmePassword string) error {
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
+	}
+
+	baseDomain := GetBaseDomain(domain)
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Check if cert already exists
+	checkExisting := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "EXISTS"`, baseDomain)
+	if out, _ := client.Run(checkExisting); strings.Contains(out, "EXISTS") {
+		return nil // Already have cert
+	}
+
+	// Create auth hook that updates acme-dns TXT record
+	authHookScript := fmt.Sprintf(`cat > /tmp/acmedns-auth-hook.sh << 'HOOKEOF'
+#!/bin/bash
+# Update acme-dns TXT record via API
+curl -s -X POST http://127.0.0.1:8053/update \
+    -H "X-Api-User: %s" \
+    -H "X-Api-Key: %s" \
+    -H "Content-Type: application/json" \
+    -d "{\"subdomain\":\"%s\",\"txt\":\"$CERTBOT_VALIDATION\"}"
+
+# Wait for DNS propagation (acme-dns is instant, but give it a moment)
+sleep 5
+HOOKEOF
+chmod +x /tmp/acmedns-auth-hook.sh`, acmeSubdomain, acmePassword, acmeSubdomain)
+	client.Run(authHookScript)
+
+	// Run certbot with DNS-01 challenge using our auth hook
+	certbotCmd := fmt.Sprintf(`
+certbot certonly --manual --preferred-challenges dns \
+  -d "*.%s" -d "%s" \
+  --agree-tos --email admin@%s \
+  --manual-auth-hook /tmp/acmedns-auth-hook.sh \
+  --manual-cleanup-hook "echo cleanup" \
+  --non-interactive 2>&1
+`, baseDomain, baseDomain, baseDomain)
+
+	output, err := client.Run(certbotCmd)
+	if err != nil {
+		if strings.Contains(output, "Certificate not yet due for renewal") {
+			return nil
+		}
+		return fmt.Errorf("SSL generation failed: %s", parseCertbotError(output))
+	}
+
+	// Check if certificate was created
+	checkCmd := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "SUCCESS"`, baseDomain)
+	checkOutput, _ := client.Run(checkCmd)
+
+	if !strings.Contains(checkOutput, "SUCCESS") {
+		return fmt.Errorf("SSL certificate not created: %s", parseCertbotError(output))
+	}
+
+	// Reload nginx
+	client.Run("nginx -t && systemctl reload nginx 2>/dev/null || true")
+	return nil
+}
+
+// CheckAcmeCnameRecord verifies if CNAME record is correctly pointing to acme-dns
+func (s *VerificationService) CheckAcmeCnameRecord(domain, expectedTarget string) bool {
+	baseDomain := GetBaseDomain(domain)
+	cnameHost := "_acme-challenge." + baseDomain
+
+	// Query CNAME record
+	cname, err := net.LookupCNAME(cnameHost)
+	if err != nil {
+		return false
+	}
+
+	// Normalize (remove trailing dot)
+	cname = strings.TrimSuffix(cname, ".")
+	expectedTarget = strings.TrimSuffix(expectedTarget, ".")
+
+	return strings.EqualFold(cname, expectedTarget)
+}
+
 // generateSelfSignedCert creates a self-signed cert for Cloudflare Full mode
 func (s *VerificationService) generateSelfSignedCert(domain string) error {
 	server, err := s.getServer()
