@@ -81,10 +81,10 @@ func (b *BackgroundVerifier) checkAllDomains() {
 		}
 	}
 
-	// Check verified domains without SSL
+	// Check verified domains without SSL - try to generate SSL for them
 	verifiedDomains, _ := b.domainService.ListVerifiedWithoutSSL()
 	for _, domain := range verifiedDomains {
-		go b.checkAndEnableSSL(domain.ID, domain.Name)
+		go b.setupSSL(domain.ID, domain.Name)
 	}
 }
 
