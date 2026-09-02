@@ -19,9 +19,10 @@ var migrationsFS embed.FS
 // Module implements the Bullet Proof Hosting feature
 type Module struct {
 	*module.BaseModule
-	service *services.HostingService
-	billing *services.BillingService
-	handler *handlers.Handler
+	service      *services.HostingService
+	billing      *services.BillingService
+	provisioning *services.ProvisioningService
+	handler      *handlers.Handler
 }
 
 // New creates a new hosting module instance
@@ -41,7 +42,8 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 	m.service = services.NewHostingService(deps.DB)
 	m.billing = services.NewBillingService(deps.DB, m.service)
-	m.handler = handlers.NewHandler(m.service, m.billing, deps.Templates)
+	m.provisioning = services.NewProvisioningService(deps.DB)
+	m.handler = handlers.NewHandler(m.service, m.billing, m.provisioning, deps.Templates)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -115,6 +117,7 @@ func (m *Module) Routes() chi.Router {
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/{accountID}", func(r chi.Router) {
 			r.Get("/credentials", m.handler.APIGetPanelCredentials)
+			r.Get("/status", m.handler.APIGetProvisioningStatus)
 			r.Put("/domains/{domainID}/settings", m.handler.APIUpdateDomainSettings)
 			r.Post("/reactivate", m.handler.APIReactivate)
 			// Analytics for antibot dashboard

@@ -13,17 +13,19 @@ import (
 
 // Handler provides HTTP handlers for hosting operations
 type Handler struct {
-	service   *services.HostingService
-	billing   *services.BillingService
-	templates *module.TemplateEngine
+	service      *services.HostingService
+	billing      *services.BillingService
+	provisioning *services.ProvisioningService
+	templates    *module.TemplateEngine
 }
 
 // NewHandler creates a new hosting handler instance
-func NewHandler(service *services.HostingService, billing *services.BillingService, templates *module.TemplateEngine) *Handler {
+func NewHandler(service *services.HostingService, billing *services.BillingService, provisioning *services.ProvisioningService, templates *module.TemplateEngine) *Handler {
 	return &Handler{
-		service:   service,
-		billing:   billing,
-		templates: templates,
+		service:      service,
+		billing:      billing,
+		provisioning: provisioning,
+		templates:    templates,
 	}
 }
 
@@ -117,10 +119,13 @@ func (h *Handler) UserDoPurchase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trigger automatic provisioning in background
+	h.provisioning.ProvisionAccountAsync(account.ID)
+
 	h.json(w, http.StatusCreated, map[string]interface{}{
 		"success": true,
 		"account": account,
-		"message": "Your hosting account has been created and is pending setup. You will be notified when it's ready.",
+		"message": "Your hosting account is being set up automatically. This usually takes less than a minute.",
 	})
 }
 
@@ -210,6 +215,34 @@ func (h *Handler) AdminAccounts(w http.ResponseWriter, r *http.Request) {
 }
 
 // ========== User API Handlers ==========
+
+// APIGetProvisioningStatus returns the current provisioning status for an account
+func (h *Handler) APIGetProvisioningStatus(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
+
+	status, serverIP, err := h.provisioning.GetProvisioningStatus(account.ID)
+	if err != nil {
+		h.jsonError(w, "Failed to get status", http.StatusInternalServerError)
+		return
+	}
+
+	// Get domain for this account
+	domains, _ := h.service.ListDomains(account.ID)
+	var domain string
+	if len(domains) > 0 {
+		domain = domains[0].Domain
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"status":   status,
+		"serverIP": serverIP,
+		"domain":   domain,
+		"ready":    status == string(models.AccountStatusActive),
+	})
+}
 
 // APIUpdateDomainSettings updates antibot settings for a domain
 func (h *Handler) APIUpdateDomainSettings(w http.ResponseWriter, r *http.Request) {
