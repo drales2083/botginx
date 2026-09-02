@@ -89,8 +89,14 @@ func (c *Client) DeleteUser(username string) error {
 func (c *Client) AddSite(domain, siteUser string, phpVersion PHPVersion) error {
 	cmd := fmt.Sprintf("clpctl site:add:php --domainName=%s --phpVersion=%s --vhostTemplate='PHP' --siteUser=%s",
 		shellEscape(domain), string(phpVersion), shellEscape(siteUser))
-	_, err := c.Execute(cmd)
-	return err
+	output, err := c.Execute(cmd)
+	if err != nil {
+		if output != "" {
+			return fmt.Errorf("%s: %s", err.Error(), output)
+		}
+		return err
+	}
+	return nil
 }
 
 // AddStaticSite creates a static HTML site
