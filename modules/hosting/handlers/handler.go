@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 
 	"github.com/botginx/botginx/modules/hosting/models"
@@ -680,6 +681,133 @@ func (h *Handler) APIAnalytics(w http.ResponseWriter, r *http.Request) {
 
 	analytics := h.service.GetAnalytics(account.ID, period)
 	h.json(w, http.StatusOK, analytics)
+}
+
+// APIGetDomainStatus returns DNS/SSL status for a domain
+func (h *Handler) APIGetDomainStatus(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
+		return
+	}
+
+	domainID := chi.URLParam(r, "domainID")
+	domain, err := h.service.GetDomain(domainID)
+	if err != nil || domain.AccountID != account.ID {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Get server IP for DNS check
+	serverIP := account.ServerHostname
+
+	// Check current DNS
+	dnsOK := false
+	var currentIP string
+	ips, err := net.LookupHost(domain.Domain)
+	if err == nil && len(ips) > 0 {
+		currentIP = ips[0]
+		dnsOK = currentIP == serverIP
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"domain":      domain.Domain,
+		"dnsVerified": domain.DNSVerified,
+		"dnsOK":       dnsOK,
+		"currentIP":   currentIP,
+		"expectedIP":  serverIP,
+		"sslEnabled":  domain.SSLEnabled,
+		"setupStatus": domain.SetupStatus,
+		"sslError":    domain.SSLError,
+	})
+}
+
+// APICheckDNS checks DNS for a domain and updates status
+func (h *Handler) APICheckDNS(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
+		return
+	}
+
+	domainID := chi.URLParam(r, "domainID")
+	domain, err := h.service.GetDomain(domainID)
+	if err != nil || domain.AccountID != account.ID {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	serverIP := account.ServerHostname
+
+	// Check DNS
+	ips, err := net.LookupHost(domain.Domain)
+	dnsOK := false
+	var currentIP string
+	if err == nil && len(ips) > 0 {
+		currentIP = ips[0]
+		dnsOK = currentIP == serverIP
+	}
+
+	// Update domain status
+	if dnsOK && !domain.DNSVerified {
+		h.service.UpdateDomainStatus(domainID, true, models.DomainStatusPendingDNS, nil)
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"dnsOK":      dnsOK,
+		"currentIP":  currentIP,
+		"expectedIP": serverIP,
+	})
+}
+
+// APIEnableSSL enables SSL for a domain
+func (h *Handler) APIEnableSSL(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
+		return
+	}
+
+	domainID := chi.URLParam(r, "domainID")
+	domain, err := h.service.GetDomain(domainID)
+	if err != nil || domain.AccountID != account.ID {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	if domain.SSLEnabled {
+		h.json(w, http.StatusOK, map[string]interface{}{"message": "SSL already enabled"})
+		return
+	}
+
+	// Check DNS first
+	serverIP := account.ServerHostname
+	ips, _ := net.LookupHost(domain.Domain)
+	if len(ips) == 0 || ips[0] != serverIP {
+		h.jsonError(w, "DNS not configured. Point your domain to "+serverIP+" first.", http.StatusBadRequest)
+		return
+	}
+
+	// Update status to generating
+	h.service.UpdateDomainStatus(domainID, true, models.DomainStatusSSLGenerating, nil)
+
+	// Start SSL generation in background
+	go h.generateSSL(account, domain)
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"message": "SSL generation started",
+		"status":  models.DomainStatusSSLGenerating,
+	})
+}
+
+// generateSSL runs SSL generation in background
+func (h *Handler) generateSSL(account *models.HostingAccount, domain *models.HostingDomain) {
+	// Get server credentials and run Let's Encrypt
+	err := h.service.GenerateSSLForDomain(account, domain)
+	if err != nil {
+		errMsg := err.Error()
+		h.service.UpdateDomainStatus(domain.ID, true, models.DomainStatusPendingDNS, &errMsg)
+	} else {
+		h.service.UpdateDomainStatus(domain.ID, true, models.DomainStatusActive, nil)
+		h.service.SetDomainSSLEnabled(domain.ID, true)
+	}
 }
 
 // JSON helpers

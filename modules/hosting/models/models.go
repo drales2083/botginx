@@ -83,12 +83,23 @@ type HostingAccount struct {
 }
 
 // HostingDomain represents a domain hosted on a hosting account
+// Domain setup status constants
+const (
+	DomainStatusPendingDNS    = "pending_dns"
+	DomainStatusSSLGenerating = "ssl_generating"
+	DomainStatusActive        = "active"
+)
+
 type HostingDomain struct {
-	ID         string    `db:"id" json:"id"`
-	AccountID  string    `db:"account_id" json:"accountId"`
-	Domain     string    `db:"domain" json:"domain"`
-	SSLEnabled bool      `db:"ssl_enabled" json:"sslEnabled"`
-	CreatedAt  time.Time `db:"created_at" json:"createdAt"`
+	ID          string    `db:"id" json:"id"`
+	AccountID   string    `db:"account_id" json:"accountId"`
+	Domain      string    `db:"domain" json:"domain"`
+	SSLEnabled  bool      `db:"ssl_enabled" json:"sslEnabled"`
+	DNSVerified bool      `db:"dns_verified" json:"dnsVerified"`
+	SetupStatus string    `db:"setup_status" json:"setupStatus"`
+	SSLError    *string   `db:"ssl_error" json:"sslError,omitempty"`
+	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 // HostingDomainSettings contains antibot protection settings for a domain

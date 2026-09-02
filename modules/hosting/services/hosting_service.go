@@ -993,3 +993,70 @@ func (s *HostingService) GetAnalytics(accountID, period string) *Analytics {
 
 	return analytics
 }
+
+// GetDomain returns a domain by ID
+func (s *HostingService) GetDomain(id string) (*models.HostingDomain, error) {
+	var domain models.HostingDomain
+	err := s.db.Get(&domain, `SELECT * FROM hosting_domains WHERE id = $1`, id)
+	if err != nil {
+		return nil, errors.New("domain not found")
+	}
+	return &domain, nil
+}
+
+// UpdateDomainStatus updates the DNS/SSL status of a domain
+func (s *HostingService) UpdateDomainStatus(domainID string, dnsVerified bool, setupStatus string, sslError *string) error {
+	_, err := s.db.Exec(`
+		UPDATE hosting_domains 
+		SET dns_verified = $1, setup_status = $2, ssl_error = $3, updated_at = $4
+		WHERE id = $5
+	`, dnsVerified, setupStatus, sslError, time.Now(), domainID)
+	return err
+}
+
+// SetDomainSSLEnabled marks a domain as having SSL enabled
+func (s *HostingService) SetDomainSSLEnabled(domainID string, enabled bool) error {
+	_, err := s.db.Exec(`
+		UPDATE hosting_domains SET ssl_enabled = $1, updated_at = $2 WHERE id = $3
+	`, enabled, time.Now(), domainID)
+	return err
+}
+
+// GenerateSSLForDomain generates SSL certificate via CloudPanel
+func (s *HostingService) GenerateSSLForDomain(account *models.HostingAccount, domain *models.HostingDomain) error {
+	if account.ServerID == nil {
+		return errors.New("account not linked to server")
+	}
+
+	// Get server credentials
+	var server struct {
+		Hostname         string `db:"hostname"`
+		Port             int    `db:"port"`
+		Username         string `db:"username"`
+		PasswordEnc      string `db:"password_encrypted"`
+	}
+	err := s.db.Get(&server, `SELECT hostname, port, username, password_encrypted FROM hosting_servers WHERE id = $1`, *account.ServerID)
+	if err != nil {
+		return errors.New("server not found")
+	}
+
+	password, err := crypto.Decrypt(server.PasswordEnc)
+	if err != nil {
+		return errors.New("failed to decrypt server credentials")
+	}
+
+	// Connect to CloudPanel
+	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, password)
+	defer client.Close()
+
+	if err := client.Connect(); err != nil {
+		return fmt.Errorf("SSH connection failed: %v", err)
+	}
+
+	// Run Let's Encrypt
+	if err := client.AddLetsEncrypt(domain.Domain); err != nil {
+		return fmt.Errorf("SSL generation failed: %v", err)
+	}
+
+	return nil
+}

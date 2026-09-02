@@ -94,7 +94,16 @@ func (m *Module) Migrate() error {
 	if err != nil {
 		return err
 	}
-	_, err = m.DB().Exec(string(sql5))
+	if _, err = m.DB().Exec(string(sql5)); err != nil {
+		return err
+	}
+
+	// Add domain status tracking
+	sql6, err := fs.ReadFile(migrationsFS, "migrations/006_add_domain_status.sql")
+	if err != nil {
+		return err
+	}
+	_, err = m.DB().Exec(string(sql6))
 	return err
 }
 
@@ -130,6 +139,10 @@ func (m *Module) Routes() chi.Router {
 			r.Post("/retry", m.handler.APIRetryProvisioning)
 			r.Put("/domains/{domainID}/settings", m.handler.APIUpdateDomainSettings)
 			r.Post("/reactivate", m.handler.APIReactivate)
+			// Domain DNS/SSL status
+			r.Get("/domains/{domainID}/status", m.handler.APIGetDomainStatus)
+			r.Post("/domains/{domainID}/check-dns", m.handler.APICheckDNS)
+			r.Post("/domains/{domainID}/ssl", m.handler.APIEnableSSL)
 			// Analytics for antibot dashboard
 			r.Get("/analytics/summary", m.handler.APIAnalyticsSummary)
 			r.Get("/analytics", m.handler.APIAnalytics)

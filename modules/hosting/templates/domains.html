@@ -17,45 +17,64 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="4">
+                    <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="5">
                         <thead>
                             <tr>
                                 <th>Domain</th>
+                                <th>DNS</th>
                                 <th>SSL</th>
-                                <th>Protection</th>
+                                <th>Status</th>
                                 <th>Created</th>
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {{range .Domains}}
-                            <tr>
+                            <tr data-domain-id="{{.ID}}">
                                 <td>
                                     <a href="https://{{.Domain}}" target="_blank" class="text-decoration-none fw-semibold">
                                         {{.Domain}}
                                     </a>
                                 </td>
-                                <td>
-                                    {{if .SSLEnabled}}
-                                    <span class="badge text-bg-success"><i class="bi bi-lock-fill me-1"></i>Enabled</span>
+                                <td class="dns-status">
+                                    {{if .DNSVerified}}
+                                    <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Verified</span>
                                     {{else}}
-                                    <span class="badge text-bg-secondary">Disabled</span>
+                                    <span class="badge text-bg-warning"><i class="bi bi-clock me-1"></i>Pending</span>
                                     {{end}}
                                 </td>
-                                <td>
-                                    <span class="badge text-bg-success"><i class="bi bi-shield-check me-1"></i>Active</span>
+                                <td class="ssl-status">
+                                    {{if .SSLEnabled}}
+                                    <span class="badge text-bg-success"><i class="bi bi-lock-fill me-1"></i>Enabled</span>
+                                    {{else if eq .SetupStatus "ssl_generating"}}
+                                    <span class="badge text-bg-info"><i class="bi bi-hourglass-split me-1"></i>Generating...</span>
+                                    {{else}}
+                                    <span class="badge text-bg-secondary"><i class="bi bi-unlock me-1"></i>Disabled</span>
+                                    {{end}}
+                                </td>
+                                <td class="setup-status">
+                                    {{if eq .SetupStatus "active"}}
+                                    <span class="badge text-bg-success"><i class="bi bi-check-circle-fill me-1"></i>Active</span>
+                                    {{else if eq .SetupStatus "ssl_generating"}}
+                                    <span class="badge text-bg-info"><i class="bi bi-arrow-repeat spin me-1"></i>Installing SSL</span>
+                                    {{else}}
+                                    <span class="badge text-bg-warning"><i class="bi bi-exclamation-triangle me-1"></i>Setup DNS</span>
+                                    {{end}}
                                 </td>
                                 <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
                                 <td class="text-end">
                                     <div class="btn-group btn-group-sm">
-                                        <a href="/user/hosting/{{$.Account.ID}}/domains/{{.ID}}/settings" class="btn btn-outline-secondary" title="Traffic Settings">
-                                            <i class="bi bi-shield-check"></i>
-                                        </a>
+                                        <button class="btn btn-outline-primary btn-check-dns" data-id="{{.ID}}" title="Check DNS">
+                                            <i class="bi bi-arrow-repeat"></i>
+                                        </button>
                                         {{if not .SSLEnabled}}
-                                        <button class="btn btn-outline-success btn-enable-ssl" data-id="{{.ID}}" title="Enable SSL">
+                                        <button class="btn btn-outline-success btn-enable-ssl" data-id="{{.ID}}" title="Enable SSL" {{if not .DNSVerified}}disabled{{end}}>
                                             <i class="bi bi-lock"></i>
                                         </button>
                                         {{end}}
+                                        <a href="/user/hosting/{{$.Account.ID}}/domains/{{.ID}}/settings" class="btn btn-outline-secondary" title="Traffic Settings">
+                                            <i class="bi bi-shield-check"></i>
+                                        </a>
                                         {{if $canWrite}}
                                         <button class="btn btn-outline-danger btn-delete-domain" data-id="{{.ID}}" data-domain="{{.Domain}}" title="Delete">
                                             <i class="bi bi-trash"></i>
@@ -66,7 +85,7 @@
                             </tr>
                             {{else}}
                             <tr>
-                                <td colspan="5" class="text-center text-secondary py-4">
+                                <td colspan="6" class="text-center text-secondary py-4">
                                     No domains yet.
                                     {{if $canWrite}}
                                     <a href="#" data-bs-toggle="modal" data-bs-target="#addDomainModal">Add your first domain</a>.
@@ -99,7 +118,7 @@
                         <tr>
                             <td><code>A</code></td>
                             <td><code>@</code></td>
-                            <td><code id="server-ip">Loading...</code></td>
+                            <td><code id="server-ip">{{.Account.ServerHostname}}</code></td>
                         </tr>
                         <tr>
                             <td><code>CNAME</code></td>
@@ -108,7 +127,7 @@
                         </tr>
                     </tbody>
                 </table>
-                <p class="small text-secondary mb-0">DNS changes may take up to 24-48 hours to propagate.</p>
+                <p class="small text-secondary mb-0">DNS changes may take up to 24-48 hours to propagate. Click the refresh button to check.</p>
             </div>
         </div>
     </div>
@@ -163,6 +182,16 @@
     </div>
 </div>
 
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.spin {
+    animation: spin 1s linear infinite;
+}
+</style>
+
 <script>
 const accountID = '{{.Account.ID}}';
 let deleteModal = null;
@@ -173,8 +202,85 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteModal = new bootstrap.Modal(document.getElementById('deleteDomainModal'));
     addModal = new bootstrap.Modal(document.getElementById('addDomainModal'));
 
-    // Mock server IP for display
-    document.getElementById('server-ip').textContent = '{{.Account.ServerHostname}}';
+    // Auto-refresh status every 10 seconds for domains in progress
+    setInterval(checkPendingDomains, 10000);
+});
+
+// Check status of pending domains
+async function checkPendingDomains() {
+    const rows = document.querySelectorAll('tr[data-domain-id]');
+    for (const row of rows) {
+        const statusCell = row.querySelector('.setup-status');
+        if (statusCell && statusCell.textContent.includes('Installing') || statusCell.textContent.includes('Setup')) {
+            const domainId = row.dataset.domainId;
+            await updateDomainStatus(domainId, row);
+        }
+    }
+}
+
+// Update status for a single domain
+async function updateDomainStatus(domainId, row) {
+    try {
+        const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainId}/status`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        // Update DNS column
+        const dnsCell = row.querySelector('.dns-status');
+        if (data.dnsOK || data.dnsVerified) {
+            dnsCell.innerHTML = '<span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Verified</span>';
+            // Enable SSL button
+            const sslBtn = row.querySelector('.btn-enable-ssl');
+            if (sslBtn) sslBtn.disabled = false;
+        }
+
+        // Update SSL column
+        const sslCell = row.querySelector('.ssl-status');
+        if (data.sslEnabled) {
+            sslCell.innerHTML = '<span class="badge text-bg-success"><i class="bi bi-lock-fill me-1"></i>Enabled</span>';
+        } else if (data.setupStatus === 'ssl_generating') {
+            sslCell.innerHTML = '<span class="badge text-bg-info"><i class="bi bi-hourglass-split me-1"></i>Generating...</span>';
+        }
+
+        // Update Status column
+        const statusCell = row.querySelector('.setup-status');
+        if (data.setupStatus === 'active') {
+            statusCell.innerHTML = '<span class="badge text-bg-success"><i class="bi bi-check-circle-fill me-1"></i>Active</span>';
+        } else if (data.setupStatus === 'ssl_generating') {
+            statusCell.innerHTML = '<span class="badge text-bg-info"><i class="bi bi-arrow-repeat spin me-1"></i>Installing SSL</span>';
+        } else if (data.sslError) {
+            statusCell.innerHTML = '<span class="badge text-bg-danger" title="' + data.sslError + '"><i class="bi bi-x-circle me-1"></i>SSL Error</span>';
+        }
+    } catch (e) {
+        console.error('Status check failed:', e);
+    }
+}
+
+// Check DNS button
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-check-dns');
+    if (btn) {
+        e.preventDefault();
+        const domainId = btn.dataset.id;
+        const row = btn.closest('tr');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainId}/check-dns`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+
+        if (data.dnsOK) {
+            showToast('DNS verified! You can now enable SSL.', 'success');
+            await updateDomainStatus(domainId, row);
+        } else {
+            showToast(`DNS not ready. Current IP: ${data.currentIP || 'not found'}. Expected: ${data.expectedIP}`, 'warning');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+    }
 });
 
 // Add domain
@@ -208,19 +314,21 @@ document.getElementById('addDomainForm').addEventListener('submit', async (e) =>
 // Enable SSL
 document.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-enable-ssl');
-    if (btn) {
+    if (btn && !btn.disabled) {
         e.preventDefault();
         const domainId = btn.dataset.id;
+        const row = btn.closest('tr');
 
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
         const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainId}/ssl`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
 
         if (res.ok) {
-            reloadWithToast('SSL enabled', 'success');
+            showToast('SSL generation started. This may take a minute.', 'info');
+            await updateDomainStatus(domainId, row);
         } else {
-            const data = await res.json().catch(() => ({}));
             showToast(data.error || 'Failed to enable SSL', 'danger');
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-lock"></i>';
