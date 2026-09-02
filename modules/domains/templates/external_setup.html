@@ -109,69 +109,75 @@
 
         <!-- Step 3: SSL Certificate -->
         {{if .SetupInfo.IsWildcard}}
-        <!-- Wildcard domains use CNAME delegation for 100% reliable SSL -->
+        <!-- Wildcard domains use two-phase DNS-01 challenge -->
         <div class="card mb-3" id="card-step3">
             <div class="card-header">
                 <h5 class="card-title mb-0">
                     <span class="badge bg-secondary me-2">3</span>
-                    CNAME Record — SSL Delegation (One-time)
+                    TXT Record — SSL Certificate
                 </h5>
                 <div class="card-tools">
-                    {{if .SetupInfo.AcmeCnameVerified}}
-                    <span id="badge-ssl" class="badge bg-success"><i class="bi bi-check-lg"></i> Verified</span>
-                    {{else}}
                     <span id="badge-ssl" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Waiting</span>
-                    {{end}}
                 </div>
             </div>
-            <div class="card-body p-0">
-                {{if .SetupInfo.AcmeCnameTarget}}
-                <table class="table table-striped mb-0">
-                    <thead>
-                        <tr>
-                            <th style="width:80px">Type</th>
-                            <th style="width:180px; white-space:nowrap">Name</th>
-                            <th>Value</th>
-                            <th style="width:60px"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="badge bg-warning text-dark">CNAME</span></td>
-                            <td style="white-space:nowrap"><code>_acme-challenge</code></td>
-                            <td>
-                                <div class="input-group input-group-sm" style="max-width:400px">
-                                    <input type="text" class="form-control form-control-sm" value="{{.SetupInfo.AcmeCnameTarget}}" readonly id="copy-cname">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('copy-cname')">
-                                        <i class="bi bi-clipboard"></i>
-                                    </button>
-                                </div>
-                            </td>
-                            <td></td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="p-3 border-top">
-                    <div class="alert alert-warning mb-2 py-2 small">
-                        <i class="bi bi-exclamation-triangle me-1"></i>
-                        <strong>Important:</strong> If you have an existing <code>_acme-challenge</code> TXT record, <strong>delete it first</strong> before adding this CNAME. DNS does not allow CNAME to coexist with other record types.
-                    </div>
-                    <small class="text-muted">
-                        <i class="bi bi-info-circle me-1"></i>
-                        This CNAME delegates SSL certificate management to us. Once added, SSL certificates will be generated and renewed automatically. <strong>You only need to add this once.</strong>
-                    </small>
-                </div>
-                {{else}}
-                <div class="p-3">
-                    <div class="d-flex align-items-center text-muted">
-                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                        Setting up SSL delegation...
-                    </div>
-                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="registerAcmeDns()">
-                        <i class="bi bi-arrow-clockwise me-1"></i>Retry Setup
+            <div class="card-body">
+                <!-- Phase 1: Get Token -->
+                <div id="ssl-phase1">
+                    <p class="text-muted mb-3">Wildcard SSL requires a TXT record for verification. Click the button to generate your token.</p>
+                    <button class="btn btn-primary" onclick="startSSLChallenge()">
+                        <i class="bi bi-key me-1"></i>Get SSL Token
                     </button>
                 </div>
-                {{end}}
+
+                <!-- Phase 2: Add TXT and Complete -->
+                <div id="ssl-phase2" class="d-none">
+                    <p class="text-muted mb-3">Add this TXT record to your DNS, then click "Complete SSL":</p>
+                    <table class="table table-striped mb-3">
+                        <thead>
+                            <tr>
+                                <th style="width:80px">Type</th>
+                                <th style="width:180px">Name</th>
+                                <th>Value</th>
+                                <th style="width:60px"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-info">TXT</span></td>
+                                <td><code id="ssl-txt-name">_acme-challenge</code></td>
+                                <td>
+                                    <div class="input-group input-group-sm" style="max-width:400px">
+                                        <input type="text" class="form-control form-control-sm" id="ssl-txt-value" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copyField('ssl-txt-value')">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="alert alert-info small mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        DNS propagation can take a few minutes. The same token will be used if you retry.
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success" id="btn-complete-ssl" onclick="completeSSLChallenge()">
+                            <i class="bi bi-check-lg me-1"></i>Complete SSL
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="cancelSSLChallenge()">
+                            <i class="bi bi-x-lg me-1"></i>Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Phase 3: Generating -->
+                <div id="ssl-phase3" class="d-none">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                        <span>Generating SSL certificate...</span>
+                    </div>
+                </div>
             </div>
         </div>
         {{else}}
@@ -204,16 +210,6 @@
             </button>
         </div>
 
-        <!-- Stale ACME Warning -->
-        <div class="callout callout-danger d-none" id="stale-warning">
-            <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Old ACME Record First</h5>
-            <p class="mb-2">An old <code>_acme-challenge</code> TXT record exists that will block SSL generation. Delete it first:</p>
-            <div class="input-group input-group-sm mb-2" style="max-width:400px">
-                <span class="input-group-text bg-danger text-white">DELETE THIS</span>
-                <input type="text" class="form-control" id="stale-value" readonly>
-            </div>
-            <small>Then add the new value shown in Step 3 above.</small>
-        </div>
 
         <!-- Success Card -->
         <div class="card card-success d-none" id="success-card">
@@ -294,43 +290,96 @@ let acmeToken = '{{.SetupInfo.AcmeToken}}';
 const initialSetupStep = '{{.Domain.SetupStep}}';
 const initialSSLEnabled = {{if .Domain.SSLEnabled}}true{{else}}false{{end}};
 const isWildcard = {{if .SetupInfo.IsWildcard}}true{{else}}false{{end}};
-const useAcmeDns = {{if .SetupInfo.UseAcmeDns}}true{{else}}false{{end}};
-let acmeCnameVerified = {{if .SetupInfo.AcmeCnameVerified}}true{{else}}false{{end}};
+let sslToken = '';
 let pollInterval;
 
-// Register with acme-dns (retry button)
-async function registerAcmeDns() {
+// Two-phase SSL: Start challenge (get token)
+async function startSSLChallenge() {
     try {
-        const res = await fetch(`/user/domains/api/${domainId}/acme-dns/register`, { method: 'POST' });
+        const res = await fetch(`/user/domains/api/${domainId}/ssl/start`, { method: 'POST' });
         const data = await res.json();
         if (data.error) {
             showToast(data.error, 'danger');
             return;
         }
-        showToast('Registration successful! Reloading...', 'success');
-        setTimeout(() => location.reload(), 1500);
+
+        sslToken = data.token;
+        document.getElementById('ssl-txt-name').textContent = data.txt_record;
+        document.getElementById('ssl-txt-value').value = data.token;
+
+        // Show phase 2
+        document.getElementById('ssl-phase1').classList.add('d-none');
+        document.getElementById('ssl-phase2').classList.remove('d-none');
+
+        showToast(data.message || 'Token generated! Add the TXT record.', 'success');
     } catch (e) {
-        showToast('Registration failed', 'danger');
+        showToast('Failed to start SSL challenge', 'danger');
     }
 }
 
-// Check CNAME record
-async function checkAcmeCname() {
+// Two-phase SSL: Complete challenge (after DNS added)
+async function completeSSLChallenge() {
+    const btn = document.getElementById('btn-complete-ssl');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Verifying...';
+
     try {
-        const res = await fetch(`/user/domains/api/${domainId}/acme-dns/check-cname`);
+        const res = await fetch(`/user/domains/api/${domainId}/ssl/complete`, { method: 'POST' });
         const data = await res.json();
-        if (data.verified && !acmeCnameVerified) {
-            acmeCnameVerified = true;
-            const badge = document.getElementById('badge-ssl');
-            if (badge) {
-                badge.innerHTML = '<i class="bi bi-check-lg"></i> Verified';
-                badge.className = 'badge bg-success';
-            }
-            updateProgress('progress-ssl', true);
+
+        if (data.status === 'dns_not_ready') {
+            showToast(data.message || 'TXT record not found yet. Please wait for DNS propagation.', 'warning');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Complete SSL';
+            return;
         }
-        return data.verified;
+
+        if (data.error) {
+            showToast(data.error, 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Complete SSL';
+            return;
+        }
+
+        if (data.status === 'complete') {
+            showToast('SSL certificate installed!', 'success');
+            showSetupComplete();
+        }
     } catch (e) {
-        return false;
+        showToast('Failed to complete SSL challenge', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Complete SSL';
+    }
+}
+
+// Cancel pending SSL challenge
+async function cancelSSLChallenge() {
+    try {
+        await fetch(`/user/domains/api/${domainId}/ssl/cancel`, { method: 'DELETE' });
+        sslToken = '';
+        document.getElementById('ssl-phase2').classList.add('d-none');
+        document.getElementById('ssl-phase1').classList.remove('d-none');
+        showToast('SSL challenge cancelled', 'info');
+    } catch (e) {
+        showToast('Failed to cancel', 'danger');
+    }
+}
+
+// Check for pending SSL token on page load
+async function checkPendingSSLToken() {
+    if (!isWildcard) return;
+    try {
+        const res = await fetch(`/user/domains/api/${domainId}/ssl/token`);
+        const data = await res.json();
+        if (data.token) {
+            sslToken = data.token;
+            document.getElementById('ssl-txt-name').textContent = data.txt_record;
+            document.getElementById('ssl-txt-value').value = data.token;
+            document.getElementById('ssl-phase1').classList.add('d-none');
+            document.getElementById('ssl-phase2').classList.remove('d-none');
+        }
+    } catch (e) {
+        // Ignore
     }
 }
 
@@ -423,18 +472,13 @@ async function manualCheck() {
         updateBadge('badge-a', status.aRecordFound);
         updateBadge('badge-verify', status.verifyTxtFound);
 
-        // For wildcard with acme-dns: check CNAME instead of ACME TXT
-        if (isWildcard && useAcmeDns) {
-            // Check CNAME record
-            const cnameOk = await checkAcmeCname();
-            updateBadge('badge-ssl', cnameOk);
-            updateProgress('progress-ssl', cnameOk);
-        } else if (isWildcard) {
-            // Legacy: check ACME TXT
-            updateBadge('badge-ssl', status.acmeTxtFound);
-            updateProgress('progress-ssl', status.acmeTxtFound);
+        // For wildcard: SSL badge shows pending until user completes two-phase flow
+        if (isWildcard) {
+            // SSL status depends on whether SSL is enabled
+            updateBadge('badge-ssl', status.sslReady);
+            updateProgress('progress-ssl', status.sslReady);
         } else {
-            // Non-wildcard: SSL is automatic
+            // Non-wildcard: SSL is automatic once DNS is ready
             updateProgress('progress-ssl', status.aRecordFound && status.verifyTxtFound);
         }
 
@@ -442,40 +486,25 @@ async function manualCheck() {
         updateProgress('progress-a', status.aRecordFound);
         updateProgress('progress-verify', status.verifyTxtFound);
 
-        // Show stale warning (legacy wildcard only, not for acme-dns)
-        const staleWarning = document.getElementById('stale-warning');
-        if (isWildcard && !useAcmeDns && status.acmeTxtStale && status.acmeTxtStaleValue) {
-            document.getElementById('stale-value').value = status.acmeTxtStaleValue;
-            staleWarning.classList.remove('d-none');
-        } else if (staleWarning) {
-            staleWarning.classList.add('d-none');
-        }
-
         // Check if complete
         if (status.sslReady) {
             showSetupComplete();
             showToast('Domain setup complete!', 'success');
         } else {
-            // Show SSL error if present (but not old ACME TXT errors when using acme-dns)
+            // Show SSL error if present
             const sslErrorEl = document.getElementById('ssl-error');
-            const hasRelevantError = status.errorMessage && status.allRecordsFound &&
-                !(useAcmeDns && status.errorMessage.includes('_acme-challenge'));
-            if (hasRelevantError) {
+            if (status.errorMessage && status.allRecordsFound) {
                 document.getElementById('ssl-error-message').textContent = status.errorMessage;
                 sslErrorEl.classList.remove('d-none');
             } else {
                 sslErrorEl.classList.add('d-none');
             }
 
-            // Show feedback with debug info
-            const totalChecks = isWildcard ? 3 : 2;
-            let sslOk = useAcmeDns ? acmeCnameVerified : status.acmeTxtFound;
-            const found = isWildcard
-                ? [status.aRecordFound, status.verifyTxtFound, sslOk].filter(Boolean).length
-                : [status.aRecordFound, status.verifyTxtFound].filter(Boolean).length;
+            // Show feedback
+            const totalChecks = 2; // A record + verify TXT (SSL is separate flow for wildcards)
+            const found = [status.aRecordFound, status.verifyTxtFound].filter(Boolean).length;
             let msg = `Checked: ${found}/${totalChecks} verified`;
-            // Don't show old ACME TXT errors in toast when using acme-dns
-            if (status.errorMessage && !(useAcmeDns && status.errorMessage.includes('_acme-challenge'))) {
+            if (status.errorMessage) {
                 msg += ` | ${status.errorMessage}`;
             }
             showToast(msg, found > 0 ? 'info' : 'warning');
@@ -523,14 +552,10 @@ async function checkStatus() {
         updateBadge('badge-a', status.aRecordFound);
         updateBadge('badge-verify', status.verifyTxtFound);
 
-        // For wildcard with acme-dns: check CNAME
-        if (isWildcard && useAcmeDns) {
-            const cnameOk = await checkAcmeCname();
-            updateBadge('badge-ssl', cnameOk);
-            updateProgress('progress-ssl', cnameOk);
-        } else if (isWildcard) {
-            updateBadge('badge-ssl', status.acmeTxtFound);
-            updateProgress('progress-ssl', status.acmeTxtFound);
+        // For wildcard: SSL badge shows pending until user completes two-phase flow
+        if (isWildcard) {
+            updateBadge('badge-ssl', status.sslReady);
+            updateProgress('progress-ssl', status.sslReady);
         } else {
             updateProgress('progress-ssl', status.aRecordFound && status.verifyTxtFound);
         }
@@ -538,15 +563,6 @@ async function checkStatus() {
         // Update progress
         updateProgress('progress-a', status.aRecordFound);
         updateProgress('progress-verify', status.verifyTxtFound);
-
-        // Show stale warning (legacy wildcard only)
-        const staleWarning = document.getElementById('stale-warning');
-        if (isWildcard && !useAcmeDns && status.acmeTxtStale && status.acmeTxtStaleValue) {
-            document.getElementById('stale-value').value = status.acmeTxtStaleValue;
-            staleWarning.classList.remove('d-none');
-        } else if (staleWarning) {
-            staleWarning.classList.add('d-none');
-        }
 
         // Check if complete
         if (status.sslReady) {
@@ -562,6 +578,7 @@ async function checkStatus() {
 // Start polling (unless already complete)
 if (initialSetupStep !== 'complete' && !initialSSLEnabled) {
     checkStatus();
+    checkPendingSSLToken(); // Check for pending SSL token
     pollInterval = setInterval(checkStatus, 30000);
 }
 </script>
