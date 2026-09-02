@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/botginx/botginx/modules/hosting/models"
+	"github.com/botginx/botginx/pkg/cloudpanel"
 	"github.com/botginx/botginx/pkg/crypto"
 	"github.com/jmoiron/sqlx"
 )
@@ -549,15 +550,71 @@ func (s *HostingService) UnsuspendAccount(id string) error {
 	return err
 }
 
-// DeleteAccount deletes a hosting account and its domains
+// DeleteAccount deletes a hosting account and cleans up on CloudPanel
 func (s *HostingService) DeleteAccount(id string) error {
-	// Delete domains first
-	_, err := s.db.Exec(`DELETE FROM hosting_domains WHERE account_id = $1`, id)
+	// Get account with server info
+	var account struct {
+		ID                     string  `db:"id"`
+		PanelUsername          string  `db:"panel_username"`
+		ServerID               *string `db:"server_id"`
+		ServerHostname         string  `db:"server_hostname"`
+		ServerPort             int     `db:"server_port"`
+		ServerUsername         string  `db:"server_username"`
+		ServerPasswordEnc      string  `db:"server_password_encrypted"`
+	}
+	err := s.db.Get(&account, `
+		SELECT a.id, a.panel_username, a.server_id,
+			COALESCE(s.hostname, '') as server_hostname,
+			COALESCE(s.port, 22) as server_port,
+			COALESCE(s.username, '') as server_username,
+			COALESCE(s.password_encrypted, '') as server_password_encrypted
+		FROM hosting_accounts a
+		LEFT JOIN hosting_servers s ON s.id = a.server_id
+		WHERE a.id = $1
+	`, id)
+	if err != nil {
+		return errors.New("account not found")
+	}
+
+	// Get domains for this account
+	var domains []string
+	s.db.Select(&domains, `SELECT domain FROM hosting_domains WHERE account_id = $1`, id)
+
+	// If linked to a server, clean up on CloudPanel
+	if account.ServerID != nil && account.ServerHostname != "" && account.ServerPasswordEnc != "" {
+		serverPassword, err := crypto.Decrypt(account.ServerPasswordEnc)
+		if err == nil {
+			client := cloudpanel.NewClient(account.ServerHostname, account.ServerPort, account.ServerUsername, serverPassword)
+			defer client.Close()
+
+			if err := client.Connect(); err == nil {
+				// Delete each domain/site on CloudPanel
+				for _, domain := range domains {
+					if err := client.DeleteSite(domain); err != nil {
+						// Log but don't fail - site might not exist
+						fmt.Printf("[hosting] warning: failed to delete site %s on CloudPanel: %v\n", domain, err)
+					}
+				}
+				// Delete the user on CloudPanel
+				if err := client.DeleteUser(account.PanelUsername); err != nil {
+					fmt.Printf("[hosting] warning: failed to delete user %s on CloudPanel: %v\n", account.PanelUsername, err)
+				}
+			}
+		}
+	}
+
+	// Decrement server account count if linked
+	if account.ServerID != nil {
+		s.db.Exec(`UPDATE hosting_servers SET current_accounts = GREATEST(current_accounts - 1, 0) WHERE id = $1`, *account.ServerID)
+	}
+
+	// Delete domains from our database
+	_, err = s.db.Exec(`DELETE FROM hosting_domains WHERE account_id = $1`, id)
 	if err != nil {
 		return err
 	}
 
-	// Delete the account
+	// Delete the account from our database
 	_, err = s.db.Exec(`DELETE FROM hosting_accounts WHERE id = $1`, id)
 	return err
 }
