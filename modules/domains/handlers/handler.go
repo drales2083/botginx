@@ -21,21 +21,10 @@ type Handler struct {
 	templates    *module.TemplateEngine
 }
 
-// canAccessDomain checks if the user can access a domain (owns it or is admin)
+// canAccessDomain checks if the user owns a domain
 func (h *Handler) canAccessDomain(r *http.Request, domain *models.Domain) bool {
-	user := ctx.GetUser(r)
-	if user == nil {
-		return false
-	}
-	// User owns the domain
-	if domain.UserID == user.ID {
-		return true
-	}
-	// Admin can access any domain
-	if user.IsAdmin() {
-		return true
-	}
-	return false
+	userID := ctx.GetUserID(r)
+	return domain.UserID == userID
 }
 
 func NewHandler(service *services.DomainService, templates *module.TemplateEngine) *Handler {
