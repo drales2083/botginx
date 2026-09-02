@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/botginx/botginx/modules/hosting/models"
 	"github.com/botginx/botginx/modules/hosting/services"
@@ -709,28 +710,37 @@ func (h *Handler) APIGetDomainStatus(w http.ResponseWriter, r *http.Request) {
 	// Get server IP for DNS check
 	serverIP := account.ServerHostname
 
-	// Check current DNS
-	dnsOK := false
-	isCloudflare := false
-	var currentIP string
+	// Check DNS by resolving the domain
 	ips, err := net.LookupHost(domain.Domain)
+	var currentIP string
+	dnsResolved := false
 	if err == nil && len(ips) > 0 {
 		currentIP = ips[0]
-		isCloudflare = isCloudflareIP(currentIP)
-		// DNS is OK if it points to our server OR is proxied through Cloudflare
-		dnsOK = currentIP == serverIP || isCloudflare
+		dnsResolved = true
 	}
 
+	directMatch := dnsResolved && currentIP == serverIP
+
+	// HTTP verification for proxied domains
+	httpReachable := false
+	if dnsResolved {
+		httpReachable = h.checkHTTPReachable(domain.Domain)
+	}
+
+	dnsOK := directMatch || httpReachable
+
 	h.json(w, http.StatusOK, map[string]interface{}{
-		"domain":       domain.Domain,
-		"dnsVerified":  domain.DNSVerified,
-		"dnsOK":        dnsOK,
-		"isCloudflare": isCloudflare,
-		"currentIP":    currentIP,
-		"expectedIP":   serverIP,
-		"sslEnabled":   domain.SSLEnabled,
-		"setupStatus":  domain.SetupStatus,
-		"sslError":     domain.SSLError,
+		"domain":      domain.Domain,
+		"dnsVerified": domain.DNSVerified,
+		"dnsOK":       dnsOK,
+		"directMatch": directMatch,
+		"httpOK":      httpReachable,
+		"isProxied":   dnsResolved && !directMatch && httpReachable,
+		"currentIP":   currentIP,
+		"expectedIP":  serverIP,
+		"sslEnabled":  domain.SSLEnabled,
+		"setupStatus": domain.SetupStatus,
+		"sslError":    domain.SSLError,
 	})
 }
 
@@ -750,17 +760,30 @@ func (h *Handler) APICheckDNS(w http.ResponseWriter, r *http.Request) {
 
 	serverIP := account.ServerHostname
 
-	// Check DNS
+	// Check DNS by resolving the domain
 	ips, err := net.LookupHost(domain.Domain)
-	dnsOK := false
-	isCloudflare := false
 	var currentIP string
+	dnsResolved := false
 	if err == nil && len(ips) > 0 {
 		currentIP = ips[0]
-		isCloudflare = isCloudflareIP(currentIP)
-		// DNS is OK if it points to our server OR is proxied through Cloudflare
-		dnsOK = currentIP == serverIP || isCloudflare
+		dnsResolved = true
 	}
+
+	// DNS is "OK" if it resolves AND matches our server
+	// For proxied domains (Cloudflare, etc.), IP won't match but HTTP verification will work
+	directMatch := dnsResolved && currentIP == serverIP
+
+	// HTTP verification: try to reach the domain and see if it connects
+	// This works for both direct and proxied domains
+	httpReachable := false
+	if dnsResolved {
+		httpReachable = h.checkHTTPReachable(domain.Domain)
+	}
+
+	// DNS is considered OK if either:
+	// 1. IP directly matches our server, OR
+	// 2. Domain is reachable via HTTP (works for CDN/proxy)
+	dnsOK := directMatch || httpReachable
 
 	// Update domain status
 	if dnsOK && !domain.DNSVerified {
@@ -768,32 +791,41 @@ func (h *Handler) APICheckDNS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{
-		"dnsOK":        dnsOK,
-		"isCloudflare": isCloudflare,
-		"currentIP":    currentIP,
-		"expectedIP":   serverIP,
+		"dnsOK":       dnsOK,
+		"directMatch": directMatch,
+		"httpOK":      httpReachable,
+		"currentIP":   currentIP,
+		"expectedIP":  serverIP,
+		"isProxied":   dnsResolved && !directMatch && httpReachable,
 	})
 }
 
-// isCloudflareIP checks if an IP address belongs to Cloudflare's network
-func isCloudflareIP(ip string) bool {
-	// Cloudflare IPv4 ranges (from https://www.cloudflare.com/ips-v4)
-	cloudflareRanges := []string{
-		"173.245.48.", "103.21.244.", "103.22.200.", "103.31.4.",
-		"141.101.", "108.162.", "190.93.", "188.114.",
-		"197.234.240.", "198.41.", "162.158.", "104.16.",
-		"104.17.", "104.18.", "104.19.", "104.20.",
-		"104.21.", "104.22.", "104.23.", "104.24.",
-		"104.25.", "104.26.", "104.27.", "172.64.",
-		"172.65.", "172.66.", "172.67.", "172.68.",
-		"172.69.", "172.70.", "172.71.",
+// checkHTTPReachable checks if a domain is reachable via HTTP and returns a valid response
+// This works regardless of whether the domain is behind a CDN/proxy
+func (h *Handler) checkHTTPReachable(domain string) bool {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 3 {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		},
 	}
-	for _, prefix := range cloudflareRanges {
-		if len(ip) >= len(prefix) && ip[:len(prefix)] == prefix {
-			return true
+
+	// Try HTTP first (most sites will redirect to HTTPS but that's fine)
+	resp, err := client.Get("http://" + domain)
+	if err != nil {
+		// Try HTTPS if HTTP fails
+		resp, err = client.Get("https://" + domain)
+		if err != nil {
+			return false
 		}
 	}
-	return false
+	defer resp.Body.Close()
+
+	// Any valid HTTP response (even 404) means the domain is reachable
+	return resp.StatusCode > 0
 }
 
 // APIEnableSSL enables SSL for a domain

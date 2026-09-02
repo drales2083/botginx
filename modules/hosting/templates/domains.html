@@ -228,14 +228,13 @@ async function updateDomainStatus(domainId, row) {
 
         // Update DNS column
         const dnsCell = row.querySelector('.dns-status');
-        if (data.isCloudflare) {
-            dnsCell.innerHTML = '<span class="badge text-bg-info"><i class="bi bi-cloud me-1"></i>Cloudflare</span>';
-            // Enable SSL button for Cloudflare (they handle SSL)
+        if (data.isProxied) {
+            // Domain is behind a CDN/proxy (Cloudflare, etc.) - detected via HTTP verification
+            dnsCell.innerHTML = '<span class="badge text-bg-info"><i class="bi bi-cloud me-1"></i>Proxied</span>';
             const sslBtn = row.querySelector('.btn-enable-ssl');
             if (sslBtn) sslBtn.disabled = false;
         } else if (data.dnsOK || data.dnsVerified) {
             dnsCell.innerHTML = '<span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Verified</span>';
-            // Enable SSL button
             const sslBtn = row.querySelector('.btn-enable-ssl');
             if (sslBtn) sslBtn.disabled = false;
         }
@@ -276,14 +275,19 @@ document.addEventListener('click', async (e) => {
         const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainId}/check-dns`, { method: 'POST' });
         const data = await res.json().catch(() => ({}));
 
-        if (data.isCloudflare) {
-            showToast('Domain is proxied through Cloudflare. SSL is handled by Cloudflare.', 'info');
+        if (data.isProxied) {
+            // Domain is behind a CDN/proxy - we verified via HTTP
+            showToast('Domain is reachable via proxy/CDN. You can enable SSL.', 'info');
             await updateDomainStatus(domainId, row);
         } else if (data.dnsOK) {
             showToast('DNS verified! You can now enable SSL.', 'success');
             await updateDomainStatus(domainId, row);
+        } else if (data.httpOK) {
+            // HTTP works but IP doesn't match - might be proxy
+            showToast('Domain is reachable. You can try enabling SSL.', 'info');
+            await updateDomainStatus(domainId, row);
         } else {
-            showToast(`DNS not ready. Current IP: ${data.currentIP || 'not found'}. Expected: ${data.expectedIP}`, 'warning');
+            showToast(`DNS not ready. Domain not reachable yet. Expected IP: ${data.expectedIP}`, 'warning');
         }
 
         btn.disabled = false;
