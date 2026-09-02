@@ -25,7 +25,7 @@ set -euo pipefail
 # ----------------------------------------------------------------------------
 
 # Panel name (replaces "CloudPanel" in UI)
-PANEL_NAME="${PANEL_NAME:-GuardHost}"
+PANEL_NAME="${PANEL_NAME:-GuardBotPanel}"
 
 # Primary color (hex, used for buttons, links, accents)
 PRIMARY_COLOR="${PRIMARY_COLOR:-#dc3545}"  # Red to match botginx theme
@@ -101,17 +101,14 @@ create_custom_css() {
 
     cat > "$BRANDING_DIR/css/custom-branding.css" <<EOF
 /*
- * CloudPanel Custom Branding
+ * CloudPanel Custom Branding - ${PANEL_NAME}
  * Generated: $(date)
- * Panel Name: ${PANEL_NAME}
  */
 
-/* Primary color overrides */
+/* Primary color - Red theme */
 :root {
-    --clp-primary: ${PRIMARY_COLOR} !important;
-    --clp-primary-hover: ${PRIMARY_COLOR}dd !important;
     --bs-primary: ${PRIMARY_COLOR} !important;
-    --bs-primary-rgb: $(echo "${PRIMARY_COLOR}" | sed 's/#//' | sed 's/\(..\)\(..\)\(..\)/\1, \2, \3/' | xargs -I{} printf "%d, %d, %d" 0x{}) !important;
+    --bs-primary-rgb: 220, 53, 69 !important;
 }
 
 /* Button colors */
@@ -122,21 +119,31 @@ create_custom_css() {
 
 .btn-primary:hover,
 .btn-primary:focus {
-    background-color: ${PRIMARY_COLOR}dd !important;
-    border-color: ${PRIMARY_COLOR}dd !important;
+    background-color: #bb2d3b !important;
+    border-color: #b02a37 !important;
+}
+
+.btn-outline-primary {
+    color: ${PRIMARY_COLOR} !important;
+    border-color: ${PRIMARY_COLOR} !important;
+}
+
+.btn-outline-primary:hover {
+    background-color: ${PRIMARY_COLOR} !important;
+    color: #fff !important;
 }
 
 /* Link colors */
-a {
+a:not(.btn) {
     color: ${PRIMARY_COLOR};
 }
 
-a:hover {
-    color: ${PRIMARY_COLOR}dd;
+a:not(.btn):hover {
+    color: #bb2d3b;
 }
 
-/* Sidebar active item */
-.sidebar .nav-link.active {
+/* Sidebar active */
+.nav-link.active {
     background-color: ${PRIMARY_COLOR} !important;
 }
 
@@ -145,45 +152,27 @@ a:hover {
     background-color: ${PRIMARY_COLOR} !important;
 }
 
-/* Replace CloudPanel text with custom name */
-.navbar-brand,
-.login-logo,
-.sidebar-brand {
+/* Replace CloudPanel branding with ${PANEL_NAME} */
+.navbar-brand img,
+.login-logo img,
+img[alt*="CloudPanel"],
+img[src*="cloudpanel"] {
+    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40'%3E%3Ctext x='10' y='28' font-family='Arial,sans-serif' font-size='20' font-weight='bold' fill='%23dc3545'%3E${PANEL_NAME}%3C/text%3E%3C/svg%3E") !important;
+    height: 32px !important;
+}
+
+/* Hide CloudPanel text in navbar */
+.navbar-brand span,
+.sidebar-brand span {
     font-size: 0 !important;
 }
 
-.navbar-brand::after,
-.login-logo::after,
-.sidebar-brand::after {
+.navbar-brand span::after,
+.sidebar-brand span::after {
     content: "${PANEL_NAME}" !important;
     font-size: 1.25rem !important;
     font-weight: 600 !important;
-}
-
-/* Hide original logo text if needed */
-.logo-text {
-    visibility: hidden;
-    position: relative;
-}
-
-.logo-text::after {
-    content: "${PANEL_NAME}";
-    visibility: visible;
-    position: absolute;
-    left: 0;
-}
-
-/* Footer branding */
-.footer-copyright {
-    visibility: hidden;
-    position: relative;
-}
-
-.footer-copyright::after {
-    content: "Powered by ${PANEL_NAME}";
-    visibility: visible;
-    position: absolute;
-    left: 0;
+    color: ${PRIMARY_COLOR} !important;
 }
 EOF
 
@@ -204,24 +193,73 @@ create_dark_theme_css() {
 
     cat >> "$BRANDING_DIR/css/custom-branding.css" <<'EOF'
 
-/* Force dark theme as default */
+/* Dark theme as default */
 @media (prefers-color-scheme: light) {
     :root {
-        color-scheme: dark !important;
+        color-scheme: dark;
     }
 }
 
-/* Dark theme colors (applied always) */
-html:not([data-bs-theme="light"]) body,
-html[data-bs-theme="dark"] body,
-body {
-    --bs-body-bg: #1a1d21 !important;
-    --bs-body-color: #e9ecef !important;
+/* Force dark theme */
+html:not([data-bs-theme="light"]) {
+    --bs-body-bg: #212529;
+    --bs-body-color: #dee2e6;
 }
 
-/* Ensure dark theme is default */
-html {
-    data-bs-theme: dark;
+body {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* Dark sidebar */
+.sidebar {
+    background-color: #1a1d21 !important;
+}
+
+/* Dark cards */
+.card {
+    background-color: #2b3035 !important;
+    border-color: #373b3e !important;
+}
+
+/* Dark tables */
+.table {
+    --bs-table-bg: #2b3035;
+    --bs-table-color: #dee2e6;
+    --bs-table-border-color: #373b3e;
+}
+
+/* Dark inputs */
+.form-control,
+.form-select {
+    background-color: #2b3035 !important;
+    border-color: #495057 !important;
+    color: #dee2e6 !important;
+}
+
+/* Dark dropdowns */
+.dropdown-menu {
+    background-color: #2b3035 !important;
+    border-color: #495057 !important;
+}
+
+.dropdown-item {
+    color: #dee2e6 !important;
+}
+
+.dropdown-item:hover {
+    background-color: #373b3e !important;
+}
+
+/* Dark modals */
+.modal-content {
+    background-color: #2b3035 !important;
+    border-color: #495057 !important;
+}
+
+.modal-header,
+.modal-footer {
+    border-color: #495057 !important;
 }
 EOF
 
@@ -236,21 +274,17 @@ inject_css() {
     info "Injecting custom CSS into CloudPanel"
 
     # Copy CSS to public directory
-    cp "$BRANDING_DIR/css/custom-branding.css" "$PUBLIC_DIR/css/" 2>/dev/null || {
-        mkdir -p "$PUBLIC_DIR/css"
-        cp "$BRANDING_DIR/css/custom-branding.css" "$PUBLIC_DIR/css/"
-    }
+    mkdir -p "$PUBLIC_DIR/css"
+    cp "$BRANDING_DIR/css/custom-branding.css" "$PUBLIC_DIR/css/"
 
-    # Find the main layout file(s) and inject CSS link
+    # CloudPanel v2 layout files
     local layouts=(
-        "$CLOUDPANEL_DIR/files/templates/layout/app.html.twig"
-        "$CLOUDPANEL_DIR/files/templates/layout/base.html.twig"
-        "$CLOUDPANEL_DIR/files/templates/layout.html.twig"
-        "$CLOUDPANEL_DIR/templates/layout/app.html.twig"
-        "$CLOUDPANEL_DIR/templates/base.html.twig"
+        "$CLOUDPANEL_DIR/files/templates/Frontend/layout.html.twig"
+        "$CLOUDPANEL_DIR/files/templates/Frontend/Login/layout.html.twig"
+        "$CLOUDPANEL_DIR/files/templates/Admin/layout.html.twig"
     )
 
-    local css_link='<link rel="stylesheet" href="/css/custom-branding.css?v='$(date +%s)'">'
+    local css_link='<link rel="stylesheet" href="/css/custom-branding.css">'
     local injected=false
 
     for layout in "${layouts[@]}"; do
@@ -264,7 +298,7 @@ inject_css() {
 
             # Inject before </head>
             if grep -q "</head>" "$layout"; then
-                sed -i "s|</head>|    ${css_link}\n</head>|" "$layout"
+                sed -i "s|</head>|    ${css_link}\n    </head>|" "$layout"
                 ok "CSS injected into $layout"
                 injected=true
             fi
@@ -300,12 +334,14 @@ setup_logos() {
     for dir in "${logo_dirs[@]}"; do
         if [[ -d "$dir" ]]; then
             # Backup originals
-            for logo in "$dir"/logo*.{png,svg} "$dir"/cloudpanel*.{png,svg} 2>/dev/null; do
+            shopt -s nullglob
+            for logo in "$dir"/logo*.png "$dir"/logo*.svg "$dir"/cloudpanel*.png "$dir"/cloudpanel*.svg; do
                 if [[ -f "$logo" && ! -f "${logo}.original" ]]; then
                     cp "$logo" "${logo}.original"
                     log "backed up: $logo"
                 fi
             done
+            shopt -u nullglob
         fi
     done
 
