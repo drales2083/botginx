@@ -380,18 +380,6 @@ install_dependencies() {
     # nginx and certbot
     remote_sudo "apt-get install -y -qq nginx certbot python3-certbot-nginx"
 
-    # lego (for wildcard SSL via DNS-01 challenge)
-    log "installing lego ACME client"
-    remote_sudo "test -x /usr/local/bin/lego || {
-        cd /tmp
-        LEGO_VERSION='v4.14.2'
-        curl -fsSL \"https://github.com/go-acme/lego/releases/download/\${LEGO_VERSION}/lego_\${LEGO_VERSION}_linux_amd64.tar.gz\" -o lego.tar.gz
-        tar xzf lego.tar.gz lego
-        mv lego /usr/local/bin/
-        chmod +x /usr/local/bin/lego
-        rm -f lego.tar.gz
-    }"
-
     # Enable services
     remote_sudo "systemctl enable postgresql nginx cron"
     remote_sudo "systemctl start postgresql nginx cron"
@@ -650,55 +638,18 @@ usage() {
     sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
-# ----------------------------------------------------------------------------
-# Install lego on Deploy VPS (for wildcard SSL)
-# ----------------------------------------------------------------------------
-install_lego_deploy_vps() {
-    if [[ -z "${DEPLOY_VPS_IP:-}" ]]; then
-        die "DEPLOY_VPS_IP not set in deploy.env"
-    fi
-
-    local ssh_opts="-o StrictHostKeyChecking=no -o ConnectTimeout=10"
-    local ssh_port="${DEPLOY_VPS_PORT:-22}"
-    local ssh_user="${DEPLOY_VPS_USER:-root}"
-
-    info "Installing lego on Deploy VPS (${DEPLOY_VPS_IP})"
-
-    if [[ -n "${DEPLOY_VPS_PASSWORD:-}" ]]; then
-        command -v sshpass >/dev/null || die "sshpass required for password auth: apt install sshpass"
-        sshpass -p "${DEPLOY_VPS_PASSWORD}" ssh ${ssh_opts} -p "${ssh_port}" "${ssh_user}@${DEPLOY_VPS_IP}" "
-            test -x /usr/local/bin/lego && { echo 'lego already installed:'; lego --version; exit 0; }
-            cd /tmp
-            LEGO_VERSION='v4.14.2'
-            echo 'Downloading lego...'
-            curl -fsSL \"https://github.com/go-acme/lego/releases/download/\${LEGO_VERSION}/lego_\${LEGO_VERSION}_linux_amd64.tar.gz\" -o lego.tar.gz
-            tar xzf lego.tar.gz lego
-            mv lego /usr/local/bin/
-            chmod +x /usr/local/bin/lego
-            rm -f lego.tar.gz
-            echo 'lego installed:'
-            lego --version
-        "
-    else
-        die "DEPLOY_VPS_PASSWORD not set"
-    fi
-
-    ok "lego installed on Deploy VPS"
-}
-
 main() {
     local action=deploy
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --setup)       action=setup ;;
-            --rollback)    action=rollback ;;
-            --status)      action=status ;;
-            --logs)        action=logs ;;
-            --install-lego) action=install_lego ;;
-            --dry-run)     DRY_RUN=true ;;
-            -h|--help)     usage; exit 0 ;;
-            *)             die "unknown option: $1 (try --help)" ;;
+            --setup)    action=setup ;;
+            --rollback) action=rollback ;;
+            --status)   action=status ;;
+            --logs)     action=logs ;;
+            --dry-run)  DRY_RUN=true ;;
+            -h|--help)  usage; exit 0 ;;
+            *)          die "unknown option: $1 (try --help)" ;;
         esac
         shift
     done
@@ -706,12 +657,11 @@ main() {
     [[ "$DRY_RUN" == true ]] && warn "dry run -- nothing will be changed"
 
     case "$action" in
-        deploy)       deploy ;;
-        setup)        setup ;;
-        rollback)     rollback ;;
-        status)       status ;;
-        logs)         follow_logs ;;
-        install_lego) install_lego_deploy_vps ;;
+        deploy)   deploy ;;
+        setup)    setup ;;
+        rollback) rollback ;;
+        status)   status ;;
+        logs)     follow_logs ;;
     esac
 }
 
