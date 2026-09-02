@@ -27,7 +27,7 @@ func (lb *LoadBalancer) PickServer() (*models.HostingServer, error) {
 		SELECT * FROM hosting_servers
 		WHERE is_active = TRUE
 		  AND current_accounts < max_accounts
-		  AND type = 'cloudpanel'
+		  AND COALESCE(type, 'cloudpanel') = 'cloudpanel'
 		ORDER BY current_accounts ASC
 	`)
 	if err != nil {

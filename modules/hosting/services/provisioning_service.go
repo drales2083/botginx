@@ -3,6 +3,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -30,6 +31,8 @@ func NewProvisioningService(db *sqlx.DB) *ProvisioningService {
 // This should be called after PurchaseHosting creates the pending account.
 // It picks an available server, creates the site, and updates the account status.
 func (p *ProvisioningService) ProvisionAccount(accountID string) error {
+	log.Printf("[provisioning] starting provisioning for account %s", accountID)
+
 	// Get account details
 	var account struct {
 		ID                     string  `db:"id"`
@@ -40,11 +43,13 @@ func (p *ProvisioningService) ProvisionAccount(accountID string) error {
 	}
 	err := p.db.Get(&account, `SELECT id, panel_username, panel_password_encrypted, server_id, status FROM hosting_accounts WHERE id = $1`, accountID)
 	if err != nil {
-		return errors.New("account not found")
+		log.Printf("[provisioning] account not found: %v", err)
+		return errors.New("account not found: " + err.Error())
 	}
 
 	// Skip if already provisioned
 	if account.ServerID != nil && account.Status == string(models.AccountStatusActive) {
+		log.Printf("[provisioning] account %s already provisioned, skipping", accountID)
 		return nil
 	}
 
@@ -52,35 +57,43 @@ func (p *ProvisioningService) ProvisionAccount(accountID string) error {
 	var domain string
 	err = p.db.Get(&domain, `SELECT domain FROM hosting_domains WHERE account_id = $1 LIMIT 1`, accountID)
 	if err != nil {
-		return errors.New("domain not found for account")
+		log.Printf("[provisioning] domain not found for account: %v", err)
+		return errors.New("domain not found for account: " + err.Error())
 	}
+	log.Printf("[provisioning] provisioning domain: %s", domain)
 
 	// Pick an available server
 	server, err := p.lb.PickServer()
 	if err != nil {
+		log.Printf("[provisioning] no server available: %v", err)
 		return err
 	}
+	log.Printf("[provisioning] selected server: %s (%s)", server.Name, server.Hostname)
 
 	// Decrypt server credentials
 	serverPassword, err := crypto.Decrypt(server.PasswordEncrypted)
 	if err != nil {
-		return errors.New("failed to decrypt server credentials")
+		log.Printf("[provisioning] failed to decrypt server credentials: %v", err)
+		return errors.New("failed to decrypt server credentials - check encryption key")
 	}
 
 	// Decrypt panel password
 	panelPassword, err := crypto.Decrypt(account.PanelPasswordEncrypted)
 	if err != nil {
-		return errors.New("failed to decrypt panel credentials")
+		log.Printf("[provisioning] failed to decrypt panel credentials: %v", err)
+		return errors.New("failed to decrypt panel credentials - check encryption key")
 	}
 
 	// Connect to CloudPanel
+	log.Printf("[provisioning] connecting to %s:%d as %s", server.Hostname, server.Port, server.Username)
 	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, serverPassword)
 	defer client.Close()
 
 	if err := client.Connect(); err != nil {
-		log.Printf("[provisioning] failed to connect to server %s: %v", server.Name, err)
-		return errors.New("failed to connect to hosting server")
+		log.Printf("[provisioning] SSH connection failed to %s: %v", server.Name, err)
+		return fmt.Errorf("SSH connection failed to %s: %v", server.Hostname, err)
 	}
+	log.Printf("[provisioning] SSH connected successfully")
 
 	// Create the site on CloudPanel
 	// This creates: site user, vhost, PHP-FPM pool
