@@ -2,6 +2,7 @@ package services
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -939,7 +940,7 @@ func (s *HostingService) GetDomainSettings(domainID string) (*models.HostingDoma
 	return &settings, nil
 }
 
-// UpdateDomainSettings updates antibot settings for a domain
+// UpdateDomainSettings updates antibot settings for a domain and pushes to server
 func (s *HostingService) UpdateDomainSettings(domainID string, input models.UpdateDomainSettingsInput) error {
 	countryJSON, _ := json.Marshal(input.CountryList)
 	deviceJSON, _ := json.Marshal(input.DeviceList)
@@ -953,7 +954,82 @@ func (s *HostingService) UpdateDomainSettings(domainID string, input models.Upda
 	`, domainID, input.CountryMode, string(countryJSON), input.DeviceMode, string(deviceJSON),
 		input.BlockBots, input.BlockTor, input.BlockProxy, input.BlockDatacenter, input.BlockHeadless,
 		input.MinBehaviorScore, input.RedirectOnBlock, time.Now())
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Push settings to server in background
+	go s.pushDomainSettingsToServer(domainID)
+	return nil
+}
+
+// pushDomainSettingsToServer pushes domain settings to the CloudPanel server
+func (s *HostingService) pushDomainSettingsToServer(domainID string) {
+	// Get domain info
+	domain, err := s.GetDomain(domainID)
+	if err != nil {
+		return
+	}
+
+	// Get account to find server
+	account, err := s.GetAccount(domain.AccountID)
+	if err != nil || account.ServerID == nil {
+		return
+	}
+
+	// Get server SSH credentials
+	server, err := s.GetServer(*account.ServerID)
+	if err != nil {
+		return
+	}
+
+	// Get settings
+	settings, err := s.GetDomainSettings(domainID)
+	if err != nil {
+		return
+	}
+
+	// Decrypt server password
+	password, err := crypto.Decrypt(server.PasswordEncrypted)
+	if err != nil {
+		return
+	}
+
+	// Build settings JSON for botection
+	settingsData := map[string]interface{}{
+		"link_id":            domainID,
+		"user_id":            account.UserID,
+		"host":               domain.Domain,
+		"block_bots":         settings.BlockBots,
+		"block_tor":          settings.BlockTor,
+		"block_proxy":        settings.BlockProxy,
+		"block_datacenter":   settings.BlockDatacenter,
+		"block_headless":     settings.BlockHeadless,
+		"country_mode":       settings.CountryMode,
+		"country_list":       settings.CountryList,
+		"device_mode":        settings.DeviceMode,
+		"device_list":        settings.DeviceList,
+		"min_behavior_score": settings.MinBehaviorScore,
+		"redirect_on_block":  settings.RedirectOnBlock,
+		"updated_at":         time.Now().UTC().Format(time.RFC3339),
+	}
+	jsonData, _ := json.MarshalIndent(settingsData, "", "  ")
+
+	// Create CloudPanel client (SSH)
+	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, password)
+	if err := client.Connect(); err != nil {
+		return
+	}
+	defer client.Close()
+
+	// Write settings file using cat heredoc
+	remotePath := fmt.Sprintf("/etc/botection/links/%s.json", domainID)
+	client.Execute("mkdir -p /etc/botection/links")
+
+	// Write file via echo + base64 decode (safe for any content)
+	encoded := base64.StdEncoding.EncodeToString(jsonData)
+	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, remotePath)
+	client.Execute(writeCmd)
 }
 
 // GetDomainSettingsByHost retrieves antibot settings by domain hostname (for callback API)
