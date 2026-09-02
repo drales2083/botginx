@@ -6,14 +6,72 @@
         {{template "hosting_user_nav" .}}
     </div>
     <div class="col-md-9">
+        <!-- Quick Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card bg-primary bg-opacity-10 border-0">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-globe display-6 text-primary"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h4 class="mb-0" id="totalDomains">{{len .Domains}}</h4>
+                                <small class="text-muted">Total Domains</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-success bg-opacity-10 border-0">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-shield-lock display-6 text-success"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h4 class="mb-0" id="sslEnabled">{{range $i, $d := .Domains}}{{if $d.SSLEnabled}}{{if $i}}{{end}}{{end}}{{end}}0</h4>
+                                <small class="text-muted">SSL Active</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info bg-opacity-10 border-0">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-check-circle display-6 text-info"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h4 class="mb-0" id="dnsVerified">0</h4>
+                                <small class="text-muted">DNS Verified</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Domains</h5>
-                {{if $canWrite}}
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDomainModal">
-                    <i class="bi bi-plus-lg me-1"></i>Add Domain
-                </button>
-                {{end}}
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Domains</h5>
+                    <div class="d-flex gap-2">
+                        <!-- Quick Search -->
+                        <div class="input-group input-group-sm" style="width: 200px;">
+                            <input type="text" class="form-control" id="domainSearch" placeholder="Search domains...">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        </div>
+                        {{if $canWrite}}
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDomainModal">
+                            <i class="bi bi-plus-lg me-1"></i>Add Domain
+                        </button>
+                        {{end}}
+                    </div>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -202,9 +260,41 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteModal = new bootstrap.Modal(document.getElementById('deleteDomainModal'));
     addModal = new bootstrap.Modal(document.getElementById('addDomainModal'));
 
+    // Calculate and update stats
+    updateStats();
+
+    // Quick search functionality
+    const searchInput = document.getElementById('domainSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('tr[data-domain-id]');
+            rows.forEach(row => {
+                const domain = row.querySelector('td:first-child a')?.textContent.toLowerCase() || '';
+                row.style.display = domain.includes(query) ? '' : 'none';
+            });
+        });
+    }
+
     // Auto-refresh status every 10 seconds for domains in progress
     setInterval(checkPendingDomains, 10000);
 });
+
+// Calculate stats from table data
+function updateStats() {
+    const rows = document.querySelectorAll('tr[data-domain-id]');
+    let sslCount = 0, dnsCount = 0;
+
+    rows.forEach(row => {
+        const sslCell = row.querySelector('.ssl-status');
+        const dnsCell = row.querySelector('.dns-status');
+        if (sslCell && sslCell.textContent.includes('Enabled')) sslCount++;
+        if (dnsCell && (dnsCell.textContent.includes('Verified') || dnsCell.textContent.includes('Proxied'))) dnsCount++;
+    });
+
+    document.getElementById('sslEnabled').textContent = sslCount;
+    document.getElementById('dnsVerified').textContent = dnsCount;
+}
 
 // Check status of pending domains
 async function checkPendingDomains() {
@@ -256,6 +346,9 @@ async function updateDomainStatus(domainId, row) {
         } else if (data.sslError) {
             statusCell.innerHTML = '<span class="badge text-bg-danger" title="' + data.sslError + '"><i class="bi bi-x-circle me-1"></i>SSL Error</span>';
         }
+
+        // Update stats after any status change
+        updateStats();
     } catch (e) {
         console.error('Status check failed:', e);
     }
