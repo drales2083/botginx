@@ -200,14 +200,9 @@ footer ul li:last-child::before {
     font-size: 0.875rem;
 }
 
-/* Change page title "Dashboard" to "Bullet Proof Hosting" */
-.page-title h1 {
-    font-size: 0;
-}
-
+/* Append " | Bullet Proof Hosting" to page title */
 .page-title h1::after {
-    content: "Bullet Proof Hosting";
-    font-size: 1.5rem;
+    content: " | Bullet Proof Hosting";
 }
 EOF
 
