@@ -396,6 +396,24 @@ func (h *Handler) APICreateServer(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusCreated, map[string]interface{}{"success": true, "server": server})
 }
 
+// APIUpdateServer updates an existing hosting server
+func (h *Handler) APIUpdateServer(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var input models.UpdateServerInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.UpdateServer(id, input); err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
 // APIToggleServer enables or disables a server
 func (h *Handler) APIToggleServer(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")

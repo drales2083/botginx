@@ -151,6 +151,7 @@ func (m *Module) AdminRoutes() chi.Router {
 	r.Route("/api", func(r chi.Router) {
 		// Servers
 		r.Post("/servers", m.handler.APICreateServer)
+		r.Put("/servers/{id}", m.handler.APIUpdateServer)
 		r.Put("/servers/{id}/toggle", m.handler.APIToggleServer)
 		r.Delete("/servers/{id}", m.handler.APIDeleteServer)
 

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -97,6 +98,69 @@ func (s *HostingService) CreateServer(input models.CreateServerInput) (*models.H
 // ToggleServer enables or disables a server
 func (s *HostingService) ToggleServer(id string, active bool) error {
 	_, err := s.db.Exec(`UPDATE hosting_servers SET is_active = $1 WHERE id = $2`, active, id)
+	return err
+}
+
+// UpdateServer updates an existing server
+func (s *HostingService) UpdateServer(id string, input models.UpdateServerInput) error {
+	// Build update query dynamically
+	updates := []string{}
+	args := []interface{}{}
+	argIdx := 1
+
+	if input.Name != "" {
+		updates = append(updates, fmt.Sprintf("name = $%d", argIdx))
+		args = append(args, input.Name)
+		argIdx++
+	}
+	if input.Type != "" {
+		updates = append(updates, fmt.Sprintf("type = $%d", argIdx))
+		args = append(args, input.Type)
+		argIdx++
+	}
+	if input.Hostname != "" {
+		updates = append(updates, fmt.Sprintf("hostname = $%d", argIdx))
+		args = append(args, input.Hostname)
+		argIdx++
+	}
+	if input.PanelURL != "" {
+		updates = append(updates, fmt.Sprintf("panel_url = $%d", argIdx))
+		args = append(args, input.PanelURL)
+		argIdx++
+	}
+	if input.Port > 0 {
+		updates = append(updates, fmt.Sprintf("port = $%d", argIdx))
+		args = append(args, input.Port)
+		argIdx++
+	}
+	if input.Username != "" {
+		updates = append(updates, fmt.Sprintf("username = $%d", argIdx))
+		args = append(args, input.Username)
+		argIdx++
+	}
+	if input.Password != "" {
+		encPass, err := crypto.Encrypt(input.Password)
+		if err != nil {
+			return err
+		}
+		updates = append(updates, fmt.Sprintf("password_encrypted = $%d", argIdx))
+		args = append(args, encPass)
+		argIdx++
+	}
+	if input.MaxAccounts > 0 {
+		updates = append(updates, fmt.Sprintf("max_accounts = $%d", argIdx))
+		args = append(args, input.MaxAccounts)
+		argIdx++
+	}
+
+	if len(updates) == 0 {
+		return nil
+	}
+
+	query := fmt.Sprintf("UPDATE hosting_servers SET %s WHERE id = $%d", strings.Join(updates, ", "), argIdx)
+	args = append(args, id)
+
+	_, err := s.db.Exec(query, args...)
 	return err
 }
 

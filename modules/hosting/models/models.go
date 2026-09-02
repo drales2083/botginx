@@ -135,6 +135,18 @@ type CreateServerInput struct {
 	MaxAccounts int        `json:"maxAccounts"`
 }
 
+// UpdateServerInput is the input for updating a hosting server
+type UpdateServerInput struct {
+	Name        string     `json:"name"`
+	Type        ServerType `json:"type"`
+	Hostname    string     `json:"hostname"`
+	PanelURL    string     `json:"panelUrl"`
+	Port        int        `json:"port"`
+	Username    string     `json:"username"`
+	Password    string     `json:"password"` // empty = keep current
+	MaxAccounts int        `json:"maxAccounts"`
+}
+
 // CreatePackageInput is the input for creating a hosting package
 type CreatePackageInput struct {
 	Name            string  `json:"name" validate:"required"`
