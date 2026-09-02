@@ -55,6 +55,16 @@ func (s *HostingService) GetServer(id string) (*models.HostingServer, error) {
 	return &server, err
 }
 
+// GetServerAntibotPassword returns the decrypted antibot dashboard password
+func (s *HostingService) GetServerAntibotPassword(serverID string) (string, error) {
+	var encPass string
+	err := s.db.Get(&encPass, `SELECT antibot_password_encrypted FROM hosting_servers WHERE id = $1`, serverID)
+	if err != nil || encPass == "" {
+		return "", err
+	}
+	return crypto.Decrypt(encPass)
+}
+
 // CreateServer creates a new hosting server
 func (s *HostingService) CreateServer(input models.CreateServerInput) (*models.HostingServer, error) {
 	encPass, err := crypto.Encrypt(input.Password)
@@ -75,23 +85,31 @@ func (s *HostingService) CreateServer(input models.CreateServerInput) (*models.H
 		serverType = models.ServerTypeCloudPanel
 	}
 
+	// Encrypt antibot password if provided
+	var encAntibotPass string
+	if input.AntibotPassword != "" {
+		encAntibotPass, _ = crypto.Encrypt(input.AntibotPassword)
+	}
+
 	server := &models.HostingServer{
-		ID:                s.generateID(),
-		Name:              input.Name,
-		Type:              serverType,
-		Hostname:          input.Hostname,
-		PanelURL:          input.PanelURL,
-		Port:              port,
-		Username:          input.Username,
-		PasswordEncrypted: encPass,
-		MaxAccounts:       maxAccounts,
-		IsActive:          true,
-		CreatedAt:         time.Now(),
+		ID:                       s.generateID(),
+		Name:                     input.Name,
+		Type:                     serverType,
+		Hostname:                 input.Hostname,
+		PanelURL:                 input.PanelURL,
+		Port:                     port,
+		Username:                 input.Username,
+		PasswordEncrypted:        encPass,
+		MaxAccounts:              maxAccounts,
+		IsActive:                 true,
+		CreatedAt:                time.Now(),
+		AntibotDashboardURL:      input.AntibotDashboardURL,
+		AntibotPasswordEncrypted: encAntibotPass,
 	}
 
 	_, err = s.db.NamedExec(`
-		INSERT INTO hosting_servers (id, name, type, hostname, panel_url, port, username, password_encrypted, max_accounts, is_active, created_at)
-		VALUES (:id, :name, :type, :hostname, :panel_url, :port, :username, :password_encrypted, :max_accounts, :is_active, :created_at)
+		INSERT INTO hosting_servers (id, name, type, hostname, panel_url, port, username, password_encrypted, max_accounts, is_active, created_at, antibot_dashboard_url, antibot_password_encrypted)
+		VALUES (:id, :name, :type, :hostname, :panel_url, :port, :username, :password_encrypted, :max_accounts, :is_active, :created_at, :antibot_dashboard_url, :antibot_password_encrypted)
 	`, server)
 	return server, err
 }
@@ -151,6 +169,20 @@ func (s *HostingService) UpdateServer(id string, input models.UpdateServerInput)
 	if input.MaxAccounts > 0 {
 		updates = append(updates, fmt.Sprintf("max_accounts = $%d", argIdx))
 		args = append(args, input.MaxAccounts)
+		argIdx++
+	}
+	if input.AntibotDashboardURL != "" {
+		updates = append(updates, fmt.Sprintf("antibot_dashboard_url = $%d", argIdx))
+		args = append(args, input.AntibotDashboardURL)
+		argIdx++
+	}
+	if input.AntibotPassword != "" {
+		encPass, err := crypto.Encrypt(input.AntibotPassword)
+		if err != nil {
+			return err
+		}
+		updates = append(updates, fmt.Sprintf("antibot_password_encrypted = $%d", argIdx))
+		args = append(args, encPass)
 		argIdx++
 	}
 

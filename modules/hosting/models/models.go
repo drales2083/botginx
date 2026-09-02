@@ -37,6 +37,10 @@ type HostingServer struct {
 	CurrentAccounts   int        `db:"current_accounts" json:"currentAccounts"`
 	IsActive          bool       `db:"is_active" json:"isActive"`
 	CreatedAt         time.Time  `db:"created_at" json:"createdAt"`
+
+	// Antibot dashboard (for user domain settings)
+	AntibotDashboardURL       string `db:"antibot_dashboard_url" json:"antibotDashboardUrl"`
+	AntibotPasswordEncrypted  string `db:"antibot_password_encrypted" json:"-"`
 }
 
 // HostingPackage represents a hosting plan with resource limits
@@ -145,6 +149,10 @@ type CreateServerInput struct {
 	Username    string     `json:"username" validate:"required"`
 	Password    string     `json:"password" validate:"required"`
 	MaxAccounts int        `json:"maxAccounts"`
+
+	// Antibot dashboard (where users manage domain settings)
+	AntibotDashboardURL string `json:"antibotDashboardUrl"`
+	AntibotPassword     string `json:"antibotPassword"`
 }
 
 // UpdateServerInput is the input for updating a hosting server
@@ -157,6 +165,10 @@ type UpdateServerInput struct {
 	Username    string     `json:"username"`
 	Password    string     `json:"password"` // empty = keep current
 	MaxAccounts int        `json:"maxAccounts"`
+
+	// Antibot dashboard
+	AntibotDashboardURL string `json:"antibotDashboardUrl"`
+	AntibotPassword     string `json:"antibotPassword"` // empty = keep current
 }
 
 // CreatePackageInput is the input for creating a hosting package

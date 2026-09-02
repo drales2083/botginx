@@ -16,128 +16,86 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Domain Protection Settings</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>Domain Protection Settings</h5>
             </div>
             <div class="card-body">
-                <form id="settings-form">
-                    <h6 class="text-muted mb-3">Country Filtering</h6>
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label">Mode</label>
-                            <select class="form-select" id="countryMode" name="countryMode">
-                                <option value="all" {{if eq .Settings.CountryMode "all"}}selected{{end}}>All Countries</option>
-                                <option value="whitelist" {{if eq .Settings.CountryMode "whitelist"}}selected{{end}}>Whitelist Only</option>
-                                <option value="blacklist" {{if eq .Settings.CountryMode "blacklist"}}selected{{end}}>Blacklist</option>
-                            </select>
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label">Countries (comma-separated ISO codes)</label>
-                            <input type="text" class="form-control" id="countryList" placeholder="US, GB, DE, FR"
-                                value="{{range $i, $c := .Settings.CountryList}}{{if $i}}, {{end}}{{$c}}{{end}}">
-                            <small class="text-muted">Example: US, GB, DE, FR, CA</small>
-                        </div>
-                    </div>
+                {{if .AntibotDashboardURL}}
+                <div class="alert alert-info mb-4">
+                    <h5 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Settings Managed via Antibot Dashboard</h5>
+                    <p class="mb-0">
+                        Domain protection settings for <strong>{{.Domain.Domain}}</strong> are managed through the Antibot Dashboard.
+                        This gives you real-time control over bot protection, country filtering, and traffic settings.
+                    </p>
+                </div>
 
-                    <h6 class="text-muted mb-3">Device Filtering</h6>
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label">Mode</label>
-                            <select class="form-select" id="deviceMode" name="deviceMode">
-                                <option value="all" {{if eq .Settings.DeviceMode "all"}}selected{{end}}>All Devices</option>
-                                <option value="whitelist" {{if eq .Settings.DeviceMode "whitelist"}}selected{{end}}>Whitelist Only</option>
-                                <option value="blacklist" {{if eq .Settings.DeviceMode "blacklist"}}selected{{end}}>Blacklist</option>
-                            </select>
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label">Devices</label>
-                            <div class="d-flex gap-3">
-                                <div class="form-check">
-                                    <input class="form-check-input device-check" type="checkbox" value="desktop" id="device-desktop">
-                                    <label class="form-check-label" for="device-desktop">
-                                        <i class="bi bi-display me-1"></i> Desktop
-                                    </label>
+                <div class="card bg-dark mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0 text-white"><i class="bi bi-box-arrow-up-right me-2"></i>Access Your Dashboard</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <label class="form-label text-muted small">Dashboard URL</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control bg-secondary text-white border-0" id="dashboard-url"
+                                        value="{{.AntibotDashboardURL}}" readonly>
+                                    <button class="btn btn-outline-light" type="button" onclick="copyField('dashboard-url')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input device-check" type="checkbox" value="mobile" id="device-mobile">
-                                    <label class="form-check-label" for="device-mobile">
-                                        <i class="bi bi-phone me-1"></i> Mobile
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input device-check" type="checkbox" value="tablet" id="device-tablet">
-                                    <label class="form-check-label" for="device-tablet">
-                                        <i class="bi bi-tablet me-1"></i> Tablet
-                                    </label>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control bg-secondary text-white border-0" id="dashboard-password"
+                                        value="{{.AntibotPassword}}" readonly>
+                                    <button class="btn btn-outline-light" type="button" onclick="togglePassword()">
+                                        <i class="bi bi-eye" id="password-icon"></i>
+                                    </button>
+                                    <button class="btn btn-outline-light" type="button" onclick="copyField('dashboard-password')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <h6 class="text-muted mb-3">Bot & Threat Protection</h6>
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="blockBots" {{if .Settings.BlockBots}}checked{{end}}>
-                                <label class="form-check-label" for="blockBots">
-                                    <i class="bi bi-robot me-1"></i> Block known bots
-                                </label>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="blockTor" {{if .Settings.BlockTor}}checked{{end}}>
-                                <label class="form-check-label" for="blockTor">
-                                    <i class="bi bi-shield-exclamation me-1"></i> Block Tor exit nodes
-                                </label>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="blockProxy" {{if .Settings.BlockProxy}}checked{{end}}>
-                                <label class="form-check-label" for="blockProxy">
-                                    <i class="bi bi-incognito me-1"></i> Block proxy/VPN
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="blockDatacenter" {{if .Settings.BlockDatacenter}}checked{{end}}>
-                                <label class="form-check-label" for="blockDatacenter">
-                                    <i class="bi bi-hdd-rack me-1"></i> Block datacenter IPs
-                                </label>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="blockHeadless" {{if .Settings.BlockHeadless}}checked{{end}}>
-                                <label class="form-check-label" for="blockHeadless">
-                                    <i class="bi bi-window-x me-1"></i> Block headless browsers
-                                </label>
-                            </div>
+                        <div class="mt-4 text-center">
+                            <a href="{{.AntibotDashboardURL}}" target="_blank" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-up-right me-2"></i>Open Antibot Dashboard
+                            </a>
                         </div>
                     </div>
+                </div>
 
-                    <h6 class="text-muted mb-3">Behavior Score Threshold</h6>
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label">Minimum behavior score (0-100)</label>
-                            <input type="number" class="form-control" id="minBehaviorScore" min="0" max="100"
-                                value="{{.Settings.MinBehaviorScore}}" placeholder="0">
-                            <small class="text-muted">Block visitors with behavior scores below this value. 0 = disabled.</small>
-                        </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0"><i class="bi bi-list-check me-2"></i>How to Login</h6>
                     </div>
+                    <div class="card-body">
+                        <ol class="mb-0">
+                            <li class="mb-2">Click the <strong>Open Antibot Dashboard</strong> button above</li>
+                            <li class="mb-2">Enter the password shown above</li>
+                            <li class="mb-2">Find your domain <code>{{.Domain.Domain}}</code> in the list</li>
+                            <li>Click <strong>Settings</strong> to configure protection</li>
+                        </ol>
+                    </div>
+                </div>
 
-                    <h6 class="text-muted mb-3">Blocked Visitor Redirect</h6>
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <label class="form-label">Redirect URL (when visitor is blocked)</label>
-                            <input type="url" class="form-control" id="redirectOnBlock"
-                                placeholder="https://www.google.com" value="{{.Settings.RedirectOnBlock}}">
-                            <small class="text-muted">Where to send blocked visitors</small>
-                        </div>
-                    </div>
+                {{else}}
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Dashboard Not Configured</h5>
+                    <p class="mb-0">
+                        The Antibot Dashboard has not been configured for this server yet.
+                        Please contact support to get access to domain protection settings.
+                    </p>
+                </div>
+                {{end}}
 
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg me-1"></i> Save Settings
-                        </button>
-                        <a href="/user/hosting/{{.Account.ID}}/domains" class="btn btn-secondary">Cancel</a>
-                    </div>
-                </form>
+                <div class="mt-4">
+                    <a href="/user/hosting/{{.Account.ID}}/domains" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Domains
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -145,116 +103,60 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
-                <h6 class="card-title mb-0">How It Works</h6>
-            </div>
-            <div class="card-body">
-                <p class="small text-muted mb-3">
-                    <strong>Whitelist:</strong> Only visitors from selected countries/devices are allowed.
-                </p>
-                <p class="small text-muted mb-3">
-                    <strong>Blacklist:</strong> Visitors from selected countries/devices are blocked.
-                </p>
-                <p class="small text-muted mb-0">
-                    <strong>Bot Protection:</strong> Blocks known bots, Tor, VPNs, datacenters, and headless browsers. Enabled by default for bulletproof hosting.
-                </p>
-            </div>
-        </div>
-
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="card-title mb-0">Behavior Score</h6>
-            </div>
-            <div class="card-body small text-muted">
-                <p class="mb-2">Every visitor gets a behavior score from 0 to 100 based on how human-like they act.</p>
-                <p class="mb-2"><strong>What affects the score:</strong></p>
-                <ul class="mb-2 ps-3">
-                    <li>Mouse movements and clicks</li>
-                    <li>Scroll patterns</li>
-                    <li>Time on page</li>
-                    <li>Browser fingerprint</li>
-                </ul>
-                <p class="mb-2"><strong>Recommended thresholds:</strong></p>
-                <ul class="mb-0 ps-3">
-                    <li><code>0</code> - Disabled (default)</li>
-                    <li><code>20-30</code> - Block obvious bots</li>
-                    <li><code>40-50</code> - Moderate filtering</li>
-                    <li><code>60+</code> - Strict (may block some real users)</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="card-title mb-0">Common Country Codes</h6>
+                <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>What You Can Configure</h6>
             </div>
             <div class="card-body small">
-                <code>US</code> - United States<br>
-                <code>GB</code> - United Kingdom<br>
-                <code>DE</code> - Germany<br>
-                <code>FR</code> - France<br>
-                <code>CA</code> - Canada<br>
-                <code>AU</code> - Australia<br>
-                <code>RU</code> - Russia<br>
-                <code>BR</code> - Brazil<br>
-                <code>IN</code> - India<br>
-                <code>JP</code> - Japan
+                <ul class="mb-0">
+                    <li class="mb-2"><strong>Country Filtering</strong> - Allow or block traffic by country</li>
+                    <li class="mb-2"><strong>Device Filtering</strong> - Filter by desktop, mobile, tablet</li>
+                    <li class="mb-2"><strong>Bot Protection</strong> - Block bots, crawlers, scrapers</li>
+                    <li class="mb-2"><strong>Tor/VPN Blocking</strong> - Block anonymous traffic</li>
+                    <li class="mb-2"><strong>Datacenter IPs</strong> - Block cloud/hosting provider IPs</li>
+                    <li class="mb-2"><strong>Headless Browsers</strong> - Block automation tools</li>
+                    <li class="mb-2"><strong>Behavior Score</strong> - Block based on human-likeness</li>
+                    <li><strong>Block Redirect</strong> - Where to send blocked visitors</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0"><i class="bi bi-graph-up me-2"></i>Live Statistics</h6>
+            </div>
+            <div class="card-body small text-muted">
+                <p class="mb-2">The Antibot Dashboard also shows:</p>
+                <ul class="mb-0">
+                    <li>Real-time traffic stats</li>
+                    <li>Recent blocked requests</li>
+                    <li>Block reasons breakdown</li>
+                    <li>Traffic patterns over time</li>
+                </ul>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-const accountID = '{{.Account.ID}}';
-const domainID = '{{.Settings.DomainID}}';
+function copyField(id) {
+    const input = document.getElementById(id);
+    const originalType = input.type;
+    input.type = 'text';
+    input.select();
+    document.execCommand('copy');
+    input.type = originalType;
+    showToast('Copied to clipboard', 'success');
+}
 
-// Initialize device checkboxes from settings
-const deviceList = {{json .Settings.DeviceList}};
-deviceList.forEach(d => {
-    const checkbox = document.getElementById('device-' + d);
-    if (checkbox) checkbox.checked = true;
-});
-
-document.getElementById('settings-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const countryInput = document.getElementById('countryList').value;
-    const countryList = countryInput ? countryInput.split(',').map(c => c.trim().toUpperCase()).filter(c => c) : [];
-
-    const deviceList = Array.from(document.querySelectorAll('.device-check:checked')).map(c => c.value);
-
-    const data = {
-        countryMode: document.getElementById('countryMode').value,
-        countryList: countryList,
-        deviceMode: document.getElementById('deviceMode').value,
-        deviceList: deviceList,
-        blockBots: document.getElementById('blockBots').checked,
-        blockTor: document.getElementById('blockTor').checked,
-        blockProxy: document.getElementById('blockProxy').checked,
-        blockDatacenter: document.getElementById('blockDatacenter').checked,
-        blockHeadless: document.getElementById('blockHeadless').checked,
-        minBehaviorScore: parseInt(document.getElementById('minBehaviorScore').value) || 0,
-        redirectOnBlock: document.getElementById('redirectOnBlock').value
-    };
-
-    const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
-
-    const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainID}/settings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-
-    if (res.ok) {
-        flashToast('Domain settings saved', 'success');
-        window.location.href = '/user/hosting/' + accountID + '/domains';
+function togglePassword() {
+    const input = document.getElementById('dashboard-password');
+    const icon = document.getElementById('password-icon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
     } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Failed to save settings', 'danger');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save Settings';
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
     }
-});
+}
 </script>
 {{end}}

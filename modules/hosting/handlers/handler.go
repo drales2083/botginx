@@ -246,17 +246,30 @@ func (h *Handler) UserDomainSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	domainID := chi.URLParam(r, "domainID")
-	settings, err := h.service.GetDomainSettings(domainID)
+
+	// Get domain info
+	domain, err := h.service.GetDomain(domainID)
 	if err != nil {
 		http.Error(w, "Domain not found", http.StatusNotFound)
 		return
 	}
 
+	// Get antibot dashboard info from server
+	var antibotDashboardURL, antibotPassword string
+	if account.ServerID != nil {
+		server, err := h.service.GetServer(*account.ServerID)
+		if err == nil && server.AntibotDashboardURL != "" {
+			antibotDashboardURL = server.AntibotDashboardURL
+			antibotPassword, _ = h.service.GetServerAntibotPassword(*account.ServerID)
+		}
+	}
+
 	module.RenderUserSection(w, r, h.templates, "hosting:domain_settings.html", map[string]interface{}{
-		"Title":    "Protection Settings",
-		"Account":  account,
-		"Settings": settings,
-		"DomainID": domainID,
+		"Title":               "Protection Settings",
+		"Account":             account,
+		"Domain":              domain,
+		"AntibotDashboardURL": antibotDashboardURL,
+		"AntibotPassword":     antibotPassword,
 	})
 }
 
