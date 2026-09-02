@@ -456,9 +456,11 @@ async function manualCheck() {
             showSetupComplete();
             showToast('Domain setup complete!', 'success');
         } else {
-            // Show SSL error if present
+            // Show SSL error if present (but not old ACME TXT errors when using acme-dns)
             const sslErrorEl = document.getElementById('ssl-error');
-            if (status.errorMessage && status.allRecordsFound) {
+            const hasRelevantError = status.errorMessage && status.allRecordsFound &&
+                !(useAcmeDns && status.errorMessage.includes('_acme-challenge'));
+            if (hasRelevantError) {
                 document.getElementById('ssl-error-message').textContent = status.errorMessage;
                 sslErrorEl.classList.remove('d-none');
             } else {
@@ -472,7 +474,8 @@ async function manualCheck() {
                 ? [status.aRecordFound, status.verifyTxtFound, sslOk].filter(Boolean).length
                 : [status.aRecordFound, status.verifyTxtFound].filter(Boolean).length;
             let msg = `Checked: ${found}/${totalChecks} verified`;
-            if (status.errorMessage) {
+            // Don't show old ACME TXT errors in toast when using acme-dns
+            if (status.errorMessage && !(useAcmeDns && status.errorMessage.includes('_acme-challenge'))) {
                 msg += ` | ${status.errorMessage}`;
             }
             showToast(msg, found > 0 ? 'info' : 'warning');

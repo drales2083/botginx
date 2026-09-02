@@ -615,9 +615,24 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 		status.ErrorMessage = fmt.Sprintf("Verify check: %s (looking for %s at _guardbot-verify.%s)", verifyErr.Error(), domain.VerifyToken, baseDomain)
 	}
 
-	// Check ACME TXT only for wildcard domains (non-wildcard uses HTTP-01 challenge)
+	// Check SSL readiness for wildcard domains
 	if domain.IsWildcard {
-		if domain.AcmeToken != nil && *domain.AcmeToken != "" {
+		// Prefer acme-dns CNAME delegation (100% reliable)
+		if domain.AcmeSubdomain != nil && domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
+			// Using acme-dns - check CNAME instead of ACME TXT
+			status.AcmeTXTFound = domain.AcmeCnameVerified
+			if !domain.AcmeCnameVerified {
+				// Check if CNAME is now configured
+				if h.verification.CheckAcmeCnameRecord(domain.Name, *domain.AcmeFulldomain) {
+					status.AcmeTXTFound = true
+					verified := true
+					h.service.Update(id, models.UpdateDomainInput{AcmeCnameVerified: &verified})
+				}
+			}
+			// Clear old ACME token from response (not needed with acme-dns)
+			status.AcmeToken = ""
+		} else if domain.AcmeToken != nil && *domain.AcmeToken != "" {
+			// Legacy: using ACME TXT (fallback)
 			status.AcmeToken = *domain.AcmeToken
 			status.AcmeTXTFound = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
 
@@ -653,7 +668,11 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 
 	if status.AllRecordsFound && !domain.SSLEnabled &&
 		(domain.SetupStep == models.SetupStepDNSWaiting || (domain.SetupStep == models.SetupStepSSLGenerating && canRetrySSL)) {
-		go h.completeExternalSetup(domain)
+		// Refresh domain from DB to get updated CNAME verification status
+		freshDomain, _ := h.service.Get(id)
+		if freshDomain != nil {
+			go h.completeExternalSetup(freshDomain)
+		}
 		if domain.SetupStep == models.SetupStepDNSWaiting {
 			step := models.SetupStepSSLGenerating
 			h.service.Update(id, models.UpdateDomainInput{SetupStep: &step})
@@ -668,8 +687,16 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Include SSL error if present
+	// But suppress old ACME TXT errors when using acme-dns (they're no longer relevant)
 	if domain.SSLError != nil && *domain.SSLError != "" {
-		status.ErrorMessage = *domain.SSLError
+		// When using acme-dns, clear old errors mentioning ACME TXT
+		if domain.AcmeSubdomain != nil && strings.Contains(*domain.SSLError, "_acme-challenge") {
+			// Clear the stale error from database
+			emptyErr := ""
+			h.service.Update(id, models.UpdateDomainInput{SSLError: &emptyErr})
+		} else {
+			status.ErrorMessage = *domain.SSLError
+		}
 	}
 
 	h.json(w, http.StatusOK, status)
