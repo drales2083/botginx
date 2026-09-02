@@ -8,6 +8,10 @@
 # Traffic flow (after botection is installed):
 #   Internet → :443 (nginx) → :8080 (botection) → :8081 (CloudPanel backends)
 #
+# Settings/Analytics flow:
+#   Botginx → SSH → /etc/botection/links/{domain}.json (settings push)
+#   Botginx → SSH → curl 127.0.0.1:8080/api/stats (analytics fetch)
+#
 # Usage:
 #   # From local machine
 #   ssh root@SERVER 'bash -s' < deploy-cloudpanel.sh
@@ -19,9 +23,7 @@
 #   1. Add the server to botginx: Admin → Hosting → Servers
 #   2. Deploy botection:
 #      SERVER_TYPE=cloudpanel ssh root@SERVER 'bash -s' < antibot/packaging/deploy.sh
-#   3. Deploy antibot-dashboard (optional):
-#      See antibot-dashboard/scripts/deploy.sh
-#   4. Configure botection callback URL in /var/www/antibot/config/config.yaml
+#   3. Configure botection callback URL in /var/www/antibot/config/config.yaml
 
 set -euo pipefail
 
@@ -236,6 +238,7 @@ HOOKEOF
     echo "cloudpanel" > /var/www/cloudpanel/.server-type
 
     # Export backend port for hook script
+    mkdir -p /etc/botection
     echo "CLOUDPANEL_BACKEND_PORT=${CLOUDPANEL_BACKEND_PORT}" > /etc/botection/cloudpanel.env
 
     ok "nginx configured for botection (backend port: ${CLOUDPANEL_BACKEND_PORT})"
@@ -247,13 +250,15 @@ HOOKEOF
 }
 
 # ----------------------------------------------------------------------------
-# Prepare settings directory for botection
+# Prepare botection directories for botginx integration
 # ----------------------------------------------------------------------------
 
-prepare_settings_dir() {
-    info "Preparing domain settings directory"
+prepare_botection_dirs() {
+    info "Preparing botection directories"
 
-    mkdir -p /etc/botection/domains
+    # Create directories for botginx integration
+    mkdir -p /etc/botection/links    # Domain settings pushed via SSH
+    mkdir -p /etc/botection/config   # Botection configuration
 
     # Create default settings template
     cat > "/etc/botection/default-settings.json" <<'EOF'
@@ -272,61 +277,13 @@ prepare_settings_dir() {
 }
 EOF
 
-    ok "settings directory prepared at /etc/botection/domains"
-}
+    # Set permissions (botection runs as root typically)
+    chmod 755 /etc/botection
+    chmod 755 /etc/botection/links
 
-# ----------------------------------------------------------------------------
-# Prepare antibot-dashboard directory
-# ----------------------------------------------------------------------------
-
-prepare_dashboard_dir() {
-    info "Preparing antibot-dashboard directory"
-
-    local dashboard_dir="/home/clp/antibot-dashboard"
-    mkdir -p "$dashboard_dir"/{templates,static}
-
-    # Create placeholder for deployment
-    cat > "$dashboard_dir/README.txt" <<'EOF'
-Antibot Dashboard Directory
-
-Deploy the antibot-dashboard application here using:
-  cd /path/to/antibot-dashboard
-  ./scripts/deploy.sh
-
-Or manually:
-  1. Build: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o antibot-dashboard ./cmd/dashboard
-  2. Upload: scp antibot-dashboard templates/ static/ root@SERVER:/home/clp/antibot-dashboard/
-  3. Configure systemd service
-  4. Create CloudPanel reverse proxy site pointing to localhost:8888
-EOF
-
-    # Create systemd service template
-    cat > /etc/systemd/system/antibot-dashboard.service <<'EOF'
-[Unit]
-Description=Antibot Dashboard
-After=network.target
-
-[Service]
-Type=simple
-User=clp
-Group=clp
-WorkingDirectory=/home/clp/antibot-dashboard
-ExecStart=/home/clp/antibot-dashboard/antibot-dashboard
-Restart=always
-RestartSec=5
-
-# Environment
-Environment=PORT=8888
-Environment=BOTGINX_URL=http://127.0.0.1:3001
-Environment=SESSION_SECRET=change-this-to-random-32-char-string
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    chown -R clp:clp "$dashboard_dir" 2>/dev/null || true
-
-    ok "antibot-dashboard directory prepared at $dashboard_dir"
+    ok "botection directories prepared"
+    log "  /etc/botection/links/ - domain settings (pushed from botginx)"
+    log "  /etc/botection/config/ - botection configuration"
 }
 
 # ----------------------------------------------------------------------------
@@ -347,6 +304,8 @@ print_summary() {
     echo "  (Create admin account on first visit)"
     echo
     echo "Add to Botginx (Admin → Hosting → Servers):"
+    echo "  Name:     CloudPanel-${ip}"
+    echo "  Type:     CloudPanel"
     echo "  Hostname: ${ip}"
     echo "  Port:     22"
     echo "  Username: root"
@@ -373,21 +332,24 @@ print_summary() {
     echo "   callback:"
     echo "     url: https://YOUR_BOTGINX_PANEL/api/botection/should-block"
     echo
-    echo "5. (Optional) Deploy antibot-dashboard:"
-    echo "   - Upload antibot-dashboard binary to /home/clp/antibot-dashboard/"
-    echo "   - Update /etc/systemd/system/antibot-dashboard.service with BOTGINX_URL"
-    echo "   - systemctl enable --now antibot-dashboard"
-    echo "   - In CloudPanel: Create Reverse Proxy site → antibot.yourdomain.com → http://127.0.0.1:8888"
-    echo
-    echo "6. Route external traffic through botection:"
+    echo "5. Route external traffic through botection:"
     echo "   - Cloudflare/nginx on 443 → botection on ${BOTECTION_PORT}"
     echo "   - Botection proxies to CloudPanel nginx on ${CLOUDPANEL_BACKEND_PORT}"
     echo
-    echo "Domain Settings:"
-    echo "  Each domain's bot settings stored in botginx database"
-    echo "  Managed via: Hosting → Account → Domain → Settings"
-    echo "  Or via antibot-dashboard (if deployed)"
-    echo "  Botection fetches settings via callback API"
+    echo "=========================================="
+    printf '%s How It Works %s\n' "$BLUE" "$RESET"
+    echo "=========================================="
+    echo
+    echo "Domain Settings (managed from botginx):"
+    echo "  - Users configure settings at: Hosting → Domain → Settings"
+    echo "  - Botginx pushes settings via SSH to: /etc/botection/links/{domain}.json"
+    echo "  - Botection reads settings and enforces rules"
+    echo
+    echo "Analytics (fetched by botginx):"
+    echo "  - Botginx fetches stats via SSH: curl 127.0.0.1:8080/api/stats"
+    echo "  - Displayed in: Hosting → Domain → Settings (Analytics tab)"
+    echo
+    echo "No separate antibot-dashboard needed - all features in botginx."
     echo
 }
 
@@ -403,8 +365,7 @@ main() {
     preflight
     install_cloudpanel
     configure_nginx_botection
-    prepare_settings_dir
-    prepare_dashboard_dir
+    prepare_botection_dirs
     print_summary
 }
 
