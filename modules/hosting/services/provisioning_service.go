@@ -104,6 +104,14 @@ func (p *ProvisioningService) ProvisionAccount(accountID string) error {
 		return errors.New("failed to create site on server: " + err.Error())
 	}
 
+	// Create CloudPanel panel user so they can login to web interface
+	email := "user@" + domain
+	log.Printf("[provisioning] creating panel user %s for site %s", account.PanelUsername, domain)
+	if err := client.AddPanelUser(account.PanelUsername, panelPassword, email, domain); err != nil {
+		log.Printf("[provisioning] warning: failed to create panel user: %v (site was created successfully)", err)
+		// Don't fail - site is created, panel user can be added manually
+	}
+
 	// Update account with server link and active status
 	_, err = p.db.Exec(`
 		UPDATE hosting_accounts

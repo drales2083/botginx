@@ -47,15 +47,14 @@ type UserStats struct {
 	Suspended bool   `json:"suspended"`
 }
 
-// AddUser creates a new CloudPanel user account.
-// username: system username for the new account
+// AddPanelUser creates a new CloudPanel panel user who can login to the web interface.
+// username: panel username
 // password: password for the account
-// email: contact email address (optional in CloudPanel)
-func (c *Client) AddUser(username, password, email string) error {
-	// CloudPanel creates users via site creation typically
-	// For SSH/FTP user: clpctl user:add --userName=X --password=X --siteUser=X
-	cmd := fmt.Sprintf("clpctl user:add --userName=%s --password=%s",
-		shellEscape(username), shellEscape(password))
+// email: contact email address
+// sites: comma-separated list of sites this user can manage
+func (c *Client) AddPanelUser(username, password, email, sites string) error {
+	cmd := fmt.Sprintf("clpctl user:add --userName=%s --email=%s --firstName='Site' --lastName='User' --password=%s --role='user' --sites=%s --timezone='UTC' --status='1'",
+		shellEscape(username), shellEscape(email), shellEscape(password), shellEscape(sites))
 	_, err := c.Execute(cmd)
 	return err
 }
