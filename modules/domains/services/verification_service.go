@@ -1079,3 +1079,333 @@ func (s *VerificationService) GetLiveAcmeToken(domain string) (string, error) {
 
 	return strings.TrimSpace(token), nil
 }
+
+// LegoChallenge holds the ACME challenge info from lego
+type LegoChallenge struct {
+	Token     string `json:"token"`
+	Domain    string `json:"domain"`
+	TXTRecord string `json:"txt_record"` // _acme-challenge.domain
+}
+
+// EnsureLegoInstalled installs lego on the server if not present
+func (s *VerificationService) EnsureLegoInstalled() error {
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Check if lego is installed
+	checkCmd := "which lego >/dev/null 2>&1 && lego --version | head -1"
+	if out, err := client.Run(checkCmd); err == nil && strings.Contains(out, "lego") {
+		return nil // Already installed
+	}
+
+	// Install lego
+	installCmd := `
+cd /tmp
+LEGO_VERSION="v4.14.2"
+curl -fsSL "https://github.com/go-acme/lego/releases/download/${LEGO_VERSION}/lego_${LEGO_VERSION}_linux_amd64.tar.gz" -o lego.tar.gz
+tar xzf lego.tar.gz lego
+mv lego /usr/local/bin/
+chmod +x /usr/local/bin/lego
+rm -f lego.tar.gz
+lego --version
+`
+	if _, err := client.Run(installCmd); err != nil {
+		return fmt.Errorf("failed to install lego: %w", err)
+	}
+
+	return nil
+}
+
+// LegoStartChallenge starts the ACME DNS-01 challenge and returns the token
+// The token is valid until LegoCompleteChallenge is called or ~7 days pass
+func (s *VerificationService) LegoStartChallenge(domain, email string) (*LegoChallenge, error) {
+	server, err := s.getServer()
+	if err != nil {
+		return nil, fmt.Errorf("no deploy server available")
+	}
+
+	baseDomain := GetBaseDomain(domain)
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return nil, fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Ensure lego is installed
+	if err := s.EnsureLegoInstalled(); err != nil {
+		return nil, err
+	}
+
+	// Check if cert already exists
+	checkExisting := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "EXISTS"`, baseDomain)
+	if out, _ := client.Run(checkExisting); strings.Contains(out, "EXISTS") {
+		return nil, fmt.Errorf("SSL certificate already exists for %s", baseDomain)
+	}
+
+	if email == "" {
+		email = "admin@" + baseDomain
+	}
+
+	// Create lego data directory
+	legoDir := fmt.Sprintf("/root/.lego-%s", baseDomain)
+	client.Run(fmt.Sprintf("mkdir -p %s", legoDir))
+
+	// Create manual DNS hook that captures the token
+	hookScript := fmt.Sprintf(`cat > /tmp/lego-dns-hook-%s.sh << 'HOOKEOF'
+#!/bin/bash
+# This hook captures the ACME challenge token
+# Called by lego with: LEGO_DOMAIN, LEGO_TOKEN, LEGO_DNS_VALUE
+
+echo "$LEGO_DNS_VALUE" > /tmp/lego-token-%s.txt
+echo "DOMAIN=$LEGO_DOMAIN" >> /tmp/lego-challenge-%s.txt
+echo "TOKEN=$LEGO_TOKEN" >> /tmp/lego-challenge-%s.txt
+echo "DNS_VALUE=$LEGO_DNS_VALUE" >> /tmp/lego-challenge-%s.txt
+
+# Signal that token is ready
+echo "READY" > /tmp/lego-status-%s.txt
+
+# Wait for user to add DNS (poll for completion signal)
+for i in $(seq 1 4320); do  # 12 hours max (4320 * 10s)
+    if [ -f /tmp/lego-continue-%s.txt ]; then
+        rm -f /tmp/lego-continue-%s.txt
+        exit 0
+    fi
+    sleep 10
+done
+exit 1
+HOOKEOF
+chmod +x /tmp/lego-dns-hook-%s.sh`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+	client.Run(hookScript)
+
+	// Clear previous state
+	client.Run(fmt.Sprintf(`rm -f /tmp/lego-token-%s.txt /tmp/lego-status-%s.txt /tmp/lego-continue-%s.txt /tmp/lego-challenge-%s.txt`, baseDomain, baseDomain, baseDomain, baseDomain))
+
+	// Start lego in background with manual DNS hook
+	legoCmd := fmt.Sprintf(`nohup lego --accept-tos --email="%s" \
+		--domains="*.%s" --domains="%s" \
+		--dns manual \
+		--dns.manual.script=/tmp/lego-dns-hook-%s.sh \
+		--path=%s \
+		run > /tmp/lego-output-%s.txt 2>&1 &
+echo $!`, email, baseDomain, baseDomain, baseDomain, legoDir, baseDomain)
+
+	pidOut, err := client.Run(legoCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start lego: %w", err)
+	}
+
+	// Save PID for later
+	pid := strings.TrimSpace(pidOut)
+	client.Run(fmt.Sprintf(`echo "%s" > /tmp/lego-pid-%s.txt`, pid, baseDomain))
+
+	// Wait for token to be captured (up to 30 seconds)
+	for i := 0; i < 30; i++ {
+		time.Sleep(1 * time.Second)
+		statusCmd := fmt.Sprintf(`cat /tmp/lego-status-%s.txt 2>/dev/null || echo ""`, baseDomain)
+		status, _ := client.Run(statusCmd)
+		if strings.Contains(status, "READY") {
+			break
+		}
+	}
+
+	// Read the captured token
+	tokenCmd := fmt.Sprintf(`cat /tmp/lego-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
+	token, _ := client.Run(tokenCmd)
+	token = strings.TrimSpace(token)
+
+	if token == "" {
+		// Check lego output for errors
+		outputCmd := fmt.Sprintf(`cat /tmp/lego-output-%s.txt 2>/dev/null | tail -20`, baseDomain)
+		output, _ := client.Run(outputCmd)
+		return nil, fmt.Errorf("failed to get ACME token: %s", output)
+	}
+
+	return &LegoChallenge{
+		Token:     token,
+		Domain:    baseDomain,
+		TXTRecord: "_acme-challenge." + baseDomain,
+	}, nil
+}
+
+// LegoCompleteChallenge signals lego to continue after DNS is configured
+func (s *VerificationService) LegoCompleteChallenge(domain string) error {
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
+	}
+
+	baseDomain := GetBaseDomain(domain)
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Check if lego process is still running
+	pidCmd := fmt.Sprintf(`cat /tmp/lego-pid-%s.txt 2>/dev/null || echo ""`, baseDomain)
+	pid, _ := client.Run(pidCmd)
+	pid = strings.TrimSpace(pid)
+
+	if pid == "" {
+		return fmt.Errorf("no pending SSL challenge found for %s", baseDomain)
+	}
+
+	// Check if process exists
+	checkPid := fmt.Sprintf(`ps -p %s >/dev/null 2>&1 && echo "RUNNING" || echo "STOPPED"`, pid)
+	status, _ := client.Run(checkPid)
+
+	if !strings.Contains(status, "RUNNING") {
+		// Check if cert was already created
+		checkCert := fmt.Sprintf(`test -f /root/.lego-%s/certificates/%s.crt && echo "EXISTS"`, baseDomain, baseDomain)
+		if out, _ := client.Run(checkCert); strings.Contains(out, "EXISTS") {
+			// Copy cert to standard location and setup
+			return s.installLegoCert(client, baseDomain)
+		}
+		return fmt.Errorf("SSL challenge expired or failed for %s", baseDomain)
+	}
+
+	// Signal lego to continue
+	signalCmd := fmt.Sprintf(`echo "GO" > /tmp/lego-continue-%s.txt`, baseDomain)
+	client.Run(signalCmd)
+
+	// Wait for lego to complete (up to 2 minutes)
+	for i := 0; i < 24; i++ {
+		time.Sleep(5 * time.Second)
+
+		// Check if cert was created
+		checkCert := fmt.Sprintf(`test -f /root/.lego-%s/certificates/%s.crt && echo "EXISTS"`, baseDomain, baseDomain)
+		if out, _ := client.Run(checkCert); strings.Contains(out, "EXISTS") {
+			return s.installLegoCert(client, baseDomain)
+		}
+
+		// Check if process is still running
+		checkPid := fmt.Sprintf(`ps -p %s >/dev/null 2>&1 && echo "RUNNING" || echo "STOPPED"`, pid)
+		status, _ := client.Run(checkPid)
+		if strings.Contains(status, "STOPPED") {
+			// Process ended - check for errors
+			outputCmd := fmt.Sprintf(`cat /tmp/lego-output-%s.txt 2>/dev/null | tail -30`, baseDomain)
+			output, _ := client.Run(outputCmd)
+			if strings.Contains(output, "error") || strings.Contains(output, "Error") {
+				return fmt.Errorf("SSL generation failed: %s", output)
+			}
+			break
+		}
+	}
+
+	// Final check for cert
+	checkCert := fmt.Sprintf(`test -f /root/.lego-%s/certificates/%s.crt && echo "EXISTS"`, baseDomain, baseDomain)
+	if out, _ := client.Run(checkCert); strings.Contains(out, "EXISTS") {
+		return s.installLegoCert(client, baseDomain)
+	}
+
+	return fmt.Errorf("SSL generation timed out for %s", baseDomain)
+}
+
+// installLegoCert copies lego cert to Let's Encrypt location and reloads nginx
+func (s *VerificationService) installLegoCert(client *sshexec.Client, baseDomain string) error {
+	legoDir := fmt.Sprintf("/root/.lego-%s", baseDomain)
+	letsencryptDir := fmt.Sprintf("/etc/letsencrypt/live/%s", baseDomain)
+
+	installCmd := fmt.Sprintf(`
+mkdir -p %s
+cp %s/certificates/%s.crt %s/fullchain.pem
+cp %s/certificates/%s.key %s/privkey.pem
+chmod 600 %s/privkey.pem
+nginx -t && systemctl reload nginx 2>/dev/null || true
+echo "SUCCESS"
+`, letsencryptDir, legoDir, baseDomain, letsencryptDir, legoDir, baseDomain, letsencryptDir, letsencryptDir)
+
+	out, err := client.Run(installCmd)
+	if err != nil || !strings.Contains(out, "SUCCESS") {
+		return fmt.Errorf("failed to install certificate: %v", err)
+	}
+
+	// Cleanup temp files
+	client.Run(fmt.Sprintf(`rm -f /tmp/lego-token-%s.txt /tmp/lego-status-%s.txt /tmp/lego-pid-%s.txt /tmp/lego-challenge-%s.txt`, baseDomain, baseDomain, baseDomain, baseDomain))
+
+	return nil
+}
+
+// LegoGetPendingToken returns the pending ACME token for a domain (if any)
+func (s *VerificationService) LegoGetPendingToken(domain string) (string, error) {
+	server, err := s.getServer()
+	if err != nil {
+		return "", fmt.Errorf("no deploy server available")
+	}
+
+	baseDomain := GetBaseDomain(domain)
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return "", fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	tokenCmd := fmt.Sprintf(`cat /tmp/lego-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
+	token, _ := client.Run(tokenCmd)
+	return strings.TrimSpace(token), nil
+}
+
+// LegoCancelChallenge cancels a pending SSL challenge
+func (s *VerificationService) LegoCancelChallenge(domain string) error {
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
+	}
+
+	baseDomain := GetBaseDomain(domain)
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Kill lego process if running
+	pidCmd := fmt.Sprintf(`cat /tmp/lego-pid-%s.txt 2>/dev/null || echo ""`, baseDomain)
+	pid, _ := client.Run(pidCmd)
+	pid = strings.TrimSpace(pid)
+	if pid != "" {
+		client.Run(fmt.Sprintf(`kill %s 2>/dev/null || true`, pid))
+	}
+
+	// Cleanup temp files
+	client.Run(fmt.Sprintf(`rm -f /tmp/lego-token-%s.txt /tmp/lego-status-%s.txt /tmp/lego-pid-%s.txt /tmp/lego-continue-%s.txt /tmp/lego-challenge-%s.txt`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain))
+
+	return nil
+}

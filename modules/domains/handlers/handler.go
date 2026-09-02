@@ -924,6 +924,205 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// APIStartSSLChallenge starts the ACME DNS-01 challenge for wildcard SSL (Phase 1)
+// Returns the TXT record value that user needs to add to their DNS
+func (h *Handler) APIStartSSLChallenge(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	// Only for wildcard domains
+	if !domain.IsWildcard {
+		h.jsonError(w, "This endpoint is for wildcard domains only", http.StatusBadRequest)
+		return
+	}
+
+	// Check if there's already a pending challenge
+	existingToken, _ := h.verification.LegoGetPendingToken(domain.Name)
+	if existingToken != "" {
+		baseDomain := services.GetBaseDomain(domain.Name)
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"status":     "pending",
+			"token":      existingToken,
+			"txt_record": "_acme-challenge." + baseDomain,
+			"message":    "Challenge already in progress. Add the TXT record and click 'Complete SSL'.",
+		})
+		return
+	}
+
+	// Start new challenge
+	challenge, err := h.verification.LegoStartChallenge(domain.Name, "")
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Save token to database
+	h.service.Update(id, models.UpdateDomainInput{AcmeToken: &challenge.Token})
+
+	// Update step
+	step := models.SetupStepSSLWaiting
+	h.service.Update(id, models.UpdateDomainInput{SetupStep: &step})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"status":     "started",
+		"token":      challenge.Token,
+		"txt_record": challenge.TXTRecord,
+		"message":    "Add this TXT record to your DNS, then click 'Complete SSL'.",
+	})
+}
+
+// APICompleteSSLChallenge completes the ACME challenge after DNS is configured (Phase 2)
+func (h *Handler) APICompleteSSLChallenge(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	// Check if there's a pending challenge
+	token, _ := h.verification.LegoGetPendingToken(domain.Name)
+	if token == "" {
+		h.jsonError(w, "No pending SSL challenge. Click 'Get SSL Token' first.", http.StatusBadRequest)
+		return
+	}
+
+	// Verify DNS is set before completing
+	baseDomain := services.GetBaseDomain(domain.Name)
+	if !h.verification.CheckAcmeTXT(domain.Name, token) {
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"status":     "dns_not_ready",
+			"token":      token,
+			"txt_record": "_acme-challenge." + baseDomain,
+			"message":    "TXT record not found yet. Please add it and wait for DNS propagation.",
+		})
+		return
+	}
+
+	// Update step
+	step := models.SetupStepSSLGenerating
+	h.service.Update(id, models.UpdateDomainInput{SetupStep: &step})
+
+	// Complete the challenge
+	err = h.verification.LegoCompleteChallenge(domain.Name)
+	if err != nil {
+		errMsg := err.Error()
+		h.service.Update(id, models.UpdateDomainInput{SSLError: &errMsg})
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Setup nginx
+	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+		h.jsonError(w, "Certificate installed but nginx setup failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Mark as complete
+	stepComplete := models.SetupStepComplete
+	sslEnabled := true
+	dnsVerified := true
+	serverID := h.service.GetDeployServerID()
+	h.service.Update(id, models.UpdateDomainInput{
+		SetupStep:   &stepComplete,
+		SSLEnabled:  &sslEnabled,
+		DNSVerified: &dnsVerified,
+		ServerID:    &serverID,
+	})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"status":  "complete",
+		"message": "SSL certificate installed successfully!",
+	})
+}
+
+// APIGetSSLToken returns the pending ACME token for a domain
+func (h *Handler) APIGetSSLToken(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	token, _ := h.verification.LegoGetPendingToken(domain.Name)
+	baseDomain := services.GetBaseDomain(domain.Name)
+
+	if token == "" {
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"status":  "none",
+			"message": "No pending SSL challenge",
+		})
+		return
+	}
+
+	// Check if DNS is ready
+	dnsReady := h.verification.CheckAcmeTXT(domain.Name, token)
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"status":     "pending",
+		"token":      token,
+		"txt_record": "_acme-challenge." + baseDomain,
+		"dns_ready":  dnsReady,
+	})
+}
+
+// APICancelSSLChallenge cancels a pending SSL challenge
+func (h *Handler) APICancelSSLChallenge(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	if err := h.verification.LegoCancelChallenge(domain.Name); err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Clear token from database
+	emptyToken := ""
+	step := models.SetupStepDNSWaiting
+	h.service.Update(id, models.UpdateDomainInput{
+		AcmeToken: &emptyToken,
+		SetupStep: &step,
+	})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"status":  "cancelled",
+		"message": "SSL challenge cancelled",
+	})
+}
+
 // Helpers
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {

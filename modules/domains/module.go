@@ -96,7 +96,13 @@ func (m *Module) Routes() chi.Router {
 		r.Post("/{id}/refresh-token", m.handler.APIRefreshAcmeToken) // Refresh ACME token
 		r.Post("/{id}/retry-ssl", m.handler.APIRetrySSL)             // Force retry SSL generation
 
-		// acme-dns delegation (100% reliable wildcard SSL)
+		// Two-phase wildcard SSL (using lego)
+		r.Post("/{id}/ssl/start", m.handler.APIStartSSLChallenge)      // Phase 1: Get token
+		r.Post("/{id}/ssl/complete", m.handler.APICompleteSSLChallenge) // Phase 2: Complete after DNS
+		r.Get("/{id}/ssl/token", m.handler.APIGetSSLToken)              // Get pending token
+		r.Delete("/{id}/ssl/cancel", m.handler.APICancelSSLChallenge)   // Cancel pending challenge
+
+		// acme-dns delegation (legacy - keeping for compatibility)
 		r.Post("/{id}/acme-dns/register", m.handler.APIRegisterAcmeDNS) // Register with acme-dns
 		r.Get("/{id}/acme-dns/check-cname", m.handler.APICheckAcmeCname) // Check CNAME record
 	})

@@ -12,6 +12,7 @@ const (
 const (
 	SetupStepPending       = "pending"        // Just created, detecting type
 	SetupStepDNSWaiting    = "dns_waiting"    // Waiting for user to add DNS records
+	SetupStepSSLWaiting    = "ssl_waiting"    // Waiting for user to add ACME TXT record
 	SetupStepSSLGenerating = "ssl_generating" // DNS verified, generating SSL
 	SetupStepComplete      = "complete"       // Fully set up
 )
