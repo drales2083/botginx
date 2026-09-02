@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/botginx/botginx/modules/domains/models"
@@ -634,6 +635,62 @@ func (h *Handler) APIRefreshAcmeToken(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"token":   token,
 		"txtName": "_acme-challenge." + baseDomain,
+	})
+}
+
+// APIRetrySSL forces a retry of SSL generation (with rate limiting)
+func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Prevent spam - if already generating and updated within last 2 minutes, reject
+	if domain.SetupStep == models.SetupStepSSLGenerating {
+		if time.Since(domain.UpdatedAt) < 2*time.Minute {
+			h.jsonError(w, "SSL generation already in progress - please wait 2 minutes before retrying", http.StatusTooManyRequests)
+			return
+		}
+	}
+
+	// Check DNS records
+	deployIP := h.service.GetDeployIP()
+	baseDomain := services.GetBaseDomain(domain.Name)
+
+	aRecordFound, _ := h.verification.CheckARecord(domain.Name, deployIP)
+	verifyFound, _ := h.verification.VerifyDNS(baseDomain, domain.VerifyToken)
+	acmeFound := false
+	if domain.AcmeToken != nil && *domain.AcmeToken != "" {
+		acmeFound = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
+	}
+
+	if !aRecordFound || !verifyFound || !acmeFound {
+		missing := []string{}
+		if !aRecordFound {
+			missing = append(missing, "A record")
+		}
+		if !verifyFound {
+			missing = append(missing, "verify TXT")
+		}
+		if !acmeFound {
+			missing = append(missing, "ACME TXT")
+		}
+		h.jsonError(w, "Missing DNS records: "+strings.Join(missing, ", "), http.StatusBadRequest)
+		return
+	}
+
+	// Update step to ssl_generating (this also updates updated_at)
+	step := models.SetupStepSSLGenerating
+	h.service.Update(id, models.UpdateDomainInput{SetupStep: &step})
+
+	// Trigger SSL generation in background
+	go h.completeExternalSetup(domain)
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "SSL generation started - this may take up to 60 seconds",
 	})
 }
 

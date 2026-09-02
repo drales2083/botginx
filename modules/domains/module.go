@@ -94,6 +94,7 @@ func (m *Module) Routes() chi.Router {
 		r.Get("/{id}/wildcard-ssl", m.handler.APIGetWildcardSSLInstructions)
 		r.Get("/{id}/setup-status", m.handler.APIGetSetupStatus)    // Polling endpoint
 		r.Post("/{id}/refresh-token", m.handler.APIRefreshAcmeToken) // Refresh ACME token
+		r.Post("/{id}/retry-ssl", m.handler.APIRetrySSL)             // Force retry SSL generation
 	})
 
 	return r

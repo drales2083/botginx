@@ -210,9 +210,14 @@
                     <small class="text-muted">
                         <i class="bi bi-arrow-repeat me-1"></i>Auto-check every 30s
                     </small>
-                    <button class="btn btn-sm btn-primary" id="btn-check-now" onclick="manualCheck()">
-                        <i class="bi bi-arrow-clockwise me-1"></i>Check Now
-                    </button>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary" id="btn-check-now" onclick="manualCheck()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Check
+                        </button>
+                        <button class="btn btn-warning" id="btn-retry-ssl" onclick="retrySSL()" title="Force retry SSL generation">
+                            <i class="bi bi-lightning-fill me-1"></i>Retry SSL
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -283,6 +288,34 @@ function copyField(id) {
     input.select();
     document.execCommand('copy');
     showToast('Copied!', 'success');
+}
+
+async function retrySSL() {
+    const btn = document.getElementById('btn-retry-ssl');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+
+    try {
+        const res = await fetch(`/user/domains/api/${domainId}/retry-ssl`, { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) {
+            showToast(data.error || 'Failed to retry SSL', 'danger');
+            return;
+        }
+
+        showToast(data.message || 'SSL generation started...', 'info');
+        // Wait and check status
+        setTimeout(() => {
+            manualCheck();
+        }, 5000);
+
+    } catch (e) {
+        showToast('Network error', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-lightning-fill me-1"></i>Retry SSL';
+    }
 }
 
 async function manualCheck() {
