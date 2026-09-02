@@ -4,9 +4,16 @@
 -- Add panel_url to servers
 ALTER TABLE hosting_servers ADD COLUMN IF NOT EXISTS panel_url VARCHAR(500);
 
--- Rename HestiaCP columns to generic panel columns
-ALTER TABLE hosting_accounts RENAME COLUMN hestia_username TO panel_username;
-ALTER TABLE hosting_accounts RENAME COLUMN hestia_password_encrypted TO panel_password_encrypted;
+-- Rename HestiaCP columns to generic panel columns (if they still have old names)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'hosting_accounts' AND column_name = 'hestia_username') THEN
+        ALTER TABLE hosting_accounts RENAME COLUMN hestia_username TO panel_username;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'hosting_accounts' AND column_name = 'hestia_password_encrypted') THEN
+        ALTER TABLE hosting_accounts RENAME COLUMN hestia_password_encrypted TO panel_password_encrypted;
+    END IF;
+END $$;
 
 -- Make server_id nullable for pending accounts (before admin links them)
 ALTER TABLE hosting_accounts ALTER COLUMN server_id DROP NOT NULL;
