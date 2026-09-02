@@ -167,6 +167,7 @@ func (m *Module) AdminRoutes() chi.Router {
 		r.Delete("/accounts/{id}/domains/{domainID}", m.handler.APIDeleteDomain)
 		r.Put("/accounts/{id}/suspend", m.handler.APISuspendAccount)
 		r.Put("/accounts/{id}/unsuspend", m.handler.APIUnsuspendAccount)
+		r.Delete("/accounts/{id}", m.handler.APIDeleteAccount)
 
 		// Balance
 		r.Post("/balance/topup", m.handler.APITopUpBalance)

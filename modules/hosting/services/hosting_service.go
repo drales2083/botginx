@@ -549,6 +549,19 @@ func (s *HostingService) UnsuspendAccount(id string) error {
 	return err
 }
 
+// DeleteAccount deletes a hosting account and its domains
+func (s *HostingService) DeleteAccount(id string) error {
+	// Delete domains first
+	_, err := s.db.Exec(`DELETE FROM hosting_domains WHERE account_id = $1`, id)
+	if err != nil {
+		return err
+	}
+
+	// Delete the account
+	_, err = s.db.Exec(`DELETE FROM hosting_accounts WHERE id = $1`, id)
+	return err
+}
+
 // ========== Balance ==========
 
 // GetUserIDByEmail looks up a user by their email address

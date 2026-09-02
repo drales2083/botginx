@@ -524,6 +524,18 @@ func (h *Handler) APIUnsuspendAccount(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
+// APIDeleteAccount deletes a hosting account and its domains (admin action)
+func (h *Handler) APIDeleteAccount(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	if err := h.service.DeleteAccount(id); err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
 // APILinkAccount links a pending account to a server and activates it (admin action)
 func (h *Handler) APILinkAccount(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
