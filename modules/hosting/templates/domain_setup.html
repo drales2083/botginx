@@ -1,0 +1,340 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-3">
+        {{template "hosting_user_nav" .}}
+    </div>
+    <div class="col-md-9">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/user/hosting/{{.Account.ID}}">Overview</a></li>
+                <li class="breadcrumb-item"><a href="/user/hosting/{{.Account.ID}}/domains">Domains</a></li>
+                <li class="breadcrumb-item active">{{.Domain.Domain}}</li>
+            </ol>
+        </nav>
+
+        <!-- Domain Header -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">
+                            <i class="bi bi-globe text-primary me-2"></i>{{.Domain.Domain}}
+                        </h4>
+                        <p class="text-secondary mb-0">Domain Setup & SSL Certificate</p>
+                    </div>
+                    <div>
+                        {{if and .Domain.DNSVerified .Domain.SSLEnabled}}
+                        <span class="badge text-bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Active</span>
+                        {{else if .Domain.SSLEnabled}}
+                        <span class="badge text-bg-success fs-6"><i class="bi bi-lock me-1"></i>SSL Active</span>
+                        {{else}}
+                        <span class="badge text-bg-warning fs-6"><i class="bi bi-exclamation-triangle me-1"></i>Setup Required</span>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Setup Steps -->
+        <div class="row g-4">
+            <!-- Step 1: DNS Configuration -->
+            <div class="col-12">
+                <div class="card {{if .DNSOK}}border-success{{else}}border-warning{{end}}">
+                    <div class="card-header d-flex align-items-center">
+                        <span class="badge rounded-pill {{if .DNSOK}}text-bg-success{{else}}text-bg-warning{{end}} me-2">1</span>
+                        <h5 class="card-title mb-0">DNS Configuration</h5>
+                        {{if .DNSOK}}
+                        <span class="badge text-bg-success ms-auto"><i class="bi bi-check-circle me-1"></i>Verified</span>
+                        {{else}}
+                        <span class="badge text-bg-warning ms-auto"><i class="bi bi-clock me-1"></i>Pending</span>
+                        {{end}}
+                    </div>
+                    <div class="card-body">
+                        {{if .DNSOK}}
+                        <div class="alert alert-success mb-3">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            {{if .IsProxied}}
+                            <strong>Domain is reachable via proxy/CDN.</strong> Your domain is behind a proxy (like Cloudflare) and is correctly configured.
+                            {{else}}
+                            <strong>DNS is correctly configured!</strong> Your domain points directly to our server.
+                            {{end}}
+                        </div>
+                        {{else}}
+                        <div class="alert alert-warning mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>DNS not configured.</strong> Point your domain to our server using the records below.
+                        </div>
+                        {{end}}
+
+                        <h6 class="mb-3">Required DNS Records</h6>
+                        <table class="table table-sm mb-4">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">Type</th>
+                                    <th style="width: 120px;">Name</th>
+                                    <th>Value</th>
+                                    <th style="width: 60px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code class="text-primary">A</code></td>
+                                    <td><code>@</code></td>
+                                    <td>
+                                        <code id="serverIP">{{.ServerIP}}</code>
+                                        {{if and .DNSResolved (not .DirectMatch) (not .IsProxied)}}
+                                        <span class="text-danger ms-2">
+                                            <i class="bi bi-x-circle"></i> Currently: {{.CurrentIP}}
+                                        </span>
+                                        {{else if .DirectMatch}}
+                                        <span class="text-success ms-2"><i class="bi bi-check-circle"></i></span>
+                                        {{end}}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary btn-copy" data-value="{{.ServerIP}}" title="Copy">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code class="text-primary">A</code></td>
+                                    <td><code>www</code></td>
+                                    <td><code>{{.ServerIP}}</code></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary btn-copy" data-value="{{.ServerIP}}" title="Copy">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Current DNS Status</h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li>
+                                        {{if .DNSResolved}}
+                                        <i class="bi bi-check-circle text-success me-1"></i> Domain resolves to: <code>{{.CurrentIP}}</code>
+                                        {{else}}
+                                        <i class="bi bi-x-circle text-danger me-1"></i> Domain does not resolve
+                                        {{end}}
+                                    </li>
+                                    <li>
+                                        {{if .DirectMatch}}
+                                        <i class="bi bi-check-circle text-success me-1"></i> IP matches our server
+                                        {{else if .IsProxied}}
+                                        <i class="bi bi-cloud text-info me-1"></i> Domain is behind a proxy/CDN
+                                        {{else}}
+                                        <i class="bi bi-x-circle text-warning me-1"></i> IP does not match (expected: {{.ServerIP}})
+                                        {{end}}
+                                    </li>
+                                    <li>
+                                        {{if .HTTPReachable}}
+                                        <i class="bi bi-check-circle text-success me-1"></i> HTTP verification passed
+                                        {{else}}
+                                        <i class="bi bi-x-circle text-warning me-1"></i> HTTP verification failed
+                                        {{end}}
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                <button class="btn btn-primary" id="checkDNSBtn">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Check DNS Now
+                                </button>
+                            </div>
+                        </div>
+
+                        <hr class="my-3">
+                        <p class="text-secondary small mb-0">
+                            <i class="bi bi-info-circle me-1"></i>
+                            DNS changes can take up to 24-48 hours to propagate globally. If you're using a CDN like Cloudflare,
+                            make sure the orange cloud (proxy) is enabled for the domain to work properly.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: SSL Certificate -->
+            <div class="col-12">
+                <div class="card {{if .Domain.SSLEnabled}}border-success{{else if not .DNSOK}}border-secondary{{else}}border-warning{{end}}">
+                    <div class="card-header d-flex align-items-center">
+                        <span class="badge rounded-pill {{if .Domain.SSLEnabled}}text-bg-success{{else if not .DNSOK}}text-bg-secondary{{else}}text-bg-warning{{end}} me-2">2</span>
+                        <h5 class="card-title mb-0">SSL Certificate (Let's Encrypt)</h5>
+                        {{if .Domain.SSLEnabled}}
+                        <span class="badge text-bg-success ms-auto"><i class="bi bi-lock-fill me-1"></i>Active</span>
+                        {{else if eq .Domain.SetupStatus "ssl_generating"}}
+                        <span class="badge text-bg-info ms-auto"><i class="bi bi-hourglass-split me-1"></i>Generating...</span>
+                        {{else}}
+                        <span class="badge text-bg-secondary ms-auto"><i class="bi bi-unlock me-1"></i>Not Active</span>
+                        {{end}}
+                    </div>
+                    <div class="card-body">
+                        {{if .Domain.SSLEnabled}}
+                        <div class="alert alert-success mb-3">
+                            <i class="bi bi-lock-fill me-2"></i>
+                            <strong>SSL Certificate is active!</strong> Your domain is secured with HTTPS. Certificate auto-renews automatically.
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Certificate Details</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check-circle text-success me-1"></i> Issued by: Let's Encrypt</li>
+                                    <li><i class="bi bi-check-circle text-success me-1"></i> Auto-renewal: Enabled</li>
+                                    <li><i class="bi bi-check-circle text-success me-1"></i> HTTPS redirect: Active</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Test Your Site</h6>
+                                <a href="https://{{.Domain.Domain}}" target="_blank" class="btn btn-success">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>Open https://{{.Domain.Domain}}
+                                </a>
+                            </div>
+                        </div>
+                        {{else if eq .Domain.SetupStatus "ssl_generating"}}
+                        <div class="alert alert-info mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2"></div>
+                                <div>
+                                    <strong>Generating SSL Certificate...</strong><br>
+                                    <small>This usually takes 30-60 seconds. The page will auto-refresh.</small>
+                                </div>
+                            </div>
+                        </div>
+                        {{else if .Domain.SSLError}}
+                        <div class="alert alert-danger mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>SSL generation failed:</strong> {{.Domain.SSLError}}
+                        </div>
+                        <p class="mb-3">
+                            Make sure your DNS is correctly configured and try again. If using a CDN, ensure your origin server is accessible.
+                        </p>
+                        <button class="btn btn-primary" id="enableSSLBtn" {{if not .DNSOK}}disabled{{end}}>
+                            <i class="bi bi-arrow-repeat me-1"></i>Retry SSL Generation
+                        </button>
+                        {{else}}
+                        {{if not .DNSOK}}
+                        <div class="alert alert-secondary mb-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Complete Step 1 first.</strong> DNS must be verified before SSL can be generated.
+                        </div>
+                        {{else}}
+                        <div class="alert alert-warning mb-3">
+                            <i class="bi bi-shield-exclamation me-2"></i>
+                            <strong>SSL not enabled.</strong> Click below to generate a free Let's Encrypt certificate.
+                        </div>
+                        {{end}}
+                        <p class="mb-3">
+                            We'll automatically generate and install a free SSL certificate from Let's Encrypt.
+                            The certificate will auto-renew every 90 days.
+                        </p>
+                        <button class="btn btn-success" id="enableSSLBtn" {{if not .DNSOK}}disabled{{end}}>
+                            <i class="bi bi-lock me-1"></i>Enable SSL Certificate
+                        </button>
+                        {{if not .DNSOK}}
+                        <p class="text-secondary small mt-2 mb-0">
+                            <i class="bi bi-info-circle me-1"></i>DNS must be verified before SSL can be enabled.
+                        </p>
+                        {{end}}
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Protection Settings -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex align-items-center">
+                        <span class="badge rounded-pill text-bg-primary me-2">3</span>
+                        <h5 class="card-title mb-0">Traffic Protection</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3">
+                            Configure bot protection, country filtering, and other security settings for your domain.
+                        </p>
+                        <a href="/user/hosting/{{.Account.ID}}/domains/{{.Domain.ID}}/settings" class="btn btn-primary">
+                            <i class="bi bi-shield-check me-1"></i>Configure Protection Settings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const accountID = '{{.Account.ID}}';
+const domainID = '{{.Domain.ID}}';
+
+// Check DNS button
+document.getElementById('checkDNSBtn')?.addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking...';
+
+    try {
+        const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainID}/check-dns`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.dnsOK || data.isProxied) {
+            showToast('DNS verified successfully!', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else if (data.httpOK) {
+            showToast('Domain is reachable. You may proceed with SSL.', 'info');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(`DNS not ready. Expected IP: ${data.expectedIP}, Current: ${data.currentIP || 'not resolved'}`, 'warning');
+        }
+    } catch (e) {
+        showToast('Failed to check DNS', 'danger');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Check DNS Now';
+});
+
+// Enable SSL button
+document.getElementById('enableSSLBtn')?.addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating SSL...';
+
+    try {
+        const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainID}/ssl`, { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok) {
+            showToast('SSL generation started. Please wait...', 'info');
+            setTimeout(() => location.reload(), 3000);
+        } else {
+            showToast(data.error || 'Failed to enable SSL', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-lock me-1"></i>Enable SSL Certificate';
+        }
+    } catch (e) {
+        showToast('Failed to enable SSL', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-lock me-1"></i>Enable SSL Certificate';
+    }
+});
+
+// Auto-refresh if SSL is generating
+{{if eq .Domain.SetupStatus "ssl_generating"}}
+setTimeout(() => location.reload(), 10000);
+{{end}}
+
+// Copy button handler
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-copy');
+    if (btn) {
+        e.preventDefault();
+        navigator.clipboard.writeText(btn.dataset.value);
+        const icon = btn.querySelector('i');
+        icon.className = 'bi bi-check-lg text-success';
+        setTimeout(() => icon.className = 'bi bi-clipboard', 1500);
+        showToast('Copied to clipboard', 'success');
+    }
+});
+</script>
+{{end}}

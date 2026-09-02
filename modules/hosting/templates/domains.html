@@ -90,7 +90,7 @@
                             {{range .Domains}}
                             <tr data-domain-id="{{.ID}}">
                                 <td>
-                                    <a href="https://{{.Domain}}" target="_blank" class="text-decoration-none fw-semibold">
+                                    <a href="/user/hosting/{{$.Account.ID}}/domains/{{.ID}}/setup" class="text-decoration-none fw-semibold">
                                         {{.Domain}}
                                     </a>
                                 </td>
@@ -122,15 +122,10 @@
                                 <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
                                 <td class="text-end">
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary btn-check-dns" data-id="{{.ID}}" title="Check DNS">
-                                            <i class="bi bi-arrow-repeat"></i>
-                                        </button>
-                                        {{if not .SSLEnabled}}
-                                        <button class="btn btn-outline-success btn-enable-ssl" data-id="{{.ID}}" title="Enable SSL" {{if not .DNSVerified}}disabled{{end}}>
-                                            <i class="bi bi-lock"></i>
-                                        </button>
-                                        {{end}}
-                                        <a href="/user/hosting/{{$.Account.ID}}/domains/{{.ID}}/settings" class="btn btn-outline-secondary" title="Traffic Settings">
+                                        <a href="/user/hosting/{{$.Account.ID}}/domains/{{.ID}}/setup" class="btn btn-outline-primary" title="DNS & SSL Setup">
+                                            <i class="bi bi-gear"></i>
+                                        </a>
+                                        <a href="/user/hosting/{{$.Account.ID}}/domains/{{.ID}}/settings" class="btn btn-outline-secondary" title="Traffic Protection">
                                             <i class="bi bi-shield-check"></i>
                                         </a>
                                         {{if $canWrite}}
@@ -354,40 +349,6 @@ async function updateDomainStatus(domainId, row) {
     }
 }
 
-// Check DNS button
-document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.btn-check-dns');
-    if (btn) {
-        e.preventDefault();
-        const domainId = btn.dataset.id;
-        const row = btn.closest('tr');
-
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-        const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainId}/check-dns`, { method: 'POST' });
-        const data = await res.json().catch(() => ({}));
-
-        if (data.isProxied) {
-            // Domain is behind a CDN/proxy - we verified via HTTP
-            showToast('Domain is reachable via proxy/CDN. You can enable SSL.', 'info');
-            await updateDomainStatus(domainId, row);
-        } else if (data.dnsOK) {
-            showToast('DNS verified! You can now enable SSL.', 'success');
-            await updateDomainStatus(domainId, row);
-        } else if (data.httpOK) {
-            // HTTP works but IP doesn't match - might be proxy
-            showToast('Domain is reachable. You can try enabling SSL.', 'info');
-            await updateDomainStatus(domainId, row);
-        } else {
-            showToast(`DNS not ready. Domain not reachable yet. Expected IP: ${data.expectedIP}`, 'warning');
-        }
-
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
-    }
-});
-
 // Add domain
 document.getElementById('addDomainForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -413,31 +374,6 @@ document.getElementById('addDomainForm').addEventListener('submit', async (e) =>
         showToast(data.error || 'Failed to add domain', 'danger');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Domain';
-    }
-});
-
-// Enable SSL
-document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.btn-enable-ssl');
-    if (btn && !btn.disabled) {
-        e.preventDefault();
-        const domainId = btn.dataset.id;
-        const row = btn.closest('tr');
-
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-        const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainId}/ssl`, { method: 'POST' });
-        const data = await res.json().catch(() => ({}));
-
-        if (res.ok) {
-            showToast('SSL generation started. This may take a minute.', 'info');
-            await updateDomainStatus(domainId, row);
-        } else {
-            showToast(data.error || 'Failed to enable SSL', 'danger');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-lock"></i>';
-        }
     }
 });
 

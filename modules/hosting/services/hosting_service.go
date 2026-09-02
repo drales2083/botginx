@@ -758,9 +758,140 @@ func (s *HostingService) AddDomain(accountID, domain string) (*models.HostingDom
 	return d, nil
 }
 
-// DeleteDomain removes a domain from an account
+// DeleteDomain removes a domain from an account (database only - admin use)
 func (s *HostingService) DeleteDomain(accountID, domainID string) error {
 	_, err := s.db.Exec(`DELETE FROM hosting_domains WHERE id = $1 AND account_id = $2`, domainID, accountID)
+	return err
+}
+
+// ProvisionDomain creates a domain on CloudPanel and adds to database
+func (s *HostingService) ProvisionDomain(accountID, domain string) (*models.HostingDomain, error) {
+	// Get account with server details
+	account, err := s.GetAccount(accountID)
+	if err != nil {
+		return nil, errors.New("account not found")
+	}
+
+	if account.ServerID == nil {
+		return nil, errors.New("account not provisioned to a server")
+	}
+
+	// Get server credentials
+	var server struct {
+		Hostname          string `db:"hostname"`
+		Port              int    `db:"port"`
+		Username          string `db:"username"`
+		PasswordEncrypted string `db:"password_encrypted"`
+	}
+	err = s.db.Get(&server, `SELECT hostname, port, username, password_encrypted FROM hosting_servers WHERE id = $1`, *account.ServerID)
+	if err != nil {
+		return nil, errors.New("server not found")
+	}
+
+	serverPassword, err := crypto.Decrypt(server.PasswordEncrypted)
+	if err != nil {
+		return nil, errors.New("failed to decrypt server credentials")
+	}
+
+	// Get panel credentials for the site user
+	panelPassword, err := crypto.Decrypt(account.PanelPasswordEncrypted)
+	if err != nil {
+		return nil, errors.New("failed to decrypt panel credentials")
+	}
+
+	// Connect to CloudPanel and create site
+	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, serverPassword)
+	defer client.Close()
+
+	if err := client.Connect(); err != nil {
+		return nil, fmt.Errorf("SSH connection failed: %v", err)
+	}
+
+	// Create site on CloudPanel
+	if err := client.AddSite(domain, account.PanelUsername, panelPassword, cloudpanel.PHP82); err != nil {
+		return nil, fmt.Errorf("failed to create site: %v", err)
+	}
+
+	// Add to database
+	d := &models.HostingDomain{
+		ID:        s.generateID(),
+		AccountID: accountID,
+		Domain:    domain,
+		CreatedAt: time.Now(),
+	}
+
+	_, err = s.db.NamedExec(`
+		INSERT INTO hosting_domains (id, account_id, domain, created_at)
+		VALUES (:id, :account_id, :domain, :created_at)
+	`, d)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create default antibot settings
+	settings := &models.HostingDomainSettings{
+		ID:              s.generateID(),
+		DomainID:        d.ID,
+		CountryMode:     "all",
+		CountryListRaw:  "[]",
+		DeviceMode:      "all",
+		DeviceListRaw:   "[]",
+		BlockBots:       true,
+		BlockTor:        true,
+		BlockProxy:      true,
+		BlockDatacenter: true,
+		BlockHeadless:   true,
+		RedirectOnBlock: "https://www.google.com",
+		UpdatedAt:       time.Now(),
+	}
+
+	s.db.NamedExec(`
+		INSERT INTO hosting_domain_settings (id, domain_id, country_mode, country_list, device_mode, device_list,
+			block_bots, block_tor, block_proxy, block_datacenter, block_headless, min_behavior_score, redirect_on_block, updated_at)
+		VALUES (:id, :domain_id, :country_mode, :country_list, :device_mode, :device_list,
+			:block_bots, :block_tor, :block_proxy, :block_datacenter, :block_headless, :min_behavior_score, :redirect_on_block, :updated_at)
+	`, settings)
+
+	return d, nil
+}
+
+// DeleteDomainWithCloudPanel removes a domain from CloudPanel and database
+func (s *HostingService) DeleteDomainWithCloudPanel(accountID, domainID string) error {
+	// Get domain
+	domain, err := s.GetDomain(domainID)
+	if err != nil || domain.AccountID != accountID {
+		return errors.New("domain not found")
+	}
+
+	// Get account with server details
+	account, err := s.GetAccount(accountID)
+	if err != nil {
+		return errors.New("account not found")
+	}
+
+	if account.ServerID != nil {
+		// Get server credentials
+		var server struct {
+			Hostname          string `db:"hostname"`
+			Port              int    `db:"port"`
+			Username          string `db:"username"`
+			PasswordEncrypted string `db:"password_encrypted"`
+		}
+		err = s.db.Get(&server, `SELECT hostname, port, username, password_encrypted FROM hosting_servers WHERE id = $1`, *account.ServerID)
+		if err == nil {
+			serverPassword, _ := crypto.Decrypt(server.PasswordEncrypted)
+			if serverPassword != "" {
+				client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, serverPassword)
+				defer client.Close()
+				if client.Connect() == nil {
+					client.DeleteSite(domain.Domain)
+				}
+			}
+		}
+	}
+
+	// Delete from database
+	_, err = s.db.Exec(`DELETE FROM hosting_domains WHERE id = $1 AND account_id = $2`, domainID, accountID)
 	return err
 }
 

@@ -191,6 +191,53 @@ func (h *Handler) UserDomains(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// UserDomainSetup shows DNS/SSL setup page for a specific domain
+func (h *Handler) UserDomainSetup(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
+		return
+	}
+
+	domainID := chi.URLParam(r, "domainID")
+	domain, err := h.service.GetDomain(domainID)
+	if err != nil || domain.AccountID != account.ID {
+		http.Error(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Get current DNS status
+	serverIP := account.ServerHostname
+	ips, _ := net.LookupHost(domain.Domain)
+	var currentIP string
+	dnsResolved := false
+	if len(ips) > 0 {
+		currentIP = ips[0]
+		dnsResolved = true
+	}
+
+	directMatch := dnsResolved && currentIP == serverIP
+	httpReachable := false
+	if dnsResolved {
+		httpReachable = h.checkHTTPReachable(domain.Domain)
+	}
+
+	isProxied := dnsResolved && !directMatch && httpReachable
+	dnsOK := directMatch || httpReachable
+
+	module.RenderUserSection(w, r, h.templates, "hosting:domain_setup.html", map[string]interface{}{
+		"Title":       "Domain Setup - " + domain.Domain,
+		"Account":     account,
+		"Domain":      domain,
+		"ServerIP":    serverIP,
+		"CurrentIP":   currentIP,
+		"DNSResolved": dnsResolved,
+		"DirectMatch": directMatch,
+		"IsProxied":   isProxied,
+		"DNSOK":       dnsOK,
+		"HTTPReachable": httpReachable,
+	})
+}
+
 // UserDomainSettings shows antibot settings for a specific domain
 func (h *Handler) UserDomainSettings(w http.ResponseWriter, r *http.Request) {
 	account, ok := h.requireAccountOwner(w, r)
@@ -403,6 +450,95 @@ func (h *Handler) APIGetPanelCredentials(w http.ResponseWriter, r *http.Request)
 		"password": password,
 		"panelUrl": account.PanelURL,
 	})
+}
+
+// APIUserAddDomain adds a new domain to an existing account (with package limit check)
+func (h *Handler) APIUserAddDomain(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
+
+	// Account must be active to add domains
+	if account.Status != models.AccountStatusActive {
+		h.jsonError(w, "Account must be active to add domains", http.StatusBadRequest)
+		return
+	}
+
+	var input struct {
+		Domain string `json:"domain"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	input.Domain = strings.ToLower(strings.TrimSpace(input.Domain))
+	if input.Domain == "" {
+		h.jsonError(w, "Domain is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check package domain limit
+	if account.PackageID == nil {
+		h.jsonError(w, "No package assigned to account", http.StatusBadRequest)
+		return
+	}
+	pkg, err := h.service.GetPackage(*account.PackageID)
+	if err != nil {
+		h.jsonError(w, "Package not found", http.StatusInternalServerError)
+		return
+	}
+
+	domains, _ := h.service.ListDomains(account.ID)
+	if len(domains) >= pkg.MaxDomains {
+		h.jsonError(w, "Domain limit reached for your package", http.StatusForbidden)
+		return
+	}
+
+	// Provision domain on CloudPanel and add to database
+	domain, err := h.service.ProvisionDomain(account.ID, input.Domain)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	h.json(w, http.StatusCreated, map[string]interface{}{
+		"success": true,
+		"domain":  domain,
+		"message": "Domain added. Point your DNS to the server IP, then enable SSL.",
+	})
+}
+
+// APIUserDeleteDomain removes a domain from an account (user action)
+func (h *Handler) APIUserDeleteDomain(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
+
+	domainID := chi.URLParam(r, "domainID")
+
+	// Verify domain belongs to account
+	domain, err := h.service.GetDomain(domainID)
+	if err != nil || domain.AccountID != account.ID {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Don't allow deleting the primary domain (first domain added)
+	domains, _ := h.service.ListDomains(account.ID)
+	if len(domains) <= 1 {
+		h.jsonError(w, "Cannot delete the primary domain", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.DeleteDomainWithCloudPanel(account.ID, domainID); err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
 // ========== Admin API Handlers ==========

@@ -128,6 +128,7 @@ func (m *Module) Routes() chi.Router {
 	r.Route("/{accountID}", func(r chi.Router) {
 		r.Get("/", m.handler.UserOverview)
 		r.Get("/domains", m.handler.UserDomains)
+		r.Get("/domains/{domainID}/setup", m.handler.UserDomainSetup)
 		r.Get("/domains/{domainID}/settings", m.handler.UserDomainSettings)
 	})
 
@@ -139,6 +140,9 @@ func (m *Module) Routes() chi.Router {
 			r.Post("/retry", m.handler.APIRetryProvisioning)
 			r.Put("/domains/{domainID}/settings", m.handler.APIUpdateDomainSettings)
 			r.Post("/reactivate", m.handler.APIReactivate)
+			// Domain management
+			r.Post("/domains", m.handler.APIUserAddDomain)
+			r.Delete("/domains/{domainID}", m.handler.APIUserDeleteDomain)
 			// Domain DNS/SSL status
 			r.Get("/domains/{domainID}/status", m.handler.APIGetDomainStatus)
 			r.Post("/domains/{domainID}/check-dns", m.handler.APICheckDNS)
