@@ -1174,16 +1174,23 @@ func (s *VerificationService) LegoStartChallenge(domain, email string) (*LegoCha
 	legoDir := fmt.Sprintf("/root/.lego-%s", baseDomain)
 	client.Run(fmt.Sprintf("mkdir -p %s", legoDir))
 
-	// Create manual DNS hook that captures the token
+	// Create exec DNS hook that captures the token
+	// Lego exec provider calls: script.sh "present|cleanup" "_acme-challenge.domain." "token-value"
 	hookScript := fmt.Sprintf(`cat > /tmp/lego-dns-hook-%s.sh << 'HOOKEOF'
 #!/bin/bash
-# This hook captures the ACME challenge token
-# Called by lego with: LEGO_DOMAIN, LEGO_TOKEN, LEGO_DNS_VALUE
+ACTION="$1"
+FQDN="$2"
+TOKEN="$3"
 
-echo "$LEGO_DNS_VALUE" > /tmp/lego-token-%s.txt
-echo "DOMAIN=$LEGO_DOMAIN" >> /tmp/lego-challenge-%s.txt
-echo "TOKEN=$LEGO_TOKEN" >> /tmp/lego-challenge-%s.txt
-echo "DNS_VALUE=$LEGO_DNS_VALUE" >> /tmp/lego-challenge-%s.txt
+# Only handle "present" action (cleanup is handled automatically)
+if [ "$ACTION" != "present" ]; then
+    exit 0
+fi
+
+# Save the token for the user to add
+echo "$TOKEN" > /tmp/lego-token-%s.txt
+echo "FQDN=$FQDN" >> /tmp/lego-challenge-%s.txt
+echo "TOKEN=$TOKEN" >> /tmp/lego-challenge-%s.txt
 
 # Signal that token is ready
 echo "READY" > /tmp/lego-status-%s.txt
@@ -1198,20 +1205,20 @@ for i in $(seq 1 4320); do  # 12 hours max (4320 * 10s)
 done
 exit 1
 HOOKEOF
-chmod +x /tmp/lego-dns-hook-%s.sh`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+chmod +x /tmp/lego-dns-hook-%s.sh`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
 	client.Run(hookScript)
 
 	// Clear previous state
 	client.Run(fmt.Sprintf(`rm -f /tmp/lego-token-%s.txt /tmp/lego-status-%s.txt /tmp/lego-continue-%s.txt /tmp/lego-challenge-%s.txt`, baseDomain, baseDomain, baseDomain, baseDomain))
 
-	// Start lego in background with manual DNS hook
-	legoCmd := fmt.Sprintf(`nohup lego --accept-tos --email="%s" \
+	// Start lego in background with exec DNS provider (external script)
+	legoCmd := fmt.Sprintf(`nohup env EXEC_PATH=/tmp/lego-dns-hook-%s.sh \
+		lego --accept-tos --email="%s" \
 		--domains="*.%s" --domains="%s" \
-		--dns manual \
-		--dns.manual.script=/tmp/lego-dns-hook-%s.sh \
+		--dns exec \
 		--path=%s \
 		run > /tmp/lego-output-%s.txt 2>&1 &
-echo $!`, email, baseDomain, baseDomain, baseDomain, legoDir, baseDomain)
+echo $!`, baseDomain, email, baseDomain, baseDomain, legoDir, baseDomain)
 
 	pidOut, err := client.Run(legoCmd)
 	if err != nil {
