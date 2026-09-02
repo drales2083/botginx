@@ -122,9 +122,9 @@ func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 		}
 
 		// If acme-dns is configured and CNAME is verified, we can generate SSL
-		if domain.AcmeSubdomain != nil && domain.AcmePassword != nil && domain.AcmeCnameVerified {
+		if domain.AcmeSubdomain != nil && domain.AcmeUsername != nil && domain.AcmePassword != nil && domain.AcmeCnameVerified {
 			log.Printf("[domains] %s wildcard with acme-dns CNAME verified - generating SSL", domainName)
-			if err := b.verifyService.GenerateWildcardSSLWithAcmeDNS(domainName, *domain.AcmeSubdomain, *domain.AcmePassword); err != nil {
+			if err := b.verifyService.GenerateWildcardSSLWithAcmeDNS(domainName, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword); err != nil {
 				log.Printf("[domains] SSL generation failed for %s: %v", domainName, err)
 				errMsg := err.Error()
 				b.domainService.Update(domainID, models.UpdateDomainInput{SSLError: &errMsg})

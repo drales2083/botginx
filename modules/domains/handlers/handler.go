@@ -714,9 +714,9 @@ func (h *Handler) completeExternalSetup(domain *models.Domain) {
 	if domain.IsWildcard {
 		// Wildcard domains need DNS-01 challenge
 		// Prefer acme-dns if available (100% reliable)
-		if domain.AcmeSubdomain != nil && domain.AcmePassword != nil && domain.AcmeCnameVerified {
+		if domain.AcmeSubdomain != nil && domain.AcmeUsername != nil && domain.AcmePassword != nil && domain.AcmeCnameVerified {
 			log.Printf("[domains] using acme-dns for %s", domain.Name)
-			sslErr = h.verification.GenerateWildcardSSLWithAcmeDNS(domain.Name, *domain.AcmeSubdomain, *domain.AcmePassword)
+			sslErr = h.verification.GenerateWildcardSSLWithAcmeDNS(domain.Name, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword)
 		} else {
 			// Fallback to old method (less reliable)
 			log.Printf("[domains] using legacy DNS-01 for %s (acme-dns not configured)", domain.Name)

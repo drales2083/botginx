@@ -38,7 +38,8 @@ type Domain struct {
 
 	// acme-dns delegation fields (for 100% reliable wildcard SSL)
 	AcmeSubdomain     *string `db:"acme_subdomain" json:"acmeSubdomain,omitempty"`
-	AcmePassword      *string `db:"acme_password" json:"-"` // Never expose in JSON
+	AcmeUsername      *string `db:"acme_username" json:"-"`  // For API auth (X-Api-User)
+	AcmePassword      *string `db:"acme_password" json:"-"`  // Never expose in JSON
 	AcmeFulldomain    *string `db:"acme_fulldomain" json:"acmeFulldomain,omitempty"`
 	AcmeCnameVerified bool    `db:"acme_cname_verified" json:"acmeCnameVerified"`
 

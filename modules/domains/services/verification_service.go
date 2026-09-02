@@ -381,7 +381,8 @@ exit 1
 
 // GenerateWildcardSSLWithAcmeDNS generates wildcard SSL using acme-dns CNAME delegation
 // This is 100% reliable - we control the TXT record via acme-dns API
-func (s *VerificationService) GenerateWildcardSSLWithAcmeDNS(domain, acmeSubdomain, acmePassword string) error {
+// acmeUsername is used for X-Api-User (different from subdomain in acme-dns)
+func (s *VerificationService) GenerateWildcardSSLWithAcmeDNS(domain, acmeSubdomain, acmeUsername, acmePassword string) error {
 	server, err := s.getServer()
 	if err != nil {
 		return fmt.Errorf("no deploy server available")
@@ -407,6 +408,7 @@ func (s *VerificationService) GenerateWildcardSSLWithAcmeDNS(domain, acmeSubdoma
 	}
 
 	// Create auth hook that updates acme-dns TXT record
+	// X-Api-User must be the username (not subdomain) from acme-dns registration
 	authHookScript := fmt.Sprintf(`cat > /tmp/acmedns-auth-hook.sh << 'HOOKEOF'
 #!/bin/bash
 # Update acme-dns TXT record via API
@@ -419,7 +421,7 @@ curl -s -X POST http://127.0.0.1:8053/update \
 # Wait for DNS propagation (acme-dns is instant, but give it a moment)
 sleep 5
 HOOKEOF
-chmod +x /tmp/acmedns-auth-hook.sh`, acmeSubdomain, acmePassword, acmeSubdomain)
+chmod +x /tmp/acmedns-auth-hook.sh`, acmeUsername, acmePassword, acmeSubdomain)
 	client.Run(authHookScript)
 
 	// Run certbot with DNS-01 challenge using our auth hook

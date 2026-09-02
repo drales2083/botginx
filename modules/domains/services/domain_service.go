@@ -400,15 +400,16 @@ func (s *DomainService) RegisterWithAcmeDNS(domainID string) (*acmedns.Registrat
 		return nil, fmt.Errorf("acme-dns registration failed: %w", err)
 	}
 
-	// Store registration in database
+	// Store registration in database (including username for API auth)
 	_, err = s.db.Exec(`
 		UPDATE domains SET
 			acme_subdomain = $1,
-			acme_password = $2,
-			acme_fulldomain = $3,
+			acme_username = $2,
+			acme_password = $3,
+			acme_fulldomain = $4,
 			updated_at = NOW()
-		WHERE id = $4
-	`, reg.Subdomain, reg.Password, reg.Fulldomain, domainID)
+		WHERE id = $5
+	`, reg.Subdomain, reg.Username, reg.Password, reg.Fulldomain, domainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store acme-dns credentials: %w", err)
 	}
