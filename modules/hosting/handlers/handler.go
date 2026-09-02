@@ -223,7 +223,7 @@ func (h *Handler) APIGetProvisioningStatus(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	status, serverIP, err := h.provisioning.GetProvisioningStatus(account.ID)
+	status, serverIP, provisioningError, err := h.provisioning.GetProvisioningStatus(account.ID)
 	if err != nil {
 		h.jsonError(w, "Failed to get status", http.StatusInternalServerError)
 		return
@@ -241,6 +241,30 @@ func (h *Handler) APIGetProvisioningStatus(w http.ResponseWriter, r *http.Reques
 		"serverIP": serverIP,
 		"domain":   domain,
 		"ready":    status == string(models.AccountStatusActive),
+		"error":    provisioningError,
+	})
+}
+
+// APIRetryProvisioning retries auto-provisioning for a failed account
+func (h *Handler) APIRetryProvisioning(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
+
+	// Only allow retry for pending accounts
+	if account.Status != models.AccountStatusPending {
+		h.jsonError(w, "Account is not in pending state", http.StatusBadRequest)
+		return
+	}
+
+	// Clear previous error and retry
+	h.service.ClearProvisioningError(account.ID)
+	h.provisioning.ProvisionAccountAsync(account.ID)
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Retrying provisioning...",
 	})
 }
 

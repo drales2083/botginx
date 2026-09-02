@@ -140,25 +140,27 @@ func (p *ProvisioningService) ProvisionAccountAsync(accountID string) {
 	go func() {
 		if err := p.ProvisionAccount(accountID); err != nil {
 			log.Printf("[provisioning] async provisioning failed for %s: %v", accountID, err)
-			// Mark account with provisioning error
+			// Store the error so user can see why it failed
+			errMsg := err.Error()
 			p.db.Exec(`
 				UPDATE hosting_accounts
-				SET status = 'pending', updated_at = $1
-				WHERE id = $2
-			`, time.Now(), accountID)
+				SET status = 'pending', provisioning_error = $1, updated_at = $2
+				WHERE id = $3
+			`, errMsg, time.Now(), accountID)
 		}
 	}()
 }
 
 // GetProvisioningStatus returns the current provisioning status for an account
-func (p *ProvisioningService) GetProvisioningStatus(accountID string) (status string, serverIP string, err error) {
+func (p *ProvisioningService) GetProvisioningStatus(accountID string) (status string, serverIP string, provisioningError string, err error) {
 	var account struct {
-		Status   string  `db:"status"`
-		ServerID *string `db:"server_id"`
+		Status            string  `db:"status"`
+		ServerID          *string `db:"server_id"`
+		ProvisioningError *string `db:"provisioning_error"`
 	}
-	err = p.db.Get(&account, `SELECT status, server_id FROM hosting_accounts WHERE id = $1`, accountID)
+	err = p.db.Get(&account, `SELECT status, server_id, provisioning_error FROM hosting_accounts WHERE id = $1`, accountID)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	if account.ServerID != nil {
@@ -167,7 +169,11 @@ func (p *ProvisioningService) GetProvisioningStatus(accountID string) (status st
 		serverIP = hostname
 	}
 
-	return account.Status, serverIP, nil
+	if account.ProvisioningError != nil {
+		provisioningError = *account.ProvisioningError
+	}
+
+	return account.Status, serverIP, provisioningError, nil
 }
 
 // shellEscape escapes a string for safe use in shell commands

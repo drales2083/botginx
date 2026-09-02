@@ -552,6 +552,12 @@ func (s *HostingService) GetBalanceTransactions(userID string) ([]models.Balance
 	return txs, err
 }
 
+// ClearProvisioningError clears the provisioning error for retry
+func (s *HostingService) ClearProvisioningError(accountID string) error {
+	_, err := s.db.Exec(`UPDATE hosting_accounts SET provisioning_error = NULL, updated_at = NOW() WHERE id = $1`, accountID)
+	return err
+}
+
 // ========== Domains (for antibot settings tracking) ==========
 
 // ListDomains returns all domains for an account

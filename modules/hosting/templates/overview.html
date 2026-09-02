@@ -8,13 +8,24 @@
         <!-- Pending Account - Auto-provisioning in progress -->
         <div class="card mb-4" id="provisioningCard">
             <div class="card-body text-center py-5">
-                <div class="spinner-border text-primary display-4 mb-3" role="status"></div>
-                <h4>Setting Up Your Account</h4>
-                <p class="text-secondary mb-0" id="provisioningStatus">Connecting to hosting server...</p>
-                <div class="progress mt-3" style="height: 4px; max-width: 300px; margin: 0 auto;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 60%"></div>
+                <div id="provisioningSpinner">
+                    <div class="spinner-border text-primary display-4 mb-3" role="status"></div>
+                    <h4>Setting Up Your Account</h4>
+                    <p class="text-secondary mb-0" id="provisioningStatus">Connecting to hosting server...</p>
+                    <div class="progress mt-3" style="height: 4px; max-width: 300px; margin: 0 auto;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 60%"></div>
+                    </div>
+                    <p class="text-secondary small mt-3">This usually takes less than a minute.</p>
                 </div>
-                <p class="text-secondary small mt-3">This usually takes less than a minute.</p>
+                <div id="provisioningError" style="display: none;">
+                    <i class="bi bi-exclamation-triangle-fill display-4 text-danger mb-3"></i>
+                    <h4 class="text-danger">Setup Failed</h4>
+                    <p class="text-secondary mb-2" id="errorMessage"></p>
+                    <p class="text-secondary small">Please contact support or try again later.</p>
+                    <button class="btn btn-primary mt-2" onclick="retryProvisioning()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Retry Setup
+                    </button>
+                </div>
             </div>
         </div>
         <script>
@@ -26,6 +37,11 @@
                     if (data.ready) {
                         // Provisioning complete - reload page
                         location.reload();
+                    } else if (data.error) {
+                        // Show error
+                        document.getElementById('provisioningSpinner').style.display = 'none';
+                        document.getElementById('provisioningError').style.display = 'block';
+                        document.getElementById('errorMessage').textContent = data.error;
                     } else {
                         // Update status text and continue polling
                         document.getElementById('provisioningStatus').textContent =
@@ -35,6 +51,22 @@
                 })
                 .catch(() => setTimeout(pollStatus, 5000));
         })();
+
+        function retryProvisioning() {
+            document.getElementById('provisioningSpinner').style.display = 'block';
+            document.getElementById('provisioningError').style.display = 'none';
+            fetch('/user/hosting/api/{{.Account.ID}}/retry', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        showToast(data.error, 'danger');
+                    } else {
+                        showToast('Retrying setup...', 'info');
+                        setTimeout(() => location.reload(), 2000);
+                    }
+                })
+                .catch(() => showToast('Failed to retry', 'danger'));
+        }
         </script>
         {{else}}
         <!-- Setup Wizard (show if server IP available but may need DNS setup) -->

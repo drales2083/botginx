@@ -85,7 +85,16 @@ func (m *Module) Migrate() error {
 	if err != nil {
 		return err
 	}
-	_, err = m.DB().Exec(string(sql4))
+	if _, err = m.DB().Exec(string(sql4)); err != nil {
+		return err
+	}
+
+	// Add provisioning_error column
+	sql5, err := fs.ReadFile(migrationsFS, "migrations/005_add_provisioning_error.sql")
+	if err != nil {
+		return err
+	}
+	_, err = m.DB().Exec(string(sql5))
 	return err
 }
 
@@ -118,6 +127,7 @@ func (m *Module) Routes() chi.Router {
 		r.Route("/{accountID}", func(r chi.Router) {
 			r.Get("/credentials", m.handler.APIGetPanelCredentials)
 			r.Get("/status", m.handler.APIGetProvisioningStatus)
+			r.Post("/retry", m.handler.APIRetryProvisioning)
 			r.Put("/domains/{domainID}/settings", m.handler.APIUpdateDomainSettings)
 			r.Post("/reactivate", m.handler.APIReactivate)
 			// Analytics for antibot dashboard

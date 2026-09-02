@@ -66,6 +66,7 @@ type HostingAccount struct {
 	PanelUsername          string        `db:"panel_username" json:"panelUsername"`
 	PanelPasswordEncrypted string        `db:"panel_password_encrypted" json:"-"`
 	Status                 AccountStatus `db:"status" json:"status"`
+	ProvisioningError      *string       `db:"provisioning_error" json:"provisioningError,omitempty"`
 	CustomPrice            *float64      `db:"custom_price" json:"customPrice,omitempty"`
 	NextBillingAt          *time.Time    `db:"next_billing_at" json:"nextBillingAt,omitempty"`
 	CreatedAt              time.Time     `db:"created_at" json:"createdAt"`
