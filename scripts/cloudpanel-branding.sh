@@ -3,41 +3,25 @@
 # CloudPanel Branding Customization Script
 #
 # Customizes CloudPanel with:
-# - Custom logo
-# - Custom panel name
-# - Dark theme as default
-# - Custom CSS overrides
+# - GaurdBotPanel logo
+# - Purple theme (#6c5ce7)
+# - Dark mode as default (via JS, uses native toggle)
 #
 # Usage:
-#   # Upload and run on CloudPanel server
-#   scp cloudpanel-branding.sh root@SERVER:/opt/
+#   scp scripts/cloudpanel-branding.sh root@SERVER:/opt/
+#   scp assets/logos/guardbotpanel-logo.png root@SERVER:/opt/cloudpanel-branding/logos/
 #   ssh root@SERVER 'bash /opt/cloudpanel-branding.sh'
-#
-#   # Or directly
-#   ssh root@SERVER 'bash -s' < scripts/cloudpanel-branding.sh
 #
 # Re-run after CloudPanel updates to restore customizations.
 
 set -euo pipefail
 
 # ----------------------------------------------------------------------------
-# Configuration - CUSTOMIZE THESE
+# Configuration
 # ----------------------------------------------------------------------------
 
-# Panel name (replaces "CloudPanel" in UI)
-PANEL_NAME="${PANEL_NAME:-GuardBotPanel}"
-
-# Primary color (hex, used for buttons, links, accents)
-PRIMARY_COLOR="${PRIMARY_COLOR:-#dc3545}"  # Red to match botginx theme
-
-# Logo URLs (optional - leave empty to skip)
-# Can be local path or URL
-LOGO_LIGHT="${LOGO_LIGHT:-}"  # Logo for light theme
-LOGO_DARK="${LOGO_DARK:-}"    # Logo for dark theme
-LOGO_FAVICON="${LOGO_FAVICON:-}"  # Favicon
-
-# Force dark theme for all users
-FORCE_DARK_THEME="${FORCE_DARK_THEME:-true}"
+PANEL_NAME="${PANEL_NAME:-GaurdBotPanel}"
+PRIMARY_COLOR="${PRIMARY_COLOR:-#6c5ce7}"  # Purple to match logo
 
 # ----------------------------------------------------------------------------
 # Output helpers
@@ -70,214 +54,219 @@ BRANDING_DIR="/opt/cloudpanel-branding"
 
 preflight() {
     info "Preflight checks"
-
     [[ $EUID -eq 0 ]] || die "Must run as root"
-
-    if [[ ! -d "$CLOUDPANEL_DIR" ]]; then
-        die "CloudPanel not found at $CLOUDPANEL_DIR"
-    fi
-
+    [[ -d "$CLOUDPANEL_DIR" ]] || die "CloudPanel not found at $CLOUDPANEL_DIR"
     ok "CloudPanel found"
 }
 
 # ----------------------------------------------------------------------------
-# Create branding directory
+# Setup directories
 # ----------------------------------------------------------------------------
 
-setup_branding_dir() {
+setup_dirs() {
     info "Setting up branding directory"
-
-    mkdir -p "$BRANDING_DIR"/{css,logos}
-
-    ok "branding directory: $BRANDING_DIR"
+    mkdir -p "$BRANDING_DIR"/{css,js,logos}
+    mkdir -p "$PUBLIC_DIR"/{css,js,images}
+    ok "directories ready"
 }
 
 # ----------------------------------------------------------------------------
-# Create custom CSS
+# Create custom CSS (branding only, no dark mode forcing)
 # ----------------------------------------------------------------------------
 
-create_custom_css() {
+create_css() {
     info "Creating custom CSS"
 
-    cat > "$BRANDING_DIR/css/custom-branding.css" <<EOF
+    cat > "$BRANDING_DIR/css/custom-branding.css" << 'EOF'
 /*
- * CloudPanel Custom Branding - ${PANEL_NAME}
- * Generated: $(date)
+ * CloudPanel Custom Branding - GaurdBotPanel
+ * Purple theme + logo only - dark mode handled by JS
  */
 
-/* Primary color - Red theme */
+/* Primary color - Purple */
 :root {
-    --bs-primary: ${PRIMARY_COLOR} !important;
-    --bs-primary-rgb: 220, 53, 69 !important;
+    --bs-primary: #6c5ce7 !important;
+    --bs-primary-rgb: 108, 92, 231 !important;
 }
 
 /* Button colors */
 .btn-primary {
-    background-color: ${PRIMARY_COLOR} !important;
-    border-color: ${PRIMARY_COLOR} !important;
+    background-color: #6c5ce7 !important;
+    border-color: #6c5ce7 !important;
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
-    background-color: #bb2d3b !important;
-    border-color: #b02a37 !important;
+    background-color: #5b4cdb !important;
+    border-color: #5b4cdb !important;
 }
 
 .btn-outline-primary {
-    color: ${PRIMARY_COLOR} !important;
-    border-color: ${PRIMARY_COLOR} !important;
+    color: #6c5ce7 !important;
+    border-color: #6c5ce7 !important;
 }
 
 .btn-outline-primary:hover {
-    background-color: ${PRIMARY_COLOR} !important;
+    background-color: #6c5ce7 !important;
     color: #fff !important;
 }
 
 /* Link colors */
 a:not(.btn) {
-    color: ${PRIMARY_COLOR};
+    color: #6c5ce7;
 }
 
 a:not(.btn):hover {
-    color: #bb2d3b;
+    color: #5b4cdb;
 }
 
 /* Sidebar active */
 .nav-link.active {
-    background-color: ${PRIMARY_COLOR} !important;
+    background-color: #6c5ce7 !important;
 }
 
 /* Progress bars */
 .progress-bar {
-    background-color: ${PRIMARY_COLOR} !important;
+    background-color: #6c5ce7 !important;
 }
 
-/* Replace CloudPanel branding with ${PANEL_NAME} */
+/* Replace CloudPanel logo with GaurdBotPanel logo */
 .navbar-brand img,
 .login-logo img,
 img[alt*="CloudPanel"],
-img[src*="cloudpanel"] {
-    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40'%3E%3Ctext x='10' y='28' font-family='Arial,sans-serif' font-size='20' font-weight='bold' fill='%23dc3545'%3E${PANEL_NAME}%3C/text%3E%3C/svg%3E") !important;
-    height: 32px !important;
+img[src*="cloudpanel"],
+img[src*="logo"] {
+    content: url("/images/guardbotpanel-logo.png") !important;
+    max-height: 40px !important;
+    width: auto !important;
 }
 
-/* Hide CloudPanel text in navbar */
+/* Login page logo larger */
+.login-logo img,
+.text-center img[src*="logo"] {
+    content: url("/images/guardbotpanel-logo.png") !important;
+    max-height: 60px !important;
+    width: auto !important;
+}
+
+/* Hide CloudPanel text */
 .navbar-brand span,
 .sidebar-brand span {
-    font-size: 0 !important;
+    display: none !important;
 }
 
-.navbar-brand span::after,
-.sidebar-brand span::after {
-    content: "${PANEL_NAME}" !important;
-    font-size: 1.25rem !important;
-    font-weight: 600 !important;
-    color: ${PRIMARY_COLOR} !important;
-}
-EOF
+/* ===== FOOTER CLEANUP ===== */
 
-    ok "custom CSS created"
-}
-
-# ----------------------------------------------------------------------------
-# Create dark theme default CSS
-# ----------------------------------------------------------------------------
-
-create_dark_theme_css() {
-    if [[ "$FORCE_DARK_THEME" != "true" ]]; then
-        log "dark theme forcing disabled"
-        return
-    fi
-
-    info "Creating dark theme default"
-
-    cat >> "$BRANDING_DIR/css/custom-branding.css" <<'EOF'
-
-/* Dark theme as default */
-@media (prefers-color-scheme: light) {
-    :root {
-        color-scheme: dark;
-    }
+/* Hide Blog, Docs, Issues, Contact links */
+footer ul li a[href*="cloudpanel.io/blog"],
+footer ul li a[href*="cloudpanel.io/docs"],
+footer ul li a[href*="github.com/cloudpanel"],
+footer ul li a[href*="cloudpanel.io/contact"],
+footer ul li a[title="Blog"],
+footer ul li a[title="Docs"],
+footer ul li a[title="Issues"],
+footer ul li a[title="Contact"] {
+    display: none !important;
 }
 
-/* Force dark theme */
-html:not([data-bs-theme="light"]) {
-    --bs-body-bg: #212529;
-    --bs-body-color: #dee2e6;
+/* Hide the li containing those links */
+footer ul li:has(a[href*="cloudpanel.io/blog"]),
+footer ul li:has(a[href*="cloudpanel.io/docs"]),
+footer ul li:has(a[href*="github.com/cloudpanel"]),
+footer ul li:has(a[href*="cloudpanel.io/contact"]) {
+    display: none !important;
 }
 
-body {
-    background-color: var(--bs-body-bg) !important;
-    color: var(--bs-body-color) !important;
+/* Hide the CloudPanel copyright and update button */
+footer ul li a[href="https://www.cloudpanel.io"],
+footer ul li #update-available-button {
+    display: none !important;
 }
 
-/* Dark sidebar */
-.sidebar {
-    background-color: #1a1d21 !important;
+/* Replace copyright text */
+footer ul li:last-child {
+    font-size: 0;
 }
 
-/* Dark cards */
-.card {
-    background-color: #2b3035 !important;
-    border-color: #373b3e !important;
-}
-
-/* Dark tables */
-.table {
-    --bs-table-bg: #2b3035;
-    --bs-table-color: #dee2e6;
-    --bs-table-border-color: #373b3e;
-}
-
-/* Dark inputs */
-.form-control,
-.form-select {
-    background-color: #2b3035 !important;
-    border-color: #495057 !important;
-    color: #dee2e6 !important;
-}
-
-/* Dark dropdowns */
-.dropdown-menu {
-    background-color: #2b3035 !important;
-    border-color: #495057 !important;
-}
-
-.dropdown-item {
-    color: #dee2e6 !important;
-}
-
-.dropdown-item:hover {
-    background-color: #373b3e !important;
-}
-
-/* Dark modals */
-.modal-content {
-    background-color: #2b3035 !important;
-    border-color: #495057 !important;
-}
-
-.modal-header,
-.modal-footer {
-    border-color: #495057 !important;
+footer ul li:last-child::before {
+    content: "© 2026 All Rights Reserved";
+    font-size: 0.875rem;
 }
 EOF
 
-    ok "dark theme default CSS added"
-}
-
-# ----------------------------------------------------------------------------
-# Inject CSS into CloudPanel
-# ----------------------------------------------------------------------------
-
-inject_css() {
-    info "Injecting custom CSS into CloudPanel"
-
-    # Copy CSS to public directory
-    mkdir -p "$PUBLIC_DIR/css"
     cp "$BRANDING_DIR/css/custom-branding.css" "$PUBLIC_DIR/css/"
+    ok "CSS created"
+}
 
-    # CloudPanel v2 layout files
+# ----------------------------------------------------------------------------
+# Create JavaScript for dark mode default
+# ----------------------------------------------------------------------------
+
+create_js() {
+    info "Creating dark mode default JavaScript"
+
+    cat > "$BRANDING_DIR/js/custom-branding.js" << 'EOF'
+// GaurdBotPanel - Set dark mode as default
+(function() {
+    // Check if theme is already set in localStorage
+    var currentTheme = localStorage.getItem('theme');
+
+    // If no theme set, default to dark
+    if (!currentTheme) {
+        localStorage.setItem('theme', 'dark');
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+    }
+
+    // On page load, ensure dark mode is applied if set
+    document.addEventListener('DOMContentLoaded', function() {
+        var theme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-bs-theme', theme);
+
+        // Update toggle icons to match current state
+        var darkIcon = document.getElementById('dark-mode');
+        var lightIcon = document.getElementById('light-mode');
+
+        if (darkIcon && lightIcon) {
+            if (theme === 'dark') {
+                darkIcon.style.display = 'none';
+                lightIcon.style.display = 'block';
+            } else {
+                darkIcon.style.display = 'block';
+                lightIcon.style.display = 'none';
+            }
+        }
+    });
+})();
+EOF
+
+    cp "$BRANDING_DIR/js/custom-branding.js" "$PUBLIC_DIR/js/"
+    ok "JavaScript created"
+}
+
+# ----------------------------------------------------------------------------
+# Copy logo
+# ----------------------------------------------------------------------------
+
+copy_logo() {
+    info "Setting up logo"
+
+    # Check if logo exists in branding dir
+    if [[ -f "$BRANDING_DIR/logos/guardbotpanel-logo.png" ]]; then
+        cp "$BRANDING_DIR/logos/guardbotpanel-logo.png" "$PUBLIC_DIR/images/"
+        ok "logo copied to public"
+    else
+        warn "Logo not found at $BRANDING_DIR/logos/guardbotpanel-logo.png"
+        log "Upload logo: scp guardbotpanel-logo.png root@SERVER:$BRANDING_DIR/logos/"
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# Inject CSS and JS into CloudPanel templates
+# ----------------------------------------------------------------------------
+
+inject_assets() {
+    info "Injecting assets into CloudPanel templates"
+
     local layouts=(
         "$CLOUDPANEL_DIR/files/templates/Frontend/layout.html.twig"
         "$CLOUDPANEL_DIR/files/templates/Frontend/Login/layout.html.twig"
@@ -285,184 +274,87 @@ inject_css() {
     )
 
     local css_link='<link rel="stylesheet" href="/css/custom-branding.css">'
-    local injected=false
+    local js_link='<script src="/js/custom-branding.js"></script>'
 
     for layout in "${layouts[@]}"; do
         if [[ -f "$layout" ]]; then
-            # Check if already injected
-            if grep -q "custom-branding.css" "$layout" 2>/dev/null; then
-                log "CSS already in $layout"
-                injected=true
-                continue
-            fi
-
-            # Inject before </head>
-            if grep -q "</head>" "$layout"; then
+            # Inject CSS if not present
+            if ! grep -q "custom-branding.css" "$layout" 2>/dev/null; then
                 sed -i "s|</head>|    ${css_link}\n    </head>|" "$layout"
-                ok "CSS injected into $layout"
-                injected=true
+                ok "CSS injected: $(basename "$layout")"
+            else
+                log "CSS already in: $(basename "$layout")"
+            fi
+
+            # Inject JS if not present
+            if ! grep -q "custom-branding.js" "$layout" 2>/dev/null; then
+                sed -i "s|</head>|    ${js_link}\n    </head>|" "$layout"
+                ok "JS injected: $(basename "$layout")"
+            else
+                log "JS already in: $(basename "$layout")"
             fi
         fi
     done
-
-    if [[ "$injected" == "false" ]]; then
-        warn "Could not find layout files to inject CSS"
-        log "Manual injection may be needed"
-        log "Add this before </head>: $css_link"
-    fi
 }
 
 # ----------------------------------------------------------------------------
-# Handle logos
+# Create update hook (cron)
 # ----------------------------------------------------------------------------
 
-setup_logos() {
-    if [[ -z "$LOGO_LIGHT" && -z "$LOGO_DARK" && -z "$LOGO_FAVICON" ]]; then
-        log "no custom logos configured"
-        return
-    fi
+create_hook() {
+    info "Creating update hook"
 
-    info "Setting up custom logos"
-
-    # Find logo locations in CloudPanel
-    local logo_dirs=(
-        "$PUBLIC_DIR/images"
-        "$PUBLIC_DIR/img"
-        "$PUBLIC_DIR/assets/images"
-    )
-
-    for dir in "${logo_dirs[@]}"; do
-        if [[ -d "$dir" ]]; then
-            # Backup originals
-            shopt -s nullglob
-            for logo in "$dir"/logo*.png "$dir"/logo*.svg "$dir"/cloudpanel*.png "$dir"/cloudpanel*.svg; do
-                if [[ -f "$logo" && ! -f "${logo}.original" ]]; then
-                    cp "$logo" "${logo}.original"
-                    log "backed up: $logo"
-                fi
-            done
-            shopt -u nullglob
-        fi
-    done
-
-    # Copy custom logos if provided
-    if [[ -n "$LOGO_LIGHT" && -f "$LOGO_LIGHT" ]]; then
-        cp "$LOGO_LIGHT" "$BRANDING_DIR/logos/logo-light.png"
-        ok "light logo saved"
-    fi
-
-    if [[ -n "$LOGO_DARK" && -f "$LOGO_DARK" ]]; then
-        cp "$LOGO_DARK" "$BRANDING_DIR/logos/logo-dark.png"
-        ok "dark logo saved"
-    fi
-
-    if [[ -n "$LOGO_FAVICON" && -f "$LOGO_FAVICON" ]]; then
-        cp "$LOGO_FAVICON" "$BRANDING_DIR/logos/favicon.ico"
-        # Copy to public dir
-        cp "$BRANDING_DIR/logos/favicon.ico" "$PUBLIC_DIR/favicon.ico" 2>/dev/null || true
-        ok "favicon updated"
-    fi
-}
-
-# ----------------------------------------------------------------------------
-# Set dark theme in database (for new users)
-# ----------------------------------------------------------------------------
-
-set_dark_theme_default() {
-    if [[ "$FORCE_DARK_THEME" != "true" ]]; then
-        return
-    fi
-
-    info "Setting dark theme as default in database"
-
-    # CloudPanel uses SQLite
-    local db_file="$CLOUDPANEL_DIR/files/db/cloudpanel.db"
-
-    if [[ -f "$db_file" ]]; then
-        # Update existing users to dark theme
-        sqlite3 "$db_file" "UPDATE user SET theme = 'dark' WHERE theme IS NULL OR theme = 'light';" 2>/dev/null && \
-            ok "existing users set to dark theme" || \
-            warn "could not update user themes (may need different column name)"
-
-        # Try to set default in settings if table exists
-        sqlite3 "$db_file" "INSERT OR REPLACE INTO setting (name, value) VALUES ('default_theme', 'dark');" 2>/dev/null || true
-    else
-        warn "database not found at $db_file"
-    fi
-}
-
-# ----------------------------------------------------------------------------
-# Create update hook
-# ----------------------------------------------------------------------------
-
-create_update_hook() {
-    info "Creating CloudPanel update hook"
-
-    # Create a script that re-applies branding after CloudPanel updates
-    cat > /etc/cron.daily/cloudpanel-branding <<'EOF'
+    cat > /etc/cron.daily/cloudpanel-branding << 'EOF'
 #!/bin/bash
 # Re-apply CloudPanel branding after updates
-# Checks if CSS injection is still present
+CSS_SRC="/opt/cloudpanel-branding/css/custom-branding.css"
+CSS_DST="/home/clp/htdocs/app/files/public/css/custom-branding.css"
 
-BRANDING_CSS="/home/clp/htdocs/app/files/public/css/custom-branding.css"
-SOURCE_CSS="/opt/cloudpanel-branding/css/custom-branding.css"
-
-if [[ -f "$SOURCE_CSS" ]]; then
-    # Check if CSS file is missing or outdated
-    if [[ ! -f "$BRANDING_CSS" ]] || ! cmp -s "$SOURCE_CSS" "$BRANDING_CSS"; then
+if [[ -f "$CSS_SRC" ]]; then
+    if [[ ! -f "$CSS_DST" ]] || ! cmp -s "$CSS_SRC" "$CSS_DST"; then
         bash /opt/cloudpanel-branding.sh 2>/dev/null
     fi
 fi
 EOF
     chmod +x /etc/cron.daily/cloudpanel-branding
 
-    # Also copy this script to branding dir for manual re-runs
+    # Copy this script
     cp "$0" "$BRANDING_DIR/cloudpanel-branding.sh" 2>/dev/null || true
 
-    ok "update hook created at /etc/cron.daily/cloudpanel-branding"
+    ok "update hook created"
 }
 
 # ----------------------------------------------------------------------------
-# Clear CloudPanel cache
+# Clear cache
 # ----------------------------------------------------------------------------
 
 clear_cache() {
-    info "Clearing CloudPanel cache"
-
-    # Clear Symfony cache
+    info "Clearing cache"
     rm -rf "$CLOUDPANEL_DIR/files/var/cache/"* 2>/dev/null || true
-
-    # Clear any compiled assets
-    rm -rf "$PUBLIC_DIR/build/"*.js.map 2>/dev/null || true
-
     ok "cache cleared"
 }
 
 # ----------------------------------------------------------------------------
-# Print summary
+# Summary
 # ----------------------------------------------------------------------------
 
 print_summary() {
     echo
     echo "=========================================="
-    printf '%s CloudPanel Branding Applied %s\n' "$GREEN" "$RESET"
+    printf '%s GaurdBotPanel Branding Applied %s\n' "$GREEN" "$RESET"
     echo "=========================================="
     echo
-    echo "Panel Name:    ${PANEL_NAME}"
-    echo "Primary Color: ${PRIMARY_COLOR}"
-    echo "Dark Theme:    ${FORCE_DARK_THEME}"
+    echo "Panel Name:  GaurdBotPanel"
+    echo "Theme Color: Purple (#6c5ce7)"
+    echo "Dark Mode:   Default for new users (toggle still works)"
     echo
     echo "Files:"
-    echo "  CSS:     $PUBLIC_DIR/css/custom-branding.css"
-    echo "  Source:  $BRANDING_DIR/"
+    echo "  Logo: $PUBLIC_DIR/images/guardbotpanel-logo.png"
+    echo "  CSS:  $PUBLIC_DIR/css/custom-branding.css"
+    echo "  JS:   $PUBLIC_DIR/js/custom-branding.js"
     echo
-    echo "To customize further, edit:"
-    echo "  $BRANDING_DIR/css/custom-branding.css"
-    echo
-    echo "Then re-run this script or copy CSS to public dir."
-    echo
-    echo "The branding will be re-applied daily via cron"
-    echo "in case CloudPanel updates overwrite changes."
+    echo "Re-run after CloudPanel updates:"
+    echo "  bash /opt/cloudpanel-branding.sh"
     echo
 }
 
@@ -472,17 +364,16 @@ print_summary() {
 
 main() {
     echo
-    printf '%s=== CloudPanel Branding ===%s\n' "$BLUE" "$RESET"
+    printf '%s=== GaurdBotPanel Branding ===%s\n' "$BLUE" "$RESET"
     echo
 
     preflight
-    setup_branding_dir
-    create_custom_css
-    create_dark_theme_css
-    inject_css
-    setup_logos
-    set_dark_theme_default
-    create_update_hook
+    setup_dirs
+    create_css
+    create_js
+    copy_logo
+    inject_assets
+    create_hook
     clear_cache
     print_summary
 }
