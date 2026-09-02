@@ -73,8 +73,9 @@ type HostingAccount struct {
 	UpdatedAt              time.Time     `db:"updated_at" json:"updatedAt"`
 
 	// Joined fields (populated by queries with JOINs)
-	ServerName   string  `db:"server_name" json:"serverName,omitempty"`
-	PanelURL     string  `db:"panel_url" json:"panelUrl,omitempty"`
+	ServerName     string `db:"server_name" json:"serverName,omitempty"`
+	ServerHostname string `db:"server_hostname" json:"serverHostname,omitempty"`
+	PanelURL       string `db:"panel_url" json:"panelUrl,omitempty"`
 	PackageName  string  `db:"package_name" json:"packageName,omitempty"`
 	PackagePrice float64 `db:"package_price" json:"packagePrice,omitempty"`
 	UserEmail    string  `db:"user_email" json:"userEmail,omitempty"`

@@ -256,6 +256,7 @@ func (s *HostingService) ListAccountsByUser(userID string) ([]models.HostingAcco
 	err := s.db.Select(&accounts, `
 		SELECT a.*,
 			COALESCE(s.name, '') as server_name,
+			COALESCE(s.hostname, '') as server_hostname,
 			COALESCE(s.panel_url, '') as panel_url,
 			COALESCE(p.name, '') as package_name,
 			COALESCE(p.price_monthly, 0) as package_price,
@@ -275,6 +276,7 @@ func (s *HostingService) ListAllAccounts() ([]models.HostingAccount, error) {
 	err := s.db.Select(&accounts, `
 		SELECT a.*,
 			COALESCE(s.name, '') as server_name,
+			COALESCE(s.hostname, '') as server_hostname,
 			COALESCE(s.panel_url, '') as panel_url,
 			COALESCE(p.name, '') as package_name,
 			COALESCE(p.price_monthly, 0) as package_price,
@@ -309,6 +311,7 @@ func (s *HostingService) GetAccount(id string) (*models.HostingAccount, error) {
 	err := s.db.Get(&account, `
 		SELECT a.*,
 			COALESCE(s.name, '') as server_name,
+			COALESCE(s.hostname, '') as server_hostname,
 			COALESCE(s.panel_url, '') as panel_url,
 			COALESCE(p.name, '') as package_name,
 			COALESCE(p.price_monthly, 0) as package_price,
