@@ -215,6 +215,31 @@ type UpdateDomainSettingsInput struct {
 	RedirectOnBlock  string   `json:"redirectOnBlock"`
 }
 
+// BotectionStats contains traffic statistics from botection
+type BotectionStats struct {
+	TotalRequests   int64            `json:"total_requests"`
+	BlockedRequests int64            `json:"blocked_requests"`
+	AllowedRequests int64            `json:"allowed_requests"`
+	Challenges      int64            `json:"challenges"`
+	BlockRate       float64          `json:"block_rate"`
+	RequestsPerMin  []int64          `json:"requests_per_min"`
+	BlocksPerMin    []int64          `json:"blocks_per_min"`
+	ModuleBlocks    map[string]int64 `json:"module_blocks"`
+	RecentBlocks    []BlockEvent     `json:"recent_blocks"`
+	Uptime          int64            `json:"uptime_seconds"`
+}
+
+// BlockEvent represents a single blocked request
+type BlockEvent struct {
+	Time   string  `json:"time"`
+	IP     string  `json:"ip"`
+	Host   string  `json:"host"`
+	Path   string  `json:"path"`
+	Reason string  `json:"reason"`
+	Module string  `json:"module"`
+	Score  float64 `json:"score"`
+}
+
 // TopUpInput is the input for admin balance top-up
 type TopUpInput struct {
 	UserID string  `json:"user_id" validate:"required"`

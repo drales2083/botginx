@@ -139,6 +139,7 @@ func (m *Module) Routes() chi.Router {
 			r.Get("/status", m.handler.APIGetProvisioningStatus)
 			r.Post("/retry", m.handler.APIRetryProvisioning)
 			r.Put("/domains/{domainID}/settings", m.handler.APIUpdateDomainSettings)
+			r.Get("/domains/{domainID}/stats", m.handler.APIGetDomainStats)
 			r.Post("/reactivate", m.handler.APIReactivate)
 			// Domain management
 			r.Post("/domains", m.handler.APIUserAddDomain)

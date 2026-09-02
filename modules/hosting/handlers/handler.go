@@ -393,6 +393,38 @@ func (h *Handler) APIUpdateDomainSettings(w http.ResponseWriter, r *http.Request
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
+// APIGetDomainStats returns traffic stats for a domain from botection
+func (h *Handler) APIGetDomainStats(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwnerJSON(w, r)
+	if !ok {
+		return
+	}
+
+	domainID := chi.URLParam(r, "domainID")
+
+	// Verify domain belongs to this account
+	domains, _ := h.service.ListDomains(account.ID)
+	found := false
+	for _, d := range domains {
+		if d.ID == domainID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	stats, err := h.service.GetDomainStats(domainID)
+	if err != nil {
+		h.jsonError(w, "Failed to fetch stats: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, stats)
+}
+
 // APIReactivate handles account reactivation request
 func (h *Handler) APIReactivate(w http.ResponseWriter, r *http.Request) {
 	account, ok := h.requireAccountOwnerJSON(w, r)

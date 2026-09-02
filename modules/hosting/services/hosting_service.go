@@ -1032,6 +1032,62 @@ func (s *HostingService) pushDomainSettingsToServer(domainID string) {
 	client.Execute(writeCmd)
 }
 
+// GetDomainStats fetches traffic stats from botection on the CloudPanel server
+func (s *HostingService) GetDomainStats(domainID string) (*models.BotectionStats, error) {
+	// Get domain info
+	domain, err := s.GetDomain(domainID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get account to find server
+	account, err := s.GetAccount(domain.AccountID)
+	if err != nil || account.ServerID == nil {
+		return nil, errors.New("account or server not found")
+	}
+
+	// Get server SSH credentials
+	server, err := s.GetServer(*account.ServerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decrypt server password
+	password, err := crypto.Decrypt(server.PasswordEncrypted)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create CloudPanel client (SSH)
+	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, password)
+	if err := client.Connect(); err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+	defer client.Close()
+
+	// Fetch stats from botection API via curl
+	output, err := client.Execute("curl -s http://127.0.0.1:8080/api/stats 2>/dev/null")
+	if err != nil || output == "" {
+		return &models.BotectionStats{}, nil
+	}
+
+	var stats models.BotectionStats
+	if err := json.Unmarshal([]byte(output), &stats); err != nil {
+		return &models.BotectionStats{}, nil
+	}
+
+	// Filter recent blocks to only show this domain
+	filteredBlocks := make([]models.BlockEvent, 0)
+	for _, block := range stats.RecentBlocks {
+		if block.Host == domain.Domain {
+			filteredBlocks = append(filteredBlocks, block)
+		}
+	}
+	stats.RecentBlocks = filteredBlocks
+
+	return &stats, nil
+}
+
 // GetDomainSettingsByHost retrieves antibot settings by domain hostname (for callback API)
 func (s *HostingService) GetDomainSettingsByHost(host string) (*models.HostingDomainSettings, error) {
 	var settings models.HostingDomainSettings
