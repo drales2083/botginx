@@ -571,8 +571,12 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) completeExternalSetup(domain *models.Domain) {
 	log.Printf("[domains] completing SSL setup for %s", domain.Name)
 
-	// Complete the wildcard SSL generation
-	if err := h.verification.CompleteWildcardSSL(domain.Name); err != nil {
+	// Complete the wildcard SSL generation - pass the saved ACME token from DB
+	acmeToken := ""
+	if domain.AcmeToken != nil {
+		acmeToken = *domain.AcmeToken
+	}
+	if err := h.verification.CompleteWildcardSSL(domain.Name, acmeToken); err != nil {
 		log.Printf("[domains] SSL generation failed for %s: %v", domain.Name, err)
 		// Don't update the ACME token in DB on failure - keep the original token stable
 		// so the user sees a consistent value. ACME generates new tokens each request,

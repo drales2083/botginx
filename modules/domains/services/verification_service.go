@@ -710,7 +710,8 @@ cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""
 // CompleteWildcardSSL generates wildcard SSL certificate
 // First checks if the ACME token from PreGenerateAcmeToken is in DNS
 // If so, runs certbot with immediate success hook (DNS already configured)
-func (s *VerificationService) CompleteWildcardSSL(domain string) error {
+// savedACMEToken should be the token from the database (domains.acme_token)
+func (s *VerificationService) CompleteWildcardSSL(domain string, savedACMEToken string) error {
 	server, err := s.getServer()
 	if err != nil {
 		return fmt.Errorf("no deploy server available")
@@ -738,10 +739,14 @@ func (s *VerificationService) CompleteWildcardSSL(domain string) error {
 		return nil // Already have cert
 	}
 
-	// Get the saved ACME token (from PreGenerateAcmeToken)
+	// Use the ACME token from database (passed as parameter)
+	// Fall back to temp file for backwards compatibility
 	getTokenCmd := fmt.Sprintf(`cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
-	savedToken, _ := client.Run(getTokenCmd)
-	savedToken = strings.TrimSpace(savedToken)
+	savedToken := strings.TrimSpace(savedACMEToken)
+	if savedToken == "" {
+		savedToken, _ = client.Run(getTokenCmd)
+		savedToken = strings.TrimSpace(savedToken)
+	}
 
 	// Verify the saved token is in DNS before proceeding
 	if savedToken != "" {
@@ -774,7 +779,7 @@ fi
 # Check against saved token - if DNS has our saved token, certbot just generated a different one
 # This is expected behavior - ACME generates new tokens per request
 # Don't overwrite the saved token - user needs to see consistent value
-SAVED_TOKEN=$(cat /tmp/acme-token-$DOMAIN.txt 2>/dev/null || echo "")
+SAVED_TOKEN="%s"
 if [ -n "$SAVED_TOKEN" ] && { [ "$GOOGLE_VAL" = "$SAVED_TOKEN" ] || [ "$CF_VAL" = "$SAVED_TOKEN" ]; }; then
     # DNS has our saved token but certbot wants a different one
     # This happens because ACME generates new challenges each request
@@ -787,7 +792,7 @@ fi
 echo "DNS check failed. Expected: $SAVED_TOKEN, Got: $GOOGLE_VAL"
 exit 1
 HOOKEOF
-chmod +x /tmp/dns-auth-verify.sh`)
+chmod +x /tmp/dns-auth-verify.sh`, savedToken)
 	client.Run(authHookScript)
 
 	// Run certbot - if DNS already has the right token, this will succeed
