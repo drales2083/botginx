@@ -570,12 +570,21 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 		status.SetupStep = models.SetupStepComplete
 	}
 
+	// Include SSL error if present
+	if domain.SSLError != nil && *domain.SSLError != "" {
+		status.ErrorMessage = *domain.SSLError
+	}
+
 	h.json(w, http.StatusOK, status)
 }
 
 // completeExternalSetup finishes SSL setup for external domain
 func (h *Handler) completeExternalSetup(domain *models.Domain) {
 	log.Printf("[domains] completing SSL setup for %s", domain.Name)
+
+	// Clear any previous error
+	emptyErr := ""
+	h.service.Update(domain.ID, models.UpdateDomainInput{SSLError: &emptyErr})
 
 	// Complete the wildcard SSL generation - pass the saved ACME token from DB
 	acmeToken := ""
@@ -584,9 +593,9 @@ func (h *Handler) completeExternalSetup(domain *models.Domain) {
 	}
 	if err := h.verification.CompleteWildcardSSL(domain.Name, acmeToken); err != nil {
 		log.Printf("[domains] SSL generation failed for %s: %v", domain.Name, err)
-		// Don't update the ACME token in DB on failure - keep the original token stable
-		// so the user sees a consistent value. ACME generates new tokens each request,
-		// but we want the user to work with the token we originally gave them.
+		// Save the error so user can see it
+		errMsg := err.Error()
+		h.service.Update(domain.ID, models.UpdateDomainInput{SSLError: &errMsg})
 		return
 	}
 

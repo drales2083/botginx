@@ -34,6 +34,7 @@ type Domain struct {
 	AcmeToken          *string    `db:"acme_token" json:"acmeToken,omitempty"`
 	AcmeTokenExpiresAt *time.Time `db:"acme_token_expires_at" json:"acmeTokenExpiresAt,omitempty"`
 	IsWildcard         bool       `db:"is_wildcard" json:"isWildcard"`
+	SSLError           *string    `db:"ssl_error" json:"sslError,omitempty"`
 
 	// Joined fields
 	ServerName string `db:"server_name" json:"serverName,omitempty"`
@@ -81,4 +82,5 @@ type UpdateDomainInput struct {
 	SetupStep          *string    `json:"setupStep"`
 	AcmeToken          *string    `json:"acmeToken"`
 	AcmeTokenExpiresAt *time.Time `json:"acmeTokenExpiresAt"`
+	SSLError           *string    `json:"sslError"`
 }

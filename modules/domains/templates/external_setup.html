@@ -156,6 +156,15 @@
             </div>
         </div>
 
+        <!-- SSL Error -->
+        <div class="callout callout-danger d-none" id="ssl-error">
+            <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>SSL Generation Failed</h5>
+            <p class="mb-2" id="ssl-error-message"></p>
+            <button class="btn btn-warning btn-sm" onclick="retrySSL()">
+                <i class="bi bi-arrow-clockwise me-1"></i>Retry SSL Generation
+            </button>
+        </div>
+
         <!-- Stale ACME Warning -->
         <div class="callout callout-danger d-none" id="stale-warning">
             <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Old ACME Record First</h5>
@@ -363,6 +372,15 @@ async function manualCheck() {
             showSetupComplete();
             showToast('Domain setup complete!', 'success');
         } else {
+            // Show SSL error if present
+            const sslErrorEl = document.getElementById('ssl-error');
+            if (status.errorMessage && status.allRecordsFound) {
+                document.getElementById('ssl-error-message').textContent = status.errorMessage;
+                sslErrorEl.classList.remove('d-none');
+            } else {
+                sslErrorEl.classList.add('d-none');
+            }
+
             // Show feedback with debug info
             const found = [status.aRecordFound, status.verifyTxtFound, status.acmeTxtFound].filter(Boolean).length;
             let msg = `Checked: ${found}/3 verified`;

@@ -243,6 +243,9 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 	if input.AcmeTokenExpiresAt != nil {
 		domain.AcmeTokenExpiresAt = input.AcmeTokenExpiresAt
 	}
+	if input.SSLError != nil {
+		domain.SSLError = input.SSLError
+	}
 	domain.UpdatedAt = time.Now()
 
 	_, err = s.db.NamedExec(`
@@ -254,6 +257,7 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 			setup_step = :setup_step,
 			acme_token = :acme_token,
 			acme_token_expires_at = :acme_token_expires_at,
+			ssl_error = :ssl_error,
 			updated_at = :updated_at
 		WHERE id = :id
 	`, domain)
