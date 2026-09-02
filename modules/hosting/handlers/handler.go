@@ -136,9 +136,14 @@ func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get provisioning error if any
+	_, _, provisioningError, _ := h.provisioning.GetProvisioningStatus(account.ID)
+
 	module.RenderUserSection(w, r, h.templates, "hosting:overview.html", map[string]interface{}{
-		"Title":   account.PackageName + " Hosting",
-		"Account": account,
+		"Title":             account.PackageName + " Hosting",
+		"Account":           account,
+		"StatusString":      string(account.Status),
+		"ProvisioningError": provisioningError,
 	})
 }
 

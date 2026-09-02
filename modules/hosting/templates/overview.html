@@ -4,10 +4,21 @@
         {{template "hosting_user_nav" .}}
     </div>
     <div class="col-md-9">
-        {{if eq .Account.Status "pending"}}
+        {{if eq .StatusString "pending"}}
         <!-- Pending Account - Auto-provisioning in progress -->
         <div class="card mb-4" id="provisioningCard">
             <div class="card-body text-center py-5">
+                {{if .ProvisioningError}}
+                <!-- Provisioning failed - show error -->
+                <i class="bi bi-exclamation-triangle-fill display-4 text-danger mb-3"></i>
+                <h4 class="text-danger">Setup Failed</h4>
+                <p class="text-secondary mb-2">{{.ProvisioningError}}</p>
+                <p class="text-secondary small">Please contact support or try again.</p>
+                <button class="btn btn-primary mt-2" onclick="retryProvisioning()">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Retry Setup
+                </button>
+                {{else}}
+                <!-- Provisioning in progress -->
                 <div id="provisioningSpinner">
                     <div class="spinner-border text-primary display-4 mb-3" role="status"></div>
                     <h4>Setting Up Your Account</h4>
@@ -26,10 +37,12 @@
                         <i class="bi bi-arrow-clockwise me-2"></i>Retry Setup
                     </button>
                 </div>
+                {{end}}
             </div>
         </div>
         <script>
-        // Poll for provisioning status
+        {{if not .ProvisioningError}}
+        // Poll for provisioning status (only if no error yet)
         (function pollStatus() {
             fetch('/user/hosting/api/{{.Account.ID}}/status')
                 .then(r => r.json())
@@ -38,10 +51,8 @@
                         // Provisioning complete - reload page
                         location.reload();
                     } else if (data.error) {
-                        // Show error
-                        document.getElementById('provisioningSpinner').style.display = 'none';
-                        document.getElementById('provisioningError').style.display = 'block';
-                        document.getElementById('errorMessage').textContent = data.error;
+                        // Show error - reload to get server-rendered error
+                        location.reload();
                     } else {
                         // Update status text and continue polling
                         document.getElementById('provisioningStatus').textContent =
@@ -51,10 +62,9 @@
                 })
                 .catch(() => setTimeout(pollStatus, 5000));
         })();
+        {{end}}
 
         function retryProvisioning() {
-            document.getElementById('provisioningSpinner').style.display = 'block';
-            document.getElementById('provisioningError').style.display = 'none';
             fetch('/user/hosting/api/{{.Account.ID}}/retry', {method: 'POST'})
                 .then(r => r.json())
                 .then(data => {
@@ -127,10 +137,10 @@
             <div class="col-md-4">
                 <div class="card h-100">
                     <div class="card-body text-center">
-                        {{if eq .Account.Status "active"}}
+                        {{if eq .StatusString "active"}}
                         <i class="bi bi-check-circle-fill display-4 text-success mb-2"></i>
                         <h5 class="text-success">Active</h5>
-                        {{else if eq .Account.Status "suspended"}}
+                        {{else if eq .StatusString "suspended"}}
                         <i class="bi bi-pause-circle-fill display-4 text-warning mb-2"></i>
                         <h5 class="text-warning">Suspended</h5>
                         <button class="btn btn-warning btn-sm mt-2" onclick="reactivateAccount()">
