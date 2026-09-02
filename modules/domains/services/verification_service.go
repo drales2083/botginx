@@ -708,9 +708,8 @@ cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""
 }
 
 // CompleteWildcardSSL generates wildcard SSL certificate
-// First checks if the ACME token from PreGenerateAcmeToken is in DNS
-// If so, runs certbot with immediate success hook (DNS already configured)
-// savedACMEToken should be the token from the database (domains.acme_token)
+// Uses a polling approach: certbot generates its token, hook polls DNS until it matches
+// savedACMEToken is updated in the hook and returned via callback
 func (s *VerificationService) CompleteWildcardSSL(domain string, savedACMEToken string) error {
 	server, err := s.getServer()
 	if err != nil {
@@ -739,78 +738,59 @@ func (s *VerificationService) CompleteWildcardSSL(domain string, savedACMEToken 
 		return nil // Already have cert
 	}
 
-	// Use the ACME token from database (passed as parameter)
-	// Fall back to temp file for backwards compatibility
-	getTokenCmd := fmt.Sprintf(`cat /tmp/acme-token-%s.txt 2>/dev/null || echo ""`, baseDomain)
-	savedToken := strings.TrimSpace(savedACMEToken)
-	if savedToken == "" {
-		savedToken, _ = client.Run(getTokenCmd)
-		savedToken = strings.TrimSpace(savedToken)
-	}
-
-	// Verify the saved token is in DNS before proceeding
-	if savedToken != "" {
-		dnsCheckCmd := fmt.Sprintf(`dig @8.8.8.8 _acme-challenge.%s TXT +short 2>/dev/null | tr -d '"'`, baseDomain)
-		dnsToken, _ := client.Run(dnsCheckCmd)
-		dnsToken = strings.TrimSpace(dnsToken)
-
-		if dnsToken != savedToken {
-			return fmt.Errorf("ACME token mismatch: DNS has '%s', expected '%s'", dnsToken, savedToken)
-		}
-	}
-
-	// Create auth hook that checks if certbot's token matches what's in DNS
-	// If yes, success. If no, fail but DON'T overwrite the saved token.
-	// The saved token is what the user was shown - we must keep it stable.
-	authHookScript := fmt.Sprintf(`cat > /tmp/dns-auth-verify.sh << 'HOOKEOF'
+	// Create auth hook that:
+	// 1. Saves certbot's NEW token to a file (so UI can show it)
+	// 2. Polls DNS for up to 5 minutes waiting for user to update
+	// 3. Exits success when DNS matches certbot's token
+	authHookScript := fmt.Sprintf(`cat > /tmp/dns-auth-poll.sh << 'HOOKEOF'
 #!/bin/bash
 DOMAIN="$CERTBOT_DOMAIN"
 TOKEN="$CERTBOT_VALIDATION"
 
-# Check if token is already in DNS (from previous setup)
-GOOGLE_VAL=$(dig @8.8.8.8 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
-CF_VAL=$(dig @1.1.1.1 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
+# Save the token so the UI can display it
+echo "$TOKEN" > /tmp/acme-token-%s-live.txt
 
-if [ "$GOOGLE_VAL" = "$TOKEN" ] || [ "$CF_VAL" = "$TOKEN" ]; then
-    echo "DNS already has correct token"
-    exit 0
-fi
+echo "ACME Challenge Token: $TOKEN"
+echo "Waiting for DNS TXT record at _acme-challenge.$DOMAIN"
+echo "Please set this TXT record value in your DNS and wait for propagation..."
 
-# Check against saved token - if DNS has our saved token, certbot just generated a different one
-# This is expected behavior - ACME generates new tokens per request
-# Don't overwrite the saved token - user needs to see consistent value
-SAVED_TOKEN="%s"
-if [ -n "$SAVED_TOKEN" ] && { [ "$GOOGLE_VAL" = "$SAVED_TOKEN" ] || [ "$CF_VAL" = "$SAVED_TOKEN" ]; }; then
-    # DNS has our saved token but certbot wants a different one
-    # This happens because ACME generates new challenges each request
-    # Exit success - the DNS is correct for our purposes, certbot will retry
-    echo "DNS has saved token, certbot generated new one - this is normal ACME behavior"
-    exit 0
-fi
+# Poll DNS for up to 5 minutes (30 attempts, 10 seconds apart)
+for i in $(seq 1 30); do
+    GOOGLE_VAL=$(dig @8.8.8.8 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
+    CF_VAL=$(dig @1.1.1.1 _acme-challenge.$DOMAIN TXT +short 2>/dev/null | tr -d '"')
 
-# Token doesn't match and DNS doesn't have saved token either - DNS not configured yet
-echo "DNS check failed. Expected: $SAVED_TOKEN, Got: $GOOGLE_VAL"
+    if [ "$GOOGLE_VAL" = "$TOKEN" ] || [ "$CF_VAL" = "$TOKEN" ]; then
+        echo "DNS verified! Token matches."
+        exit 0
+    fi
+
+    echo "Attempt $i/30: DNS has '$GOOGLE_VAL', waiting for '$TOKEN'..."
+    sleep 10
+done
+
+echo "Timeout: DNS not updated within 5 minutes"
 exit 1
 HOOKEOF
-chmod +x /tmp/dns-auth-verify.sh`, savedToken)
+chmod +x /tmp/dns-auth-poll.sh`, baseDomain)
 	client.Run(authHookScript)
 
-	// Run certbot - if DNS already has the right token, this will succeed
+	// Run certbot with polling hook - gives user 5 minutes to update DNS
 	certbotCmd := fmt.Sprintf(`
 certbot certonly --manual --preferred-challenges dns \
   -d "*.%s" \
   --agree-tos --email admin@%s \
-  --manual-auth-hook /tmp/dns-auth-verify.sh \
+  --manual-auth-hook /tmp/dns-auth-poll.sh \
   --non-interactive 2>&1
 `, baseDomain, baseDomain)
 
 	output, err := client.Run(certbotCmd)
 	if err != nil {
-		// Check if we saved a new token (means certbot wanted different token)
-		newToken, _ := client.Run(getTokenCmd)
-		newToken = strings.TrimSpace(newToken)
-		if newToken != "" && newToken != savedToken {
-			return fmt.Errorf("ACME token changed. Please update DNS with new token: %s", newToken)
+		// Check if certbot saved a token (means it ran but DNS wasn't updated in time)
+		liveTokenCmd := fmt.Sprintf(`cat /tmp/acme-token-%s-live.txt 2>/dev/null || echo ""`, baseDomain)
+		liveToken, _ := client.Run(liveTokenCmd)
+		liveToken = strings.TrimSpace(liveToken)
+		if liveToken != "" {
+			return fmt.Errorf("SSL generation timed out. Update DNS TXT record _acme-challenge.%s to: %s", baseDomain, liveToken)
 		}
 		return fmt.Errorf("SSL generation failed: %s", parseCertbotError(output))
 	}
@@ -908,4 +888,38 @@ func (s *VerificationService) GetSavedAcmeToken(baseDomain string) string {
 	}
 
 	return strings.TrimSpace(output)
+}
+
+// GetLiveAcmeToken reads the current ACME token that certbot is waiting for
+// This is used when certbot is running and waiting for DNS to be updated
+func (s *VerificationService) GetLiveAcmeToken(domain string) (string, error) {
+	server, err := s.getServer()
+	if err != nil {
+		return "", fmt.Errorf("no deploy server available")
+	}
+
+	baseDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		baseDomain = strings.TrimPrefix(domain, "*.")
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return "", fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Read the live token file
+	cmd := fmt.Sprintf(`cat /tmp/acme-token-%s-live.txt 2>/dev/null || echo ""`, baseDomain)
+	token, err := client.Run(cmd)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(token), nil
 }
