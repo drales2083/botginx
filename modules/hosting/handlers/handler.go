@@ -140,10 +140,19 @@ func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
 	// Get provisioning error if any
 	_, _, provisioningError, _ := h.provisioning.GetProvisioningStatus(account.ID)
 
+	// Fix: If account has a server assigned, it should be active (not pending)
+	// This handles cases where status update failed during provisioning
+	statusString := string(account.Status)
+	if account.ServerID != nil && account.Status == models.AccountStatusPending {
+		statusString = string(models.AccountStatusActive)
+		// Also fix the database
+		go h.service.FixAccountStatus(account.ID, models.AccountStatusActive)
+	}
+
 	module.RenderUserSection(w, r, h.templates, "hosting:overview.html", map[string]interface{}{
 		"Title":             account.PackageName + " Hosting",
 		"Account":           account,
-		"StatusString":      string(account.Status),
+		"StatusString":      statusString,
 		"ProvisioningError": provisioningError,
 	})
 }
@@ -702,22 +711,26 @@ func (h *Handler) APIGetDomainStatus(w http.ResponseWriter, r *http.Request) {
 
 	// Check current DNS
 	dnsOK := false
+	isCloudflare := false
 	var currentIP string
 	ips, err := net.LookupHost(domain.Domain)
 	if err == nil && len(ips) > 0 {
 		currentIP = ips[0]
-		dnsOK = currentIP == serverIP
+		isCloudflare = isCloudflareIP(currentIP)
+		// DNS is OK if it points to our server OR is proxied through Cloudflare
+		dnsOK = currentIP == serverIP || isCloudflare
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{
-		"domain":      domain.Domain,
-		"dnsVerified": domain.DNSVerified,
-		"dnsOK":       dnsOK,
-		"currentIP":   currentIP,
-		"expectedIP":  serverIP,
-		"sslEnabled":  domain.SSLEnabled,
-		"setupStatus": domain.SetupStatus,
-		"sslError":    domain.SSLError,
+		"domain":       domain.Domain,
+		"dnsVerified":  domain.DNSVerified,
+		"dnsOK":        dnsOK,
+		"isCloudflare": isCloudflare,
+		"currentIP":    currentIP,
+		"expectedIP":   serverIP,
+		"sslEnabled":   domain.SSLEnabled,
+		"setupStatus":  domain.SetupStatus,
+		"sslError":     domain.SSLError,
 	})
 }
 
@@ -740,10 +753,13 @@ func (h *Handler) APICheckDNS(w http.ResponseWriter, r *http.Request) {
 	// Check DNS
 	ips, err := net.LookupHost(domain.Domain)
 	dnsOK := false
+	isCloudflare := false
 	var currentIP string
 	if err == nil && len(ips) > 0 {
 		currentIP = ips[0]
-		dnsOK = currentIP == serverIP
+		isCloudflare = isCloudflareIP(currentIP)
+		// DNS is OK if it points to our server OR is proxied through Cloudflare
+		dnsOK = currentIP == serverIP || isCloudflare
 	}
 
 	// Update domain status
@@ -752,10 +768,32 @@ func (h *Handler) APICheckDNS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{
-		"dnsOK":      dnsOK,
-		"currentIP":  currentIP,
-		"expectedIP": serverIP,
+		"dnsOK":        dnsOK,
+		"isCloudflare": isCloudflare,
+		"currentIP":    currentIP,
+		"expectedIP":   serverIP,
 	})
+}
+
+// isCloudflareIP checks if an IP address belongs to Cloudflare's network
+func isCloudflareIP(ip string) bool {
+	// Cloudflare IPv4 ranges (from https://www.cloudflare.com/ips-v4)
+	cloudflareRanges := []string{
+		"173.245.48.", "103.21.244.", "103.22.200.", "103.31.4.",
+		"141.101.", "108.162.", "190.93.", "188.114.",
+		"197.234.240.", "198.41.", "162.158.", "104.16.",
+		"104.17.", "104.18.", "104.19.", "104.20.",
+		"104.21.", "104.22.", "104.23.", "104.24.",
+		"104.25.", "104.26.", "104.27.", "172.64.",
+		"172.65.", "172.66.", "172.67.", "172.68.",
+		"172.69.", "172.70.", "172.71.",
+	}
+	for _, prefix := range cloudflareRanges {
+		if len(ip) >= len(prefix) && ip[:len(prefix)] == prefix {
+			return true
+		}
+	}
+	return false
 }
 
 // APIEnableSSL enables SSL for a domain

@@ -228,7 +228,12 @@ async function updateDomainStatus(domainId, row) {
 
         // Update DNS column
         const dnsCell = row.querySelector('.dns-status');
-        if (data.dnsOK || data.dnsVerified) {
+        if (data.isCloudflare) {
+            dnsCell.innerHTML = '<span class="badge text-bg-info"><i class="bi bi-cloud me-1"></i>Cloudflare</span>';
+            // Enable SSL button for Cloudflare (they handle SSL)
+            const sslBtn = row.querySelector('.btn-enable-ssl');
+            if (sslBtn) sslBtn.disabled = false;
+        } else if (data.dnsOK || data.dnsVerified) {
             dnsCell.innerHTML = '<span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Verified</span>';
             // Enable SSL button
             const sslBtn = row.querySelector('.btn-enable-ssl');
@@ -271,7 +276,10 @@ document.addEventListener('click', async (e) => {
         const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainId}/check-dns`, { method: 'POST' });
         const data = await res.json().catch(() => ({}));
 
-        if (data.dnsOK) {
+        if (data.isCloudflare) {
+            showToast('Domain is proxied through Cloudflare. SSL is handled by Cloudflare.', 'info');
+            await updateDomainStatus(domainId, row);
+        } else if (data.dnsOK) {
             showToast('DNS verified! You can now enable SSL.', 'success');
             await updateDomainStatus(domainId, row);
         } else {

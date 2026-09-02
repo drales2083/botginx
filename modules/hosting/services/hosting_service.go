@@ -1060,3 +1060,8 @@ func (s *HostingService) GenerateSSLForDomain(account *models.HostingAccount, do
 
 	return nil
 }
+
+// FixAccountStatus corrects account status when it's stuck at wrong value
+func (s *HostingService) FixAccountStatus(accountID string, status models.AccountStatus) {
+	s.db.Exec(`UPDATE hosting_accounts SET status = $1, updated_at = NOW() WHERE id = $2`, status, accountID)
+}
