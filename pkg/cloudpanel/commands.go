@@ -1,7 +1,6 @@
 package cloudpanel
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -85,10 +84,11 @@ func (c *Client) DeleteUser(username string) error {
 // AddSite creates a new website with PHP support
 // domain: primary domain name
 // siteUser: the system user for this site
+// siteUserPassword: password for the site user
 // phpVersion: PHP version (e.g., "8.2")
-func (c *Client) AddSite(domain, siteUser string, phpVersion PHPVersion) error {
-	cmd := fmt.Sprintf("clpctl site:add:php --domainName=%s --phpVersion=%s --vhostTemplate='PHP' --siteUser=%s",
-		shellEscape(domain), string(phpVersion), shellEscape(siteUser))
+func (c *Client) AddSite(domain, siteUser, siteUserPassword string, phpVersion PHPVersion) error {
+	cmd := fmt.Sprintf("clpctl site:add:php --domainName=%s --phpVersion=%s --vhostTemplate='Generic' --siteUser=%s --siteUserPassword=%s",
+		shellEscape(domain), string(phpVersion), shellEscape(siteUser), shellEscape(siteUserPassword))
 	output, err := c.Execute(cmd)
 	if err != nil {
 		if output != "" {
@@ -131,8 +131,8 @@ func (c *Client) DeleteSite(domain string) error {
 }
 
 // AddDomain is an alias for AddSite with default PHP version
-func (c *Client) AddDomain(username, domain string) error {
-	return c.AddSite(domain, username, PHP82)
+func (c *Client) AddDomain(username, password, domain string) error {
+	return c.AddSite(domain, username, password, PHP82)
 }
 
 // DeleteDomain removes a web domain
@@ -166,17 +166,21 @@ func (c *Client) DeleteDatabase(dbName string) error {
 	return err
 }
 
-// ListSites returns a list of all sites
+// ListSites returns a list of all sites by parsing nginx sites-enabled
 func (c *Client) ListSites() ([]SiteInfo, error) {
-	cmd := "clpctl site:list --format=json"
+	// CloudPanel doesn't have site:list, parse nginx configs instead
+	cmd := "ls /etc/nginx/sites-enabled/*.conf 2>/dev/null | xargs -n1 basename | sed 's/\\.conf$//' | grep -v default"
 	output, err := c.Execute(cmd)
 	if err != nil {
 		return nil, err
 	}
 
 	var sites []SiteInfo
-	if err := json.Unmarshal([]byte(output), &sites); err != nil {
-		return nil, fmt.Errorf("parse sites: %w", err)
+	for _, line := range strings.Split(output, "\n") {
+		domain := strings.TrimSpace(line)
+		if domain != "" {
+			sites = append(sites, SiteInfo{Domain: domain})
+		}
 	}
 	return sites, nil
 }

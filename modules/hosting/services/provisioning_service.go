@@ -98,16 +98,9 @@ func (p *ProvisioningService) ProvisionAccount(accountID string) error {
 	// Create the site on CloudPanel
 	// This creates: site user, vhost, PHP-FPM pool
 	log.Printf("[provisioning] creating site %s on server %s with user %s", domain, server.Name, account.PanelUsername)
-	if err := client.AddSite(domain, account.PanelUsername, cloudpanel.PHP82); err != nil {
+	if err := client.AddSite(domain, account.PanelUsername, panelPassword, cloudpanel.PHP82); err != nil {
 		log.Printf("[provisioning] failed to create site: %v", err)
 		return errors.New("failed to create site on server: " + err.Error())
-	}
-
-	// Set the user password (AddSite creates user but we need to set our password)
-	cmd := "clpctl user:reset:password --userName=" + shellEscape(account.PanelUsername) + " --password=" + shellEscape(panelPassword)
-	if _, err := client.Execute(cmd); err != nil {
-		log.Printf("[provisioning] warning: failed to set user password: %v", err)
-		// Don't fail - site is created, password can be reset manually
 	}
 
 	// Update account with server link and active status
