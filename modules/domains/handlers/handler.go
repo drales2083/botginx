@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/domains/services"
@@ -548,8 +549,12 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 
 	// If all records found and not yet complete, trigger SSL generation
 	// Also retry if stuck at ssl_generating (previous attempt may have failed)
+	// Add cooldown: only retry every 5 minutes to avoid rate limiting
+	sslCooldown := 5 * time.Minute
+	canRetrySSL := time.Since(domain.UpdatedAt) > sslCooldown
+
 	if status.AllRecordsFound && !domain.SSLEnabled &&
-		(domain.SetupStep == models.SetupStepDNSWaiting || domain.SetupStep == models.SetupStepSSLGenerating) {
+		(domain.SetupStep == models.SetupStepDNSWaiting || (domain.SetupStep == models.SetupStepSSLGenerating && canRetrySSL)) {
 		go h.completeExternalSetup(domain)
 		if domain.SetupStep == models.SetupStepDNSWaiting {
 			step := models.SetupStepSSLGenerating
