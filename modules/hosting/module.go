@@ -74,7 +74,16 @@ func (m *Module) Migrate() error {
 	if err != nil {
 		return err
 	}
-	_, err = m.DB().Exec(string(sql3))
+	if _, err = m.DB().Exec(string(sql3)); err != nil {
+		return err
+	}
+
+	// Fix user_id column types for UUID support
+	sql4, err := fs.ReadFile(migrationsFS, "migrations/004_fix_user_id_types.sql")
+	if err != nil {
+		return err
+	}
+	_, err = m.DB().Exec(string(sql4))
 	return err
 }
 
