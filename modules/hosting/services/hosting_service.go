@@ -189,7 +189,11 @@ func (s *HostingService) TogglePackage(id string, active bool) error {
 func (s *HostingService) ListAccountsByUser(userID string) ([]models.HostingAccount, error) {
 	var accounts []models.HostingAccount
 	err := s.db.Select(&accounts, `
-		SELECT a.*, s.name as server_name, s.panel_url, p.name as package_name, p.price_monthly as package_price,
+		SELECT a.*,
+			COALESCE(s.name, '') as server_name,
+			COALESCE(s.panel_url, '') as panel_url,
+			COALESCE(p.name, '') as package_name,
+			COALESCE(p.price_monthly, 0) as package_price,
 			(SELECT COUNT(*) FROM hosting_domains WHERE account_id = a.id) as domain_count
 		FROM hosting_accounts a
 		LEFT JOIN hosting_servers s ON s.id = a.server_id
@@ -204,8 +208,12 @@ func (s *HostingService) ListAccountsByUser(userID string) ([]models.HostingAcco
 func (s *HostingService) ListAllAccounts() ([]models.HostingAccount, error) {
 	var accounts []models.HostingAccount
 	err := s.db.Select(&accounts, `
-		SELECT a.*, s.name as server_name, s.panel_url, p.name as package_name, p.price_monthly as package_price,
-			u.email as user_email,
+		SELECT a.*,
+			COALESCE(s.name, '') as server_name,
+			COALESCE(s.panel_url, '') as panel_url,
+			COALESCE(p.name, '') as package_name,
+			COALESCE(p.price_monthly, 0) as package_price,
+			COALESCE(u.email, '') as user_email,
 			(SELECT COUNT(*) FROM hosting_domains WHERE account_id = a.id) as domain_count
 		FROM hosting_accounts a
 		LEFT JOIN hosting_servers s ON s.id = a.server_id
@@ -234,7 +242,11 @@ func (s *HostingService) ListPendingAccounts() ([]models.HostingAccount, error) 
 func (s *HostingService) GetAccount(id string) (*models.HostingAccount, error) {
 	var account models.HostingAccount
 	err := s.db.Get(&account, `
-		SELECT a.*, s.name as server_name, s.panel_url, p.name as package_name, p.price_monthly as package_price,
+		SELECT a.*,
+			COALESCE(s.name, '') as server_name,
+			COALESCE(s.panel_url, '') as panel_url,
+			COALESCE(p.name, '') as package_name,
+			COALESCE(p.price_monthly, 0) as package_price,
 			(SELECT COUNT(*) FROM hosting_domains WHERE account_id = a.id) as domain_count
 		FROM hosting_accounts a
 		LEFT JOIN hosting_servers s ON s.id = a.server_id
