@@ -206,7 +206,25 @@ EOF
 }
 
 # ----------------------------------------------------------------------------
-# Create JavaScript for dark mode default
+# Update translations (Dashboard -> Bullet Proof Hosting)
+# ----------------------------------------------------------------------------
+
+update_translations() {
+    info "Updating translations"
+
+    local trans_file="$CLOUDPANEL_DIR/files/translations/messages.en.xlf"
+
+    if [[ -f "$trans_file" ]]; then
+        # Replace Dashboard with Bullet Proof Hosting
+        sed -i 's|<target>Dashboard</target>|<target>Bullet Proof Hosting</target>|g' "$trans_file"
+        ok "Dashboard -> Bullet Proof Hosting"
+    else
+        warn "Translation file not found"
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# Create JavaScript for dark mode
 # ----------------------------------------------------------------------------
 
 create_js() {
@@ -334,7 +352,8 @@ print_summary() {
     echo
     echo "Panel Name:  GaurdBotPanel"
     echo "Theme Color: Purple (#6c5ce7)"
-    echo "Dark Mode:   Default for new users (toggle still works)"
+    echo "Dark Mode:   Forced (toggle hidden)"
+    echo "Dashboard:   Bullet Proof Hosting"
     echo
     echo "Files:"
     echo "  Logo: $PUBLIC_DIR/images/guardbotpanel-logo.png"
@@ -360,6 +379,7 @@ main() {
     create_css
     create_js
     copy_logo
+    update_translations
     inject_assets
     create_hook
     clear_cache
