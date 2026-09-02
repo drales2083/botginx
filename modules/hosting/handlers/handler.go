@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -154,13 +155,14 @@ func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
 	// Check if setup is complete (all domains have SSL and DNS verified)
 	domains, _ := h.service.ListDomains(account.ID)
 	setupComplete := true
+	var pendingDomains []models.HostingDomain
 	if len(domains) == 0 {
 		setupComplete = false // No domains yet
 	} else {
 		for _, d := range domains {
-			if !d.DNSVerified || !d.SSLEnabled {
+			if !d.DNSVerified || !d.SSLEnabled || d.SetupStatus != models.DomainStatusActive {
 				setupComplete = false
-				break
+				pendingDomains = append(pendingDomains, d)
 			}
 		}
 	}
@@ -172,6 +174,7 @@ func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
 		"ProvisioningError": provisioningError,
 		"SetupComplete":     setupComplete,
 		"Domains":           domains,
+		"PendingDomains":    pendingDomains,
 	})
 }
 
@@ -545,9 +548,11 @@ func (h *Handler) APIUserAddDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.json(w, http.StatusCreated, map[string]interface{}{
-		"success": true,
-		"domain":  domain,
-		"message": "Domain added. Point your DNS to the server IP, then enable SSL.",
+		"success":     true,
+		"domain":      domain,
+		"message":     "Domain added. Complete DNS setup to enable SSL.",
+		"setup_url":   fmt.Sprintf("/user/hosting/%s/domains/%s/setup", account.ID, domain.ID),
+		"needs_setup": true,
 	})
 }
 

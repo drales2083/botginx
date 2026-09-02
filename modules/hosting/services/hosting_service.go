@@ -1360,3 +1360,17 @@ func (s *HostingService) GenerateSSLForDomain(account *models.HostingAccount, do
 func (s *HostingService) FixAccountStatus(accountID string, status models.AccountStatus) {
 	s.db.Exec(`UPDATE hosting_accounts SET status = $1, updated_at = NOW() WHERE id = $2`, status, accountID)
 }
+
+// ListPendingDomains returns all domains that need DNS verification or SSL setup
+func (s *HostingService) ListPendingDomains() ([]models.HostingDomain, error) {
+	var domains []models.HostingDomain
+	err := s.db.Select(&domains, `
+		SELECT d.* FROM hosting_domains d
+		JOIN hosting_accounts a ON a.id = d.account_id
+		WHERE a.server_id IS NOT NULL
+		AND a.status = 'active'
+		AND (d.dns_verified = FALSE OR d.ssl_enabled = FALSE OR d.setup_status != 'active')
+		ORDER BY d.created_at DESC
+	`)
+	return domains, err
+}

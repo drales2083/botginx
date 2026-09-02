@@ -23,6 +23,7 @@ type Module struct {
 	billing      *services.BillingService
 	provisioning *services.ProvisioningService
 	handler      *handlers.Handler
+	bgVerifier   *services.BackgroundVerifier
 }
 
 // New creates a new hosting module instance
@@ -44,6 +45,10 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.billing = services.NewBillingService(deps.DB, m.service)
 	m.provisioning = services.NewProvisioningService(deps.DB)
 	m.handler = handlers.NewHandler(m.service, m.billing, m.provisioning, deps.Templates)
+
+	// Start background verifier for DNS/SSL auto-setup
+	m.bgVerifier = services.NewBackgroundVerifier(m.service)
+	m.bgVerifier.Start()
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
