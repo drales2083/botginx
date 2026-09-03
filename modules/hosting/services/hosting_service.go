@@ -1163,26 +1163,20 @@ func (s *HostingService) GetAnalyticsSummary(accountID string) *AnalyticsSummary
 		return summary
 	}
 
-	// Build domain list for query
-	domainNames := make([]string, len(domains))
-	for i, d := range domains {
-		domainNames[i] = d.Domain
-	}
-
-	// Query visits from analytics table (last 7 days)
+	// Query visits from hosting_visits table (last 7 days)
 	query := `
 		SELECT
 			COUNT(*) as total,
 			COUNT(*) FILTER (WHERE is_bot = true OR blocked = true) as blocked
-		FROM visits
-		WHERE domain = ANY($1)
-		AND visited_at > NOW() - INTERVAL '7 days'
+		FROM hosting_visits
+		WHERE account_id = $1
+		AND created_at > NOW() - INTERVAL '7 days'
 	`
 	var stats struct {
 		Total   int `db:"total"`
 		Blocked int `db:"blocked"`
 	}
-	s.db.Get(&stats, query, domainNames)
+	s.db.Get(&stats, query, accountID)
 
 	summary.TotalVisits = stats.Total
 	summary.BotBlocks = stats.Blocked
@@ -1203,18 +1197,6 @@ func (s *HostingService) GetAnalytics(accountID, period string) *Analytics {
 		RecentBlocks: []BlockEvent{},
 	}
 
-	// Get domains for this account
-	domains, _ := s.ListDomains(accountID)
-	if len(domains) == 0 {
-		return analytics
-	}
-
-	// Build domain list
-	domainNames := make([]string, len(domains))
-	for i, d := range domains {
-		domainNames[i] = d.Domain
-	}
-
 	// Determine time interval
 	interval := "7 days"
 	switch period {
@@ -1233,10 +1215,10 @@ func (s *HostingService) GetAnalytics(accountID, period string) *Analytics {
 		SELECT
 			COUNT(*) as total,
 			COUNT(*) FILTER (WHERE is_bot = true OR blocked = true) as blocked
-		FROM visits
-		WHERE domain = ANY($1)
-		AND visited_at > NOW() - INTERVAL '`+interval+`'
-	`, domainNames)
+		FROM hosting_visits
+		WHERE account_id = $1
+		AND created_at > NOW() - INTERVAL '`+interval+`'
+	`, accountID)
 
 	analytics.Summary.TotalVisits = summaryStats.Total
 	analytics.Summary.BotBlocks = summaryStats.Blocked
@@ -1251,41 +1233,42 @@ func (s *HostingService) GetAnalytics(accountID, period string) *Analytics {
 			COALESCE(country, 'Unknown') as country,
 			COUNT(*) as visits,
 			COUNT(*) FILTER (WHERE is_bot = true OR blocked = true) as blocks
-		FROM visits
-		WHERE domain = ANY($1)
-		AND visited_at > NOW() - INTERVAL '`+interval+`'
+		FROM hosting_visits
+		WHERE account_id = $1
+		AND created_at > NOW() - INTERVAL '`+interval+`'
 		GROUP BY country
 		ORDER BY visits DESC
 		LIMIT 10
-	`, domainNames)
+	`, accountID)
 
 	// By device
 	s.db.Select(&analytics.ByDevice, `
 		SELECT
-			COALESCE(device_type, 'unknown') as device,
+			COALESCE(device, 'unknown') as device,
 			COUNT(*) as visits
-		FROM visits
-		WHERE domain = ANY($1)
-		AND visited_at > NOW() - INTERVAL '`+interval+`'
-		GROUP BY device_type
+		FROM hosting_visits
+		WHERE account_id = $1
+		AND created_at > NOW() - INTERVAL '`+interval+`'
+		GROUP BY device
 		ORDER BY visits DESC
-	`, domainNames)
+	`, accountID)
 
-	// Recent blocks
+	// Recent blocks - join with hosting_domains to get domain name
 	s.db.Select(&analytics.RecentBlocks, `
 		SELECT
-			TO_CHAR(visited_at, 'YYYY-MM-DD HH24:MI') as time,
-			ip,
-			COALESCE(country, 'Unknown') as country,
-			COALESCE(block_reason, 'bot') as reason,
-			domain
-		FROM visits
-		WHERE domain = ANY($1)
-		AND (is_bot = true OR blocked = true)
-		AND visited_at > NOW() - INTERVAL '`+interval+`'
-		ORDER BY visited_at DESC
+			TO_CHAR(v.created_at, 'YYYY-MM-DD HH24:MI') as time,
+			v.ip,
+			COALESCE(v.country, 'Unknown') as country,
+			COALESCE(v.block_reason, 'bot') as reason,
+			d.domain
+		FROM hosting_visits v
+		JOIN hosting_domains d ON d.id = v.domain_id
+		WHERE v.account_id = $1
+		AND (v.is_bot = true OR v.blocked = true)
+		AND v.created_at > NOW() - INTERVAL '`+interval+`'
+		ORDER BY v.created_at DESC
 		LIMIT 20
-	`, domainNames)
+	`, accountID)
 
 	return analytics
 }
@@ -1374,4 +1357,111 @@ func (s *HostingService) ListPendingDomains() ([]models.HostingDomain, error) {
 		ORDER BY d.created_at DESC
 	`)
 	return domains, err
+}
+
+// ========== Hosting Visits (Analytics) ==========
+
+// HostingDomainInfo contains domain and account IDs for visit recording
+type HostingDomainInfo struct {
+	DomainID  string
+	AccountID string
+	UserID    string
+}
+
+// GetDomainByHost looks up a hosting domain by its hostname.
+// Returns domain ID, account ID, and owner user ID if found.
+func (s *HostingService) GetDomainByHost(host string) (*HostingDomainInfo, error) {
+	// Normalize host (remove www. prefix if present)
+	host = strings.TrimPrefix(strings.ToLower(host), "www.")
+
+	var info HostingDomainInfo
+	err := s.db.Get(&info, `
+		SELECT d.id as domain_id, d.account_id, a.user_id
+		FROM hosting_domains d
+		JOIN hosting_accounts a ON a.id = d.account_id
+		WHERE LOWER(d.domain) = $1 OR LOWER(d.domain) = $2
+		LIMIT 1
+	`, host, "www."+host)
+	if err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
+// RecordHostingVisit stores a visit in the hosting_visits table
+func (s *HostingService) RecordHostingVisit(visit *models.HostingVisit) error {
+	if visit.ID == "" {
+		visit.ID = s.generateID()
+	}
+	if visit.CreatedAt.IsZero() {
+		visit.CreatedAt = time.Now()
+	}
+
+	_, err := s.db.Exec(`
+		INSERT INTO hosting_visits (
+			id, domain_id, account_id,
+			ip, path, method, country, city, asn, asn_org,
+			device, browser, os, user_agent, language, timezone, screen_resolution,
+			referrer, referrer_domain,
+			utm_source, utm_medium, utm_campaign, utm_term, utm_content,
+			is_bot, bot_score, behavior_score, automation_tool,
+			is_headless, is_tor, is_proxy, is_datacenter, fingerprint,
+			action, blocked, block_reason, session_id, created_at
+		) VALUES (
+			$1, $2, $3,
+			$4, $5, $6, $7, $8, $9, $10,
+			$11, $12, $13, $14, $15, $16, $17,
+			$18, $19,
+			$20, $21, $22, $23, $24,
+			$25, $26, $27, $28,
+			$29, $30, $31, $32, $33,
+			$34, $35, $36, $37, $38
+		)
+	`,
+		visit.ID, visit.DomainID, visit.AccountID,
+		visit.IP, visit.Path, visit.Method, visit.Country, visit.City, visit.ASN, visit.ASNOrg,
+		visit.Device, visit.Browser, visit.OS, visit.UserAgent, visit.Language, visit.Timezone, visit.ScreenResolution,
+		visit.Referrer, visit.ReferrerDomain,
+		visit.UTMSource, visit.UTMMedium, visit.UTMCampaign, visit.UTMTerm, visit.UTMContent,
+		visit.IsBot, visit.BotScore, visit.BehaviorScore, visit.AutomationTool,
+		visit.IsHeadless, visit.IsTor, visit.IsProxy, visit.IsDatacenter, visit.Fingerprint,
+		visit.Action, visit.Blocked, visit.BlockReason, visit.SessionID, visit.CreatedAt,
+	)
+	return err
+}
+
+// GetDomainVisitStats returns visit statistics for a domain
+func (s *HostingService) GetDomainVisitStats(domainID string, since time.Time) (total, blocked, bots int, err error) {
+	var stats struct {
+		Total   int `db:"total"`
+		Blocked int `db:"blocked"`
+		Bots    int `db:"bots"`
+	}
+	err = s.db.Get(&stats, `
+		SELECT
+			COUNT(*) as total,
+			COUNT(*) FILTER (WHERE blocked = true) as blocked,
+			COUNT(*) FILTER (WHERE is_bot = true) as bots
+		FROM hosting_visits
+		WHERE domain_id = $1 AND created_at >= $2
+	`, domainID, since)
+	return stats.Total, stats.Blocked, stats.Bots, err
+}
+
+// GetAccountVisitStats returns visit statistics for all domains in an account
+func (s *HostingService) GetAccountVisitStats(accountID string, since time.Time) (total, blocked, bots int, err error) {
+	var stats struct {
+		Total   int `db:"total"`
+		Blocked int `db:"blocked"`
+		Bots    int `db:"bots"`
+	}
+	err = s.db.Get(&stats, `
+		SELECT
+			COUNT(*) as total,
+			COUNT(*) FILTER (WHERE blocked = true) as blocked,
+			COUNT(*) FILTER (WHERE is_bot = true) as bots
+		FROM hosting_visits
+		WHERE account_id = $1 AND created_at >= $2
+	`, accountID, since)
+	return stats.Total, stats.Blocked, stats.Bots, err
 }

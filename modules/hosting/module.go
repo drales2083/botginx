@@ -108,7 +108,16 @@ func (m *Module) Migrate() error {
 	if err != nil {
 		return err
 	}
-	_, err = m.DB().Exec(string(sql6))
+	if _, err = m.DB().Exec(string(sql6)); err != nil {
+		return err
+	}
+
+	// Add hosting visits table for domain analytics
+	sql7, err := fs.ReadFile(migrationsFS, "migrations/007_hosting_visits.sql")
+	if err != nil {
+		return err
+	}
+	_, err = m.DB().Exec(string(sql7))
 	return err
 }
 

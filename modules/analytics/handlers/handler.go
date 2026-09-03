@@ -58,14 +58,77 @@ type HostingSettingsProvider interface {
 	GetDomainSettingsByHost(host string) (*HostingSettings, error)
 }
 
+// HostingDomainInfo contains domain and account IDs for visit recording
+type HostingDomainInfo struct {
+	DomainID  string
+	AccountID string
+	UserID    string
+}
+
+// HostingVisitRecorder records visits to hosting domains
+type HostingVisitRecorder interface {
+	GetDomainByHost(host string) (*HostingDomainInfo, error)
+	RecordHostingVisit(visit *HostingVisit) error
+}
+
+// HostingVisit represents a visit to a hosting domain
+type HostingVisit struct {
+	ID        string
+	DomainID  string
+	AccountID string
+
+	IP       string
+	Path     string
+	Method   string
+	Country  string
+	City     string
+	ASN      int
+	ASNOrg   string
+
+	Device           string
+	Browser          string
+	OS               string
+	UserAgent        string
+	Language         string
+	Timezone         string
+	ScreenResolution string
+
+	Referrer       string
+	ReferrerDomain string
+
+	UTMSource   string
+	UTMMedium   string
+	UTMCampaign string
+	UTMTerm     string
+	UTMContent  string
+
+	IsBot          bool
+	BotScore       float64
+	BehaviorScore  int
+	AutomationTool string
+	IsHeadless     bool
+	IsTor          bool
+	IsProxy        bool
+	IsDatacenter   bool
+	Fingerprint    string
+
+	Action      string
+	Blocked     bool
+	BlockReason string
+
+	SessionID string
+	CreatedAt time.Time
+}
+
 type Handler struct {
-	service   *services.AnalyticsService
-	templates *module.TemplateEngine
-	links     LinkResolver
-	linkInfo  LinkDetails
-	servers   ServerProvider
-	hosting   HostingSettingsProvider
-	pusher    *settingspush.Pusher
+	service        *services.AnalyticsService
+	templates      *module.TemplateEngine
+	links          LinkResolver
+	linkInfo       LinkDetails
+	servers        ServerProvider
+	hosting        HostingSettingsProvider
+	hostingVisits  HostingVisitRecorder
+	pusher         *settingspush.Pusher
 }
 
 func NewHandler(
@@ -94,6 +157,11 @@ func (h *Handler) SetServerProvider(servers ServerProvider) {
 // SetHostingSettingsProvider sets the hosting settings provider (called after init to avoid circular deps)
 func (h *Handler) SetHostingSettingsProvider(hosting HostingSettingsProvider) {
 	h.hosting = hosting
+}
+
+// SetHostingVisitRecorder sets the hosting visit recorder (called after init to avoid circular deps)
+func (h *Handler) SetHostingVisitRecorder(recorder HostingVisitRecorder) {
+	h.hostingVisits = recorder
 }
 
 // Pages
@@ -694,7 +762,14 @@ func (h *Handler) handleRequestEvent(data any) {
 
 	linkID, userID := h.resolveLink(eventData)
 	if linkID == "" {
-		log.Printf("Webhook: could not resolve link for host=%s path=%s",
+		// Not a redirect link - try hosting domain
+		if h.hostingVisits != nil {
+			host := getString(eventData, "host")
+			if h.tryRecordHostingVisit(eventData, host) {
+				return // Successfully recorded as hosting visit
+			}
+		}
+		log.Printf("Webhook: could not resolve link or hosting domain for host=%s path=%s",
 			getString(eventData, "host"), getString(eventData, "path"))
 		return
 	}
@@ -876,6 +951,77 @@ func (h *Handler) resolveLink(data map[string]interface{}) (linkID, userID strin
 	}
 
 	return linkID, userID
+}
+
+// tryRecordHostingVisit attempts to record a visit for a hosting domain.
+// Returns true if the host was a hosting domain and the visit was recorded.
+func (h *Handler) tryRecordHostingVisit(eventData map[string]interface{}, host string) bool {
+	if h.hostingVisits == nil {
+		return false
+	}
+
+	domainInfo, err := h.hostingVisits.GetDomainByHost(host)
+	if err != nil || domainInfo == nil {
+		return false
+	}
+
+	// Build hosting visit from event data
+	action := getString(eventData, "action")
+	visit := &HostingVisit{
+		DomainID:  domainInfo.DomainID,
+		AccountID: domainInfo.AccountID,
+
+		IP:       getString(eventData, "ip"),
+		Path:     getString(eventData, "path"),
+		Method:   getString(eventData, "method"),
+		Country:  getString(eventData, "country"),
+		ASN:      getInt(eventData, "asn"),
+		ASNOrg:   getString(eventData, "asn_org"),
+
+		UserAgent:        getString(eventData, "user_agent"),
+		Language:         getString(eventData, "language"),
+		Timezone:         getString(eventData, "timezone"),
+		ScreenResolution: getString(eventData, "screen_resolution"),
+
+		Referrer:       getString(eventData, "referer"),
+		ReferrerDomain: getString(eventData, "referrer_domain"),
+
+		UTMSource:   getString(eventData, "utm_source"),
+		UTMMedium:   getString(eventData, "utm_medium"),
+		UTMCampaign: getString(eventData, "utm_campaign"),
+		UTMTerm:     getString(eventData, "utm_term"),
+		UTMContent:  getString(eventData, "utm_content"),
+
+		BotScore:       getFloat(eventData, "score"),
+		IsBot:          getFloat(eventData, "score") >= 70,
+		BehaviorScore:  getInt(eventData, "behavior_score"),
+		AutomationTool: getString(eventData, "automation_tool"),
+		IsHeadless:     getBool(eventData, "is_headless"),
+		IsTor:          getBool(eventData, "is_tor"),
+		IsProxy:        getBool(eventData, "is_proxy"),
+		IsDatacenter:   getBool(eventData, "is_datacenter"),
+		Fingerprint:    getString(eventData, "fingerprint"),
+
+		Action:      action,
+		Blocked:     action == "block",
+		BlockReason: getString(eventData, "reason"),
+
+		SessionID: getString(eventData, "session_id"),
+		CreatedAt: time.Now(),
+	}
+
+	// Detect device type from user agent
+	visit.Device = h.detectDevice(visit.UserAgent)
+	visit.Browser = h.detectBrowser(visit.UserAgent)
+	visit.OS = h.detectOS(visit.UserAgent)
+
+	if err := h.hostingVisits.RecordHostingVisit(visit); err != nil {
+		log.Printf("Webhook: failed to record hosting visit for domain=%s: %v", host, err)
+		return false
+	}
+
+	log.Printf("Webhook: recorded hosting visit for domain=%s ip=%s action=%s", host, visit.IP, action)
+	return true
 }
 
 func (h *Handler) detectDevice(userAgent string) string {

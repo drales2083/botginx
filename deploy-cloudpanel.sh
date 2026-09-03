@@ -387,7 +387,7 @@ update_default_template() {
         cat > "$template_file" << 'PHPEOF'
 <?php
 /**
- * Default landing page - Site is ready!
+ * Default landing page - Bullet Proof Hosting
  */
 $domain = $_SERVER['HTTP_HOST'] ?? 'your-domain.com';
 ?>
@@ -396,7 +396,7 @@ $domain = $_SERVER['HTTP_HOST'] ?? 'your-domain.com';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($domain) ?> - Site Ready</title>
+    <title><?= htmlspecialchars($domain) ?> - Protected by Bullet Proof Hosting</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -413,38 +413,102 @@ $domain = $_SERVER['HTTP_HOST'] ?? 'your-domain.com';
             padding: 40px;
             max-width: 600px;
         }
-        .icon { font-size: 64px; margin-bottom: 20px; }
-        h1 { font-size: 2rem; margin-bottom: 10px; color: #6c5ce7; }
-        .domain { font-size: 1.2rem; color: #a29bfe; margin-bottom: 30px; word-break: break-all; }
+        .shield {
+            font-size: 72px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 20px rgba(108, 92, 231, 0.5));
+        }
+        h1 { font-size: 2rem; margin-bottom: 8px; color: #fff; }
+        .tagline {
+            font-size: 0.95rem;
+            color: #6c5ce7;
+            margin-bottom: 25px;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+        .domain {
+            font-size: 1.3rem;
+            color: #a29bfe;
+            margin-bottom: 30px;
+            word-break: break-all;
+            padding: 12px 24px;
+            background: rgba(108, 92, 231, 0.15);
+            border-radius: 30px;
+            display: inline-block;
+        }
         .status {
-            background: rgba(108, 92, 231, 0.2);
-            border: 1px solid #6c5ce7;
-            border-radius: 8px;
-            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(108, 92, 231, 0.3);
+            border-radius: 12px;
+            padding: 20px 30px;
             margin-bottom: 30px;
         }
         .status-item {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .status-item:last-child { border-bottom: none; }
-        .check { color: #00b894; }
-        .info { font-size: 0.9rem; color: #b2bec3; line-height: 1.6; }
+        .status-label { color: #b2bec3; }
+        .check { color: #00b894; font-weight: 500; }
+        .info {
+            font-size: 0.9rem;
+            color: #636e72;
+            line-height: 1.6;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .footer-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #6c5ce7;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .footer-brand span { font-size: 18px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="icon">🚀</div>
+        <div class="shield">🛡️</div>
         <h1>Site is Ready!</h1>
+        <div class="tagline">BULLET PROOF HOSTING</div>
         <div class="domain"><?= htmlspecialchars($domain) ?></div>
+
         <div class="status">
-            <div class="status-item"><span>Web Server</span><span class="check">✓ Online</span></div>
-            <div class="status-item"><span>PHP</span><span class="check">✓ <?= PHP_VERSION ?></span></div>
-            <div class="status-item"><span>SSL/HTTPS</span><span class="check">✓ <?= (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'Secure' : 'Available' ?></span></div>
+            <div class="status-item">
+                <span class="status-label">Protection</span>
+                <span class="check">✓ Active</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Web Server</span>
+                <span class="check">✓ Online</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">PHP</span>
+                <span class="check">✓ <?= PHP_VERSION ?></span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">SSL/HTTPS</span>
+                <span class="check">✓ <?= (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'Encrypted' : 'Available' ?></span>
+            </div>
         </div>
-        <p class="info">Your site is configured and ready for deployment.<br>Upload your files to get started.</p>
+
+        <p class="info">
+            Your site is protected and ready for deployment.<br>
+            Upload your files to get started.
+        </p>
+
+        <div class="footer">
+            <div class="footer-brand">
+                <span>🛡️</span> Protected by Bullet Proof Hosting
+            </div>
+        </div>
     </div>
 </body>
 </html>

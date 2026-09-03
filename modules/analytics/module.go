@@ -183,3 +183,8 @@ func (m *Module) SetServerProvider(servers handlers.ServerProvider) {
 func (m *Module) SetHostingSettingsProvider(hosting handlers.HostingSettingsProvider) {
 	m.handler.SetHostingSettingsProvider(hosting)
 }
+
+// SetHostingVisitRecorder sets the hosting visit recorder for webhook events
+func (m *Module) SetHostingVisitRecorder(recorder handlers.HostingVisitRecorder) {
+	m.handler.SetHostingVisitRecorder(recorder)
+}

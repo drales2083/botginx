@@ -20,6 +20,7 @@ import (
 	"github.com/botginx/botginx/modules/domains"
 	"github.com/botginx/botginx/modules/help"
 	"github.com/botginx/botginx/modules/hosting"
+	hostingmodels "github.com/botginx/botginx/modules/hosting/models"
 	"github.com/botginx/botginx/modules/iplists"
 	iplistsvc "github.com/botginx/botginx/modules/iplists/services"
 	modulesmgmt "github.com/botginx/botginx/modules/modules"
@@ -86,6 +87,67 @@ func (a *hostingSettingsAdapter) GetDomainSettingsByHost(host string) (*analytic
 		MinBehaviorScore: settings.MinBehaviorScore,
 		RedirectOnBlock:  settings.RedirectOnBlock,
 	}, nil
+}
+
+// hostingVisitRecorderAdapter bridges the hosting module to the analytics HostingVisitRecorder interface.
+type hostingVisitRecorderAdapter struct {
+	hosting *hosting.Module
+}
+
+func (a *hostingVisitRecorderAdapter) GetDomainByHost(host string) (*analyticshandlers.HostingDomainInfo, error) {
+	info, err := a.hosting.Service().GetDomainByHost(host)
+	if err != nil {
+		return nil, err
+	}
+	return &analyticshandlers.HostingDomainInfo{
+		DomainID:  info.DomainID,
+		AccountID: info.AccountID,
+		UserID:    info.UserID,
+	}, nil
+}
+
+func (a *hostingVisitRecorderAdapter) RecordHostingVisit(visit *analyticshandlers.HostingVisit) error {
+	// Convert to hosting model
+	hostingVisit := &hostingmodels.HostingVisit{
+		DomainID:         visit.DomainID,
+		AccountID:        visit.AccountID,
+		IP:               visit.IP,
+		Path:             visit.Path,
+		Method:           visit.Method,
+		Country:          visit.Country,
+		City:             visit.City,
+		ASN:              visit.ASN,
+		ASNOrg:           visit.ASNOrg,
+		Device:           visit.Device,
+		Browser:          visit.Browser,
+		OS:               visit.OS,
+		UserAgent:        visit.UserAgent,
+		Language:         visit.Language,
+		Timezone:         visit.Timezone,
+		ScreenResolution: visit.ScreenResolution,
+		Referrer:         visit.Referrer,
+		ReferrerDomain:   visit.ReferrerDomain,
+		UTMSource:        visit.UTMSource,
+		UTMMedium:        visit.UTMMedium,
+		UTMCampaign:      visit.UTMCampaign,
+		UTMTerm:          visit.UTMTerm,
+		UTMContent:       visit.UTMContent,
+		IsBot:            visit.IsBot,
+		BotScore:         visit.BotScore,
+		BehaviorScore:    visit.BehaviorScore,
+		AutomationTool:   visit.AutomationTool,
+		IsHeadless:       visit.IsHeadless,
+		IsTor:            visit.IsTor,
+		IsProxy:          visit.IsProxy,
+		IsDatacenter:     visit.IsDatacenter,
+		Fingerprint:      visit.Fingerprint,
+		Action:           visit.Action,
+		Blocked:          visit.Blocked,
+		BlockReason:      visit.BlockReason,
+		SessionID:        visit.SessionID,
+		CreatedAt:        visit.CreatedAt,
+	}
+	return a.hosting.Service().RecordHostingVisit(hostingVisit)
 }
 
 // Config structure
@@ -197,6 +259,7 @@ func main() {
 	analyticsModule.SetLinkDetails(redirectLinksModule)
 	analyticsModule.SetServerProvider(serversModule)
 	analyticsModule.SetHostingSettingsProvider(&hostingSettingsAdapter{hosting: hostingModule})
+	analyticsModule.SetHostingVisitRecorder(&hostingVisitRecorderAdapter{hosting: hostingModule})
 	redirectLinksModule.SetServerProvider(serversModule)
 	iplistsModule.SetServerProvider(&iplistServerAdapter{servers: serversModule})
 

@@ -126,6 +126,63 @@ type HostingDomainSettings struct {
 	UpdatedAt        time.Time `db:"updated_at" json:"updatedAt"`
 }
 
+// HostingVisit represents a visit to a hosting domain (for analytics)
+type HostingVisit struct {
+	ID        string `db:"id" json:"id"`
+	DomainID  string `db:"domain_id" json:"domainId"`
+	AccountID string `db:"account_id" json:"accountId"`
+
+	// Request info
+	IP       string `db:"ip" json:"ip"`
+	Path     string `db:"path" json:"path"`
+	Method   string `db:"method" json:"method"`
+	Country  string `db:"country" json:"country"`
+	City     string `db:"city" json:"city"`
+	ASN      int    `db:"asn" json:"asn"`
+	ASNOrg   string `db:"asn_org" json:"asnOrg"`
+
+	// Device info
+	Device           string `db:"device" json:"device"`
+	Browser          string `db:"browser" json:"browser"`
+	OS               string `db:"os" json:"os"`
+	UserAgent        string `db:"user_agent" json:"userAgent"`
+	Language         string `db:"language" json:"language"`
+	Timezone         string `db:"timezone" json:"timezone"`
+	ScreenResolution string `db:"screen_resolution" json:"screenResolution"`
+
+	// Referrer
+	Referrer       string `db:"referrer" json:"referrer"`
+	ReferrerDomain string `db:"referrer_domain" json:"referrerDomain"`
+
+	// UTM tracking
+	UTMSource   string `db:"utm_source" json:"utmSource"`
+	UTMMedium   string `db:"utm_medium" json:"utmMedium"`
+	UTMCampaign string `db:"utm_campaign" json:"utmCampaign"`
+	UTMTerm     string `db:"utm_term" json:"utmTerm"`
+	UTMContent  string `db:"utm_content" json:"utmContent"`
+
+	// Bot detection
+	IsBot          bool    `db:"is_bot" json:"isBot"`
+	BotScore       float64 `db:"bot_score" json:"botScore"`
+	BehaviorScore  int     `db:"behavior_score" json:"behaviorScore"`
+	AutomationTool string  `db:"automation_tool" json:"automationTool"`
+	IsHeadless     bool    `db:"is_headless" json:"isHeadless"`
+	IsTor          bool    `db:"is_tor" json:"isTor"`
+	IsProxy        bool    `db:"is_proxy" json:"isProxy"`
+	IsDatacenter   bool    `db:"is_datacenter" json:"isDatacenter"`
+	Fingerprint    string  `db:"fingerprint" json:"fingerprint"`
+
+	// Action taken
+	Action      string `db:"action" json:"action"`
+	Blocked     bool   `db:"blocked" json:"blocked"`
+	BlockReason string `db:"block_reason" json:"blockReason"`
+
+	// Session
+	SessionID string `db:"session_id" json:"sessionId"`
+
+	// Timestamps
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+}
 
 // BalanceTransaction represents a balance top-up or deduction
 type BalanceTransaction struct {
