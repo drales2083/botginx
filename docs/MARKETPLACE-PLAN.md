@@ -2,479 +2,352 @@
 
 ## Overview
 
-A marketplace where admins list domains for sale and users browse/purchase them. Initial version uses manual Telegram contact for purchases, designed to be extensible for future payment integration.
+A marketplace where admins list **pre-configured domains** for sale. Users purchase with balance and **instantly use them for redirect links** - no setup required since domains are already deployed to VPS with all necessary files.
+
+## Key Concept
+
+```
+Admin adds domain EXACTLY like a user would
+    ↓
+Domain gets fully configured on deploy VPS (files, SSL, DNS)
+    ↓
+Admin sets price and lists in marketplace
+    ↓
+User purchases with balance
+    ↓
+Domain ownership transfers to user
+    ↓
+User uses immediately - NO SETUP NEEDED
+```
+
+## Why This Works
+
+When admin adds a domain:
+1. Uses **100% same code** as user domain setup
+2. Domain verified via DNS TXT record
+3. SSL certificate issued
+4. **Files deployed to VPS** (nginx config, site directory, etc.)
+5. Domain marked as "active"
+
+When user purchases:
+- Just change `user_id` in database
+- Files already on VPS - nothing to deploy
+- User can create redirect links immediately
 
 ---
 
-## 1. Database Schema
+## Database Schema
 
-### Table: `domain_listings`
+### Add columns to existing `domains` table
 
 ```sql
-CREATE TABLE IF NOT EXISTS domain_listings (
-    id TEXT PRIMARY KEY,
-    domain TEXT NOT NULL UNIQUE,
-    tld TEXT NOT NULL,                        -- extracted TLD (.com, .io, etc.)
-    price DECIMAL(10,2) NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'USD',
-    description TEXT,
-    category TEXT NOT NULL DEFAULT 'standard', -- premium, standard, budget
-    status TEXT NOT NULL DEFAULT 'available',  -- available, reserved, sold, hidden
-    featured BOOLEAN NOT NULL DEFAULT false,
-    
-    -- Ownership
-    created_by TEXT NOT NULL REFERENCES users(id),
-    reserved_by TEXT REFERENCES users(id),
-    reserved_at TIMESTAMP,
-    purchased_by TEXT REFERENCES users(id),
-    purchased_at TIMESTAMP,
-    
-    -- Timestamps
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+-- Add marketplace columns to domains table
+ALTER TABLE domains ADD COLUMN IF NOT EXISTS is_marketplace BOOLEAN DEFAULT FALSE;
+ALTER TABLE domains ADD COLUMN IF NOT EXISTS marketplace_price DECIMAL(10,2);
+ALTER TABLE domains ADD COLUMN IF NOT EXISTS marketplace_description TEXT;
+ALTER TABLE domains ADD COLUMN IF NOT EXISTS marketplace_listed_at TIMESTAMP;
+```
 
-CREATE INDEX idx_domain_listings_status ON domain_listings(status);
-CREATE INDEX idx_domain_listings_featured ON domain_listings(featured) WHERE featured = true;
-CREATE INDEX idx_domain_listings_category ON domain_listings(category);
-CREATE INDEX idx_domain_listings_tld ON domain_listings(tld);
-CREATE INDEX idx_domain_listings_price ON domain_listings(price);
+### Marketplace tracking table
+
+```sql
+CREATE TABLE IF NOT EXISTS marketplace_sales (
+    id VARCHAR(26) PRIMARY KEY,
+    domain_id VARCHAR(26) NOT NULL REFERENCES domains(id),
+    seller_user_id VARCHAR(36) NOT NULL,  -- Admin who listed
+    buyer_user_id VARCHAR(36) NOT NULL,   -- User who purchased
+    price DECIMAL(10,2) NOT NULL,
+    purchased_at TIMESTAMP DEFAULT NOW()
+);
 ```
 
 ---
 
-## 2. Module Structure
+## Module Structure
 
 ```
 modules/marketplace/
-├── module.go                        # Module registration, routes, menu
 ├── handlers/
-│   └── handler.go                   # HTTP handlers (user + admin)
-├── services/
-│   └── marketplace_service.go       # Business logic
+│   └── handler.go           # Admin + User handlers
+├── migrations/
+│   └── 001_create_tables.sql
 ├── models/
-│   └── domain_listing.go            # Model, constants, validation
+│   └── marketplace.go       # Structs for marketplace data
+├── services/
+│   └── marketplace_service.go
 ├── templates/
-│   ├── browse.html                  # User marketplace page
-│   ├── admin.html                   # Admin management page
-│   └── widget.html                  # Dashboard widget partial
-└── migrations/
-    └── 001_create_domain_listings.sql
+│   ├── admin_list.html      # Admin: list domains for sale
+│   ├── user_browse.html     # User: browse & buy domains
+└── module.go
 ```
 
 ---
 
-## 3. Model Definition
+## Admin Flow
 
-### `models/domain_listing.go`
+### Add Domain for Sale
 
-```go
-package models
+1. Go to **Admin → Marketplace**
+2. Click **"Add Domain for Sale"**
+3. **Reuse existing domain setup flow:**
+   - Enter domain name (e.g., `*.premium.com`)
+   - System shows DNS records to add
+   - Admin adds DNS records
+   - Click "Verify" → DNS verified
+   - Click "Enable SSL" → SSL certificate issued
+   - **Domain deployed to VPS automatically**
+4. Domain status becomes "active"
+5. **Set price** (e.g., $50.00)
+6. Domain appears in marketplace
 
-import "time"
+### Manage Listings
 
-type DomainListing struct {
-    ID          string     `db:"id" json:"id"`
-    Domain      string     `db:"domain" json:"domain"`
-    TLD         string     `db:"tld" json:"tld"`
-    Price       float64    `db:"price" json:"price"`
-    Currency    string     `db:"currency" json:"currency"`
-    Description string     `db:"description" json:"description"`
-    Category    string     `db:"category" json:"category"`
-    Status      string     `db:"status" json:"status"`
-    Featured    bool       `db:"featured" json:"featured"`
-    
-    CreatedBy   string     `db:"created_by" json:"createdBy"`
-    ReservedBy  *string    `db:"reserved_by" json:"reservedBy,omitempty"`
-    ReservedAt  *time.Time `db:"reserved_at" json:"reservedAt,omitempty"`
-    PurchasedBy *string    `db:"purchased_by" json:"purchasedBy,omitempty"`
-    PurchasedAt *time.Time `db:"purchased_at" json:"purchasedAt,omitempty"`
-    
-    CreatedAt   time.Time  `db:"created_at" json:"createdAt"`
-    UpdatedAt   time.Time  `db:"updated_at" json:"updatedAt"`
-}
-
-// Status constants
-const (
-    ListingStatusAvailable = "available"
-    ListingStatusReserved  = "reserved"
-    ListingStatusSold      = "sold"
-    ListingStatusHidden    = "hidden"
-)
-
-// Category constants
-const (
-    ListingCategoryPremium  = "premium"
-    ListingCategoryStandard = "standard"
-    ListingCategoryBudget   = "budget"
-)
-
-// For template/UI display
-type ListingStats struct {
-    Available int `json:"available"`
-    Reserved  int `json:"reserved"`
-    Sold      int `json:"sold"`
-    Total     int `json:"total"`
-}
-```
+- View all marketplace domains
+- Edit price/description
+- Remove from marketplace (keeps domain, just not for sale)
+- See purchase history
 
 ---
 
-## 4. Service Layer
+## User Flow
 
-### `services/marketplace_service.go`
+### Browse & Purchase
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| Create | `Create(listing *DomainListing) error` | Add new listing |
-| Update | `Update(id string, listing *DomainListing) error` | Update listing |
-| Delete | `Delete(id string) error` | Hard delete listing |
-| GetByID | `GetByID(id string) (*DomainListing, error)` | Get single listing |
-| ListAvailable | `ListAvailable(filters ListingFilters) ([]DomainListing, int, error)` | For users (status=available only) |
-| ListAll | `ListAll(filters ListingFilters) ([]DomainListing, int, error)` | For admin (all statuses) |
-| ListFeatured | `ListFeatured(limit int) ([]DomainListing, error)` | Featured for widget |
-| UpdateStatus | `UpdateStatus(id, status string, userID *string) error` | Change status |
-| ToggleFeatured | `ToggleFeatured(id string) error` | Toggle featured flag |
-| GetStats | `GetStats() (*ListingStats, error)` | Counts by status |
-| GetTLDs | `GetTLDs() ([]string, error)` | Unique TLDs for filter |
+1. Go to **"Buy Domain"** in sidebar
+2. See grid of available domains with:
+   - Domain name (e.g., `*.premium.com`)
+   - Price
+   - Status badge: "Ready to use"
+3. Click **"Purchase"**
+4. Confirmation modal shows:
+   - Domain name
+   - Price
+   - Current balance
+   - Balance after purchase
+5. Click **"Confirm Purchase"**
+6. Balance deducted
+7. Domain transferred to user
+8. Redirect to domain list
 
-### Filter Struct
+### After Purchase
 
-```go
-type ListingFilters struct {
-    Search   string   // domain name search
-    Category string   // premium, standard, budget
-    TLD      string   // .com, .io, etc.
-    MinPrice float64
-    MaxPrice float64
-    Status   string   // for admin
-    Featured *bool
-    Page     int
-    PerPage  int
-    SortBy   string   // price, domain, created_at
-    SortDir  string   // asc, desc
-}
-```
+- Domain appears in user's **"My Domains"** list
+- Status: **Active** (already configured!)
+- User can immediately create redirect links
+- No DNS setup, no SSL setup - already done
 
 ---
 
-## 5. Routes
-
-### User Routes (`/user/marketplace`)
-
-| Method | Path | Handler | Description |
-|--------|------|---------|-------------|
-| GET | `/` | `BrowsePage` | Marketplace browse page |
-| GET | `/api/listings` | `APIListAvailable` | List available domains |
-| GET | `/api/listings/{id}` | `APIGetListing` | Get single listing |
-| GET | `/api/filters` | `APIGetFilters` | Get filter options (TLDs, categories) |
+## Routes
 
 ### Admin Routes (`/admin/marketplace`)
 
 | Method | Path | Handler | Description |
 |--------|------|---------|-------------|
-| GET | `/` | `AdminPage` | Admin management page |
-| GET | `/api/listings` | `APIAdminList` | List all domains |
-| POST | `/api/listings` | `APICreate` | Create new listing |
-| GET | `/api/listings/{id}` | `APIAdminGet` | Get listing details |
-| PUT | `/api/listings/{id}` | `APIUpdate` | Update listing |
-| DELETE | `/api/listings/{id}` | `APIDelete` | Delete listing |
-| PUT | `/api/listings/{id}/status` | `APIUpdateStatus` | Change status |
-| PUT | `/api/listings/{id}/featured` | `APIToggleFeatured` | Toggle featured |
-| GET | `/api/stats` | `APIGetStats` | Get statistics |
+| GET | `/` | AdminList | List all marketplace domains |
+| GET | `/add` | AdminAddPage | Add domain page (reuses domain setup) |
+| POST | `/api/domains` | APIAddDomain | Add domain to marketplace |
+| PUT | `/api/domains/{id}/price` | APISetPrice | Set/update price |
+| PUT | `/api/domains/{id}` | APIUpdateListing | Update listing |
+| DELETE | `/api/domains/{id}` | APIRemoveFromSale | Remove from marketplace |
+| GET | `/api/sales` | APISalesHistory | Purchase history |
 
-### Dashboard Widget (in dashboard module)
+### User Routes (`/user/marketplace`)
 
 | Method | Path | Handler | Description |
 |--------|------|---------|-------------|
-| GET | `/api/featured-domains` | `APIFeaturedDomains` | Featured for widget |
+| GET | `/` | UserBrowse | Browse available domains |
+| GET | `/api/domains` | APIListAvailable | List available domains (JSON) |
+| POST | `/api/purchase/{domainId}` | APIPurchase | Purchase domain |
 
 ---
 
-## 6. Menu Items
+## Menu Items
 
-### User Menu
-
-```go
-{
-    Title:   "Marketplace",
-    Icon:    "bi-shop",
-    Path:    "/user/marketplace",
-    Order:   50,
-    Section: module.MenuSectionUser,
-}
+### Admin Sidebar
+```
+Sell Domain (icon: bi-tag)
 ```
 
-### Admin Menu
-
-```go
-{
-    Title:   "Marketplace",
-    Icon:    "bi-shop",
-    Path:    "/admin/marketplace",
-    Order:   40,
-    Section: module.MenuSectionAdmin,
-}
+### User Sidebar
+```
+Buy Domain (icon: bi-bag)
 ```
 
 ---
 
-## 7. Templates
+## Implementation Details
 
-### `browse.html` (User Page)
+### Reusing Domain Module Code
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ Domain Marketplace                                              │
-├─────────────────────────────────────────────────────────────────┤
-│ Filters:                                                        │
-│ [Search domain...] [Category ▼] [TLD ▼] [Price: $0 - $10000]   │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│  │ ⭐ FEATURED      │  │                  │  │                  │
-│  │ premium.com      │  │ startup.io       │  │ budget.net       │
-│  │ ─────────────── │  │ ─────────────── │  │ ─────────────── │
-│  │ $2,500 USD       │  │ $599 USD         │  │ $99 USD          │
-│  │ [PREMIUM]        │  │ [STANDARD]       │  │ [BUDGET]         │
-│  │                  │  │                  │  │                  │
-│  │ Great for brands │  │ Perfect for...   │  │ Affordable...    │
-│  │                  │  │                  │  │                  │
-│  │ [📱 Contact to   │  │ [📱 Contact to   │  │ [📱 Contact to   │
-│  │     Purchase]    │  │     Purchase]    │  │     Purchase]    │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘
-│                                                                 │
-│                    [← Prev] 1 2 3 [Next →]                      │
-└─────────────────────────────────────────────────────────────────┘
+```go
+// Admin handler - add domain for marketplace
+func (h *Handler) APIAddDomain(w http.ResponseWriter, r *http.Request) {
+    // 1. Use existing domain service to create domain
+    domain, err := h.domainService.Create(adminUserID, input)
+    
+    // 2. Mark as marketplace domain
+    h.service.MarkForSale(domain.ID, price, description)
+}
 ```
 
-**Features:**
-- Responsive grid (3 cols desktop, 2 tablet, 1 mobile)
-- Featured badge on featured domains
-- Category badges (color coded)
-- Price prominently displayed
-- "Contact to Purchase" button → Telegram link
-- Filters: search, category dropdown, TLD dropdown, price range
-- Pagination
-- Sort by: price, newest
-- Empty state when no results
+### Domain Setup (100% Reuse)
 
-### `admin.html` (Admin Page)
+Admin uses exact same pages as users:
+- `modules/domains/templates/setup.html` - DNS verification UI
+- `modules/domains/services/verification_service.go` - DNS check
+- `modules/domains/services/domain_service.go` - SSL setup, deploy
+
+The only difference:
+- `is_marketplace = TRUE`
+- `marketplace_price` set
+- `user_id` = admin's ID (temporary)
+
+### Purchase Logic
+
+```go
+func (s *MarketplaceService) Purchase(domainID, buyerUserID string) error {
+    // 1. Get domain
+    domain, _ := s.domainService.Get(domainID)
+    
+    // 2. Verify it's for sale
+    if !domain.IsMarketplace {
+        return errors.New("domain not for sale")
+    }
+    
+    // 3. Check buyer balance
+    balance := s.GetUserBalance(buyerUserID)
+    if balance < domain.MarketplacePrice {
+        return errors.New("insufficient balance")
+    }
+    
+    // Transaction:
+    // 4. Deduct balance
+    s.DeductBalance(buyerUserID, domain.MarketplacePrice)
+    
+    // 5. Transfer ownership
+    s.db.Exec(`
+        UPDATE domains SET 
+            user_id = $1, 
+            is_marketplace = FALSE,
+            marketplace_price = NULL
+        WHERE id = $2
+    `, buyerUserID, domainID)
+    
+    // 6. Record sale
+    s.RecordSale(domainID, sellerID, buyerUserID, price)
+    
+    return nil
+}
+```
+
+### Why No Re-Deploy Needed
+
+When domain is first added:
+1. Files are written to VPS in `/var/www/sites/{domain}/`
+2. Nginx config created
+3. SSL cert installed
+
+These files don't reference the owner. They just serve the domain.
+
+When ownership transfers:
+- Only database `user_id` changes
+- VPS files stay exactly the same
+- Domain works immediately for new owner
+
+---
+
+## UI Templates
+
+### Admin: List Marketplace Domains
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ Marketplace Management                        [+ Add Domain]   │
-├─────────────────────────────────────────────────────────────────┤
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                │
-│ │   12    │ │    3    │ │    5    │ │   20    │                │
-│ │Available│ │Reserved │ │  Sold   │ │  Total  │                │
-│ └─────────┘ └─────────┘ └─────────┘ └─────────┘                │
-├─────────────────────────────────────────────────────────────────┤
-│ [Search...] [Status ▼] [Category ▼]                            │
-├─────────────────────────────────────────────────────────────────┤
-│ Domain          │ Price    │ Category │ Status    │ Featured │ Actions │
-│ ────────────────┼──────────┼──────────┼───────────┼──────────┼─────────│
-│ premium.com     │ $2,500   │ Premium  │ Available │ ⭐       │ ✏️ 🗑️  │
-│ startup.io      │ $599     │ Standard │ Reserved  │          │ ✏️ 🗑️  │
-│ sold-domain.net │ $199     │ Budget   │ Sold      │          │ ✏️ 🗑️  │
-├─────────────────────────────────────────────────────────────────┤
-│                         Page 1 of 3                             │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ Marketplace                              [+ Add Domain]     │
+├─────────────────────────────────────────────────────────────┤
+│ Domain              │ Price   │ Status  │ Listed    │ Actions
+│ ────────────────────┼─────────┼─────────┼───────────┼────────
+│ *.premium.com       │ $50.00  │ Active  │ 2 days ago│ ✏️ 🗑️
+│ *.starter.io        │ $25.00  │ Active  │ 1 week ago│ ✏️ 🗑️
+│ *.budget.net        │ $10.00  │ Pending │ Just now  │ ✏️ 🗑️
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Add/Edit Modal:**
+### User: Browse Domains
+
 ```
-┌─────────────────────────────────────┐
-│ Add Domain Listing              [X] │
-├─────────────────────────────────────┤
-│ Domain: [example.com           ]    │
-│ Price:  [$] [500.00            ]    │
-│ Category: [Standard ▼]              │
-│ Description:                        │
-│ [                              ]    │
-│ [                              ]    │
-│ [ ] Featured                        │
-├─────────────────────────────────────┤
-│              [Cancel] [Save]        │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ Buy Domain                                                  │
+│                                                             │
+│ Your Balance: $75.00                                        │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│  │ *.premium.com   │  │ *.starter.io    │  │ *.budget.net    │
+│  │                 │  │                 │  │                 │
+│  │   $50.00        │  │   $25.00        │  │   $10.00        │
+│  │                 │  │                 │  │                 │
+│  │ ✓ Ready to use  │  │ ✓ Ready to use  │  │ ✓ Ready to use  │
+│  │                 │  │                 │  │                 │
+│  │ [Purchase]      │  │ [Purchase]      │  │ [Purchase]      │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### `widget.html` (Dashboard Widget)
+### Purchase Modal
 
 ```
 ┌─────────────────────────────────────────┐
-│ 🏪 Domain Marketplace            [→]   │
+│ Confirm Purchase                    [X] │
 ├─────────────────────────────────────────┤
-│ premium-brand.com     $2,500  ⭐PREMIUM │
-│ cool-startup.io       $599    STANDARD │
-│ budget-site.net       $99     BUDGET   │
+│                                         │
+│   Domain: *.premium.com                 │
+│   Price: $50.00                         │
+│                                         │
+│   Your Balance: $75.00                  │
+│   After Purchase: $25.00                │
+│                                         │
 ├─────────────────────────────────────────┤
-│         [Browse All Domains]            │
+│            [Cancel]  [Confirm]          │
 └─────────────────────────────────────────┘
 ```
 
-**Widget placement:** Below existing dashboard widgets (analytics, recent links, etc.)
+---
+
+## Implementation Checklist
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Create migration (marketplace columns + sales table) | ⬜ |
+| 2 | Create models (MarketplaceDomain, Sale) | ⬜ |
+| 3 | Create service (list, purchase, mark for sale) | ⬜ |
+| 4 | Create admin handlers | ⬜ |
+| 5 | Create user handlers | ⬜ |
+| 6 | Create admin list template | ⬜ |
+| 7 | Create user browse template | ⬜ |
+| 8 | Create module.go with routes | ⬜ |
+| 9 | Register module in main.go | ⬜ |
+| 10 | Test full flow | ⬜ |
+| 11 | Commit & deploy | ⬜ |
 
 ---
 
-## 8. Dashboard Integration
+## Key Points
 
-### Changes to `modules/dashboard/`
-
-1. **Handler:** Add `marketplaceService` dependency
-2. **Template:** Include widget partial after existing content
-3. **Data:** Pass `FeaturedDomains` to template
-
-```go
-// In dashboard handler
-featuredDomains, _ := h.marketplace.ListFeatured(5)
-
-data := map[string]interface{}{
-    // ... existing data
-    "FeaturedDomains": featuredDomains,
-}
-```
+1. **100% code reuse** for domain setup - admin uses same flow as users
+2. **Instant activation** - files already on VPS, just transfer ownership
+3. **Balance system** - reuse existing user balance from hosting module
+4. **Wildcard domains** - `*.example.com` so users can create any subdomain
+5. **Simple database** - just add columns to existing domains table
 
 ---
 
-## 9. Extensibility Design
+## Questions Resolved
 
-### Payment Provider Interface (Future)
-
-```go
-// pkg/payment/provider.go (future)
-type PaymentProvider interface {
-    Name() string
-    CreateCheckout(listing *DomainListing, buyer *User) (*Checkout, error)
-    VerifyPayment(checkoutID string) (*PaymentResult, error)
-    HandleWebhook(r *http.Request) error
-}
-
-type Checkout struct {
-    ID          string
-    URL         string
-    ExpiresAt   time.Time
-}
-
-type PaymentResult struct {
-    Paid      bool
-    Amount    float64
-    Currency  string
-    Reference string
-}
-```
-
-### Manual Provider (Current)
-
-```go
-// Current implementation - just returns Telegram link
-type ManualPaymentProvider struct {
-    TelegramHandle string // e.g., "@robertp2083"
-}
-
-func (p *ManualPaymentProvider) GetContactURL(listing *DomainListing) string {
-    msg := fmt.Sprintf("Hi, I'm interested in purchasing %s for $%.2f", 
-        listing.Domain, listing.Price)
-    return fmt.Sprintf("https://t.me/%s?text=%s", 
-        p.TelegramHandle, url.QueryEscape(msg))
-}
-```
-
-### Event Hooks (Future Notifications)
-
-```go
-type MarketplaceEvent string
-
-const (
-    EventListingCreated    MarketplaceEvent = "listing.created"
-    EventListingUpdated    MarketplaceEvent = "listing.updated"
-    EventInterestExpressed MarketplaceEvent = "interest.expressed"
-    EventListingReserved   MarketplaceEvent = "listing.reserved"
-    EventListingSold       MarketplaceEvent = "listing.sold"
-)
-
-// Hook interface for future use
-type MarketplaceHook interface {
-    OnEvent(event MarketplaceEvent, listing *DomainListing, user *User) error
-}
-```
+1. **Edit price after listing?** → Yes, admin can update price
+2. **Featured domains?** → Not in v1, can add later
+3. **Purchase history?** → Yes, marketplace_sales table
+4. **Refunds?** → Not in v1, manual process if needed
 
 ---
 
-## 10. Implementation Checklist
-
-| Step | Task | Files | Status |
-|------|------|-------|--------|
-| 1 | Create migration | `modules/marketplace/migrations/001_create_domain_listings.sql` | ⬜ |
-| 2 | Create models | `modules/marketplace/models/domain_listing.go` | ⬜ |
-| 3 | Create service | `modules/marketplace/services/marketplace_service.go` | ⬜ |
-| 4 | Create handlers | `modules/marketplace/handlers/handler.go` | ⬜ |
-| 5 | Create module | `modules/marketplace/module.go` | ⬜ |
-| 6 | Create browse template | `modules/marketplace/templates/browse.html` | ⬜ |
-| 7 | Create admin template | `modules/marketplace/templates/admin.html` | ⬜ |
-| 8 | Create widget template | `modules/marketplace/templates/widget.html` | ⬜ |
-| 9 | Integrate widget into dashboard | `modules/dashboard/` | ⬜ |
-| 10 | Register module in main.go | `cmd/server/main.go` | ⬜ |
-| 11 | Run migration on server | Deploy | ⬜ |
-| 12 | Test all features | Manual | ⬜ |
-| 13 | Commit & release | Git | ⬜ |
-
----
-
-## 11. Configuration
-
-### Environment Variables (Future)
-
-```env
-# Marketplace settings
-MARKETPLACE_TELEGRAM_CONTACT=robertp2083
-MARKETPLACE_DEFAULT_CURRENCY=USD
-MARKETPLACE_FEATURED_LIMIT=5
-```
-
-### Current: Hardcoded in handler
-
-```go
-const (
-    telegramContact = "robertp2083"
-    defaultCurrency = "USD"
-    featuredLimit   = 5
-)
-```
-
----
-
-## 12. Security Considerations
-
-1. **Admin-only creation:** Only admins can add/edit/delete listings
-2. **Input validation:** Domain format, price > 0, valid category/status
-3. **XSS prevention:** All user-visible text escaped in templates
-4. **CSRF:** All POST/PUT/DELETE use standard middleware
-5. **Rate limiting:** Consider for "express interest" endpoint (future)
-
----
-
-## 13. Future Enhancements
-
-1. **Payment Integration:** Stripe, crypto payments
-2. **Auto-transfer:** Integrate with domain registrar APIs
-3. **Bidding/Offers:** Allow users to make offers
-4. **Watchlist:** Users can save domains they're interested in
-5. **Notifications:** Email/Telegram when price drops or domain sells
-6. **Analytics:** Views, interests expressed per domain
-7. **Bulk import:** CSV upload for admins
-8. **Domain appraisal:** AI-suggested pricing
-
----
-
-## Summary
-
-This plan creates a self-contained marketplace module with:
-- Clean separation of user/admin functionality
-- Extensible architecture for future payments
-- Dashboard widget integration
-- Full CRUD for admin management
-- Browse/filter/search for users
-- Manual Telegram contact for purchases (MVP)
-
-Ready to implement when approved.
+Ready to implement.

@@ -1,0 +1,160 @@
+{{define "content"}}
+<div class="row mb-4">
+    <div class="col">
+        <h4><i class="bi bi-bag me-2"></i>Buy Domain</h4>
+        <p class="text-secondary mb-0">Purchase pre-configured domains ready for immediate use</p>
+    </div>
+    <div class="col-auto">
+        <div class="card bg-dark">
+            <div class="card-body py-2 px-3">
+                <small class="text-muted">Your Balance:</small>
+                <strong class="text-success ms-2">${{printf "%.2f" .Balance}}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{if .Domains}}
+<div class="row g-4">
+    {{range .Domains}}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-globe me-2 text-primary"></i>
+                        <code>{{.Name}}</code>
+                    </h5>
+                    <span class="badge bg-success">Ready</span>
+                </div>
+
+                {{if .MarketplaceDescription}}
+                <p class="text-muted small mb-3">{{.MarketplaceDescription}}</p>
+                {{end}}
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="h4 text-success mb-0">${{printf "%.2f" .MarketplacePrice}}</span>
+                    </div>
+                    <button class="btn btn-primary btn-purchase"
+                            data-id="{{.ID}}"
+                            data-name="{{.Name}}"
+                            data-price="{{.MarketplacePrice}}">
+                        <i class="bi bi-bag-check me-1"></i>Purchase
+                    </button>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent">
+                <small class="text-muted">
+                    <i class="bi bi-check-circle text-success me-1"></i>SSL configured
+                    <i class="bi bi-check-circle text-success ms-3 me-1"></i>Ready to use
+                </small>
+            </div>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{else}}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-bag display-1 text-muted mb-3"></i>
+        <h5>No Domains Available</h5>
+        <p class="text-muted mb-0">Check back later for new domains</p>
+    </div>
+</div>
+{{end}}
+
+<!-- Purchase Confirmation Modal -->
+<div class="modal fade" id="purchaseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-bag-check me-2"></i>Confirm Purchase</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="purchaseDomainId">
+
+                <div class="text-center mb-4">
+                    <h4><code id="purchaseDomainName"></code></h4>
+                </div>
+
+                <table class="table table-sm">
+                    <tr>
+                        <td>Price:</td>
+                        <td class="text-end"><strong class="text-success" id="purchasePrice"></strong></td>
+                    </tr>
+                    <tr>
+                        <td>Your Balance:</td>
+                        <td class="text-end">${{printf "%.2f" .Balance}}</td>
+                    </tr>
+                    <tr class="border-top">
+                        <td>After Purchase:</td>
+                        <td class="text-end"><strong id="balanceAfter"></strong></td>
+                    </tr>
+                </table>
+
+                <div class="alert alert-info small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    This domain is fully configured and ready to use immediately. After purchase, it will appear in your Domains list.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmPurchase">
+                    <i class="bi bi-bag-check me-1"></i>Confirm Purchase
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const balance = {{.Balance}};
+const purchaseModal = new bootstrap.Modal(document.getElementById('purchaseModal'));
+
+// Purchase button click
+document.querySelectorAll('.btn-purchase').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const price = parseFloat(btn.dataset.price);
+
+        if (balance < price) {
+            showToast('Insufficient balance. Please top up first.', 'warning');
+            return;
+        }
+
+        document.getElementById('purchaseDomainId').value = btn.dataset.id;
+        document.getElementById('purchaseDomainName').textContent = btn.dataset.name;
+        document.getElementById('purchasePrice').textContent = '$' + price.toFixed(2);
+        document.getElementById('balanceAfter').textContent = '$' + (balance - price).toFixed(2);
+
+        purchaseModal.show();
+    });
+});
+
+// Confirm purchase
+document.getElementById('confirmPurchase').addEventListener('click', async () => {
+    const domainId = document.getElementById('purchaseDomainId').value;
+    const btn = document.getElementById('confirmPurchase');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+
+    const res = await fetch(`/user/marketplace/api/purchase/${domainId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (res.ok) {
+        purchaseModal.hide();
+        flashToast('Domain purchased successfully!', 'success');
+        window.location.href = '/user/domains';
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Purchase failed', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-bag-check me-1"></i>Confirm Purchase';
+    }
+});
+</script>
+{{end}}

@@ -23,6 +23,7 @@ import (
 	hostingmodels "github.com/botginx/botginx/modules/hosting/models"
 	"github.com/botginx/botginx/modules/iplists"
 	iplistsvc "github.com/botginx/botginx/modules/iplists/services"
+	"github.com/botginx/botginx/modules/marketplace"
 	modulesmgmt "github.com/botginx/botginx/modules/modules"
 	"github.com/botginx/botginx/modules/redirectlinks"
 	"github.com/botginx/botginx/modules/servers"
@@ -231,6 +232,7 @@ func main() {
 	iplistsModule := iplists.New()
 
 	hostingModule := hosting.New()
+	marketplaceModule := marketplace.New()
 
 	registry.Register(authModule)
 	registry.Register(dashboard.New())
@@ -240,6 +242,7 @@ func main() {
 	registry.Register(analyticsModule)           // Analytics module
 	registry.Register(iplistsModule)             // IP Lists module
 	registry.Register(hostingModule)             // Bullet Proof Hosting module
+	registry.Register(marketplaceModule)         // Domain marketplace
 	registry.Register(help.New())                // Help/FAQ module
 	registry.Register(users.New())               // Admin module
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)

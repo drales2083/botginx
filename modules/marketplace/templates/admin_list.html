@@ -1,0 +1,310 @@
+{{define "content"}}
+<div class="row mb-4">
+    <div class="col">
+        <h4><i class="bi bi-tag me-2"></i>Sell Domain</h4>
+        <p class="text-secondary mb-0">Add pre-configured domains for users to purchase</p>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+            <i class="bi bi-plus-lg me-1"></i>List Domain for Sale
+        </button>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0" id="stat-listed">{{len .Domains}}</h3>
+                <small class="text-muted">Listed for Sale</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-success" id="stat-sold">{{len .Sales}}</h3>
+                <small class="text-muted">Total Sold</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-primary" id="stat-revenue">
+                    ${{range $i, $s := .Sales}}{{if eq $i 0}}{{printf "%.2f" $s.Price}}{{end}}{{else}}0.00{{end}}
+                </h3>
+                <small class="text-muted">Last Sale</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Domains for Sale -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Domains for Sale</h5>
+    </div>
+    <div class="card-body p-0">
+        {{if .Domains}}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Domain</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Listed</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Domains}}
+                    <tr>
+                        <td>
+                            <code>{{.Name}}</code>
+                        </td>
+                        <td>
+                            <strong class="text-success">${{printf "%.2f" .MarketplacePrice}}</strong>
+                        </td>
+                        <td>
+                            {{if eq .Status "active"}}
+                            <span class="badge bg-success">Ready</span>
+                            {{else if eq .Status "pending"}}
+                            <span class="badge bg-warning">Pending Setup</span>
+                            {{else}}
+                            <span class="badge bg-secondary">{{.Status}}</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            {{if .MarketplaceListedAt}}
+                            <small class="text-muted">{{.MarketplaceListedAt.Format "Jan 02, 2006"}}</small>
+                            {{end}}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary btn-edit"
+                                        data-id="{{.ID}}"
+                                        data-name="{{.Name}}"
+                                        data-price="{{.MarketplacePrice}}"
+                                        data-description="{{.MarketplaceDescription}}"
+                                        title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-remove" data-id="{{.ID}}" data-name="{{.Name}}" title="Remove from sale">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="text-center py-5">
+            <i class="bi bi-tag display-1 text-muted mb-3"></i>
+            <p class="text-muted mb-0">No domains listed for sale yet</p>
+            <p class="text-muted small">Add a domain from "My Domains" to sell it</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<!-- Recent Sales -->
+{{if .Sales}}
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Recent Sales</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Domain</th>
+                        <th>Price</th>
+                        <th>Buyer</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Sales}}
+                    <tr>
+                        <td><code>{{.DomainName}}</code></td>
+                        <td><strong class="text-success">${{printf "%.2f" .Price}}</strong></td>
+                        <td><small class="text-muted">{{.BuyerUserID}}</small></td>
+                        <td><small class="text-muted">{{.PurchasedAt.Format "Jan 02, 2006 15:04"}}</small></td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{{end}}
+
+<!-- Add Domain Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-tag me-2"></i>List Domain for Sale</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    First, add and configure the domain in <a href="/admin/domains">Domains</a>, then come back here to list it for sale.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Domain ID</label>
+                    <input type="text" class="form-control" id="addDomainId" placeholder="Enter domain ID from domains list">
+                    <small class="text-muted">Copy the domain ID from the Domains admin page</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Price (USD)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="addPrice" step="0.01" min="0.01" placeholder="50.00">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description (optional)</label>
+                    <textarea class="form-control" id="addDescription" rows="2" placeholder="Premium wildcard domain..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmAdd">
+                    <i class="bi bi-tag me-1"></i>List for Sale
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Listing</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Domain: <code id="editDomainName"></code></p>
+                <input type="hidden" id="editDomainId">
+                <div class="mb-3">
+                    <label class="form-label">Price (USD)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="editPrice" step="0.01" min="0.01">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="editDescription" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmEdit">
+                    <i class="bi bi-check me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const addModal = new bootstrap.Modal(document.getElementById('addModal'));
+const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+// Add domain to marketplace
+document.getElementById('confirmAdd').addEventListener('click', async () => {
+    const domainId = document.getElementById('addDomainId').value.trim();
+    const price = parseFloat(document.getElementById('addPrice').value);
+    const description = document.getElementById('addDescription').value.trim();
+
+    if (!domainId) {
+        showToast('Enter domain ID', 'warning');
+        return;
+    }
+    if (!price || price <= 0) {
+        showToast('Enter valid price', 'warning');
+        return;
+    }
+
+    const res = await fetch('/admin/marketplace/api/domains', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domainId, price, description })
+    });
+
+    if (res.ok) {
+        addModal.hide();
+        reloadWithToast('Domain listed for sale', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to list domain', 'danger');
+    }
+});
+
+// Edit button
+document.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.getElementById('editDomainId').value = btn.dataset.id;
+        document.getElementById('editDomainName').textContent = btn.dataset.name;
+        document.getElementById('editPrice').value = btn.dataset.price;
+        document.getElementById('editDescription').value = btn.dataset.description || '';
+        editModal.show();
+    });
+});
+
+// Save edit
+document.getElementById('confirmEdit').addEventListener('click', async () => {
+    const domainId = document.getElementById('editDomainId').value;
+    const price = parseFloat(document.getElementById('editPrice').value);
+    const description = document.getElementById('editDescription').value.trim();
+
+    if (!price || price <= 0) {
+        showToast('Enter valid price', 'warning');
+        return;
+    }
+
+    const res = await fetch(`/admin/marketplace/api/domains/${domainId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price, description })
+    });
+
+    if (res.ok) {
+        editModal.hide();
+        reloadWithToast('Listing updated', 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to update', 'danger');
+    }
+});
+
+// Remove from sale
+document.querySelectorAll('.btn-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        if (!confirm(`Remove ${btn.dataset.name} from sale?`)) return;
+
+        const res = await fetch(`/admin/marketplace/api/domains/${btn.dataset.id}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            reloadWithToast('Removed from sale', 'success');
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Failed to remove', 'danger');
+        }
+    });
+});
+</script>
+{{end}}
