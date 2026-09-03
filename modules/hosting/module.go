@@ -227,6 +227,10 @@ func (m *Module) AdminRoutes() chi.Router {
 
 		// Balance
 		r.Post("/balance/topup", m.handler.APITopUpBalance)
+
+		// Debug / diagnostics
+		r.Get("/domains/{domainID}/verify", m.handler.APIVerifyDomainSettings)
+		r.Post("/domains/{domainID}/push", m.handler.APIPushDomainSettings)
 	})
 
 	return r

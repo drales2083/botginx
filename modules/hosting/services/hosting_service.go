@@ -1055,6 +1055,82 @@ func (s *HostingService) pushDomainSettingsToServer(domainID string) {
 	log.Printf("[settings-push] pushed settings for %s to %s:%s", domain.Domain, server.Name, remotePath)
 }
 
+// PushDomainSettingsSync pushes domain settings synchronously (blocking, for debugging)
+func (s *HostingService) PushDomainSettingsSync(domainID string) error {
+	// Get domain info
+	domain, err := s.GetDomain(domainID)
+	if err != nil {
+		return fmt.Errorf("failed to get domain: %w", err)
+	}
+
+	// Get account to find server
+	account, err := s.GetAccount(domain.AccountID)
+	if err != nil || account.ServerID == nil {
+		return fmt.Errorf("account or server not found")
+	}
+
+	// Get server SSH credentials
+	server, err := s.GetServer(*account.ServerID)
+	if err != nil {
+		return fmt.Errorf("server not found: %w", err)
+	}
+
+	// Get settings
+	settings, err := s.GetDomainSettings(domainID)
+	if err != nil {
+		return fmt.Errorf("settings not found: %w", err)
+	}
+
+	// Decrypt server password
+	password, err := crypto.Decrypt(server.PasswordEncrypted)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt password: %w", err)
+	}
+
+	// Build settings JSON for botection
+	settingsData := map[string]interface{}{
+		"link_id":            domainID,
+		"user_id":            account.UserID,
+		"host":               domain.Domain,
+		"block_bots":         settings.BlockBots,
+		"block_tor":          settings.BlockTor,
+		"block_proxy":        settings.BlockProxy,
+		"block_datacenter":   settings.BlockDatacenter,
+		"block_headless":     settings.BlockHeadless,
+		"country_mode":       settings.CountryMode,
+		"country_list":       settings.CountryList,
+		"device_mode":        settings.DeviceMode,
+		"device_list":        settings.DeviceList,
+		"min_behavior_score": settings.MinBehaviorScore,
+		"redirect_on_block":  settings.RedirectOnBlock,
+		"updated_at":         time.Now().UTC().Format(time.RFC3339),
+	}
+	jsonData, _ := json.MarshalIndent(settingsData, "", "  ")
+
+	// Create CloudPanel client (SSH)
+	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, password)
+	if err := client.Connect(); err != nil {
+		return fmt.Errorf("failed to connect to server: %w", err)
+	}
+	defer client.Close()
+
+	// Write settings file
+	remotePath := fmt.Sprintf("/etc/botection/links/%s.json", domainID)
+	if _, err := client.Execute("mkdir -p /etc/botection/links"); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// Write file via echo + base64 decode
+	encoded := base64.StdEncoding.EncodeToString(jsonData)
+	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, remotePath)
+	if _, err := client.Execute(writeCmd); err != nil {
+		return fmt.Errorf("failed to write settings file: %w", err)
+	}
+
+	log.Printf("[settings-push-sync] pushed settings for %s to %s:%s", domain.Domain, server.Name, remotePath)
+	return nil
+}
+
 // EnableLinkSettingsOnServer adds link_settings config to botection on a server
 func (s *HostingService) EnableLinkSettingsOnServer(serverID string) error {
 	server, err := s.GetServer(serverID)
@@ -1119,6 +1195,78 @@ func (s *HostingService) PushAllDomainSettings() {
 		go s.pushDomainSettingsToServer(d.DomainID)
 	}
 	log.Printf("[settings-push] triggered push for %d domains", len(domains))
+}
+
+// VerifyDomainSettings checks the settings file on the server and returns its contents
+func (s *HostingService) VerifyDomainSettings(domainID string) (map[string]interface{}, error) {
+	result := map[string]interface{}{
+		"domain_id": domainID,
+	}
+
+	// Get domain info
+	domain, err := s.GetDomain(domainID)
+	if err != nil {
+		return nil, fmt.Errorf("domain not found: %w", err)
+	}
+	result["domain"] = domain.Domain
+
+	// Get account to find server
+	account, err := s.GetAccount(domain.AccountID)
+	if err != nil || account.ServerID == nil {
+		return nil, fmt.Errorf("account or server not found")
+	}
+
+	// Get server SSH credentials
+	server, err := s.GetServer(*account.ServerID)
+	if err != nil {
+		return nil, fmt.Errorf("server not found: %w", err)
+	}
+	result["server"] = server.Name
+
+	// Decrypt server password
+	password, err := crypto.Decrypt(server.PasswordEncrypted)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt password: %w", err)
+	}
+
+	// Connect to server
+	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, password)
+	if err := client.Connect(); err != nil {
+		return nil, fmt.Errorf("failed to connect to server: %w", err)
+	}
+	defer client.Close()
+
+	// Check if settings file exists
+	remotePath := fmt.Sprintf("/etc/botection/links/%s.json", domainID)
+	output, err := client.Execute(fmt.Sprintf("cat %s 2>/dev/null || echo 'FILE_NOT_FOUND'", remotePath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	if strings.TrimSpace(output) == "FILE_NOT_FOUND" {
+		result["file_exists"] = false
+		result["file_path"] = remotePath
+	} else {
+		result["file_exists"] = true
+		result["file_path"] = remotePath
+		var settings map[string]interface{}
+		if err := json.Unmarshal([]byte(output), &settings); err == nil {
+			result["settings"] = settings
+		} else {
+			result["settings_raw"] = output
+		}
+	}
+
+	// Check botection config for link_settings
+	configOutput, _ := client.Execute("grep -A3 'link_settings:' /var/www/antibot/config/config.yaml 2>/dev/null || echo 'NOT_CONFIGURED'")
+	if strings.Contains(configOutput, "NOT_CONFIGURED") {
+		result["link_settings_enabled"] = false
+	} else {
+		result["link_settings_enabled"] = strings.Contains(configOutput, "enabled: true")
+		result["link_settings_config"] = strings.TrimSpace(configOutput)
+	}
+
+	return result, nil
 }
 
 // GetDomainStats returns traffic stats for a domain from hosting_visits table

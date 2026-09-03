@@ -728,6 +728,48 @@ func (h *Handler) APIEnableLinkSettings(w http.ResponseWriter, r *http.Request) 
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true, "message": "link_settings enabled and antibot restarted"})
 }
 
+// APIVerifyDomainSettings checks if a domain's settings file exists on the server
+func (h *Handler) APIVerifyDomainSettings(w http.ResponseWriter, r *http.Request) {
+	domainID := chi.URLParam(r, "domainID")
+
+	result, err := h.service.VerifyDomainSettings(domainID)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, result)
+}
+
+// APIPushDomainSettings manually pushes settings to the server
+func (h *Handler) APIPushDomainSettings(w http.ResponseWriter, r *http.Request) {
+	domainID := chi.URLParam(r, "domainID")
+
+	// Verify domain exists
+	domain, err := h.service.GetDomain(domainID)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Get current settings and push
+	settings, err := h.service.GetDomainSettings(domainID)
+	if err != nil {
+		h.jsonError(w, "Settings not found", http.StatusNotFound)
+		return
+	}
+
+	// Trigger push synchronously for debugging
+	h.service.PushDomainSettingsSync(domainID)
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success":  true,
+		"domain":   domain.Domain,
+		"settings": settings,
+		"message":  "Settings pushed to server",
+	})
+}
+
 // APICreatePackage creates a new hosting package
 func (h *Handler) APICreatePackage(w http.ResponseWriter, r *http.Request) {
 	var input models.CreatePackageInput
