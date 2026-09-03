@@ -372,6 +372,90 @@ TPLEOF
 }
 
 # ----------------------------------------------------------------------------
+# Update default index.php template
+# ----------------------------------------------------------------------------
+
+update_default_template() {
+    info "Updating default site template"
+
+    local template_file="/home/clp/htdocs/app/files/resources/php/index.php"
+
+    if [[ -f "$template_file" ]]; then
+        # Backup original
+        cp "$template_file" "${template_file}.bak"
+
+        cat > "$template_file" << 'PHPEOF'
+<?php
+/**
+ * Default landing page - Site is ready!
+ */
+$domain = $_SERVER['HTTP_HOST'] ?? 'your-domain.com';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($domain) ?> - Site Ready</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 600px;
+        }
+        .icon { font-size: 64px; margin-bottom: 20px; }
+        h1 { font-size: 2rem; margin-bottom: 10px; color: #6c5ce7; }
+        .domain { font-size: 1.2rem; color: #a29bfe; margin-bottom: 30px; word-break: break-all; }
+        .status {
+            background: rgba(108, 92, 231, 0.2);
+            border: 1px solid #6c5ce7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .status-item:last-child { border-bottom: none; }
+        .check { color: #00b894; }
+        .info { font-size: 0.9rem; color: #b2bec3; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🚀</div>
+        <h1>Site is Ready!</h1>
+        <div class="domain"><?= htmlspecialchars($domain) ?></div>
+        <div class="status">
+            <div class="status-item"><span>Web Server</span><span class="check">✓ Online</span></div>
+            <div class="status-item"><span>PHP</span><span class="check">✓ <?= PHP_VERSION ?></span></div>
+            <div class="status-item"><span>SSL/HTTPS</span><span class="check">✓ <?= (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'Secure' : 'Available' ?></span></div>
+        </div>
+        <p class="info">Your site is configured and ready for deployment.<br>Upload your files to get started.</p>
+    </div>
+</body>
+</html>
+PHPEOF
+        ok "default index.php template updated"
+    else
+        warn "CloudPanel template file not found (may not be initialized yet)"
+    fi
+}
+
+# ----------------------------------------------------------------------------
 # Apply custom branding (GaurdBotPanel theme)
 # ----------------------------------------------------------------------------
 
@@ -495,6 +579,7 @@ main() {
     configure_nginx_botection
     prepare_botection_dirs
     create_botection_template
+    update_default_template
     apply_branding
     print_summary
 }
