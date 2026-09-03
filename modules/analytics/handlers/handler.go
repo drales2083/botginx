@@ -162,7 +162,6 @@ func (h *Handler) SetHostingSettingsProvider(hosting HostingSettingsProvider) {
 // SetHostingVisitRecorder sets the hosting visit recorder (called after init to avoid circular deps)
 func (h *Handler) SetHostingVisitRecorder(recorder HostingVisitRecorder) {
 	h.hostingVisits = recorder
-	log.Printf("Analytics: hosting visit recorder set (nil=%v)", recorder == nil)
 }
 
 // Pages
@@ -958,17 +957,11 @@ func (h *Handler) resolveLink(data map[string]interface{}) (linkID, userID strin
 // Returns true if the host was a hosting domain and the visit was recorded.
 func (h *Handler) tryRecordHostingVisit(eventData map[string]interface{}, host string) bool {
 	if h.hostingVisits == nil {
-		log.Printf("Webhook: hostingVisits recorder is nil")
 		return false
 	}
 
 	domainInfo, err := h.hostingVisits.GetDomainByHost(host)
-	if err != nil {
-		log.Printf("Webhook: GetDomainByHost error for host=%s: %v", host, err)
-		return false
-	}
-	if domainInfo == nil {
-		log.Printf("Webhook: GetDomainByHost returned nil for host=%s", host)
+	if err != nil || domainInfo == nil {
 		return false
 	}
 
