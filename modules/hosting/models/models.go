@@ -289,13 +289,13 @@ type BotectionStats struct {
 
 // BlockEvent represents a single blocked request
 type BlockEvent struct {
-	Time   string  `json:"time"`
-	IP     string  `json:"ip"`
-	Host   string  `json:"host"`
-	Path   string  `json:"path"`
-	Reason string  `json:"reason"`
-	Module string  `json:"module"`
-	Score  float64 `json:"score"`
+	Time   string  `json:"time" db:"time"`
+	IP     string  `json:"ip" db:"ip"`
+	Host   string  `json:"host" db:"host"`
+	Path   string  `json:"path" db:"path"`
+	Reason string  `json:"reason" db:"reason"`
+	Module string  `json:"module" db:"module"`
+	Score  float64 `json:"score" db:"score"`
 }
 
 // TopUpInput is the input for admin balance top-up

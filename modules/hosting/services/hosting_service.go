@@ -1034,60 +1034,78 @@ func (s *HostingService) pushDomainSettingsToServer(domainID string) {
 	client.Execute(writeCmd)
 }
 
-// GetDomainStats fetches traffic stats from botection on the CloudPanel server
+// GetDomainStats returns traffic stats for a domain from hosting_visits table
 func (s *HostingService) GetDomainStats(domainID string) (*models.BotectionStats, error) {
-	// Get domain info
-	domain, err := s.GetDomain(domainID)
+	stats := &models.BotectionStats{
+		ModuleBlocks: make(map[string]int64),
+		RecentBlocks: []models.BlockEvent{},
+	}
+
+	// Get summary counts (last 7 days)
+	var summary struct {
+		Total   int64 `db:"total"`
+		Allowed int64 `db:"allowed"`
+		Blocked int64 `db:"blocked"`
+	}
+	err := s.db.Get(&summary, `
+		SELECT
+			COUNT(*) as total,
+			COUNT(*) FILTER (WHERE blocked = false) as allowed,
+			COUNT(*) FILTER (WHERE blocked = true) as blocked
+		FROM hosting_visits
+		WHERE domain_id = $1
+		AND created_at > NOW() - INTERVAL '7 days'
+	`, domainID)
 	if err != nil {
-		return nil, err
+		return stats, nil
 	}
 
-	// Get account to find server
-	account, err := s.GetAccount(domain.AccountID)
-	if err != nil || account.ServerID == nil {
-		return nil, errors.New("account or server not found")
+	stats.TotalRequests = summary.Total
+	stats.AllowedRequests = summary.Allowed
+	stats.BlockedRequests = summary.Blocked
+	if summary.Total > 0 {
+		stats.BlockRate = float64(summary.Blocked) / float64(summary.Total) * 100
 	}
 
-	// Get server SSH credentials
-	server, err := s.GetServer(*account.ServerID)
-	if err != nil {
-		return nil, err
+	// Get block reasons breakdown
+	var reasons []struct {
+		Reason string `db:"reason"`
+		Count  int64  `db:"count"`
+	}
+	s.db.Select(&reasons, `
+		SELECT
+			COALESCE(block_reason, 'unknown') as reason,
+			COUNT(*) as count
+		FROM hosting_visits
+		WHERE domain_id = $1
+		AND blocked = true
+		AND created_at > NOW() - INTERVAL '7 days'
+		GROUP BY block_reason
+		ORDER BY count DESC
+	`, domainID)
+	for _, r := range reasons {
+		stats.ModuleBlocks[r.Reason] = r.Count
 	}
 
-	// Decrypt server password
-	password, err := crypto.Decrypt(server.PasswordEncrypted)
-	if err != nil {
-		return nil, err
-	}
+	// Get recent blocks
+	var blocks []models.BlockEvent
+	s.db.Select(&blocks, `
+		SELECT
+			ip,
+			path,
+			COALESCE(block_reason, 'unknown') as reason,
+			COALESCE(block_reason, 'unknown') as module,
+			TO_CHAR(created_at, 'HH24:MI:SS') as time
+		FROM hosting_visits
+		WHERE domain_id = $1
+		AND blocked = true
+		AND created_at > NOW() - INTERVAL '24 hours'
+		ORDER BY created_at DESC
+		LIMIT 50
+	`, domainID)
+	stats.RecentBlocks = blocks
 
-	// Create CloudPanel client (SSH)
-	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, password)
-	if err := client.Connect(); err != nil {
-		return nil, fmt.Errorf("failed to connect: %w", err)
-	}
-	defer client.Close()
-
-	// Fetch stats from botection API via curl
-	output, err := client.Execute("curl -s http://127.0.0.1:8080/api/stats 2>/dev/null")
-	if err != nil || output == "" {
-		return &models.BotectionStats{}, nil
-	}
-
-	var stats models.BotectionStats
-	if err := json.Unmarshal([]byte(output), &stats); err != nil {
-		return &models.BotectionStats{}, nil
-	}
-
-	// Filter recent blocks to only show this domain
-	filteredBlocks := make([]models.BlockEvent, 0)
-	for _, block := range stats.RecentBlocks {
-		if block.Host == domain.Domain {
-			filteredBlocks = append(filteredBlocks, block)
-		}
-	}
-	stats.RecentBlocks = filteredBlocks
-
-	return &stats, nil
+	return stats, nil
 }
 
 // GetDomainSettingsByHost retrieves antibot settings by domain hostname (for callback API)
