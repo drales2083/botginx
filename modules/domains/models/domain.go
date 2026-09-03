@@ -44,11 +44,6 @@ type Domain struct {
 	AcmeFulldomain    *string `db:"acme_fulldomain" json:"acmeFulldomain,omitempty"`
 	AcmeCnameVerified bool    `db:"acme_cname_verified" json:"acmeCnameVerified"`
 
-	// dns-persist-01 fields (one-time TXT record, no renewal changes)
-	PersistTXTValue    *string `db:"persist_txt_value" json:"persistTxtValue,omitempty"`
-	PersistTXTVerified bool    `db:"persist_txt_verified" json:"persistTxtVerified"`
-	LegoAccountURI     *string `db:"lego_account_uri" json:"-"` // Never expose in JSON
-
 	// Marketplace fields
 	IsMarketplace          bool       `db:"is_marketplace" json:"isMarketplace"`
 	MarketplacePrice       *float64   `db:"marketplace_price" json:"marketplacePrice,omitempty"`
@@ -91,12 +86,6 @@ type ExternalSetupInfo struct {
 	AcmeCnameTarget   string `json:"acmeCnameTarget,omitempty"`   // abc123.acme.guardbot.sbs
 	AcmeCnameVerified bool   `json:"acmeCnameVerified"`
 	UseAcmeDns        bool   `json:"useAcmeDns"` // true = use CNAME delegation
-
-	// dns-persist-01 (one-time persistent TXT record)
-	PersistTXTName     string `json:"persistTxtName,omitempty"`     // _validation-persist.domain.com
-	PersistTXTValue    string `json:"persistTxtValue,omitempty"`    // letsencrypt.org; accounturi=...; policy=wildcard
-	PersistTXTVerified bool   `json:"persistTxtVerified"`
-	UseDnsPersist      bool   `json:"useDnsPersist"` // true = use dns-persist-01
 }
 
 type CreateDomainInput struct {
@@ -119,9 +108,4 @@ type UpdateDomainInput struct {
 	AcmePassword      *string `json:"acmePassword"`
 	AcmeFulldomain    *string `json:"acmeFulldomain"`
 	AcmeCnameVerified *bool   `json:"acmeCnameVerified"`
-
-	// dns-persist-01 fields
-	PersistTXTValue    *string `json:"persistTxtValue"`
-	PersistTXTVerified *bool   `json:"persistTxtVerified"`
-	LegoAccountURI     *string `json:"legoAccountUri"`
 }
