@@ -243,6 +243,60 @@ func (h *Handler) SharedSetup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// AdminAssign shows the admin page to assign domains to users
+func (h *Handler) AdminAssign(w http.ResponseWriter, r *http.Request) {
+	// Get all users for dropdown
+	users, _ := h.service.ListAllUsers()
+
+	module.Render(w, r, h.templates, "domains:admin_assign.html", map[string]interface{}{
+		"Title": "Assign Domain to User",
+		"Users": users,
+	})
+}
+
+// APIAdminAssign creates a domain and assigns it to a specific user
+func (h *Handler) APIAdminAssign(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Name   string `json:"name"`
+		UserID string `json:"userId"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Validate
+	if input.Name == "" {
+		h.jsonError(w, "Domain name required", http.StatusBadRequest)
+		return
+	}
+	if input.UserID == "" {
+		h.jsonError(w, "User ID required", http.StatusBadRequest)
+		return
+	}
+
+	// Clean the domain name
+	input.Name = strings.ToLower(strings.TrimSpace(input.Name))
+	input.Name = strings.TrimPrefix(input.Name, "http://")
+	input.Name = strings.TrimPrefix(input.Name, "https://")
+	input.Name = strings.TrimSuffix(input.Name, "/")
+
+	// Create the domain for the specified user
+	domain, err := h.service.CreateForUser(input.UserID, models.CreateDomainInput{
+		Name: input.Name,
+	})
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	h.json(w, http.StatusCreated, map[string]interface{}{
+		"success": true,
+		"domain":  domain,
+	})
+}
+
 // API handlers
 
 func (h *Handler) APIList(w http.ResponseWriter, r *http.Request) {

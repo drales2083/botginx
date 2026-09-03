@@ -116,12 +116,14 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 	// Pages
 	r.Get("/", m.handler.SharedList)
 	r.Get("/new", m.handler.SharedNew)
+	r.Get("/assign", m.handler.AdminAssign)
 	r.Get("/{id}/setup", m.handler.SharedSetup)
 
 	// API
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/", m.handler.APISharedList)
 		r.Post("/", m.handler.APISharedCreate)
+		r.Post("/assign", m.handler.APIAdminAssign)
 		r.Delete("/{id}", m.handler.APIDelete)
 		r.Post("/{id}/verify", m.handler.APIVerifyDNS)
 		r.Get("/{id}/ssl", m.handler.APICheckSSL)

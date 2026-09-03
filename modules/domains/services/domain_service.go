@@ -167,6 +167,26 @@ func (s *DomainService) CreateShared(adminID string, input models.CreateDomainIn
 	return s.create(adminID, input, true)
 }
 
+// CreateForUser creates a domain for a specific user (admin assign feature).
+// This allows admins to add domains directly to a user's account.
+func (s *DomainService) CreateForUser(userID string, input models.CreateDomainInput) (*models.Domain, error) {
+	return s.create(userID, input, false)
+}
+
+// SimpleUser is a minimal user representation for dropdowns
+type SimpleUser struct {
+	ID    string `db:"id" json:"id"`
+	Email string `db:"email" json:"email"`
+	Name  string `db:"name" json:"name"`
+}
+
+// ListAllUsers returns all users for admin dropdown
+func (s *DomainService) ListAllUsers() ([]SimpleUser, error) {
+	var users []SimpleUser
+	err := s.db.Select(&users, `SELECT id, email, COALESCE(name, '') as name FROM users ORDER BY email`)
+	return users, err
+}
+
 func (s *DomainService) create(userID string, input models.CreateDomainInput, shared bool) (*models.Domain, error) {
 	// Check if domain exists for this user
 	existing, _ := s.GetByName(userID, input.Name)
