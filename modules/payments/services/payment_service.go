@@ -89,6 +89,19 @@ func (s *PaymentService) GetOrCreateWallet(userID, coin string) (*models.CryptoW
 	return &wallet, nil
 }
 
+// GetExistingWallet retrieves a wallet if it exists (does not create)
+func (s *PaymentService) GetExistingWallet(userID, coin string) (*models.CryptoWallet, error) {
+	var wallet models.CryptoWallet
+	err := s.db.Get(&wallet, `
+		SELECT * FROM crypto_wallets
+		WHERE user_id = $1 AND coin = $2
+	`, userID, coin)
+	if err != nil {
+		return nil, err
+	}
+	return &wallet, nil
+}
+
 // GetWalletByAddress finds wallet by deposit address
 func (s *PaymentService) GetWalletByAddress(address string) (*models.CryptoWallet, error) {
 	var wallet models.CryptoWallet

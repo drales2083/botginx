@@ -33,19 +33,11 @@ func (h *Handler) Deposit(w http.ResponseWriter, r *http.Request) {
 
 	// Get available coins
 	coins := h.service.GetAvailableCoins()
-	defaultCoin := "btc"
-	if len(coins) > 0 {
-		defaultCoin = coins[0]
-	}
 
-	// Get or create wallet for default coin
+	// Get existing wallet (don't auto-create - user clicks to generate)
 	var wallet *models.CryptoWallet
-	var err error
 	if h.service.IsPaymentEnabled() {
-		wallet, err = h.service.GetOrCreateWallet(userID, defaultCoin)
-		if err != nil {
-			log.Printf("[payments] Failed to get wallet for user %s: %v", userID, err)
-		}
+		wallet, _ = h.service.GetExistingWallet(userID, "btc")
 	}
 
 	// Get recent transactions
