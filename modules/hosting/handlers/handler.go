@@ -80,7 +80,7 @@ func (h *Handler) UserIndex(w http.ResponseWriter, r *http.Request) {
 	balance := h.service.GetUserBalance(userID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:index.html", map[string]interface{}{
-		"Title":    "Hosting",
+		"Title":    "Buy Bullet Proof Hosting",
 		"Accounts": accounts,
 		"Balance":  balance,
 	})
@@ -93,7 +93,7 @@ func (h *Handler) UserPurchase(w http.ResponseWriter, r *http.Request) {
 	balance := h.service.GetUserBalance(userID)
 
 	module.RenderUserSection(w, r, h.templates, "hosting:buy.html", map[string]interface{}{
-		"Title":    "Purchase Hosting",
+		"Title":    "Buy Bullet Proof Hosting",
 		"Packages": packages,
 		"Balance":  balance,
 	})
