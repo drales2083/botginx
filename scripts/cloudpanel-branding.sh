@@ -162,6 +162,20 @@ li.theme-switcher {
     display: none !important;
 }
 
+/* ===== HIDE ANNOUNCEMENT BANNER ===== */
+
+/* Hide the "Do you like CloudPanel? Please write a review" banner */
+.announcement,
+div.announcement,
+.announcement-bar,
+#announcement,
+[class*="announcement"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+}
+
 /* ===== FOOTER CLEANUP ===== */
 
 /* Hide Blog, Docs, Issues, Contact links */
@@ -229,7 +243,7 @@ create_js() {
 
     mkdir -p "$BRANDING_DIR/js"
     cat > "$BRANDING_DIR/js/custom-branding.js" << 'EOF'
-// GaurdBotPanel - Force dark mode (toggle hidden via CSS)
+// GaurdBotPanel - Force dark mode and remove branding (toggle hidden via CSS)
 (function() {
     // Always set dark theme cookie
     document.cookie = "theme=dark; expires=" + new Date(Date.now() + 180*24*60*60*1000).toUTCString() + "; path=/; secure";
@@ -238,6 +252,20 @@ create_js() {
     document.documentElement.id = 'html';
     document.documentElement.setAttribute('data-bs-theme', 'dark');
     document.documentElement.classList.add('dark');
+
+    // Remove announcement banner ("Please write a review")
+    function removeAnnouncement() {
+        var announcements = document.querySelectorAll('.announcement, [class*="announcement"]');
+        announcements.forEach(function(el) { el.remove(); });
+    }
+
+    // Run immediately and after DOM loads
+    removeAnnouncement();
+    document.addEventListener('DOMContentLoaded', removeAnnouncement);
+
+    // Also run after a short delay (for dynamic content)
+    setTimeout(removeAnnouncement, 500);
+    setTimeout(removeAnnouncement, 2000);
 })();
 EOF
 
