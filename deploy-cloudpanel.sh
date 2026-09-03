@@ -295,7 +295,14 @@ admin:
   token: ""
   rate_limit: 100
 
-# Panel callback - ask botginx for per-domain blocking decisions
+# Local link settings - fastest, checked first
+# Settings files pushed by botginx via SSH to /etc/botection/links/{domainID}.json
+link_settings:
+  enabled: true
+  directory: "/etc/botection/links"
+  watch: true
+
+# Panel callback - fallback when local file not found
 panel_callback:
   enabled: true
   url: "${BOTGINX_PANEL_URL}/api/botection/should-block"
