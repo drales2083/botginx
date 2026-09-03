@@ -158,6 +158,10 @@
                             </tr>
                         </tbody>
                     </table>
+                    <div class="alert alert-warning small mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Important:</strong> Set TTL to <strong>30 seconds</strong> for the _acme-challenge TXT record. Higher TTL (like 14400) causes DNS caching issues and SSL generation will fail.
+                    </div>
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-1"></i>
                         DNS propagation can take a few minutes. The same token will be used if you retry.
@@ -269,6 +273,17 @@
             </div>
         </div>
 
+        <!-- TTL Tip -->
+        <div class="card mb-3">
+            <div class="card-header bg-warning">
+                <h5 class="card-title mb-0"><i class="bi bi-lightning-fill me-2"></i>TTL Tip</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">When adding DNS records, set <strong>TTL to 30 seconds</strong> (not 14000).</p>
+                <p class="text-muted small mb-0">Lower TTL = faster DNS propagation = faster SSL generation. You can increase it back to 14400 after setup is complete.</p>
+            </div>
+        </div>
+
         <!-- Instructions Card -->
         <div class="card">
             <div class="card-header bg-info text-white">
@@ -280,7 +295,8 @@
                     <li class="mb-2">Go to <strong>Zone Editor</strong></li>
                     <li class="mb-2">Click <strong>Manage</strong> for <code>{{.SetupInfo.BaseDomain}}</code></li>
                     <li class="mb-2">Click <strong>+ Add Record</strong></li>
-                    <li>Add each record above</li>
+                    <li class="mb-2">Add each record above</li>
+                    <li><strong>Set TTL to 30</strong> (not 14400)</li>
                 </ol>
             </div>
         </div>
