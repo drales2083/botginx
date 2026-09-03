@@ -44,6 +44,12 @@ type Domain struct {
 	AcmeFulldomain    *string `db:"acme_fulldomain" json:"acmeFulldomain,omitempty"`
 	AcmeCnameVerified bool    `db:"acme_cname_verified" json:"acmeCnameVerified"`
 
+	// Marketplace fields
+	IsMarketplace          bool       `db:"is_marketplace" json:"isMarketplace"`
+	MarketplacePrice       float64    `db:"marketplace_price" json:"marketplacePrice,omitempty"`
+	MarketplaceDescription string     `db:"marketplace_description" json:"marketplaceDescription,omitempty"`
+	MarketplaceListedAt    *time.Time `db:"marketplace_listed_at" json:"marketplaceListedAt,omitempty"`
+
 	// Joined fields
 	ServerName string `db:"server_name" json:"serverName,omitempty"`
 }
