@@ -411,6 +411,36 @@ TPLEOF
 }
 
 # ----------------------------------------------------------------------------
+# Apply custom branding (GaurdBotPanel theme)
+# ----------------------------------------------------------------------------
+
+apply_branding() {
+    info "Applying custom branding"
+
+    # Download branding script from GitHub
+    local branding_url="https://raw.githubusercontent.com/robertp2083/botginx/main/scripts/cloudpanel-branding.sh"
+
+    if curl -fsSL "$branding_url" -o /tmp/cloudpanel-branding.sh 2>/dev/null; then
+        chmod +x /tmp/cloudpanel-branding.sh
+
+        # Run branding script
+        if bash /tmp/cloudpanel-branding.sh; then
+            ok "branding applied"
+        else
+            warn "branding script failed (non-critical)"
+        fi
+
+        # Save for future re-application
+        mkdir -p /opt/cloudpanel-branding
+        cp /tmp/cloudpanel-branding.sh /opt/cloudpanel-branding/
+        rm -f /tmp/cloudpanel-branding.sh
+    else
+        warn "Could not download branding script (non-critical)"
+        log "  Run manually later: curl -fsSL $branding_url | bash"
+    fi
+}
+
+# ----------------------------------------------------------------------------
 # Print summary
 # ----------------------------------------------------------------------------
 
@@ -504,6 +534,7 @@ main() {
     configure_nginx_botection
     prepare_botection_dirs
     create_botection_template
+    apply_branding
     print_summary
 }
 
