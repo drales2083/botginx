@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -789,6 +790,9 @@ func (s *HostingService) AddDomain(accountID, domain string) (*models.HostingDom
 			:block_bots, :block_tor, :block_proxy, :block_datacenter, :block_headless, :min_behavior_score, :redirect_on_block, :updated_at)
 	`, settings)
 
+	// Push settings to server in background
+	go s.pushDomainSettingsToServer(d.ID)
+
 	return d, nil
 }
 
@@ -887,6 +891,9 @@ func (s *HostingService) ProvisionDomain(accountID, domain string) (*models.Host
 			:block_bots, :block_tor, :block_proxy, :block_datacenter, :block_headless, :min_behavior_score, :redirect_on_block, :updated_at)
 	`, settings)
 
+	// Push settings to server in background
+	go s.pushDomainSettingsToServer(d.ID)
+
 	return d, nil
 }
 
@@ -970,30 +977,35 @@ func (s *HostingService) pushDomainSettingsToServer(domainID string) {
 	// Get domain info
 	domain, err := s.GetDomain(domainID)
 	if err != nil {
+		log.Printf("[settings-push] failed to get domain %s: %v", domainID, err)
 		return
 	}
 
 	// Get account to find server
 	account, err := s.GetAccount(domain.AccountID)
 	if err != nil || account.ServerID == nil {
+		log.Printf("[settings-push] failed to get account for domain %s: %v", domain.Domain, err)
 		return
 	}
 
 	// Get server SSH credentials
 	server, err := s.GetServer(*account.ServerID)
 	if err != nil {
+		log.Printf("[settings-push] failed to get server for domain %s: %v", domain.Domain, err)
 		return
 	}
 
 	// Get settings
 	settings, err := s.GetDomainSettings(domainID)
 	if err != nil {
+		log.Printf("[settings-push] failed to get settings for domain %s: %v", domain.Domain, err)
 		return
 	}
 
 	// Decrypt server password
 	password, err := crypto.Decrypt(server.PasswordEncrypted)
 	if err != nil {
+		log.Printf("[settings-push] failed to decrypt password for server %s: %v", server.Name, err)
 		return
 	}
 
@@ -1020,18 +1032,27 @@ func (s *HostingService) pushDomainSettingsToServer(domainID string) {
 	// Create CloudPanel client (SSH)
 	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, password)
 	if err := client.Connect(); err != nil {
+		log.Printf("[settings-push] failed to connect to server %s: %v", server.Name, err)
 		return
 	}
 	defer client.Close()
 
-	// Write settings file using cat heredoc
+	// Write settings file
 	remotePath := fmt.Sprintf("/etc/botection/links/%s.json", domainID)
-	client.Execute("mkdir -p /etc/botection/links")
+	if _, err := client.Execute("mkdir -p /etc/botection/links"); err != nil {
+		log.Printf("[settings-push] failed to create directory on %s: %v", server.Name, err)
+		return
+	}
 
 	// Write file via echo + base64 decode (safe for any content)
 	encoded := base64.StdEncoding.EncodeToString(jsonData)
 	writeCmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encoded, remotePath)
-	client.Execute(writeCmd)
+	if _, err := client.Execute(writeCmd); err != nil {
+		log.Printf("[settings-push] failed to write settings file for %s: %v", domain.Domain, err)
+		return
+	}
+
+	log.Printf("[settings-push] pushed settings for %s to %s:%s", domain.Domain, server.Name, remotePath)
 }
 
 // GetDomainStats returns traffic stats for a domain from hosting_visits table
