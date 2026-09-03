@@ -175,78 +175,39 @@ install_cloudpanel() {
 configure_nginx_botection() {
     info "Configuring nginx for botection integration"
 
-    # CloudPanel nginx serves sites. When botection is installed:
-    # - nginx listens on 8081 (backend port)
-    # - botection listens on 8080, proxies to 8081 with preserve_host=true
-    # - External nginx/cloudflare routes 443 → 8080
-
-    local nginx_conf="/etc/nginx/nginx.conf"
-    local sites_dir="/etc/nginx/sites-enabled"
-
-    # CloudPanel uses a different nginx structure
-    # Main nginx conf is at /etc/nginx/nginx.conf
-    # Site configs are in /etc/nginx/sites-enabled/
-
-    # Create a snippet for botection backend port configuration
-    log "creating botection nginx snippet"
-    cat > /etc/nginx/conf.d/botection-backend.conf <<EOF
-# Botection backend port configuration
-# When botection is installed, site vhosts listen on this port
-# instead of 80/443 directly
-# Port: ${CLOUDPANEL_BACKEND_PORT}
-EOF
-
-    # CloudPanel manages site configs dynamically
-    # We'll create a hook script that modifies new sites to use backend port
-    log "creating CloudPanel site hook for botection"
-    mkdir -p /opt/botection/hooks
-
-    cat > /opt/botection/hooks/cloudpanel-site-hook.sh <<'HOOKEOF'
-#!/bin/bash
-# Hook script to modify CloudPanel site configs for botection
-# Called after CloudPanel creates/updates a site
-
-BACKEND_PORT="${CLOUDPANEL_BACKEND_PORT:-8081}"
-SITES_DIR="/etc/nginx/sites-enabled"
-
-# Process all site configs
-for conf in "$SITES_DIR"/*.conf; do
-    [[ -f "$conf" ]] || continue
-
-    # Skip if already modified
-    grep -q "# botection-modified" "$conf" && continue
-
-    # Modify listen directives to use backend port
-    # Only modify HTTP port (80 -> backend port)
-    # Keep SSL port as-is for direct SSL connections
-    sed -i "s/listen 80;/listen ${BACKEND_PORT};/g" "$conf"
-    sed -i "s/listen \[::\]:80;/listen [::]:${BACKEND_PORT};/g" "$conf"
-
-    # Add marker comment
-    sed -i "1i # botection-modified" "$conf"
-done
-
-# Reload nginx if running
-if systemctl is-active --quiet nginx; then
-    nginx -t 2>/dev/null && systemctl reload nginx
-fi
-HOOKEOF
-    chmod +x /opt/botection/hooks/cloudpanel-site-hook.sh
+    # Traffic flow when botection is installed:
+    #   Internet → nginx:443 (SSL) → botection:8080 → nginx:8081 → PHP
+    #
+    # This is handled by the "Botection" vhost template (created in create_botection_template)
+    # which CloudPanel uses when creating sites. No post-creation modification needed.
 
     # Create marker file for botection deploy to detect CloudPanel
     mkdir -p /var/www/cloudpanel
     echo "cloudpanel" > /var/www/cloudpanel/.server-type
+    log "created server type marker"
 
-    # Export backend port for hook script
+    # Create config directory for botection
     mkdir -p /etc/botection
-    echo "CLOUDPANEL_BACKEND_PORT=${CLOUDPANEL_BACKEND_PORT}" > /etc/botection/cloudpanel.env
+    cat > /etc/botection/cloudpanel.env <<EOF
+# CloudPanel botection configuration
+CLOUDPANEL_BACKEND_PORT=${CLOUDPANEL_BACKEND_PORT}
+BOTECTION_PORT=${BOTECTION_PORT}
+EOF
+    log "created /etc/botection/cloudpanel.env"
 
-    ok "nginx configured for botection (backend port: ${CLOUDPANEL_BACKEND_PORT})"
+    # Create nginx config snippet (informational)
+    cat > /etc/nginx/conf.d/botection-info.conf <<EOF
+# Botection Integration (CloudPanel)
+#
+# Sites use the "Botection" vhost template which routes:
+#   - External traffic (80/443) → botection (${BOTECTION_PORT})
+#   - Botection → backend nginx (${CLOUDPANEL_BACKEND_PORT}) → PHP
+#
+# Template created via: clpctl vhost-template:add --name="Botection"
+# Use template when creating sites from botginx panel.
+EOF
 
-    # Test and reload nginx
-    if nginx -t 2>/dev/null; then
-        systemctl reload nginx 2>/dev/null || true
-    fi
+    ok "nginx configured for botection"
 }
 
 # ----------------------------------------------------------------------------
