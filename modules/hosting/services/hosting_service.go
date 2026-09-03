@@ -1102,6 +1102,25 @@ link_settings:\
 	return nil
 }
 
+// PushAllDomainSettings pushes settings for all domains to their servers
+func (s *HostingService) PushAllDomainSettings() {
+	var domains []struct {
+		DomainID  string `db:"domain_id"`
+		AccountID string `db:"account_id"`
+	}
+	s.db.Select(&domains, `
+		SELECT d.id as domain_id, d.account_id
+		FROM hosting_domains d
+		JOIN hosting_accounts a ON a.id = d.account_id
+		WHERE a.server_id IS NOT NULL
+	`)
+
+	for _, d := range domains {
+		go s.pushDomainSettingsToServer(d.DomainID)
+	}
+	log.Printf("[settings-push] triggered push for %d domains", len(domains))
+}
+
 // GetDomainStats returns traffic stats for a domain from hosting_visits table
 func (s *HostingService) GetDomainStats(domainID string) (*models.BotectionStats, error) {
 	stats := &models.BotectionStats{

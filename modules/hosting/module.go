@@ -138,6 +138,9 @@ func (m *Module) enableLinkSettingsOnAllServers() {
 			m.service.EnableLinkSettingsOnServer(server.ID)
 		}
 	}
+
+	// Push settings for all existing domains
+	m.service.PushAllDomainSettings()
 }
 
 // RoutesForSection returns routes for the requested section (user or admin)
