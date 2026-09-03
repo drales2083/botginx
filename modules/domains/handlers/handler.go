@@ -984,6 +984,33 @@ func (h *Handler) APIStartSSLChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If cert already exists, auto-complete
+	if challenge.Token == "CERT_EXISTS" {
+		// Setup nginx
+		if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+			h.jsonError(w, "Certificate exists but nginx setup failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Mark as complete
+		stepComplete := models.SetupStepComplete
+		sslEnabled := true
+		dnsVerified := true
+		serverID := h.service.GetDeployServerID()
+		h.service.Update(id, models.UpdateDomainInput{
+			SetupStep:   &stepComplete,
+			SSLEnabled:  &sslEnabled,
+			DNSVerified: &dnsVerified,
+			ServerID:    &serverID,
+		})
+
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"status":  "complete",
+			"message": "SSL certificate already exists and is now active!",
+		})
+		return
+	}
+
 	// Save token to database
 	h.service.Update(id, models.UpdateDomainInput{AcmeToken: &challenge.Token})
 

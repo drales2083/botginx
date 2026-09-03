@@ -339,6 +339,13 @@ async function startSSLChallenge() {
             return;
         }
 
+        // If cert already exists, show complete
+        if (data.status === 'complete') {
+            showToast(data.message || 'SSL certificate is already active!', 'success');
+            showSetupComplete();
+            return;
+        }
+
         sslToken = data.token;
         document.getElementById('ssl-txt-name').textContent = data.txt_record;
         document.getElementById('ssl-txt-value').value = data.token;

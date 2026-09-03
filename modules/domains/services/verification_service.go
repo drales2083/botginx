@@ -1160,10 +1160,14 @@ func (s *VerificationService) LegoStartChallenge(domain, email string) (*LegoCha
 		return nil, err
 	}
 
-	// Check if cert already exists
+	// Check if cert already exists - return special marker so handler can auto-complete
 	checkExisting := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "EXISTS"`, baseDomain)
 	if out, _ := client.Run(checkExisting); strings.Contains(out, "EXISTS") {
-		return nil, fmt.Errorf("SSL certificate already exists for %s", baseDomain)
+		return &LegoChallenge{
+			Token:     "CERT_EXISTS",
+			Domain:    baseDomain,
+			TXTRecord: "_acme-challenge." + baseDomain,
+		}, nil
 	}
 
 	if email == "" {
