@@ -8,6 +8,7 @@ package subscription
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -220,7 +221,7 @@ func GetMonthlyPrice() float64 {
 			return p
 		}
 	}
-	return 30.0 // default $30/month
+	return 100.0 // default $100/month
 }
 
 // GetRenewalDays returns how many days a renewal adds
@@ -302,11 +303,18 @@ func (s *Service) getUserBalance(userID string) float64 {
 
 // deductBalance subtracts from user balance and logs the transaction
 func (s *Service) deductBalance(userID string, amount float64, reason string) error {
-	_, err := s.db.Exec(`
+	result, err := s.db.Exec(`
 		UPDATE users SET balance = balance - $1, updated_at = NOW()
 		WHERE id = $2 AND balance >= $1
 	`, amount, userID)
-	return err
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("insufficient balance")
+	}
+	return nil
 }
 
 // StartAutoRenewalLoop starts a background goroutine that checks renewals hourly
