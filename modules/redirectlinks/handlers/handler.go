@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 
 	domainmodels "github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/redirectlinks/models"
@@ -545,12 +544,6 @@ func generateRedirectHTML(link *models.RedirectLink) string {
         @keyframes spin { to { transform: rotate(360deg); } }`, loaderColor)
 	}
 
-	// Panel URL for tracking - use environment variable or default
-	panelURL := os.Getenv("PANEL_URL")
-	if panelURL == "" {
-		panelURL = "https://guardbot.sbs"
-	}
-
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -582,31 +575,12 @@ func generateRedirectHTML(link *models.RedirectLink) string {
         <p>%s</p>
     </div>
     <script>
-        // Track visit
-        (function(){
-            try {
-                var d = {
-                    linkId: %q,
-                    referrer: document.referrer || '',
-                    language: navigator.language || '',
-                    screenRes: screen.width + 'x' + screen.height,
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || ''
-                };
-                fetch(%q + '/api/track/pixel', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(d),
-                    mode: 'cors'
-                }).catch(function(){});
-            } catch(e) {}
-        })();
-        // Redirect after delay
         setTimeout(function() {
             window.location.href = %q;
         }, %d000);
     </script>
 </body>
-</html>`, pageTitle, bgStyle, textColor, textSize, loaderCSS, heading, loaderHTML, subheading, link.ID, panelURL, destURL, duration)
+</html>`, pageTitle, bgStyle, textColor, textSize, loaderCSS, heading, loaderHTML, subheading, destURL, duration)
 }
 
 // Helpers
