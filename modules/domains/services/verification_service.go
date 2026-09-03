@@ -629,31 +629,62 @@ func (s *VerificationService) CleanupDomain(domain string) error {
 	}
 	defer client.Close()
 
-	// Remove nginx config
+	// Get base domain for wildcard cleanup
+	baseDomain := GetBaseDomain(domain)
+
+	// Remove nginx config (both wildcard and base domain patterns)
 	nginxCmd := fmt.Sprintf(`
 rm -f /etc/nginx/sites-enabled/%s.conf
 rm -f /etc/nginx/sites-available/%s.conf
-`, domain, domain)
+rm -f /etc/nginx/sites-enabled/*.%s.conf
+rm -f /etc/nginx/sites-available/*.%s.conf
+`, domain, domain, baseDomain, baseDomain)
 	client.Run(nginxCmd)
 
-	// Remove self-signed SSL cert
+	// Remove self-signed SSL certs
 	sslCmd := fmt.Sprintf(`
 rm -f /etc/nginx/ssl/%s.pem
 rm -f /etc/nginx/ssl/%s.key
-`, domain, domain)
+rm -f /etc/nginx/ssl/%s.pem
+rm -f /etc/nginx/ssl/%s.key
+`, domain, domain, baseDomain, baseDomain)
 	client.Run(sslCmd)
 
-	// Remove Let's Encrypt cert if exists
+	// Remove Let's Encrypt certs (certbot)
 	letsEncryptCmd := fmt.Sprintf(`
 if [ -d /etc/letsencrypt/live/%s ]; then
     certbot delete --cert-name %s --non-interactive 2>/dev/null || true
 fi
-`, domain, domain)
+if [ -d /etc/letsencrypt/live/%s ]; then
+    certbot delete --cert-name %s --non-interactive 2>/dev/null || true
+fi
+rm -rf /etc/letsencrypt/live/%s
+rm -rf /etc/letsencrypt/archive/%s
+rm -rf /etc/letsencrypt/renewal/%s.conf
+`, domain, domain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
 	client.Run(letsEncryptCmd)
 
+	// Remove lego SSL certificates and data
+	legoCmd := fmt.Sprintf(`
+rm -rf /root/.lego-%s
+rm -f /tmp/lego-*%s*
+`, baseDomain, baseDomain)
+	client.Run(legoCmd)
+
 	// Remove site directories
-	siteDirCmd := fmt.Sprintf("rm -rf /var/www/sites/%s", domain)
+	siteDirCmd := fmt.Sprintf(`
+rm -rf /var/www/sites/%s
+rm -rf /var/www/sites/%s
+`, domain, baseDomain)
 	client.Run(siteDirCmd)
+
+	// Remove botection link settings
+	botectionCmd := fmt.Sprintf(`
+rm -f /etc/botection/links/%s.json
+rm -f /etc/botection/links/%s.json
+rm -f /etc/botection/links/*.%s.json
+`, domain, baseDomain, baseDomain)
+	client.Run(botectionCmd)
 
 	// Reload nginx
 	client.Run("nginx -t && systemctl reload nginx 2>/dev/null || true")
