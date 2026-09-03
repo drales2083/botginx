@@ -1,0 +1,97 @@
+{{define "content"}}
+<div class="row mb-4">
+    <div class="col">
+        <h4><i class="bi bi-list-ul me-2"></i>All Transactions</h4>
+        <p class="text-secondary mb-0">View and manage all crypto transactions</p>
+    </div>
+    <div class="col-auto">
+        <a href="/admin/payments" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {{if .Transactions}}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" data-datatable>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>USD</th>
+                        <th>Status</th>
+                        <th>Confirmations</th>
+                        <th>TxID</th>
+                        <th>Date</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Transactions}}
+                    <tr>
+                        <td><small class="text-muted">{{.ID}}</small></td>
+                        <td><small>{{.UserID}}</small></td>
+                        <td>
+                            {{if eq .Type "deposit"}}
+                            <span class="badge bg-success">Deposit</span>
+                            {{else}}
+                            <span class="badge bg-warning">Withdrawal</span>
+                            {{end}}
+                        </td>
+                        <td><code>{{printf "%.8f" .Amount}}</code></td>
+                        <td><strong class="text-success">${{printf "%.2f" .AmountUSD}}</strong></td>
+                        <td>
+                            {{if eq .Status "confirmed"}}
+                            <span class="badge bg-success">Confirmed</span>
+                            {{else if eq .Status "pending"}}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {{else}}
+                            <span class="badge bg-danger">{{.Status}}</span>
+                            {{end}}
+                        </td>
+                        <td>{{.Confirmations}}</td>
+                        <td>
+                            <a href="https://mempool.space/tx/{{.TxID}}" target="_blank" class="text-decoration-none">
+                                <code>{{slice .TxID 0 16}}...</code>
+                                <i class="bi bi-box-arrow-up-right ms-1"></i>
+                            </a>
+                        </td>
+                        <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="resyncTx('{{.TxID}}')" title="Resync from blockchain">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+            <h5>No Transactions</h5>
+            <p class="text-muted mb-0">No crypto transactions have been recorded yet.</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<script>
+async function resyncTx(txid) {
+    const res = await fetch(`/admin/payments/api/resync/${txid}`, { method: 'POST' });
+    if (res.ok) {
+        const data = await res.json();
+        showToast(`Resynced: ${data.processed} output(s) processed`, 'success');
+        setTimeout(() => location.reload(), 1500);
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to resync', 'danger');
+    }
+}
+</script>
+{{end}}

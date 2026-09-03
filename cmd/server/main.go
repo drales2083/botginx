@@ -25,6 +25,7 @@ import (
 	iplistsvc "github.com/botginx/botginx/modules/iplists/services"
 	"github.com/botginx/botginx/modules/marketplace"
 	modulesmgmt "github.com/botginx/botginx/modules/modules"
+	"github.com/botginx/botginx/modules/payments"
 	"github.com/botginx/botginx/modules/redirectlinks"
 	"github.com/botginx/botginx/modules/servers"
 	"github.com/botginx/botginx/modules/users"
@@ -233,6 +234,7 @@ func main() {
 
 	hostingModule := hosting.New()
 	marketplaceModule := marketplace.New()
+	paymentsModule := payments.New()
 
 	registry.Register(authModule)
 	registry.Register(dashboard.New())
@@ -243,6 +245,7 @@ func main() {
 	registry.Register(iplistsModule)             // IP Lists module
 	registry.Register(hostingModule)             // Bullet Proof Hosting module
 	registry.Register(marketplaceModule)         // Domain marketplace
+	registry.Register(paymentsModule)            // Crypto payments
 	registry.Register(help.New())                // Help/FAQ module
 	registry.Register(users.New())               // Admin module
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
@@ -339,6 +342,10 @@ func main() {
 	// Public tracking API (no auth, CORS enabled)
 	// Called by redirect pages to record visits
 	r.Mount("/api/track", analyticsModule.TrackingRoutes())
+
+	// Payments webhook (no auth, signature verified in handler)
+	// POST /api/payments/webhook/bitgo - BitGo transaction callback
+	r.Mount("/api/payments", paymentsModule.PublicRoutes())
 
 	// User routes (/user/*) - require auth and active subscription for all
 	// product features. Unsubscribed users are redirected to settings.

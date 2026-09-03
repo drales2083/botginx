@@ -1,0 +1,187 @@
+{{define "content"}}
+<div class="row mb-4">
+    <div class="col">
+        <h4><i class="bi bi-wallet2 me-2"></i>Deposit Crypto</h4>
+        <p class="text-secondary mb-0">Send cryptocurrency to add funds to your account</p>
+    </div>
+    <div class="col-auto">
+        <div class="card bg-dark">
+            <div class="card-body py-2 px-3">
+                <small class="text-muted">Your Balance:</small>
+                <strong class="text-success ms-2">${{printf "%.2f" .User.Balance}}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{if not .Enabled}}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    Crypto deposits are not available at this time. Please contact support.
+</div>
+{{else}}
+
+<div class="row">
+    <div class="col-lg-6">
+        <!-- Deposit Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-qr-code me-2"></i>Your Deposit Address</h5>
+            </div>
+            <div class="card-body">
+                {{if .Wallet}}
+                <div class="text-center mb-4">
+                    <!-- QR Code -->
+                    <div class="bg-white d-inline-block p-3 rounded mb-3">
+                        <canvas id="qrcode" style="width:180px;height:180px"></canvas>
+                    </div>
+
+                    <!-- Address -->
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control text-center font-monospace"
+                               value="{{.Wallet.Address}}" id="deposit-address" readonly>
+                        <button class="btn btn-primary" onclick="copyAddress()">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+
+                    <span class="badge bg-warning text-dark">
+                        <i class="bi bi-currency-bitcoin me-1"></i>{{.Wallet.Coin | upper}}
+                    </span>
+                </div>
+
+                <div class="alert alert-info small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>Important:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Only send <strong>{{.Wallet.Coin | upper}}</strong> to this address</li>
+                        <li>Minimum deposit: <strong>${{printf "%.0f" .MinDeposit}}</strong></li>
+                        <li>Deposits are credited after 1 confirmation</li>
+                        <li>Sending other coins may result in permanent loss</li>
+                    </ul>
+                </div>
+                {{else}}
+                <div class="text-center py-4">
+                    <p class="text-muted">Click below to generate your deposit address</p>
+                    <button class="btn btn-primary" onclick="generateAddress()">
+                        <i class="bi bi-plus-lg me-1"></i>Generate Address
+                    </button>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <!-- Recent Deposits -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Recent Deposits</h5>
+                <a href="/user/payments/transactions" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {{if .Transactions}}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Transactions}}
+                            <tr>
+                                <td>
+                                    <strong class="text-success">${{printf "%.2f" .AmountUSD}}</strong>
+                                    <small class="text-muted d-block">{{printf "%.8f" .Amount}} BTC</small>
+                                </td>
+                                <td>
+                                    {{if eq .Status "confirmed"}}
+                                    <span class="badge bg-success">Confirmed</span>
+                                    {{else if eq .Status "pending"}}
+                                    <span class="badge bg-warning text-dark">
+                                        Pending ({{.Confirmations}} conf)
+                                    </span>
+                                    {{else}}
+                                    <span class="badge bg-danger">{{.Status}}</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{.CreatedAt.Format "Jan 02, 15:04"}}</small>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox display-4 text-muted mb-3"></i>
+                    <p class="text-muted mb-0">No deposits yet</p>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-question-circle me-2"></i>How It Works</h5>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li class="mb-2">Copy your deposit address above</li>
+                    <li class="mb-2">Send BTC from your wallet or exchange</li>
+                    <li class="mb-2">Wait for 1 network confirmation</li>
+                    <li>Your balance is automatically credited</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<script>
+{{if .Wallet}}
+document.addEventListener('DOMContentLoaded', function() {
+    new QRious({
+        element: document.getElementById('qrcode'),
+        value: '{{.Wallet.Address}}',
+        size: 180,
+        level: 'M'
+    });
+});
+{{end}}
+
+function copyAddress() {
+    const input = document.getElementById('deposit-address');
+    input.select();
+    document.execCommand('copy');
+    showToast('Address copied!', 'success');
+}
+
+async function generateAddress() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+
+    const res = await fetch('/user/payments/api/generate-address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coin: 'btc' })
+    });
+
+    if (res.ok) {
+        location.reload();
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to generate address', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Generate Address';
+    }
+}
+</script>
+{{end}}
