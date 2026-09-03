@@ -263,6 +263,36 @@ func (h *Handler) UserDomainSetup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// UserDomainAnalytics shows traffic analytics for a specific domain
+func (h *Handler) UserDomainAnalytics(w http.ResponseWriter, r *http.Request) {
+	account, ok := h.requireAccountOwner(w, r)
+	if !ok {
+		return
+	}
+
+	domainID := chi.URLParam(r, "domainID")
+
+	domain, err := h.service.GetDomain(domainID)
+	if err != nil {
+		http.Error(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	domains, _ := h.service.ListDomains(account.ID)
+	var primaryDomain *models.HostingDomain
+	if len(domains) > 0 {
+		primaryDomain = &domains[0]
+	}
+
+	module.RenderUserSection(w, r, h.templates, "hosting:domain_analytics.html", map[string]interface{}{
+		"Title":         "Analytics",
+		"Account":       account,
+		"Domain":        domain,
+		"PrimaryDomain": primaryDomain,
+		"NavActive":     "analytics",
+	})
+}
+
 // UserDomainSettings shows antibot settings for a specific domain
 func (h *Handler) UserDomainSettings(w http.ResponseWriter, r *http.Request) {
 	account, ok := h.requireAccountOwner(w, r)

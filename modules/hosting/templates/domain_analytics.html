@@ -1,0 +1,162 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-md-3">
+        {{template "hosting_user_nav" .}}
+    </div>
+    <div class="col-md-9">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="mb-0"><i class="bi bi-graph-up me-2"></i>Analytics - {{.Domain.Domain}}</h4>
+            <button class="btn btn-outline-primary btn-sm" onclick="loadStats()">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="mb-0" id="stat-total">-</h3>
+                        <small class="text-muted">Total Requests</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="mb-0 text-success" id="stat-allowed">-</h3>
+                        <small class="text-muted">Allowed</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="mb-0 text-danger" id="stat-blocked">-</h3>
+                        <small class="text-muted">Blocked</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="mb-0 text-warning" id="stat-rate">-</h3>
+                        <small class="text-muted">Block Rate</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Block Reasons -->
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0"><i class="bi bi-pie-chart me-2"></i>Block Reasons</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="block-reasons">
+                            <div class="text-center text-muted py-4">
+                                <div class="spinner-border spinner-border-sm me-2"></div>Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Blocks -->
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0"><i class="bi bi-shield-x me-2"></i>Recent Blocks</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="recent-blocks" style="max-height: 300px; overflow-y: auto;">
+                            <div class="text-center text-muted py-4">
+                                <div class="spinner-border spinner-border-sm me-2"></div>Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const accountID = '{{.Account.ID}}';
+const domainID = '{{.Domain.ID}}';
+
+loadStats();
+
+async function loadStats() {
+    try {
+        const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainID}/stats`);
+        if (!res.ok) throw new Error('Failed to load');
+        const stats = await res.json();
+
+        document.getElementById('stat-total').textContent = formatNumber(stats.total_requests || 0);
+        document.getElementById('stat-allowed').textContent = formatNumber(stats.allowed_requests || 0);
+        document.getElementById('stat-blocked').textContent = formatNumber(stats.blocked_requests || 0);
+        document.getElementById('stat-rate').textContent = (stats.block_rate || 0).toFixed(1) + '%';
+
+        const reasons = stats.module_blocks || {};
+        const reasonsEl = document.getElementById('block-reasons');
+        if (Object.keys(reasons).length === 0) {
+            reasonsEl.innerHTML = '<div class="text-center text-muted py-3">No blocks recorded</div>';
+        } else {
+            let html = '<ul class="list-group list-group-flush">';
+            for (const [reason, count] of Object.entries(reasons).sort((a,b) => b[1] - a[1])) {
+                html += `<li class="list-group-item d-flex justify-content-between">
+                    <span>${formatReason(reason)}</span>
+                    <span class="badge bg-danger">${count}</span>
+                </li>`;
+            }
+            html += '</ul>';
+            reasonsEl.innerHTML = html;
+        }
+
+        const blocks = stats.recent_blocks || [];
+        const blocksEl = document.getElementById('recent-blocks');
+        if (blocks.length === 0) {
+            blocksEl.innerHTML = '<div class="text-center text-muted py-3">No recent blocks</div>';
+        } else {
+            let html = '<table class="table table-sm table-striped mb-0"><tbody>';
+            for (const block of blocks.slice(0, 20)) {
+                html += `<tr>
+                    <td><code class="small">${block.ip || '-'}</code></td>
+                    <td><span class="badge bg-secondary">${formatReason(block.module || block.reason)}</span></td>
+                    <td class="small text-muted">${block.path || '/'}</td>
+                </tr>`;
+            }
+            html += '</tbody></table>';
+            blocksEl.innerHTML = html;
+        }
+    } catch (e) {
+        document.getElementById('block-reasons').innerHTML = '<div class="text-center text-muted py-3">Unable to load stats</div>';
+        document.getElementById('recent-blocks').innerHTML = '<div class="text-center text-muted py-3">Unable to load stats</div>';
+    }
+}
+
+function formatNumber(n) {
+    if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+    return n.toString();
+}
+
+function formatReason(r) {
+    const map = {
+        'bot': 'Bot',
+        'tor': 'Tor',
+        'proxy': 'Proxy/VPN',
+        'datacenter': 'Datacenter',
+        'headless': 'Headless',
+        'country': 'Country',
+        'device': 'Device',
+        'behavior': 'Behavior',
+        'challenge': 'Challenge Failed'
+    };
+    return map[r] || r;
+}
+</script>
+{{end}}

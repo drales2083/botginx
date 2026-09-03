@@ -165,6 +165,7 @@ func (m *Module) Routes() chi.Router {
 		r.Get("/", m.handler.UserOverview)
 		r.Get("/domains", m.handler.UserDomains)
 		r.Get("/domains/{domainID}/setup", m.handler.UserDomainSetup)
+		r.Get("/domains/{domainID}/analytics", m.handler.UserDomainAnalytics)
 		r.Get("/domains/{domainID}/settings", m.handler.UserDomainSettings)
 	})
 
