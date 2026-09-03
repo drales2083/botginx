@@ -656,6 +656,18 @@ func (h *Handler) APIDeleteServer(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
+// APIEnableLinkSettings enables link_settings on a server's botection config
+func (h *Handler) APIEnableLinkSettings(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	if err := h.service.EnableLinkSettingsOnServer(id); err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true, "message": "link_settings enabled and antibot restarted"})
+}
+
 // APICreatePackage creates a new hosting package
 func (h *Handler) APICreatePackage(w http.ResponseWriter, r *http.Request) {
 	var input models.CreatePackageInput

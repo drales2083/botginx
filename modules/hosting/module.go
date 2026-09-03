@@ -186,6 +186,7 @@ func (m *Module) AdminRoutes() chi.Router {
 		r.Put("/servers/{id}", m.handler.APIUpdateServer)
 		r.Put("/servers/{id}/toggle", m.handler.APIToggleServer)
 		r.Delete("/servers/{id}", m.handler.APIDeleteServer)
+		r.Post("/servers/{id}/enable-link-settings", m.handler.APIEnableLinkSettings)
 
 		// Packages
 		r.Post("/packages", m.handler.APICreatePackage)

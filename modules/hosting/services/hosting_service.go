@@ -1055,6 +1055,53 @@ func (s *HostingService) pushDomainSettingsToServer(domainID string) {
 	log.Printf("[settings-push] pushed settings for %s to %s:%s", domain.Domain, server.Name, remotePath)
 }
 
+// EnableLinkSettingsOnServer adds link_settings config to botection on a server
+func (s *HostingService) EnableLinkSettingsOnServer(serverID string) error {
+	server, err := s.GetServer(serverID)
+	if err != nil {
+		return fmt.Errorf("server not found: %w", err)
+	}
+
+	password, err := crypto.Decrypt(server.PasswordEncrypted)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt password: %w", err)
+	}
+
+	client := cloudpanel.NewClient(server.Hostname, server.Port, server.Username, password)
+	if err := client.Connect(); err != nil {
+		return fmt.Errorf("failed to connect: %w", err)
+	}
+	defer client.Close()
+
+	// Check if link_settings already exists
+	output, _ := client.Execute("grep -c 'link_settings:' /var/www/antibot/config/config.yaml 2>/dev/null || echo '0'")
+	if strings.TrimSpace(output) != "0" {
+		log.Printf("[config] link_settings already configured on %s", server.Name)
+		return nil
+	}
+
+	// Add link_settings before panel_callback
+	sedCmd := `sed -i '/^panel_callback:/i\
+# Local link settings - fastest, checked first\
+link_settings:\
+  enabled: true\
+  directory: "/etc/botection/links"\
+  watch: true\
+' /var/www/antibot/config/config.yaml`
+
+	if _, err := client.Execute(sedCmd); err != nil {
+		return fmt.Errorf("failed to update config: %w", err)
+	}
+
+	// Restart antibot
+	if _, err := client.Execute("systemctl restart antibot"); err != nil {
+		return fmt.Errorf("failed to restart antibot: %w", err)
+	}
+
+	log.Printf("[config] enabled link_settings on %s and restarted antibot", server.Name)
+	return nil
+}
+
 // GetDomainStats returns traffic stats for a domain from hosting_visits table
 func (s *HostingService) GetDomainStats(domainID string) (*models.BotectionStats, error) {
 	stats := &models.BotectionStats{
