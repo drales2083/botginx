@@ -91,20 +91,14 @@ func (m *Module) Routes() chi.Router {
 		r.Post("/{id}/verify", m.handler.APIVerifyDNS)
 		r.Get("/{id}/ssl", m.handler.APICheckSSL)
 		r.Post("/{id}/setup", m.handler.APISetupDomain)
-		r.Get("/{id}/wildcard-ssl", m.handler.APIGetWildcardSSLInstructions)
-		r.Get("/{id}/setup-status", m.handler.APIGetSetupStatus)    // Polling endpoint
-		r.Post("/{id}/refresh-token", m.handler.APIRefreshAcmeToken) // Refresh ACME token
-		r.Post("/{id}/retry-ssl", m.handler.APIRetrySSL)             // Force retry SSL generation
+		r.Get("/{id}/setup-status", m.handler.APIGetSetupStatus) // Polling endpoint
+		r.Post("/{id}/retry-ssl", m.handler.APIRetrySSL)          // Force retry SSL generation
 
 		// Two-phase wildcard SSL (using lego)
-		r.Post("/{id}/ssl/start", m.handler.APIStartSSLChallenge)      // Phase 1: Get token
+		r.Post("/{id}/ssl/start", m.handler.APIStartSSLChallenge)       // Phase 1: Get token
 		r.Post("/{id}/ssl/complete", m.handler.APICompleteSSLChallenge) // Phase 2: Complete after DNS
 		r.Get("/{id}/ssl/token", m.handler.APIGetSSLToken)              // Get pending token
 		r.Delete("/{id}/ssl/cancel", m.handler.APICancelSSLChallenge)   // Cancel pending challenge
-
-		// acme-dns delegation (legacy - keeping for compatibility)
-		r.Post("/{id}/acme-dns/register", m.handler.APIRegisterAcmeDNS) // Register with acme-dns
-		r.Get("/{id}/acme-dns/check-cname", m.handler.APICheckAcmeCname) // Check CNAME record
 	})
 
 	return r
@@ -131,7 +125,6 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 		r.Post("/{id}/verify", m.handler.APIVerifyDNS)
 		r.Get("/{id}/ssl", m.handler.APICheckSSL)
 		r.Post("/{id}/setup", m.handler.APISetupDomain)
-		r.Get("/{id}/wildcard-ssl", m.handler.APIGetWildcardSSLInstructions)
 		r.Put("/toggle", m.handler.APIToggleShared)
 	})
 

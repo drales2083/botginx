@@ -211,14 +211,13 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 	if domain.IsWildcard {
 		needsSetupWizard = true
 		// Update domain to mark as external setup pending
+		// User must click "Get SSL Token" to start lego challenge
 		setupType := models.SetupTypeExternal
 		setupStep := models.SetupStepDNSWaiting
 		h.service.Update(domain.ID, models.UpdateDomainInput{
 			SetupType: &setupType,
 			SetupStep: &setupStep,
 		})
-		// Start generating ACME token in background
-		go h.generateAcmeTokenBackground(domain.ID, services.GetBaseDomain(domain.Name))
 	}
 
 	h.json(w, http.StatusCreated, map[string]interface{}{
@@ -744,14 +743,16 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 	status.AllRecordsFound = status.ARecordFound && status.VerifyTXTFound && status.AcmeTXTFound
 
 	// If all records found and not yet complete, trigger SSL generation
+	// Skip auto-trigger for wildcard domains - they use two-phase lego flow
+	// (user must click "Get SSL Token" then "Complete SSL")
 	// Also retry if stuck at ssl_generating (previous attempt may have failed)
 	// Add cooldown: only retry every 5 minutes to avoid rate limiting
 	sslCooldown := 5 * time.Minute
 	canRetrySSL := time.Since(domain.UpdatedAt) > sslCooldown
 
-	if status.AllRecordsFound && !domain.SSLEnabled &&
+	if !domain.IsWildcard && status.AllRecordsFound && !domain.SSLEnabled &&
 		(domain.SetupStep == models.SetupStepDNSWaiting || (domain.SetupStep == models.SetupStepSSLGenerating && canRetrySSL)) {
-		// Refresh domain from DB to get updated CNAME verification status
+		// Non-wildcard: auto-generate SSL with HTTP-01
 		freshDomain, _ := h.service.Get(id)
 		if freshDomain != nil {
 			go h.completeExternalSetup(freshDomain)
@@ -888,15 +889,32 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check DNS records
+	// For wildcard domains, use two-phase lego flow
+	if domain.IsWildcard {
+		// Cancel any existing lego challenge
+		h.verification.LegoCancelChallenge(domain.Name)
+
+		// Clear old token and reset step
+		emptyToken := ""
+		step := models.SetupStepDNSWaiting
+		h.service.Update(id, models.UpdateDomainInput{
+			AcmeToken: &emptyToken,
+			SetupStep: &step,
+		})
+
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"success": true,
+			"message": "Challenge reset. Click 'Get SSL Token' to start fresh.",
+		})
+		return
+	}
+
+	// Non-wildcard: use HTTP-01 challenge
 	deployIP := h.service.GetDeployIP()
 	baseDomain := services.GetBaseDomain(domain.Name)
 
 	aRecordFound, _ := h.verification.CheckARecord(domain.Name, deployIP)
 	verifyFound, _ := h.verification.VerifyDNS(baseDomain, domain.VerifyToken)
-
-	// For wildcard SSL, user will add TXT record during generation (10 min polling window)
-	// No pre-check needed - certbot will generate fresh token each time
 
 	missing := []string{}
 	if !aRecordFound {
@@ -915,7 +933,7 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 	step := models.SetupStepSSLGenerating
 	h.service.Update(id, models.UpdateDomainInput{SetupStep: &step})
 
-	// Trigger SSL generation in background
+	// Trigger SSL generation in background (HTTP-01 for non-wildcards)
 	go h.completeExternalSetup(domain)
 
 	h.json(w, http.StatusOK, map[string]interface{}{

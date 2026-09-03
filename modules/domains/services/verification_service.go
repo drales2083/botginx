@@ -1176,49 +1176,43 @@ func (s *VerificationService) LegoStartChallenge(domain, email string) (*LegoCha
 
 	// Create exec DNS hook that captures the token
 	// Lego exec provider calls: script.sh "present|cleanup" "_acme-challenge.domain." "token-value"
+	// We don't wait - lego handles DNS propagation checking itself
 	hookScript := fmt.Sprintf(`cat > /tmp/lego-dns-hook-%s.sh << 'HOOKEOF'
 #!/bin/bash
 ACTION="$1"
 FQDN="$2"
 TOKEN="$3"
+DOMAIN="%s"
 
-# Only handle "present" action (cleanup is handled automatically)
-if [ "$ACTION" != "present" ]; then
-    exit 0
+if [ "$ACTION" = "present" ]; then
+    # Save the token for the user to see
+    echo "$TOKEN" > /tmp/lego-token-${DOMAIN}.txt
+    echo "FQDN=$FQDN" >> /tmp/lego-challenge-${DOMAIN}.txt
+    echo "TOKEN=$TOKEN" >> /tmp/lego-challenge-${DOMAIN}.txt
+    echo "READY" > /tmp/lego-status-${DOMAIN}.txt
 fi
 
-# Save the token for the user to add
-echo "$TOKEN" > /tmp/lego-token-%s.txt
-echo "FQDN=$FQDN" >> /tmp/lego-challenge-%s.txt
-echo "TOKEN=$TOKEN" >> /tmp/lego-challenge-%s.txt
-
-# Signal that token is ready
-echo "READY" > /tmp/lego-status-%s.txt
-
-# Wait for user to add DNS (poll for completion signal)
-for i in $(seq 1 4320); do  # 12 hours max (4320 * 10s)
-    if [ -f /tmp/lego-continue-%s.txt ]; then
-        rm -f /tmp/lego-continue-%s.txt
-        exit 0
-    fi
-    sleep 10
-done
-exit 1
+# Exit immediately - lego will poll DNS servers itself
+exit 0
 HOOKEOF
-chmod +x /tmp/lego-dns-hook-%s.sh`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+chmod +x /tmp/lego-dns-hook-%s.sh`, baseDomain, baseDomain, baseDomain)
 	client.Run(hookScript)
 
 	// Clear previous state
 	client.Run(fmt.Sprintf(`rm -f /tmp/lego-token-%s.txt /tmp/lego-status-%s.txt /tmp/lego-continue-%s.txt /tmp/lego-challenge-%s.txt`, baseDomain, baseDomain, baseDomain, baseDomain))
 
-	// Start lego in background with exec DNS provider (external script)
+	// Start lego in background with exec DNS provider
+	// Only request wildcard cert (base domain may point elsewhere)
+	// Long propagation timeout gives user time to add DNS record
 	legoCmd := fmt.Sprintf(`nohup env EXEC_PATH=/tmp/lego-dns-hook-%s.sh \
+		EXEC_PROPAGATION_TIMEOUT=43200 \
+		EXEC_POLLING_INTERVAL=30 \
 		lego --accept-tos --email="%s" \
-		--domains="*.%s" --domains="%s" \
+		--domains="*.%s" \
 		--dns exec \
 		--path=%s \
 		run > /tmp/lego-output-%s.txt 2>&1 &
-echo $!`, baseDomain, email, baseDomain, baseDomain, legoDir, baseDomain)
+echo $!`, baseDomain, email, baseDomain, legoDir, baseDomain)
 
 	pidOut, err := client.Run(legoCmd)
 	if err != nil {
@@ -1258,7 +1252,7 @@ echo $!`, baseDomain, email, baseDomain, baseDomain, legoDir, baseDomain)
 	}, nil
 }
 
-// LegoCompleteChallenge signals lego to continue after DNS is configured
+// LegoCompleteChallenge checks if cert is ready and installs it
 func (s *VerificationService) LegoCompleteChallenge(domain string) error {
 	server, err := s.getServer()
 	if err != nil {
@@ -1278,70 +1272,46 @@ func (s *VerificationService) LegoCompleteChallenge(domain string) error {
 	}
 	defer client.Close()
 
+	legoDir := fmt.Sprintf("/root/.lego-%s", baseDomain)
+
+	// Check if cert already exists (wildcard cert is named _.domain.crt)
+	checkCert := fmt.Sprintf(`test -f %s/certificates/_.%s.crt && echo "EXISTS"`, legoDir, baseDomain)
+	if out, _ := client.Run(checkCert); strings.Contains(out, "EXISTS") {
+		// Cert exists - install it
+		return s.installLegoCert(client, baseDomain)
+	}
+
 	// Check if lego process is still running
 	pidCmd := fmt.Sprintf(`cat /tmp/lego-pid-%s.txt 2>/dev/null || echo ""`, baseDomain)
 	pid, _ := client.Run(pidCmd)
 	pid = strings.TrimSpace(pid)
 
-	if pid == "" {
-		return fmt.Errorf("no pending SSL challenge found for %s", baseDomain)
-	}
-
-	// Check if process exists
-	checkPid := fmt.Sprintf(`ps -p %s >/dev/null 2>&1 && echo "RUNNING" || echo "STOPPED"`, pid)
-	status, _ := client.Run(checkPid)
-
-	if !strings.Contains(status, "RUNNING") {
-		// Check if cert was already created
-		checkCert := fmt.Sprintf(`test -f /root/.lego-%s/certificates/%s.crt && echo "EXISTS"`, baseDomain, baseDomain)
-		if out, _ := client.Run(checkCert); strings.Contains(out, "EXISTS") {
-			// Copy cert to standard location and setup
-			return s.installLegoCert(client, baseDomain)
-		}
-		return fmt.Errorf("SSL challenge expired or failed for %s", baseDomain)
-	}
-
-	// Signal lego to continue
-	signalCmd := fmt.Sprintf(`echo "GO" > /tmp/lego-continue-%s.txt`, baseDomain)
-	client.Run(signalCmd)
-
-	// Wait for lego to complete (up to 2 minutes)
-	for i := 0; i < 24; i++ {
-		time.Sleep(5 * time.Second)
-
-		// Check if cert was created
-		checkCert := fmt.Sprintf(`test -f /root/.lego-%s/certificates/%s.crt && echo "EXISTS"`, baseDomain, baseDomain)
-		if out, _ := client.Run(checkCert); strings.Contains(out, "EXISTS") {
-			return s.installLegoCert(client, baseDomain)
-		}
-
-		// Check if process is still running
+	if pid != "" {
 		checkPid := fmt.Sprintf(`ps -p %s >/dev/null 2>&1 && echo "RUNNING" || echo "STOPPED"`, pid)
 		status, _ := client.Run(checkPid)
-		if strings.Contains(status, "STOPPED") {
-			// Process ended - check for errors
-			outputCmd := fmt.Sprintf(`cat /tmp/lego-output-%s.txt 2>/dev/null | tail -30`, baseDomain)
-			output, _ := client.Run(outputCmd)
-			if strings.Contains(output, "error") || strings.Contains(output, "Error") {
-				return fmt.Errorf("SSL generation failed: %s", output)
-			}
-			break
+
+		if strings.Contains(status, "RUNNING") {
+			// Lego is still running - waiting for DNS propagation
+			return fmt.Errorf("SSL generation in progress - lego is waiting for DNS propagation")
+		}
+
+		// Process stopped but no cert - check for errors
+		outputCmd := fmt.Sprintf(`tail -20 /tmp/lego-output-%s.txt 2>/dev/null`, baseDomain)
+		output, _ := client.Run(outputCmd)
+		if strings.Contains(output, "error") || strings.Contains(output, "Error") || strings.Contains(output, "ERRO") {
+			return fmt.Errorf("SSL generation failed: %s", output)
 		}
 	}
 
-	// Final check for cert
-	checkCert := fmt.Sprintf(`test -f /root/.lego-%s/certificates/%s.crt && echo "EXISTS"`, baseDomain, baseDomain)
-	if out, _ := client.Run(checkCert); strings.Contains(out, "EXISTS") {
-		return s.installLegoCert(client, baseDomain)
-	}
-
-	return fmt.Errorf("SSL generation timed out for %s", baseDomain)
+	return fmt.Errorf("no SSL certificate found for %s - click 'Get SSL Token' to start", baseDomain)
 }
 
 // installLegoCert copies lego cert to Let's Encrypt location and reloads nginx
 func (s *VerificationService) installLegoCert(client *sshexec.Client, baseDomain string) error {
 	legoDir := fmt.Sprintf("/root/.lego-%s", baseDomain)
 	letsencryptDir := fmt.Sprintf("/etc/letsencrypt/live/%s", baseDomain)
+	// Wildcard certs are named _.domain.crt by lego
+	wildcardCertName := fmt.Sprintf("_.%s", baseDomain)
 
 	installCmd := fmt.Sprintf(`
 mkdir -p %s
@@ -1350,7 +1320,7 @@ cp %s/certificates/%s.key %s/privkey.pem
 chmod 600 %s/privkey.pem
 nginx -t && systemctl reload nginx 2>/dev/null || true
 echo "SUCCESS"
-`, letsencryptDir, legoDir, baseDomain, letsencryptDir, legoDir, baseDomain, letsencryptDir, letsencryptDir)
+`, letsencryptDir, legoDir, wildcardCertName, letsencryptDir, legoDir, wildcardCertName, letsencryptDir, letsencryptDir)
 
 	out, err := client.Run(installCmd)
 	if err != nil || !strings.Contains(out, "SUCCESS") {
