@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/botginx/botginx/pkg/ctx"
@@ -50,6 +51,9 @@ func defaultFuncs() template.FuncMap {
 			}
 			return template.JS(b)
 		},
+		// String helpers
+		"upper": strings.ToUpper,
+		"lower": strings.ToLower,
 		// Math helpers for templates
 		"divf": func(a, b int) float64 {
 			if b == 0 {
