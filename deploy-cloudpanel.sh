@@ -287,6 +287,130 @@ EOF
 }
 
 # ----------------------------------------------------------------------------
+# Create Botection vhost template for CloudPanel
+# ----------------------------------------------------------------------------
+
+create_botection_template() {
+    info "Creating Botection vhost template"
+
+    # Check if template already exists
+    if clpctl vhost-templates:list 2>/dev/null | grep -q "Botection"; then
+        log "Botection template already exists"
+        return 0
+    fi
+
+    # Create the template file
+    # This routes traffic through botection (port 8080) with backend on port 8081
+    cat > /tmp/botection-template.tpl << 'TPLEOF'
+#{"rootDirectory":"","phpVersion":"8.2"}
+server {
+  listen 80;
+  listen [::]:80;
+  listen 443 quic;
+  listen 443 ssl;
+  listen [::]:443 quic;
+  listen [::]:443 ssl;
+  http2 on;
+  http3 off;
+  {{ssl_certificate_key}}
+  {{ssl_certificate}}
+  {{server_name}}
+  {{root}}
+
+  {{nginx_access_log}}
+  {{nginx_error_log}}
+
+  if ($scheme != "https") {
+    rewrite ^ https://$host$request_uri permanent;
+  }
+
+  location ~ /.well-known {
+    auth_basic off;
+    allow all;
+  }
+
+  {{settings}}
+
+  # Route all traffic through Botection (antibot proxy on port 8080)
+  location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_hide_header X-Varnish;
+    proxy_redirect off;
+    proxy_max_temp_file_size 0;
+    proxy_connect_timeout 720;
+    proxy_send_timeout 720;
+    proxy_read_timeout 720;
+    proxy_buffer_size 128k;
+    proxy_buffers 4 256k;
+    proxy_busy_buffers_size 256k;
+    proxy_temp_file_write_size 256k;
+  }
+
+  location ~* ^.+\.(css|js|jpg|jpeg|gif|png|ico|gz|svg|svgz|ttf|otf|woff|woff2|eot|mp4|ogg|ogv|webm|webp|zip|swf|map|mjs)$ {
+    add_header Access-Control-Allow-Origin "*";
+    add_header alt-svc 'h3=":443"; ma=86400';
+    expires max;
+    access_log off;
+  }
+
+  location ~ /\.(ht|svn|git) {
+    deny all;
+  }
+
+  if (-f $request_filename) {
+    break;
+  }
+}
+
+# Backend server - receives traffic from Botection on port 8081
+server {
+  listen 127.0.0.1:8081;
+  {{server_name}}
+  {{root}}
+
+  include /etc/nginx/global_settings;
+
+  try_files $uri $uri/ /index.php?$args;
+  index index.php index.html;
+
+  location ~ \.php$ {
+    include fastcgi_params;
+    fastcgi_intercept_errors on;
+    fastcgi_index index.php;
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    try_files $uri =404;
+    fastcgi_read_timeout 3600;
+    fastcgi_send_timeout 3600;
+    fastcgi_param HTTPS "on";
+    fastcgi_param SERVER_PORT 443;
+    fastcgi_pass 127.0.0.1:{{php_fpm_port}};
+    fastcgi_param PHP_VALUE "{{php_settings}}";
+  }
+
+  if (-f $request_filename) {
+    break;
+  }
+}
+TPLEOF
+
+    # Add the template to CloudPanel
+    if clpctl vhost-template:add --name="Botection" --file=/tmp/botection-template.tpl 2>/dev/null; then
+        ok "Botection vhost template created"
+        log "  Sites created from botginx will auto-route through antibot"
+    else
+        warn "Failed to create Botection template (CloudPanel may not be fully initialized)"
+        log "  Template will be created when first site is provisioned"
+    fi
+
+    rm -f /tmp/botection-template.tpl
+}
+
+# ----------------------------------------------------------------------------
 # Print summary
 # ----------------------------------------------------------------------------
 
@@ -379,6 +503,7 @@ main() {
     install_cloudpanel
     configure_nginx_botection
     prepare_botection_dirs
+    create_botection_template
     print_summary
 }
 

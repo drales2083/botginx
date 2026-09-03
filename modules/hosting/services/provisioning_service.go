@@ -98,20 +98,11 @@ func (p *ProvisioningService) ProvisionAccount(accountID string) error {
 
 	// Create the site on CloudPanel
 	// This creates: site user, vhost, PHP-FPM pool
+	// Uses "Botection" vhost template if available (routes traffic through antibot)
 	log.Printf("[provisioning] creating site %s on server %s with user %s", domain, server.Name, account.PanelUsername)
 	if err := client.AddSite(domain, account.PanelUsername, panelPassword, cloudpanel.PHP82); err != nil {
 		log.Printf("[provisioning] failed to create site: %v", err)
 		return errors.New("failed to create site on server: " + err.Error())
-	}
-
-	// Configure nginx to route through botection (8080 -> 8081)
-	// This is critical for antibot protection to work
-	if client.IsBotectionInstalled() {
-		log.Printf("[provisioning] configuring botection proxy for %s", domain)
-		if err := client.ConfigureBotectionProxy(domain); err != nil {
-			log.Printf("[provisioning] warning: failed to configure botection proxy: %v", err)
-			// Don't fail - site is created, just needs manual config
-		}
 	}
 
 	// Create CloudPanel panel user so they can login to web interface

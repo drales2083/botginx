@@ -86,10 +86,19 @@ func (c *Client) DeleteUser(username string) error {
 // siteUser: the system user for this site
 // siteUserPassword: password for the site user
 // phpVersion: PHP version (e.g., "8.2")
+// Uses "Botection" vhost template if available (routes through antibot on port 8080)
 func (c *Client) AddSite(domain, siteUser, siteUserPassword string, phpVersion PHPVersion) error {
 	log.Printf("[cloudpanel] AddSite called with domain=%s user=%s passwordLen=%d", domain, siteUser, len(siteUserPassword))
-	cmd := fmt.Sprintf("clpctl site:add:php --domainName=%s --phpVersion=%s --vhostTemplate='Generic' --siteUser=%s --siteUserPassword=%s",
-		shellEscape(domain), string(phpVersion), shellEscape(siteUser), shellEscape(siteUserPassword))
+
+	// Determine which template to use - prefer Botection if botection is installed
+	template := "Generic"
+	if c.IsBotectionInstalled() && c.HasBotectionTemplate() {
+		template = "Botection"
+		log.Printf("[cloudpanel] using Botection vhost template (antibot routing enabled)")
+	}
+
+	cmd := fmt.Sprintf("clpctl site:add:php --domainName=%s --phpVersion=%s --vhostTemplate='%s' --siteUser=%s --siteUserPassword=%s",
+		shellEscape(domain), string(phpVersion), template, shellEscape(siteUser), shellEscape(siteUserPassword))
 	log.Printf("[cloudpanel] executing: %s", cmd)
 	output, err := c.Execute(cmd)
 	if err != nil {
@@ -99,6 +108,15 @@ func (c *Client) AddSite(domain, siteUser, siteUserPassword string, phpVersion P
 		return err
 	}
 	return nil
+}
+
+// HasBotectionTemplate checks if the Botection vhost template exists in CloudPanel
+func (c *Client) HasBotectionTemplate() bool {
+	output, err := c.Execute("clpctl vhost-templates:list 2>/dev/null | grep -q 'Botection' && echo yes || echo no")
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(output) == "yes"
 }
 
 // AddStaticSite creates a static HTML site
