@@ -43,7 +43,7 @@
         </div>
     </div>
     <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-danger">
+        <div class="small-box text-bg-secondary">
             <div class="inner">
                 <h3>{{.Hosting.activeCount}}</h3>
                 <p>Hosting Accounts</p>
@@ -54,6 +54,87 @@
             <a href="/user/hosting" class="small-box-footer">
                 Buy Hosting <i class="bi bi-arrow-right-circle-fill"></i>
             </a>
+        </div>
+    </div>
+</div>
+
+<!-- Hosting Section -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-shield-fill-check me-2"></i>Bullet Proof Hosting</h5>
+                <a href="/user/hosting/buy" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i>Buy Hosting
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-secondary bg-opacity-10 rounded-circle p-3 me-3">
+                                <i class="bi bi-hdd-rack text-secondary" style="font-size:1.5rem"></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-0">{{.Hosting.activeCount}}</h4>
+                                <small class="text-muted">Active Accounts</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary bg-opacity-10 rounded-circle p-3 me-3">
+                                <i class="bi bi-globe text-primary" style="font-size:1.5rem"></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-0">{{.Hosting.hostingDomains}}</h4>
+                                <small class="text-muted">Hosting Domains</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-success bg-opacity-10 rounded-circle p-3 me-3">
+                                <i class="bi bi-check-circle text-success" style="font-size:1.5rem"></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-0">{{.Hosting.accountCount}}</h4>
+                                <small class="text-muted">Total Accounts</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{if .Hosting.accounts}}
+                <hr>
+                <div class="row g-3">
+                    {{range .Hosting.accounts}}
+                    <div class="col-md-4">
+                        <div class="card h-100 {{if eq .Status "active"}}border-success{{else}}border-warning{{end}}">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{.PackageName}}</strong>
+                                        <br><small class="text-muted">{{.DomainCount}} domain{{if gt .DomainCount 1}}s{{end}}</small>
+                                    </div>
+                                    {{if eq .Status "active"}}
+                                    <span class="badge bg-success">Active</span>
+                                    {{else}}
+                                    <span class="badge bg-warning">{{.Status}}</span>
+                                    {{end}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+                {{else}}
+                <hr>
+                <p class="text-muted mb-0 text-center">
+                    <i class="bi bi-shield-plus me-1"></i>
+                    No hosting accounts yet. <a href="/user/hosting/buy">Get bulletproof hosting</a> for your domains.
+                </p>
+                {{end}}
+            </div>
         </div>
     </div>
 </div>
@@ -117,82 +198,6 @@
                 <div class="p-3">
                     <p class="text-muted mb-0">{{t "redirectlinks.no_links"}} <a href="/user/redirectlinks/new">{{t "redirectlinks.create"}}</a></p>
                 </div>
-                {{end}}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Hosting Section -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card border-danger">
-            <div class="card-header bg-danger bg-opacity-10 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-shield-fill-check text-danger me-2"></i>Bullet Proof Hosting</h5>
-                <span class="badge bg-success">${{printf "%.2f" .Hosting.balance}} Balance</span>
-            </div>
-            <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-danger bg-opacity-10 rounded-circle p-3 me-3">
-                                <i class="bi bi-hdd-rack text-danger" style="font-size:1.5rem"></i>
-                            </div>
-                            <div>
-                                <h4 class="mb-0">{{.Hosting.activeCount}}</h4>
-                                <small class="text-muted">Active Accounts</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-primary bg-opacity-10 rounded-circle p-3 me-3">
-                                <i class="bi bi-globe text-primary" style="font-size:1.5rem"></i>
-                            </div>
-                            <div>
-                                <h4 class="mb-0">{{.Hosting.hostingDomains}}</h4>
-                                <small class="text-muted">Hosting Domains</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <a href="/user/hosting/buy" class="btn btn-danger">
-                            <i class="bi bi-plus-lg me-1"></i>Buy Hosting
-                        </a>
-                        <a href="/user/hosting" class="btn btn-outline-secondary ms-2">
-                            <i class="bi bi-gear me-1"></i>Manage
-                        </a>
-                    </div>
-                </div>
-                {{if .Hosting.accounts}}
-                <hr>
-                <div class="row g-3">
-                    {{range .Hosting.accounts}}
-                    <div class="col-md-4">
-                        <div class="card h-100 {{if eq .Status "active"}}border-success{{else}}border-warning{{end}}">
-                            <div class="card-body py-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{.PackageName}}</strong>
-                                        <br><small class="text-muted">{{.DomainCount}} domain{{if gt .DomainCount 1}}s{{end}}</small>
-                                    </div>
-                                    {{if eq .Status "active"}}
-                                    <span class="badge bg-success">Active</span>
-                                    {{else}}
-                                    <span class="badge bg-warning">{{.Status}}</span>
-                                    {{end}}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {{end}}
-                </div>
-                {{else}}
-                <hr>
-                <p class="text-muted mb-0 text-center">
-                    <i class="bi bi-shield-plus me-1"></i>
-                    No hosting accounts yet. <a href="/user/hosting/buy" class="text-danger">Get bulletproof hosting</a> for your domains.
-                </p>
                 {{end}}
             </div>
         </div>
