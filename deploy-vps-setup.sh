@@ -2,7 +2,7 @@
 set -e
 
 # Botginx Deploy VPS Setup
-# Sets up a redirect links server with botection + nginx
+# Sets up a redirect links server with nginx (botection installed separately)
 #
 # Usage:
 #   scp deploy-vps-setup.sh root@VPS_IP:/root/
@@ -10,6 +10,10 @@ set -e
 #
 # Or pipe directly:
 #   ssh root@VPS_IP 'bash -s' < deploy-vps-setup.sh
+#
+# After this script completes, install botection:
+#   git clone https://github.com/robertp2083/antibot.git /var/www/antibot
+#   cd /var/www/antibot && SERVER_TYPE=templates bash deploy.sh
 
 echo "=== Botginx Deploy VPS Setup ==="
 echo ""
@@ -21,18 +25,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Configuration
-GITHUB_TOKEN="${GITHUB_TOKEN:-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}"
-ANTIBOT_DIR="/var/www/antibot"
 SITES_DIR="/var/www/sites"
-
-# Panel URL for callback/webhook (required for analytics)
-PANEL_URL="${PANEL_URL:-}"
-WEBHOOK_SECRET="${WEBHOOK_SECRET:-$(openssl rand -hex 32)}"
-
-if [ -z "$PANEL_URL" ]; then
-    echo "WARNING: PANEL_URL not set. Analytics will not work."
-    echo "         Set PANEL_URL=https://your-panel.com to enable analytics."
-fi
 
 # Get VPS IP
 VPS_IP=$(curl -4 -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
@@ -42,9 +35,9 @@ echo "VPS IP: $VPS_IP"
 # 1. System packages
 # =============================================================================
 echo ""
-echo "[1/7] Installing system packages..."
+echo "[1/5] Installing system packages..."
 apt-get update -qq
-apt-get install -y -qq nginx redis-server jq curl certbot python3-certbot-nginx ufw cron
+apt-get install -y -qq nginx redis-server jq curl certbot python3-certbot-nginx ufw cron git
 
 systemctl enable nginx redis-server cron
 systemctl start nginx redis-server cron
@@ -70,221 +63,19 @@ if ! grep -q "^[[:space:]]*server_names_hash_bucket_size 128;" /etc/nginx/nginx.
 fi
 
 # =============================================================================
-# 2. Botection
+# 2. Nginx - Internal upstream (8081) for site routing
 # =============================================================================
 echo ""
-echo "[2/7] Installing Botection..."
-mkdir -p "$ANTIBOT_DIR"/{config,data,logs}
-cd "$ANTIBOT_DIR"
-
-# Download latest botection
-ASSET="botection-linux-amd64"
-rel=$(curl -fsSL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
-    "https://api.github.com/repos/robertp2083/antibot/releases/latest")
-
-VERSION=$(echo "$rel" | jq -r ".tag_name")
-echo "  Version: $VERSION"
-
-url=$(echo "$rel" | jq -r ".assets[] | select(.name==\"$ASSET\") | .url")
-curl -fsSL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -o botection "$url"
-chmod +x botection
-
-# Create .env.local
-cat > "$ANTIBOT_DIR/.env.local" << EOF
-GITHUB_TOKEN=$GITHUB_TOKEN
-ANTIBOT_ADMIN_TOKEN=$(openssl rand -hex 32)
-EOF
-
-# Create config - upstream to internal nginx (8081), preserve_host for domain routing
-cat > "$ANTIBOT_DIR/config/config.yaml" << 'CONFIGEOF'
-server:
-  listen: ":8080"
-  upstream: "http://127.0.0.1:8081"
-  preserve_host: true
-  read_timeout: "30s"
-  write_timeout: "30s"
-  api_bypass_paths:
-    - "/.well-known/"
-    - "/health"
-    - "/healthz"
-
-admin:
-  listen: "127.0.0.1:9090"
-  token: ""
-  rate_limit: 100
-
-panel_callback:
-  enabled: ${PANEL_ENABLED:-false}
-  url: "${PANEL_URL}/api/botection/should-block"
-  timeout: "100ms"
-  cache_ttl: "30s"
-  fallback: "allow"
-
-redis:
-  addr: "localhost:6379"
-  db: 1
-  prefix: "antibot:"
-
-database:
-  path: "data/antibot.db"
-
-decision:
-  strategy: "weighted"
-  block_threshold: 0.8
-  challenge_threshold: 0.5
-
-modules:
-  ip_reputation:
-    enabled: true
-    weight: 0.8
-    config:
-      block_datacenters: false
-      block_tor: true
-
-  rate_limiter:
-    enabled: true
-    weight: 1.0
-    config:
-      window: "60s"
-      max_requests: 200
-
-  fingerprint:
-    enabled: true
-    weight: 0.9
-    config:
-      check_headers: true
-      allow_tags: ["search-engine", "social-preview"]
-      block_tags: ["scanner", "http-library", "browser-automation"]
-
-  challenge:
-    enabled: true
-    weight: 1.0
-    config:
-      template: "ember"
-      type: "pow"
-      difficulty: 1000
-
-webhooks:
-  enabled: ${PANEL_ENABLED:-false}
-  batch_size: 1
-  flush_interval: "1s"
-  endpoints:
-    - url: "${PANEL_URL}/webhooks/antibot/webhook"
-      secret: "${WEBHOOK_SECRET}"
-      events: ["*"]
-      timeout: "5s"
-      retry_max: 3
-
-link_settings:
-  enabled: true
-  directory: "/etc/botection/links"
-  watch: true
-CONFIGEOF
-
-# Create link settings directory
-mkdir -p /etc/botection/links
-
-# Replace panel enabled based on PANEL_URL presence
-if [ -n "$PANEL_URL" ]; then
-    sed -i 's/\${PANEL_ENABLED:-false}/true/g' "$ANTIBOT_DIR/config/config.yaml"
-    sed -i "s|\${PANEL_URL}|$PANEL_URL|g" "$ANTIBOT_DIR/config/config.yaml"
-    sed -i "s|\${WEBHOOK_SECRET}|$WEBHOOK_SECRET|g" "$ANTIBOT_DIR/config/config.yaml"
-    echo "  Panel callback enabled: $PANEL_URL"
-    echo "  Webhook secret: $WEBHOOK_SECRET"
-    echo ""
-    echo "  IMPORTANT: Add this secret to your panel's .env:"
-    echo "  ANTIBOT_WEBHOOK_SECRET=$WEBHOOK_SECRET"
-else
-    sed -i 's/\${PANEL_ENABLED:-false}/false/g' "$ANTIBOT_DIR/config/config.yaml"
-    sed -i "s|\${PANEL_URL}||g" "$ANTIBOT_DIR/config/config.yaml"
-    sed -i "s|\${WEBHOOK_SECRET}||g" "$ANTIBOT_DIR/config/config.yaml"
-fi
-
-# Set admin token from .env.local
-source "$ANTIBOT_DIR/.env.local"
-sed -i "s/token: \"\"/token: \"$ANTIBOT_ADMIN_TOKEN\"/" "$ANTIBOT_DIR/config/config.yaml"
-
-# Create systemd service
-cat > /etc/systemd/system/botection.service << EOF
-[Unit]
-Description=Botection Reverse Proxy
-After=network.target redis-server.service
-Requires=redis-server.service
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=$ANTIBOT_DIR
-EnvironmentFile=$ANTIBOT_DIR/.env.local
-ExecStart=$ANTIBOT_DIR/botection daemon -config $ANTIBOT_DIR/config/config.yaml
-Restart=always
-RestartSec=5
-StandardOutput=append:$ANTIBOT_DIR/logs/botection.log
-StandardError=append:$ANTIBOT_DIR/logs/botection.log
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl daemon-reload
-systemctl enable botection
-systemctl start botection
-
-echo "  Botection installed and running"
-
-# =============================================================================
-# 3. Auto-deploy script
-# =============================================================================
-echo ""
-echo "[3/7] Setting up auto-deploy..."
-
-curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
-    "https://raw.githubusercontent.com/robertp2083/antibot/main/auto-deploy.sh" \
-    -o "$ANTIBOT_DIR/auto-deploy.sh"
-chmod +x "$ANTIBOT_DIR/auto-deploy.sh"
-
-# Add cron
-CRON_ANTIBOT="*/2 * * * * /bin/bash $ANTIBOT_DIR/auto-deploy.sh >> $ANTIBOT_DIR/logs/auto-deploy.log 2>&1"
-(crontab -l 2>/dev/null | grep -v "$ANTIBOT_DIR/auto-deploy.sh"; echo "$CRON_ANTIBOT") | crontab -
-echo "  Auto-deploy cron added"
-
-# =============================================================================
-# 4. Nginx - Outer (port 80) + Internal upstream (8081)
-# =============================================================================
-echo ""
-echo "[4/7] Configuring nginx..."
+echo "[2/5] Configuring nginx..."
 mkdir -p "$SITES_DIR"
 
-# Outer nginx - receives from Cloudflare, forwards to botection
-cat > /etc/nginx/sites-available/botection-proxy.conf << 'NGINXEOF'
-# Outer proxy - Cloudflare -> nginx (80) -> botection (8080)
-server {
-    listen 80 default_server;
-    server_name _;
-
-    # ACME challenge for SSL (if needed)
-    location /.well-known/acme-challenge/ {
-        root /var/www/sites;
-        allow all;
-    }
-
-    # Everything else goes through botection
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-NGINXEOF
-
-# Internal nginx - receives from botection, routes by Host header
+# Internal nginx - receives from botection (or direct), routes by Host header
 cat > /etc/nginx/sites-available/redirect-upstream.conf << 'NGINXEOF'
 # Internal upstream - botection (8080) -> nginx (8081) -> site files
+# Or direct access if botection not installed
 server {
     listen 127.0.0.1:8081 default_server;
+    listen 80 default_server;
     server_name _;
 
     # Dynamic root based on Host header
@@ -306,6 +97,12 @@ server {
     root /var/www/sites/$site_domain/$site_subdomain;
     index index.html;
 
+    # ACME challenge for SSL
+    location /.well-known/acme-challenge/ {
+        root /var/www/sites;
+        allow all;
+    }
+
     # Domain verification
     location /.well-known/domain-verify {
         default_type application/json;
@@ -318,7 +115,6 @@ server {
 }
 NGINXEOF
 
-ln -sf /etc/nginx/sites-available/botection-proxy.conf /etc/nginx/sites-enabled/
 ln -sf /etc/nginx/sites-available/redirect-upstream.conf /etc/nginx/sites-enabled/
 
 # Create default site
@@ -328,14 +124,17 @@ echo "<h1>Redirect Server</h1><p>Site not configured</p>" > "$SITES_DIR/default/
 # Remove default nginx site
 rm -f /etc/nginx/sites-enabled/default
 
+# Create botection link settings directory (for when botection is installed)
+mkdir -p /etc/botection/links
+
 nginx -t && systemctl reload nginx
-echo "  Nginx configured (outer:80 -> botection:8080 -> internal:8081)"
+echo "  Nginx configured (listening on :80 and 127.0.0.1:8081)"
 
 # =============================================================================
-# 5. Firewall (allow web traffic from anywhere - botection provides protection)
+# 3. Firewall
 # =============================================================================
 echo ""
-echo "[5/7] Configuring firewall..."
+echo "[3/5] Configuring firewall..."
 
 ufw --force reset >/dev/null
 ufw default deny incoming >/dev/null
@@ -346,13 +145,12 @@ ufw allow 443/tcp >/dev/null
 
 ufw --force enable >/dev/null
 echo "  Firewall enabled (SSH + HTTP/HTTPS)"
-echo "  Note: Botection provides bot protection for all domains"
 
 # =============================================================================
-# 6. Add-site helper script
+# 4. Add-site helper script
 # =============================================================================
 echo ""
-echo "[6/7] Creating helper scripts..."
+echo "[4/5] Creating helper scripts..."
 
 cat > /usr/local/bin/add-site << 'SCRIPTEOF'
 #!/bin/bash
@@ -401,19 +199,15 @@ SCRIPTEOF
 chmod +x /usr/local/bin/add-site
 
 # =============================================================================
-# 7. Verification
+# 5. Done
 # =============================================================================
 echo ""
-echo "[7/7] Verifying installation..."
+echo "[5/5] Verifying installation..."
 
 echo ""
 echo "Services:"
-echo "  Botection: $(systemctl is-active botection)"
 echo "  Nginx:     $(systemctl is-active nginx)"
 echo "  Redis:     $(systemctl is-active redis-server)"
-
-echo ""
-echo "Botection version: $($ANTIBOT_DIR/botection -v)"
 
 echo ""
 echo "========================================="
@@ -422,9 +216,8 @@ echo "========================================="
 echo ""
 echo "VPS IP: $VPS_IP"
 echo ""
-echo "Traffic flow:"
-echo "  Internet -> Cloudflare -> :80/:443 -> nginx"
-echo "  nginx -> :8080 (botection) -> :8081 (internal nginx) -> site files"
+echo "Current traffic flow (no protection):"
+echo "  Internet -> :80/:443 -> nginx -> site files"
 echo ""
 echo "Sites directory: $SITES_DIR"
 echo ""
@@ -432,5 +225,13 @@ echo "To add a new site:"
 echo "  add-site example.com"
 echo "  add-site example.com subdomain"
 echo ""
-echo "Admin token: $ANTIBOT_ADMIN_TOKEN"
+echo "========================================="
+echo "  NEXT: Install Botection for protection"
+echo "========================================="
+echo ""
+echo "  git clone https://github.com/robertp2083/antibot.git /var/www/antibot"
+echo "  cd /var/www/antibot && SERVER_TYPE=templates bash deploy.sh"
+echo ""
+echo "After botection is installed, traffic flow becomes:"
+echo "  Internet -> :80/:443 -> nginx -> botection:8080 -> nginx:8081 -> site files"
 echo ""
