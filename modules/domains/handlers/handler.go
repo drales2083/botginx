@@ -21,10 +21,21 @@ type Handler struct {
 	templates    *module.TemplateEngine
 }
 
-// canAccessDomain checks if the user owns a domain
+// canAccessDomain checks if the user owns a domain or is admin accessing a shared domain
 func (h *Handler) canAccessDomain(r *http.Request, domain *models.Domain) bool {
-	userID := ctx.GetUserID(r)
-	return domain.UserID == userID
+	user := ctx.GetUser(r)
+	if user == nil {
+		return false
+	}
+	// User owns the domain
+	if domain.UserID == user.ID {
+		return true
+	}
+	// Admin can access shared domains
+	if user.IsAdmin() && domain.IsShared {
+		return true
+	}
+	return false
 }
 
 func NewHandler(service *services.DomainService, templates *module.TemplateEngine) *Handler {
@@ -166,6 +177,69 @@ func (h *Handler) APIToggleShared(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"enabled": input.Enabled,
 		"active":  h.service.SharedDomainsEnabled(),
+	})
+}
+
+// SharedSetup shows the setup wizard for shared domains (admin version)
+func (h *Handler) SharedSetup(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		http.Error(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify it's a shared domain
+	if !domain.IsShared {
+		http.Error(w, "Not a shared domain", http.StatusBadRequest)
+		return
+	}
+
+	// Get deploy server IP
+	deployIP := h.service.GetDeployIP()
+
+	// Build setup info
+	baseDomain := services.GetBaseDomain(domain.Name)
+	isWildcard := domain.IsWildcard || len(domain.Name) > 2 && domain.Name[:2] == "*."
+
+	setupInfo := models.ExternalSetupInfo{
+		Domain:        domain.Name,
+		BaseDomain:    baseDomain,
+		IsWildcard:    isWildcard,
+		ServerIP:      deployIP,
+		VerifyToken:   domain.VerifyToken,
+		SetupStep:     domain.SetupStep,
+		VerifyTXTName: "_guardbot-verify." + baseDomain,
+		AcmeTXTName:   "_acme-challenge." + baseDomain,
+	}
+
+	// Check for acme-dns registration (for wildcard)
+	if domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
+		setupInfo.AcmeCnameTarget = *domain.AcmeFulldomain
+		setupInfo.AcmeCnameVerified = domain.AcmeCnameVerified
+		setupInfo.UseAcmeDns = true
+
+		if !domain.AcmeCnameVerified {
+			if h.verification.CheckAcmeCnameRecord(domain.Name, *domain.AcmeFulldomain) {
+				verified := true
+				h.service.Update(domain.ID, models.UpdateDomainInput{AcmeCnameVerified: &verified})
+				setupInfo.AcmeCnameVerified = true
+			}
+		}
+	} else if isWildcard {
+		go h.registerAcmeDnsBackground(domain.ID)
+	}
+
+	// Legacy ACME token
+	if domain.AcmeToken != nil && *domain.AcmeToken != "" {
+		setupInfo.AcmeToken = *domain.AcmeToken
+		setupInfo.AcmeTokenReady = true
+	}
+
+	module.Render(w, r, h.templates, "domains:shared_setup.html", map[string]interface{}{
+		"Title":     "Setup " + domain.Name,
+		"Domain":    domain,
+		"SetupInfo": setupInfo,
 	})
 }
 

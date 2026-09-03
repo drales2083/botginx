@@ -1,0 +1,609 @@
+{{define "content"}}
+<div class="row mb-3">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/admin/domains">Shared Domains</a></li>
+                <li class="breadcrumb-item active">Setup Wizard</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Header Card -->
+        <div class="card card-primary card-outline mb-4">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-globe me-2"></i>{{.SetupInfo.Domain}}
+                </h3>
+                <div class="card-tools">
+                    <span class="badge bg-warning" id="setup-status">Setup Required</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Add these DNS records in your cPanel Zone Editor or DNS provider. The page checks automatically every 30 seconds.</p>
+            </div>
+        </div>
+
+        <!-- Step 1: A Record -->
+        <div class="card mb-3" id="card-step1">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span class="badge bg-secondary me-2">1</span>
+                    A Record — Point to Server
+                </h5>
+                <div class="card-tools">
+                    <span id="badge-a" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Waiting</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:80px">Type</th>
+                            <th style="width:180px; white-space:nowrap">Name</th>
+                            <th>Value</th>
+                            <th style="width:60px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge bg-primary">A</span></td>
+                            <td><code>{{if .SetupInfo.IsWildcard}}*{{else}}@{{end}}</code></td>
+                            <td>
+                                <div class="input-group input-group-sm" style="max-width:300px">
+                                    <input type="text" class="form-control form-control-sm" value="{{.SetupInfo.ServerIP}}" readonly id="copy-ip">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('copy-ip')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Step 2: Verify TXT -->
+        <div class="card mb-3" id="card-step2">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span class="badge bg-secondary me-2">2</span>
+                    TXT Record — Verify Ownership
+                </h5>
+                <div class="card-tools">
+                    <span id="badge-verify" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Waiting</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:80px">Type</th>
+                            <th style="width:180px; white-space:nowrap">Name</th>
+                            <th>Value</th>
+                            <th style="width:60px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge bg-info">TXT</span></td>
+                            <td style="white-space:nowrap"><code>_guardbot-verify</code></td>
+                            <td>
+                                <div class="input-group input-group-sm" style="max-width:300px">
+                                    <input type="text" class="form-control form-control-sm" value="{{.SetupInfo.VerifyToken}}" readonly id="copy-verify">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('copy-verify')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Step 3: SSL Certificate -->
+        {{if .SetupInfo.IsWildcard}}
+        <!-- Wildcard domains use two-phase DNS-01 challenge -->
+        <div class="card mb-3" id="card-step3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span class="badge bg-secondary me-2">3</span>
+                    TXT Record — SSL Certificate
+                </h5>
+                <div class="card-tools">
+                    <span id="badge-ssl" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Waiting</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Phase 1: Get Token -->
+                <div id="ssl-phase1">
+                    <p class="text-muted mb-3">Wildcard SSL requires a TXT record for verification. Complete steps 1 and 2 first, then click the button to generate your token.</p>
+                    <button class="btn btn-primary" id="btn-get-ssl-token" onclick="startSSLChallenge()" disabled>
+                        <i class="bi bi-key me-1"></i>Get SSL Token
+                    </button>
+                    <small class="text-muted ms-2" id="ssl-prereq-hint">Waiting for A record and verify TXT...</small>
+                </div>
+
+                <!-- Phase 2: Add TXT and Complete -->
+                <div id="ssl-phase2" class="d-none">
+                    <p class="text-muted mb-3">Add this TXT record to your DNS, then click "Complete SSL":</p>
+                    <table class="table table-striped mb-3">
+                        <thead>
+                            <tr>
+                                <th style="width:80px">Type</th>
+                                <th style="width:180px">Name</th>
+                                <th>Value</th>
+                                <th style="width:60px"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-info">TXT</span></td>
+                                <td><code id="ssl-txt-name">_acme-challenge</code></td>
+                                <td>
+                                    <div class="input-group input-group-sm" style="max-width:400px">
+                                        <input type="text" class="form-control form-control-sm" id="ssl-txt-value" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copyField('ssl-txt-value')">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="alert alert-info small mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        DNS propagation can take a few minutes. The same token will be used if you retry.
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success" id="btn-complete-ssl" onclick="completeSSLChallenge()">
+                            <i class="bi bi-check-lg me-1"></i>Complete SSL
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="cancelSSLChallenge()">
+                            <i class="bi bi-x-lg me-1"></i>Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Phase 3: Generating -->
+                <div id="ssl-phase3" class="d-none">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                        <span>Generating SSL certificate...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{else}}
+        <!-- Non-wildcard domains use HTTP-01 (automatic, no ACME TXT needed) -->
+        <div class="card mb-3" id="card-step3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span class="badge bg-secondary me-2">3</span>
+                    SSL Certificate — Automatic
+                </h5>
+                <div class="card-tools">
+                    <span id="badge-ssl" class="badge bg-info"><i class="bi bi-lightning"></i> Auto</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center text-success">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <span>SSL certificate will be generated automatically once DNS records are verified. No additional TXT record needed.</span>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- SSL Error -->
+        <div class="callout callout-danger d-none" id="ssl-error">
+            <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>SSL Generation Failed</h5>
+            <p class="mb-2" id="ssl-error-message"></p>
+            <button class="btn btn-warning btn-sm" onclick="retrySSL()">
+                <i class="bi bi-arrow-clockwise me-1"></i>Retry SSL Generation
+            </button>
+        </div>
+
+        <!-- Success Card -->
+        <div class="card card-success d-none" id="success-card">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                <h4 class="mt-3">Setup Complete!</h4>
+                <p class="text-muted">This shared domain is now active with SSL enabled.</p>
+                <a href="/admin/domains" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Shared Domains
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Progress Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-list-check me-2"></i>Progress</h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center" id="progress-a">
+                        <span><i class="bi bi-globe me-2"></i>A Record</span>
+                        <span class="badge bg-secondary"><i class="bi bi-clock"></i></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center" id="progress-verify">
+                        <span><i class="bi bi-shield-check me-2"></i>Verification</span>
+                        <span class="badge bg-secondary"><i class="bi bi-clock"></i></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center" id="progress-ssl">
+                        <span><i class="bi bi-lock me-2"></i>SSL Certificate</span>
+                        <span class="badge bg-secondary"><i class="bi bi-clock"></i></span>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-footer" id="poll-status">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-arrow-repeat me-1"></i>Auto-check every 30s
+                    </small>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary" id="btn-check-now" onclick="manualCheck()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Check
+                        </button>
+                        {{if not .SetupInfo.IsWildcard}}
+                        <button class="btn btn-warning" id="btn-retry-ssl" onclick="retrySSL()" title="Force retry SSL generation">
+                            <i class="bi bi-lightning-fill me-1"></i>Retry SSL
+                        </button>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions Card -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>cPanel Instructions</h5>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0 ps-3">
+                    <li class="mb-2">Login to cPanel</li>
+                    <li class="mb-2">Go to <strong>Zone Editor</strong></li>
+                    <li class="mb-2">Click <strong>Manage</strong> for <code>{{.SetupInfo.BaseDomain}}</code></li>
+                    <li class="mb-2">Click <strong>+ Add Record</strong></li>
+                    <li>Add each record above</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const domainId = '{{.Domain.ID}}';
+const apiBase = '/admin/domains/api';
+let acmeToken = '{{.SetupInfo.AcmeToken}}';
+const initialSetupStep = '{{.Domain.SetupStep}}';
+const initialSSLEnabled = {{if .Domain.SSLEnabled}}true{{else}}false{{end}};
+const isWildcard = {{if .SetupInfo.IsWildcard}}true{{else}}false{{end}};
+let sslToken = '';
+let pollInterval;
+let dnsVerified = { aRecord: false, verifyTxt: false };
+
+function updateSSLButtonState() {
+    const btn = document.getElementById('btn-get-ssl-token');
+    const hint = document.getElementById('ssl-prereq-hint');
+    if (!btn) return;
+
+    if (dnsVerified.aRecord && dnsVerified.verifyTxt) {
+        btn.disabled = false;
+        if (hint) hint.classList.add('d-none');
+    } else {
+        btn.disabled = true;
+        if (hint) {
+            hint.classList.remove('d-none');
+            const missing = [];
+            if (!dnsVerified.aRecord) missing.push('A record');
+            if (!dnsVerified.verifyTxt) missing.push('verify TXT');
+            hint.textContent = `Waiting for ${missing.join(' and ')}...`;
+        }
+    }
+}
+
+async function startSSLChallenge() {
+    const btn = document.querySelector('#ssl-phase1 button');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating token...';
+
+    try {
+        const res = await fetch(`${apiBase}/${domainId}/ssl/start`, { method: 'POST' });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || `Server error: ${res.status}`, 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-key me-1"></i>Get SSL Token';
+            return;
+        }
+        const data = await res.json();
+        if (data.error) {
+            showToast(data.error, 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-key me-1"></i>Get SSL Token';
+            return;
+        }
+
+        if (data.status === 'complete') {
+            showToast(data.message || 'SSL certificate is already active!', 'success');
+            showSetupComplete();
+            return;
+        }
+
+        sslToken = data.token;
+        document.getElementById('ssl-txt-name').textContent = data.txt_record;
+        document.getElementById('ssl-txt-value').value = data.token;
+
+        document.getElementById('ssl-phase1').classList.add('d-none');
+        document.getElementById('ssl-phase2').classList.remove('d-none');
+
+        showToast(data.message || 'Token generated! Add the TXT record.', 'success');
+    } catch (e) {
+        showToast('Request timed out. Please try again.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-key me-1"></i>Get SSL Token';
+    }
+}
+
+async function completeSSLChallenge() {
+    const btn = document.getElementById('btn-complete-ssl');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Verifying...';
+
+    try {
+        const res = await fetch(`${apiBase}/${domainId}/ssl/complete`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.status === 'dns_not_ready') {
+            if (data.token && data.token !== sslToken) {
+                sslToken = data.token;
+                document.getElementById('ssl-txt-value').value = data.token;
+                showToast('TOKEN CHANGED! Update your TXT record with the new value.', 'warning');
+            } else {
+                showToast(data.message || 'TXT record not found yet. Please wait for DNS propagation.', 'warning');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Complete SSL';
+            return;
+        }
+
+        if (data.error) {
+            showToast(data.error, 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Complete SSL';
+            return;
+        }
+
+        if (data.status === 'complete') {
+            showToast('SSL certificate installed!', 'success');
+            showSetupComplete();
+        }
+    } catch (e) {
+        showToast('Failed to complete SSL challenge', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Complete SSL';
+    }
+}
+
+async function cancelSSLChallenge() {
+    try {
+        await fetch(`${apiBase}/${domainId}/ssl/cancel`, { method: 'DELETE' });
+        sslToken = '';
+        document.getElementById('ssl-phase2').classList.add('d-none');
+        document.getElementById('ssl-phase1').classList.remove('d-none');
+        showToast('SSL challenge cancelled', 'info');
+    } catch (e) {
+        showToast('Failed to cancel', 'danger');
+    }
+}
+
+async function checkPendingSSLToken() {
+    if (!isWildcard) return;
+    try {
+        const res = await fetch(`${apiBase}/${domainId}/ssl/token`);
+        const data = await res.json();
+        if (data.token) {
+            sslToken = data.token;
+            document.getElementById('ssl-txt-name').textContent = data.txt_record;
+            document.getElementById('ssl-txt-value').value = data.token;
+            document.getElementById('ssl-phase1').classList.add('d-none');
+            document.getElementById('ssl-phase2').classList.remove('d-none');
+        }
+    } catch (e) {}
+}
+
+if (initialSetupStep === 'complete' || initialSSLEnabled) {
+    document.addEventListener('DOMContentLoaded', () => {
+        showSetupComplete();
+    });
+}
+
+function showSetupComplete() {
+    document.getElementById('card-step1').classList.add('d-none');
+    document.getElementById('card-step2').classList.add('d-none');
+    document.getElementById('card-step3').classList.add('d-none');
+
+    document.getElementById('setup-status').textContent = 'Complete';
+    document.getElementById('setup-status').className = 'badge bg-success';
+
+    document.getElementById('success-card').classList.remove('d-none');
+
+    ['progress-a', 'progress-verify', 'progress-ssl'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const badge = el.querySelector('.badge');
+            badge.innerHTML = '<i class="bi bi-check-lg"></i>';
+            badge.className = 'badge bg-success';
+        }
+    });
+
+    if (pollInterval) clearInterval(pollInterval);
+    document.getElementById('poll-status').innerHTML = '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Setup complete!</small>';
+}
+
+function copyField(id) {
+    const input = document.getElementById(id);
+    input.select();
+    document.execCommand('copy');
+    showToast('Copied!', 'success');
+}
+
+async function retrySSL() {
+    const btn = document.getElementById('btn-retry-ssl');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+
+    try {
+        const res = await fetch(`${apiBase}/${domainId}/retry-ssl`, { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) {
+            showToast(data.error || 'Failed to retry SSL', 'danger');
+            return;
+        }
+
+        showToast(data.message || 'SSL generation started...', 'info');
+        setTimeout(() => manualCheck(), 5000);
+
+    } catch (e) {
+        showToast('Network error', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-lightning-fill me-1"></i>Retry SSL';
+    }
+}
+
+async function manualCheck() {
+    const btn = document.getElementById('btn-check-now');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking...';
+
+    try {
+        const res = await fetch(`${apiBase}/${domainId}/setup-status`);
+        if (!res.ok) {
+            showToast('Failed to check status', 'danger');
+            return;
+        }
+
+        const status = await res.json();
+
+        updateBadge('badge-a', status.aRecordFound);
+        updateBadge('badge-verify', status.verifyTxtFound);
+
+        dnsVerified.aRecord = status.aRecordFound;
+        dnsVerified.verifyTxt = status.verifyTxtFound;
+        updateSSLButtonState();
+
+        if (isWildcard) {
+            updateBadge('badge-ssl', status.sslReady);
+            updateProgress('progress-ssl', status.sslReady);
+        } else {
+            updateProgress('progress-ssl', status.aRecordFound && status.verifyTxtFound);
+        }
+
+        updateProgress('progress-a', status.aRecordFound);
+        updateProgress('progress-verify', status.verifyTxtFound);
+
+        if (status.sslReady) {
+            showSetupComplete();
+            showToast('Domain setup complete!', 'success');
+        } else {
+            const sslErrorEl = document.getElementById('ssl-error');
+            if (status.errorMessage && status.allRecordsFound) {
+                document.getElementById('ssl-error-message').textContent = status.errorMessage;
+                sslErrorEl.classList.remove('d-none');
+            } else {
+                sslErrorEl.classList.add('d-none');
+            }
+
+            const totalChecks = 2;
+            const found = [status.aRecordFound, status.verifyTxtFound].filter(Boolean).length;
+            let msg = `Checked: ${found}/${totalChecks} verified`;
+            if (status.errorMessage) msg += ` | ${status.errorMessage}`;
+            showToast(msg, found > 0 ? 'info' : 'warning');
+        }
+
+    } catch (e) {
+        showToast('Network error', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Check';
+    }
+}
+
+function updateBadge(id, found) {
+    const el = document.getElementById(id);
+    if (found) {
+        el.innerHTML = '<i class="bi bi-check-lg"></i> Verified';
+        el.className = 'badge bg-success';
+    } else {
+        el.innerHTML = '<i class="bi bi-hourglass-split"></i> Waiting';
+        el.className = 'badge bg-secondary';
+    }
+}
+
+function updateProgress(id, found) {
+    const el = document.getElementById(id);
+    const badge = el.querySelector('.badge');
+    if (found) {
+        badge.innerHTML = '<i class="bi bi-check-lg"></i>';
+        badge.className = 'badge bg-success';
+    } else {
+        badge.innerHTML = '<i class="bi bi-clock"></i>';
+        badge.className = 'badge bg-secondary';
+    }
+}
+
+async function checkStatus() {
+    try {
+        const res = await fetch(`${apiBase}/${domainId}/setup-status`);
+        if (!res.ok) return;
+
+        const status = await res.json();
+
+        updateBadge('badge-a', status.aRecordFound);
+        updateBadge('badge-verify', status.verifyTxtFound);
+
+        dnsVerified.aRecord = status.aRecordFound;
+        dnsVerified.verifyTxt = status.verifyTxtFound;
+        updateSSLButtonState();
+
+        if (isWildcard) {
+            updateBadge('badge-ssl', status.sslReady);
+            updateProgress('progress-ssl', status.sslReady);
+        } else {
+            updateProgress('progress-ssl', status.aRecordFound && status.verifyTxtFound);
+        }
+
+        updateProgress('progress-a', status.aRecordFound);
+        updateProgress('progress-verify', status.verifyTxtFound);
+
+        if (status.sslReady) {
+            showSetupComplete();
+            showToast('Domain setup complete!', 'success');
+        }
+
+    } catch (e) {
+        console.error('Status check failed:', e);
+    }
+}
+
+if (initialSetupStep !== 'complete' && !initialSSLEnabled) {
+    checkStatus();
+    checkPendingSSLToken();
+    pollInterval = setInterval(checkStatus, 30000);
+}
+</script>
+{{end}}

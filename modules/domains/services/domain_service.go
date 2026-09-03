@@ -39,7 +39,7 @@ func (s *DomainService) List(userID string) ([]models.Domain, error) {
 		SELECT d.*, COALESCE(s.name, '') as server_name
 		FROM domains d
 		LEFT JOIN servers s ON s.id = d.server_id
-		WHERE d.user_id = $1 AND d.is_shared = FALSE
+		WHERE d.user_id = $1 AND d.is_shared = FALSE AND COALESCE(d.is_marketplace, FALSE) = FALSE
 		ORDER BY d.created_at DESC
 	`, userID)
 	return domains, err
@@ -52,7 +52,7 @@ func (s *DomainService) ListShared() ([]models.Domain, error) {
 		SELECT d.*, COALESCE(s.name, '') as server_name
 		FROM domains d
 		LEFT JOIN servers s ON s.id = d.server_id
-		WHERE d.is_shared = TRUE
+		WHERE d.is_shared = TRUE AND COALESCE(d.is_marketplace, FALSE) = FALSE
 		ORDER BY d.created_at DESC
 	`)
 	return domains, err

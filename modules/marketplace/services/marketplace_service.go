@@ -233,6 +233,20 @@ func (s *MarketplaceService) GetUserBalance(userID string) float64 {
 	return balance
 }
 
+// ListSellable returns domains that can be listed for sale (active, not shared, not already in marketplace)
+func (s *MarketplaceService) ListSellable() ([]models.MarketplaceDomain, error) {
+	var domains []models.MarketplaceDomain
+	err := s.db.Select(&domains, `
+		SELECT id, name, user_id, status, is_marketplace, created_at
+		FROM domains
+		WHERE status = 'active'
+		  AND COALESCE(is_shared, FALSE) = FALSE
+		  AND COALESCE(is_marketplace, FALSE) = FALSE
+		ORDER BY created_at DESC
+	`)
+	return domains, err
+}
+
 func joinStrings(strs []string, sep string) string {
 	if len(strs) == 0 {
 		return ""

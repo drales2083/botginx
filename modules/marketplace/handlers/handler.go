@@ -29,11 +29,13 @@ func NewHandler(service *services.MarketplaceService, templates *module.Template
 func (h *Handler) AdminList(w http.ResponseWriter, r *http.Request) {
 	domains, _ := h.service.ListForSale()
 	sales, _ := h.service.GetSalesHistory()
+	sellable, _ := h.service.ListSellable()
 
 	module.Render(w, r, h.templates, "marketplace:admin_list.html", map[string]interface{}{
-		"Title":   "Sell Domain",
-		"Domains": domains,
-		"Sales":   sales,
+		"Title":    "Sell Domain",
+		"Domains":  domains,
+		"Sales":    sales,
+		"Sellable": sellable,
 	})
 }
 

@@ -116,6 +116,7 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 	// Pages
 	r.Get("/", m.handler.SharedList)
 	r.Get("/new", m.handler.SharedNew)
+	r.Get("/{id}/setup", m.handler.SharedSetup)
 
 	// API
 	r.Route("/api", func(r chi.Router) {
@@ -126,6 +127,14 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 		r.Get("/{id}/ssl", m.handler.APICheckSSL)
 		r.Post("/{id}/setup", m.handler.APISetupDomain)
 		r.Put("/toggle", m.handler.APIToggleShared)
+
+		// SSL setup wizard endpoints (same as user but for shared domains)
+		r.Get("/{id}/setup-status", m.handler.APIGetSetupStatus)
+		r.Post("/{id}/ssl/start", m.handler.APIStartSSLChallenge)
+		r.Post("/{id}/ssl/complete", m.handler.APICompleteSSLChallenge)
+		r.Get("/{id}/ssl/token", m.handler.APIGetSSLToken)
+		r.Delete("/{id}/ssl/cancel", m.handler.APICancelSSLChallenge)
+		r.Post("/{id}/retry-ssl", m.handler.APIRetrySSL)
 	})
 
 	return r
