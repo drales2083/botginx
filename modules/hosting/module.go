@@ -117,8 +117,27 @@ func (m *Module) Migrate() error {
 	if err != nil {
 		return err
 	}
-	_, err = m.DB().Exec(string(sql7))
-	return err
+	if _, err = m.DB().Exec(string(sql7)); err != nil {
+		return err
+	}
+
+	// Enable link_settings on all servers (background, non-blocking)
+	go m.enableLinkSettingsOnAllServers()
+
+	return nil
+}
+
+// enableLinkSettingsOnAllServers enables local file settings on all hosting servers
+func (m *Module) enableLinkSettingsOnAllServers() {
+	servers, err := m.service.ListServers()
+	if err != nil || len(servers) == 0 {
+		return
+	}
+	for _, server := range servers {
+		if server.IsActive {
+			m.service.EnableLinkSettingsOnServer(server.ID)
+		}
+	}
 }
 
 // RoutesForSection returns routes for the requested section (user or admin)
