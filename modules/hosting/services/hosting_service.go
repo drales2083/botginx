@@ -1363,9 +1363,9 @@ func (s *HostingService) ListPendingDomains() ([]models.HostingDomain, error) {
 
 // HostingDomainInfo contains domain and account IDs for visit recording
 type HostingDomainInfo struct {
-	DomainID  string
-	AccountID string
-	UserID    string
+	DomainID  string `db:"domain_id"`
+	AccountID string `db:"account_id"`
+	UserID    string `db:"user_id"`
 }
 
 // GetDomainByHost looks up a hosting domain by its hostname.
