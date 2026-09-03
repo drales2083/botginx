@@ -44,6 +44,13 @@ CLOUDPANEL_BACKEND_PORT="${CLOUDPANEL_BACKEND_PORT:-8081}"
 # CloudPanel admin panel port (default 8443)
 CLOUDPANEL_PANEL_PORT="${CLOUDPANEL_PANEL_PORT:-8443}"
 
+# Botginx panel URL (for analytics webhooks and panel callbacks)
+# Change this when deploying for a different botginx instance
+BOTGINX_PANEL_URL="${BOTGINX_PANEL_URL:-https://guardbot.sbs}"
+
+# Webhook secret (shared between botection and botginx)
+BOTECTION_WEBHOOK_SECRET="${BOTECTION_WEBHOOK_SECRET:-b75cf8584c56fa27f7209a02136e2f33159c223b0a600a6be7a062614e1db0cf}"
+
 # ----------------------------------------------------------------------------
 # Output
 # ----------------------------------------------------------------------------
@@ -245,6 +252,159 @@ EOF
     ok "botection directories prepared"
     log "  /etc/botection/links/ - domain settings (pushed from botginx)"
     log "  /etc/botection/config/ - botection configuration"
+}
+
+# ----------------------------------------------------------------------------
+# Configure Botection for hosting analytics integration
+# ----------------------------------------------------------------------------
+
+configure_botection_analytics() {
+    info "Configuring botection for hosting analytics"
+
+    # Only run if botection is installed
+    if [[ ! -f /var/www/antibot/config/config.yaml ]]; then
+        warn "Botection not installed yet - run antibot deploy.sh first"
+        log "  After installing botection, re-run this script or manually update config"
+        return 0
+    fi
+
+    # Backup existing config
+    cp /var/www/antibot/config/config.yaml /var/www/antibot/config/config.yaml.bak
+
+    # Write the complete config with panel_callback and webhooks for analytics
+    cat > /var/www/antibot/config/config.yaml << BOTECTIONCFG
+# Botection configuration for CloudPanel hosting server
+# Configured for hosting analytics integration with botginx
+
+server:
+  listen: ":8080"
+  upstream: "http://127.0.0.1:8081"
+  read_timeout: "120s"
+  write_timeout: "120s"
+  preserve_host: true
+  api_bypass_paths:
+    - "/api/"
+    - "/__verify"
+    - "/.well-known/"
+    - "/.health"
+    - "/health"
+    - "/healthz"
+
+admin:
+  listen: "127.0.0.1:9090"
+  token: ""
+  rate_limit: 100
+
+# Panel callback - ask botginx for per-domain blocking decisions
+panel_callback:
+  enabled: true
+  url: "${BOTGINX_PANEL_URL}/api/botection/should-block"
+  timeout: "100ms"
+  cache_ttl: "30s"
+  fallback: "allow"
+
+redis:
+  addr: "localhost:6379"
+  db: 1
+  prefix: "antibot:"
+
+database:
+  path: "data/antibot.db"
+
+decision:
+  strategy: "weighted"
+  block_threshold: 0.8
+  challenge_threshold: 0.5
+
+modules:
+  rate_limiter:
+    enabled: true
+    weight: 1.0
+    config:
+      window: "60s"
+      max_requests: 100
+      by: ["ip", "fingerprint"]
+
+  ip_reputation:
+    enabled: true
+    weight: 0.8
+    config:
+      block_datacenters: true
+      block_tor: false
+      block_proxies: false
+
+  fingerprint:
+    enabled: true
+    weight: 0.9
+    config:
+      check_headers: true
+      allow_tags: ["search-engine", "social-preview"]
+      block_tags: ["scanner", "http-library", "browser-automation"]
+      challenge_tags: ["ai-crawler", "seo"]
+
+  geo_fence:
+    enabled: true
+    weight: 0.6
+    config:
+      mode: "blocklist"
+      blocked_countries: []
+      blocked_asns: []
+
+  behavioral:
+    enabled: true
+    weight: 0.7
+    config:
+      min_requests_to_profile: 5
+      anomaly_threshold: 2.5
+
+  challenge:
+    enabled: true
+    weight: 1.0
+    config:
+      type: "js"
+      difficulty: 1000
+      template: "cloudflare"
+      captcha_mode: "math"
+
+proxy:
+  timeout: "60s"
+  retry_count: 3
+  retry_delay: "2s"
+  buffer_size: "64k"
+
+# Webhooks - send ALL visit events to botginx for analytics
+webhooks:
+  enabled: true
+  batch_size: 1
+  flush_interval: "1s"
+  endpoints:
+    - url: "${BOTGINX_PANEL_URL}/webhooks/antibot/webhook"
+      secret: "${BOTECTION_WEBHOOK_SECRET}"
+      events: ["request.blocked", "request.challenged", "request.challenge_passed", "request.challenge_failed", "request.allowed", "session.start", "page_view"]
+      timeout: "5s"
+      retry_max: 3
+
+ip_lists:
+  enabled: true
+  whitelist_dir: "/etc/botection/whitelists"
+  blocklist_dir: "/etc/botection/blocklists"
+  watch: true
+
+log:
+  level: "info"
+BOTECTIONCFG
+
+    # Restart botection to apply config
+    if systemctl is-active --quiet botection; then
+        systemctl restart botection
+        ok "botection config updated and restarted"
+    else
+        ok "botection config updated (not running yet)"
+    fi
+
+    log "  panel_callback: ${BOTGINX_PANEL_URL}/api/botection/should-block"
+    log "  webhooks: ${BOTGINX_PANEL_URL}/webhooks/antibot/webhook"
+    log "  events: request.allowed + 6 more (full analytics)"
 }
 
 # ----------------------------------------------------------------------------
@@ -643,6 +803,7 @@ main() {
     configure_nginx_botection
     prepare_botection_dirs
     create_botection_template
+    configure_botection_analytics
     update_default_template
     apply_branding
     print_summary
