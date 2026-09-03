@@ -8,6 +8,9 @@ package subscription
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"log"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -208,4 +211,118 @@ func (s *Service) StatesFor(userIDs []string) map[string]State {
 	}
 
 	return states
+}
+
+// GetMonthlyPrice returns the subscription price per 30 days from env
+func GetMonthlyPrice() float64 {
+	if price := os.Getenv("SUBSCRIPTION_PRICE_MONTHLY"); price != "" {
+		if p, err := strconv.ParseFloat(price, 64); err == nil {
+			return p
+		}
+	}
+	return 30.0 // default $30/month
+}
+
+// GetRenewalDays returns how many days a renewal adds
+func GetRenewalDays() int {
+	if days := os.Getenv("SUBSCRIPTION_RENEWAL_DAYS"); days != "" {
+		if d, err := strconv.Atoi(days); err == nil {
+			return d
+		}
+	}
+	return 30 // default 30 days
+}
+
+// ListExpiringSoon returns subscriptions expiring within the next N hours
+func (s *Service) ListExpiringSoon(hours int) ([]Subscription, error) {
+	var subs []Subscription
+	err := s.db.Select(&subs, `
+		SELECT id, user_id, plan, expires_at, notes, granted_by, created_at, updated_at
+		FROM subscriptions
+		WHERE expires_at > NOW() AND expires_at <= NOW() + $1 * INTERVAL '1 hour'
+	`, hours)
+	return subs, err
+}
+
+// ProcessAutoRenewals checks expiring subscriptions and auto-renews from balance
+// This should be called periodically (e.g., hourly)
+func (s *Service) ProcessAutoRenewals() {
+	// Find subscriptions expiring in next 24 hours that haven't been renewed
+	subs, err := s.ListExpiringSoon(24)
+	if err != nil {
+		log.Printf("[subscription] Failed to fetch expiring: %v", err)
+		return
+	}
+
+	if len(subs) == 0 {
+		return
+	}
+
+	price := GetMonthlyPrice()
+	days := GetRenewalDays()
+
+	var renewed, failed int
+	for _, sub := range subs {
+		// Check user balance
+		balance := s.getUserBalance(sub.UserID)
+		if balance >= price {
+			// Deduct and extend
+			if err := s.deductBalance(sub.UserID, price, "Subscription auto-renewal"); err != nil {
+				log.Printf("[subscription] Failed to deduct for %s: %v", sub.UserID, err)
+				failed++
+				continue
+			}
+			if err := s.Extend(sub.UserID, days, "system"); err != nil {
+				log.Printf("[subscription] Failed to extend %s: %v", sub.UserID, err)
+				failed++
+				continue
+			}
+			log.Printf("[subscription] Auto-renewed %s for %d days ($%.2f)", sub.UserID, days, price)
+			renewed++
+		} else {
+			log.Printf("[subscription] Insufficient balance for %s (need $%.2f, have $%.2f)", sub.UserID, price, balance)
+			failed++
+		}
+	}
+
+	if renewed > 0 || failed > 0 {
+		log.Printf("[subscription] Auto-renewal: %d renewed, %d failed/skipped", renewed, failed)
+	}
+}
+
+// getUserBalance returns user's current balance
+func (s *Service) getUserBalance(userID string) float64 {
+	var balance float64
+	err := s.db.Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
+	if err != nil {
+		return 0
+	}
+	return balance
+}
+
+// deductBalance subtracts from user balance and logs the transaction
+func (s *Service) deductBalance(userID string, amount float64, reason string) error {
+	_, err := s.db.Exec(`
+		UPDATE users SET balance = balance - $1, updated_at = NOW()
+		WHERE id = $2 AND balance >= $1
+	`, amount, userID)
+	return err
+}
+
+// StartAutoRenewalLoop starts a background goroutine that checks renewals hourly
+func (s *Service) StartAutoRenewalLoop() {
+	go func() {
+		// Initial run after 1 minute
+		time.Sleep(time.Minute)
+		s.ProcessAutoRenewals()
+
+		// Then run every hour
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			s.ProcessAutoRenewals()
+		}
+	}()
+	log.Printf("[subscription] Auto-renewal background loop started")
 }

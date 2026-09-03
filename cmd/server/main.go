@@ -216,6 +216,9 @@ func main() {
 	// Subscription gating, shared by the middleware and the admin UI.
 	subscriptions := subscription.NewService(db.DB)
 
+	// Start auto-renewal background loop (checks hourly, renews from balance)
+	subscriptions.StartAutoRenewalLoop()
+
 	// Module registry
 	registry := module.NewRegistry()
 
