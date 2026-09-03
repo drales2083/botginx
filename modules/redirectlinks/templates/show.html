@@ -64,6 +64,7 @@
                                 </div>
                             </td>
                         </tr>
+                        {{end}}
                         <tr>
                             <th>Pass Parameters</th>
                             <td>
@@ -76,7 +77,6 @@
                                 <small class="text-muted">e.g. yourlink.com?ref=123 → destination.com?ref=123</small>
                             </td>
                         </tr>
-                        {{end}}
                         {{if eq .Link.Type "REDIRECT"}}
                         <tr>
                             <th>{{t "destinations"}}</th>
