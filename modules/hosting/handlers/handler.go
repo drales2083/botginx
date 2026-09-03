@@ -91,11 +91,13 @@ func (h *Handler) UserPurchase(w http.ResponseWriter, r *http.Request) {
 	userID := ctx.GetUserID(r)
 	packages, _ := h.service.ListActivePackages()
 	balance := h.service.GetUserBalance(userID)
+	serviceAvailable := h.service.IsServiceAvailable()
 
 	module.RenderUserSection(w, r, h.templates, "hosting:buy.html", map[string]interface{}{
-		"Title":    "Buy Bullet Proof Hosting",
-		"Packages": packages,
-		"Balance":  balance,
+		"Title":            "Buy Bullet Proof Hosting",
+		"Packages":         packages,
+		"Balance":          balance,
+		"ServiceAvailable": serviceAvailable,
 	})
 }
 

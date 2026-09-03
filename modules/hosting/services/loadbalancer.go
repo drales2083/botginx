@@ -19,6 +19,18 @@ func NewLoadBalancer(db *sqlx.DB) *LoadBalancer {
 	return &LoadBalancer{db: db}
 }
 
+// HasAvailableServers checks if any active servers with capacity exist
+func (lb *LoadBalancer) HasAvailableServers() bool {
+	var count int
+	err := lb.db.Get(&count, `
+		SELECT COUNT(*) FROM hosting_servers
+		WHERE is_active = TRUE
+		  AND current_accounts < max_accounts
+		  AND COALESCE(type, 'cloudpanel') = 'cloudpanel'
+	`)
+	return err == nil && count > 0
+}
+
 // PickServer selects the least loaded active CloudPanel server with available capacity.
 // Returns an error if no servers are available.
 func (lb *LoadBalancer) PickServer() (*models.HostingServer, error) {
@@ -35,7 +47,7 @@ func (lb *LoadBalancer) PickServer() (*models.HostingServer, error) {
 	}
 
 	if len(servers) == 0 {
-		return nil, errors.New("no CloudPanel servers available - add one in Admin → Hosting → Servers")
+		return nil, errors.New("hosting service temporarily unavailable")
 	}
 
 	// Sort by least loaded (already ordered by DB, but ensure consistency)

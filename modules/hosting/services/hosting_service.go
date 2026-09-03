@@ -50,6 +50,11 @@ func (s *HostingService) ListServers() ([]models.HostingServer, error) {
 	return servers, err
 }
 
+// IsServiceAvailable checks if hosting service has available servers
+func (s *HostingService) IsServiceAvailable() bool {
+	return s.lb.HasAvailableServers()
+}
+
 // GetServer retrieves a server by ID
 func (s *HostingService) GetServer(id string) (*models.HostingServer, error) {
 	var server models.HostingServer
@@ -394,6 +399,11 @@ func (s *HostingService) GetAccountWithCredentials(accountID string) (*models.Ho
 
 // PurchaseHosting creates a pending hosting account with auto-generated credentials
 func (s *HostingService) PurchaseHosting(userID string, packageID string, domain string) (*models.HostingAccount, error) {
+	// Check if hosting service is available BEFORE any charges
+	if !s.lb.HasAvailableServers() {
+		return nil, errors.New("hosting service temporarily unavailable")
+	}
+
 	// Validate domain format
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	if !domainRegex.MatchString(domain) {
