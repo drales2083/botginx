@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -215,6 +216,7 @@ func (te *TemplateEngine) renderWithLayout(w io.Writer, r *http.Request, name, l
 	te.mu.RUnlock()
 
 	if !ok {
+		log.Printf("[templates] Template not found: %s", name)
 		return nil // Template not found
 	}
 
@@ -262,6 +264,7 @@ func (te *TemplateEngine) renderWithLayout(w io.Writer, r *http.Request, name, l
 
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, layout, data); err != nil {
+		log.Printf("[templates] Execution error for %s: %v", name, err)
 		return err
 	}
 
