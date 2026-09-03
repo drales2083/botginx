@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	domainmodels "github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/redirectlinks/models"
@@ -412,7 +413,25 @@ func (h *Handler) autoDeploy(linkID string) {
 // getDeployHTML returns the appropriate HTML based on link type
 func getDeployHTML(link *models.RedirectLink) string {
 	if link.Type == models.LinkTypeHTML && link.HTMLContent != nil && *link.HTMLContent != "" {
-		return *link.HTMLContent
+		html := *link.HTMLContent
+		// Inject pass params helper if enabled
+		if link.PassParams {
+			helper := `<script>
+window.getQueryParams = function() { return window.location.search; };
+window.appendParams = function(url) {
+    if (!window.location.search) return url;
+    var sep = url.indexOf('?') >= 0 ? '&' : '?';
+    return url + sep + window.location.search.substring(1);
+};
+</script>`
+			// Insert before </body> or at end
+			if idx := strings.Index(strings.ToLower(html), "</body>"); idx >= 0 {
+				html = html[:idx] + helper + html[idx:]
+			} else {
+				html = html + helper
+			}
+		}
+		return html
 	}
 	return generateRedirectHTML(link)
 }
@@ -576,11 +595,24 @@ func generateRedirectHTML(link *models.RedirectLink) string {
     </div>
     <script>
         setTimeout(function() {
-            window.location.href = %q;
+            var dest = %q;
+            %s
+            window.location.href = dest;
         }, %d000);
     </script>
 </body>
-</html>`, pageTitle, bgStyle, textColor, textSize, loaderCSS, heading, loaderHTML, subheading, destURL, duration)
+</html>`, pageTitle, bgStyle, textColor, textSize, loaderCSS, heading, loaderHTML, subheading, destURL, getPassParamsJS(link.PassParams), duration)
+}
+
+// getPassParamsJS returns JavaScript to append query params to destination if enabled
+func getPassParamsJS(enabled bool) string {
+	if !enabled {
+		return ""
+	}
+	return `if (window.location.search) {
+                var sep = dest.indexOf('?') >= 0 ? '&' : '?';
+                dest = dest + sep + window.location.search.substring(1);
+            }`
 }
 
 // Helpers

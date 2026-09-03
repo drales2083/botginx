@@ -72,7 +72,16 @@ func (m *Module) Migrate() error {
 	if err != nil {
 		return err
 	}
-	_, err = m.DB().Exec(string(sql))
+	if _, err = m.DB().Exec(string(sql)); err != nil {
+		return err
+	}
+
+	// Add pass_params column
+	sql2, err := fs.ReadFile(migrationsFS, "migrations/002_add_pass_params.sql")
+	if err != nil {
+		return err
+	}
+	_, err = m.DB().Exec(string(sql2))
 	return err
 }
 

@@ -64,6 +64,7 @@ type RedirectLink struct {
 	TurnstileSiteKey   *string      `db:"turnstile_site_key" json:"turnstileSiteKey,omitempty"`
 	TurnstileSecretKey *string      `db:"turnstile_secret_key" json:"-"`
 	BotProtection      bool         `db:"bot_protection" json:"botProtection"`
+	PassParams         bool         `db:"pass_params" json:"passParams"`
 	DeployStatus       DeployStatus `db:"deploy_status" json:"deployStatus"`
 	DeployError        *string      `db:"deploy_error" json:"deployError,omitempty"`
 	DeployedURL        *string      `db:"deployed_url" json:"deployedUrl,omitempty"`
@@ -104,6 +105,7 @@ type CreateRedirectLinkInput struct {
 	HTMLContent      string   `json:"htmlContent"`
 	TurnstileEnabled bool     `json:"turnstileEnabled"`
 	BotProtection    bool     `json:"botProtection"`
+	PassParams       bool     `json:"passParams"`
 }
 
 type UpdateRedirectLinkInput struct {
@@ -111,6 +113,7 @@ type UpdateRedirectLinkInput struct {
 	HTMLContent      string   `json:"htmlContent"`
 	TurnstileEnabled *bool    `json:"turnstileEnabled"`
 	BotProtection    *bool    `json:"botProtection"`
+	PassParams       *bool    `json:"passParams"`
 }
 
 // Customization settings for the redirect splash page

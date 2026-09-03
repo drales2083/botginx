@@ -96,6 +96,13 @@
                             </div>
                         </div>
                         <small class="text-muted">Add multiple URLs for random rotation</small>
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" id="passParams" name="passParams">
+                            <label class="form-check-label" for="passParams">
+                                Pass query parameters to destination
+                            </label>
+                        </div>
+                        <small class="text-muted d-block">When enabled, URL parameters (e.g. ?ref=123) will be forwarded to your destination</small>
                     </div>
 
                     <div id="html-content" class="mb-3 d-none">
@@ -297,7 +304,8 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
         // CodeMirror holds the live value; the textarea behind it is stale until
         // save() is called, so read the editor directly.
         htmlContent: htmlEditor ? htmlEditor.getValue() : form.htmlContent.value,
-        botProtection: true // All pages are always protected
+        botProtection: true, // All pages are always protected
+        passParams: form.passParams.checked
     };
 
     if (data.type === 'HTML' && !data.htmlContent.trim()) {

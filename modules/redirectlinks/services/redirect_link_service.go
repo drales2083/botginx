@@ -131,6 +131,7 @@ func (s *RedirectLinkService) Create(userID string, input models.CreateRedirectL
 		AnimationDuration: 3,
 		TurnstileEnabled:  input.TurnstileEnabled,
 		BotProtection:     input.BotProtection,
+		PassParams:        input.PassParams,
 		DeployStatus:      models.DeployStatusPending,
 		IsActive:          true,
 		CreatedAt:         time.Now(),
@@ -144,11 +145,11 @@ func (s *RedirectLinkService) Create(userID string, input models.CreateRedirectL
 	_, err := s.db.NamedExec(`
 		INSERT INTO redirect_links (
 			id, user_id, domain_id, subdomain, path, type, destination_urls, html_content,
-			animation_duration, turnstile_enabled, bot_protection,
+			animation_duration, turnstile_enabled, bot_protection, pass_params,
 			deploy_status, is_active, created_at, updated_at
 		) VALUES (
 			:id, :user_id, :domain_id, :subdomain, :path, :type, :destination_urls, :html_content,
-			:animation_duration, :turnstile_enabled, :bot_protection,
+			:animation_duration, :turnstile_enabled, :bot_protection, :pass_params,
 			:deploy_status, :is_active, :created_at, :updated_at
 		)
 	`, link)
@@ -179,6 +180,11 @@ func (s *RedirectLinkService) Update(id string, input models.UpdateRedirectLinkI
 	if input.BotProtection != nil {
 		updates = append(updates, fmt.Sprintf("bot_protection = $%d", argNum))
 		args = append(args, *input.BotProtection)
+		argNum++
+	}
+	if input.PassParams != nil {
+		updates = append(updates, fmt.Sprintf("pass_params = $%d", argNum))
+		args = append(args, *input.PassParams)
 		argNum++
 	}
 

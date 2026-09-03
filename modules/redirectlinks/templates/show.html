@@ -64,6 +64,18 @@
                                 </div>
                             </td>
                         </tr>
+                        <tr>
+                            <th>Pass Parameters</th>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="passParams" {{if .Link.PassParams}}checked{{end}}>
+                                    <label class="form-check-label" for="passParams">
+                                        Forward URL parameters to destination
+                                    </label>
+                                </div>
+                                <small class="text-muted">e.g. yourlink.com?ref=123 → destination.com?ref=123</small>
+                            </td>
+                        </tr>
                         {{end}}
                         {{if eq .Link.Type "REDIRECT"}}
                         <tr>
@@ -225,6 +237,21 @@ document.getElementById('btn-save-urls')?.addEventListener('click', async () => 
         showToast(data.error || 'Failed to update URLs', 'danger');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-check me-1"></i> Save';
+    }
+});
+
+// Pass params toggle
+document.getElementById('passParams')?.addEventListener('change', async (e) => {
+    const res = await fetch(`/user/redirectlinks/api/{{.Link.ID}}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passParams: e.target.checked })
+    });
+    if (res.ok) {
+        showToast('Setting updated', 'success');
+    } else {
+        e.target.checked = !e.target.checked; // revert
+        showToast('Failed to update setting', 'danger');
     }
 });
 
