@@ -259,9 +259,11 @@
                         <button class="btn btn-primary" id="btn-check-now" onclick="manualCheck()">
                             <i class="bi bi-arrow-clockwise me-1"></i>Check
                         </button>
+                        {{if not .SetupInfo.IsWildcard}}
                         <button class="btn btn-warning" id="btn-retry-ssl" onclick="retrySSL()" title="Force retry SSL generation">
                             <i class="bi bi-lightning-fill me-1"></i>Retry SSL
                         </button>
+                        {{end}}
                     </div>
                 </div>
             </div>
