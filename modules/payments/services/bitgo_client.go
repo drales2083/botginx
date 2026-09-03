@@ -2,9 +2,11 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -22,6 +24,7 @@ type BitGoClient struct {
 	walletID string
 	baseURL  string
 	coin     string
+	serverIP string
 	http     *http.Client
 }
 
@@ -37,12 +40,36 @@ func NewBitGoClient() *BitGoClient {
 		baseURL = BitGoTestnetURL
 	}
 
+	serverIP := os.Getenv("BITGO_SERVER_IP")
+
+	// Create HTTP client with optional IP binding
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+
+	// If server IP is set and not testnet, bind outgoing requests to that IP
+	// This is required when BitGo has IP whitelisting enabled
+	if serverIP != "" && !testnet {
+		dialer := &net.Dialer{
+			LocalAddr: &net.TCPAddr{IP: net.ParseIP(serverIP)},
+			Timeout:   30 * time.Second,
+		}
+		transport := &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return dialer.DialContext(ctx, network, addr)
+			},
+		}
+		httpClient = &http.Client{
+			Transport: transport,
+			Timeout:   30 * time.Second,
+		}
+	}
+
 	return &BitGoClient{
 		apiKey:   os.Getenv("BITGO_API_KEY"),
 		walletID: os.Getenv("BITGO_WALLET_ID"),
 		baseURL:  baseURL,
 		coin:     coin,
-		http:     &http.Client{Timeout: 30 * time.Second},
+		serverIP: serverIP,
+		http:     httpClient,
 	}
 }
 
