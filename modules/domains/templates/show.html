@@ -161,6 +161,18 @@
 </div>
 
 {{if .Users}}
+<!-- Tom Select for searchable dropdown -->
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<style>
+.ts-wrapper { background: var(--bs-body-bg); }
+.ts-wrapper .ts-control { background: var(--bs-body-bg); border-color: var(--bs-border-color); color: var(--bs-body-color); }
+.ts-wrapper .ts-control input { color: var(--bs-body-color); }
+.ts-dropdown { background: var(--bs-body-bg); border-color: var(--bs-border-color); }
+.ts-dropdown .option { color: var(--bs-body-color); }
+.ts-dropdown .active { background: var(--bs-primary); color: #fff; }
+</style>
+
 <!-- Assign to User Modal (Admin Only) -->
 <div class="modal fade" id="assignModal" tabindex="-1">
     <div class="modal-dialog">
@@ -173,7 +185,7 @@
                 <p>Transfer <strong>{{.Domain.Name}}</strong> to another user's account.</p>
                 <div class="mb-3">
                     <label class="form-label">Select User</label>
-                    <select class="form-select" id="assignUserId">
+                    <select id="assignUserId" placeholder="Search by email or name...">
                         <option value="">Choose a user...</option>
                         {{range .Users}}
                         <option value="{{.ID}}">{{.Email}}{{if .Name}} ({{.Name}}){{end}}</option>
@@ -333,8 +345,21 @@ confirmDeleteBtn?.addEventListener('click', async function() {
 
 // Assign to user (admin only)
 {{if .Users}}
+// Initialize searchable select
+let userSelect = null;
+document.getElementById('assignModal')?.addEventListener('shown.bs.modal', function() {
+    if (!userSelect) {
+        userSelect = new TomSelect('#assignUserId', {
+            maxOptions: null,
+            placeholder: 'Search by email or name...',
+            allowEmptyOption: true,
+            sortField: { field: 'text', direction: 'asc' }
+        });
+    }
+});
+
 document.getElementById('confirmAssignBtn')?.addEventListener('click', async function() {
-    const userId = document.getElementById('assignUserId').value;
+    const userId = userSelect ? userSelect.getValue() : document.getElementById('assignUserId').value;
     if (!userId) {
         showToast('Please select a user', 'warning');
         return;
