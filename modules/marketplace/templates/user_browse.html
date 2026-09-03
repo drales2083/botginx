@@ -111,50 +111,54 @@
 
 <script>
 const balance = {{.Balance}};
-const purchaseModal = new bootstrap.Modal(document.getElementById('purchaseModal'));
+let purchaseModal;
 
-// Purchase button click
-document.querySelectorAll('.btn-purchase').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const price = parseFloat(btn.dataset.price);
+document.addEventListener('DOMContentLoaded', function() {
+    purchaseModal = new bootstrap.Modal(document.getElementById('purchaseModal'));
 
-        if (balance < price) {
-            showToast('Insufficient balance. Please top up first.', 'warning');
-            return;
+    // Purchase button click
+    document.querySelectorAll('.btn-purchase').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const price = parseFloat(btn.dataset.price);
+
+            if (balance < price) {
+                showToast('Insufficient balance. Please top up first.', 'warning');
+                return;
+            }
+
+            document.getElementById('purchaseDomainId').value = btn.dataset.id;
+            document.getElementById('purchaseDomainName').textContent = btn.dataset.name;
+            document.getElementById('purchasePrice').textContent = '$' + price.toFixed(2);
+            document.getElementById('balanceAfter').textContent = '$' + (balance - price).toFixed(2);
+
+            purchaseModal.show();
+        });
+    });
+
+    // Confirm purchase
+    document.getElementById('confirmPurchase').addEventListener('click', async () => {
+        const domainId = document.getElementById('purchaseDomainId').value;
+        const btn = document.getElementById('confirmPurchase');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+
+        const res = await fetch(`/user/marketplace/api/purchase/${domainId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (res.ok) {
+            purchaseModal.hide();
+            flashToast('Domain purchased successfully!', 'success');
+            window.location.href = '/user/domains';
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Purchase failed', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-bag-check me-1"></i>Confirm Purchase';
         }
-
-        document.getElementById('purchaseDomainId').value = btn.dataset.id;
-        document.getElementById('purchaseDomainName').textContent = btn.dataset.name;
-        document.getElementById('purchasePrice').textContent = '$' + price.toFixed(2);
-        document.getElementById('balanceAfter').textContent = '$' + (balance - price).toFixed(2);
-
-        purchaseModal.show();
     });
-});
-
-// Confirm purchase
-document.getElementById('confirmPurchase').addEventListener('click', async () => {
-    const domainId = document.getElementById('purchaseDomainId').value;
-    const btn = document.getElementById('confirmPurchase');
-
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
-
-    const res = await fetch(`/user/marketplace/api/purchase/${domainId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-    });
-
-    if (res.ok) {
-        purchaseModal.hide();
-        flashToast('Domain purchased successfully!', 'success');
-        window.location.href = '/user/domains';
-    } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Purchase failed', 'danger');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-bag-check me-1"></i>Confirm Purchase';
-    }
 });
 </script>
 {{end}}

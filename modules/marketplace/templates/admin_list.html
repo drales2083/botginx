@@ -227,91 +227,95 @@
 </div>
 
 <script>
-const addModal = new bootstrap.Modal(document.getElementById('addModal'));
-const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+let addModal, editModal;
 
-// Add domain to marketplace
-document.getElementById('confirmAdd').addEventListener('click', async () => {
-    const domainId = document.getElementById('addDomainId').value.trim();
-    const price = parseFloat(document.getElementById('addPrice').value);
-    const description = document.getElementById('addDescription').value.trim();
+document.addEventListener('DOMContentLoaded', function() {
+    addModal = new bootstrap.Modal(document.getElementById('addModal'));
+    editModal = new bootstrap.Modal(document.getElementById('editModal'));
 
-    if (!domainId) {
-        showToast('Select a domain', 'warning');
-        return;
-    }
-    if (!price || price <= 0) {
-        showToast('Enter valid price', 'warning');
-        return;
-    }
+    // Add domain to marketplace
+    document.getElementById('confirmAdd').addEventListener('click', async () => {
+        const domainId = document.getElementById('addDomainId').value.trim();
+        const price = parseFloat(document.getElementById('addPrice').value);
+        const description = document.getElementById('addDescription').value.trim();
 
-    const res = await fetch('/admin/marketplace/api/domains', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domainId, price, description })
-    });
+        if (!domainId) {
+            showToast('Select a domain', 'warning');
+            return;
+        }
+        if (!price || price <= 0) {
+            showToast('Enter valid price', 'warning');
+            return;
+        }
 
-    if (res.ok) {
-        addModal.hide();
-        reloadWithToast('Domain listed for sale', 'success');
-    } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Failed to list domain', 'danger');
-    }
-});
-
-// Edit button
-document.querySelectorAll('.btn-edit').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.getElementById('editDomainId').value = btn.dataset.id;
-        document.getElementById('editDomainName').textContent = btn.dataset.name;
-        document.getElementById('editPrice').value = btn.dataset.price;
-        document.getElementById('editDescription').value = btn.dataset.description || '';
-        editModal.show();
-    });
-});
-
-// Save edit
-document.getElementById('confirmEdit').addEventListener('click', async () => {
-    const domainId = document.getElementById('editDomainId').value;
-    const price = parseFloat(document.getElementById('editPrice').value);
-    const description = document.getElementById('editDescription').value.trim();
-
-    if (!price || price <= 0) {
-        showToast('Enter valid price', 'warning');
-        return;
-    }
-
-    const res = await fetch(`/admin/marketplace/api/domains/${domainId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price, description })
-    });
-
-    if (res.ok) {
-        editModal.hide();
-        reloadWithToast('Listing updated', 'success');
-    } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Failed to update', 'danger');
-    }
-});
-
-// Remove from sale
-document.querySelectorAll('.btn-remove').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        if (!confirm(`Remove ${btn.dataset.name} from sale?`)) return;
-
-        const res = await fetch(`/admin/marketplace/api/domains/${btn.dataset.id}`, {
-            method: 'DELETE'
+        const res = await fetch('/admin/marketplace/api/domains', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domainId, price, description })
         });
 
         if (res.ok) {
-            reloadWithToast('Removed from sale', 'success');
+            addModal.hide();
+            reloadWithToast('Domain listed for sale', 'success');
         } else {
             const data = await res.json().catch(() => ({}));
-            showToast(data.error || 'Failed to remove', 'danger');
+            showToast(data.error || 'Failed to list domain', 'danger');
         }
+    });
+
+    // Edit button
+    document.querySelectorAll('.btn-edit').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('editDomainId').value = btn.dataset.id;
+            document.getElementById('editDomainName').textContent = btn.dataset.name;
+            document.getElementById('editPrice').value = btn.dataset.price;
+            document.getElementById('editDescription').value = btn.dataset.description || '';
+            editModal.show();
+        });
+    });
+
+    // Save edit
+    document.getElementById('confirmEdit').addEventListener('click', async () => {
+        const domainId = document.getElementById('editDomainId').value;
+        const price = parseFloat(document.getElementById('editPrice').value);
+        const description = document.getElementById('editDescription').value.trim();
+
+        if (!price || price <= 0) {
+            showToast('Enter valid price', 'warning');
+            return;
+        }
+
+        const res = await fetch(`/admin/marketplace/api/domains/${domainId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ price, description })
+        });
+
+        if (res.ok) {
+            editModal.hide();
+            reloadWithToast('Listing updated', 'success');
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Failed to update', 'danger');
+        }
+    });
+
+    // Remove from sale
+    document.querySelectorAll('.btn-remove').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!confirm(`Remove ${btn.dataset.name} from sale?`)) return;
+
+            const res = await fetch(`/admin/marketplace/api/domains/${btn.dataset.id}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                reloadWithToast('Removed from sale', 'success');
+            } else {
+                const data = await res.json().catch(() => ({}));
+                showToast(data.error || 'Failed to remove', 'danger');
+            }
+        });
     });
 });
 </script>
