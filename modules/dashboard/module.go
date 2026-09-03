@@ -60,6 +60,7 @@ func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"Stats":   m.stats(userID),
 		"Domains": m.recentDomains(userID),
 		"Links":   m.recentLinks(userID),
+		"Hosting": m.hostingStats(userID),
 	})
 }
 
@@ -123,6 +124,58 @@ func (m *Module) recentLinks(userID string) []recentLink {
 		LIMIT 5
 	`, userID)
 	return links
+}
+
+type hostingAccount struct {
+	ID          string  `db:"id"`
+	PackageName string  `db:"package_name"`
+	Status      string  `db:"status"`
+	DomainCount int     `db:"domain_count"`
+	Price       float64 `db:"price"`
+}
+
+func (m *Module) hostingStats(userID string) map[string]interface{} {
+	var accountCount, activeCount, hostingDomains int
+	var balance float64
+
+	// Count hosting accounts
+	m.DB().Get(&accountCount,
+		`SELECT COUNT(*) FROM hosting_accounts WHERE user_id = $1`, userID)
+
+	// Count active accounts
+	m.DB().Get(&activeCount,
+		`SELECT COUNT(*) FROM hosting_accounts WHERE user_id = $1 AND status = 'active'`, userID)
+
+	// Count hosting domains
+	m.DB().Get(&hostingDomains,
+		`SELECT COUNT(*) FROM hosting_domains hd
+		 JOIN hosting_accounts ha ON ha.id = hd.account_id
+		 WHERE ha.user_id = $1`, userID)
+
+	// Get balance
+	m.DB().Get(&balance,
+		`SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
+
+	// Get recent accounts
+	var accounts []hostingAccount
+	m.DB().Select(&accounts, `
+		SELECT ha.id, hp.name as package_name, ha.status,
+		       (SELECT COUNT(*) FROM hosting_domains WHERE account_id = ha.id) as domain_count,
+		       hp.price_monthly as price
+		FROM hosting_accounts ha
+		JOIN hosting_packages hp ON hp.id = ha.package_id
+		WHERE ha.user_id = $1
+		ORDER BY ha.created_at DESC
+		LIMIT 3
+	`, userID)
+
+	return map[string]interface{}{
+		"accountCount":   accountCount,
+		"activeCount":    activeCount,
+		"hostingDomains": hostingDomains,
+		"balance":        balance,
+		"accounts":       accounts,
+	}
 }
 
 func (m *Module) Templates() fs.FS {
