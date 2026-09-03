@@ -281,6 +281,16 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 	if input.AcmeCnameVerified != nil {
 		domain.AcmeCnameVerified = *input.AcmeCnameVerified
 	}
+	// dns-persist-01 fields
+	if input.PersistTXTValue != nil {
+		domain.PersistTXTValue = input.PersistTXTValue
+	}
+	if input.PersistTXTVerified != nil {
+		domain.PersistTXTVerified = *input.PersistTXTVerified
+	}
+	if input.LegoAccountURI != nil {
+		domain.LegoAccountURI = input.LegoAccountURI
+	}
 	domain.UpdatedAt = time.Now()
 
 	_, err = s.db.NamedExec(`
@@ -297,6 +307,9 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 			acme_password = :acme_password,
 			acme_fulldomain = :acme_fulldomain,
 			acme_cname_verified = :acme_cname_verified,
+			persist_txt_value = :persist_txt_value,
+			persist_txt_verified = :persist_txt_verified,
+			lego_account_uri = :lego_account_uri,
 			updated_at = :updated_at
 		WHERE id = :id
 	`, domain)

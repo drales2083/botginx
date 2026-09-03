@@ -95,11 +95,16 @@ func (m *Module) Routes() chi.Router {
 		r.Get("/{id}/setup-status", m.handler.APIGetSetupStatus) // Polling endpoint
 		r.Post("/{id}/retry-ssl", m.handler.APIRetrySSL)          // Force retry SSL generation
 
-		// Two-phase wildcard SSL (using lego)
+		// Two-phase wildcard SSL (using lego) - LEGACY dns-01
 		r.Post("/{id}/ssl/start", m.handler.APIStartSSLChallenge)       // Phase 1: Get token
 		r.Post("/{id}/ssl/complete", m.handler.APICompleteSSLChallenge) // Phase 2: Complete after DNS
 		r.Get("/{id}/ssl/token", m.handler.APIGetSSLToken)              // Get pending token
 		r.Delete("/{id}/ssl/cancel", m.handler.APICancelSSLChallenge)   // Cancel pending challenge
+
+		// dns-persist-01 (one-time TXT record, no renewal changes)
+		r.Post("/{id}/persist-txt", m.handler.APIGetPersistTXT)         // Generate persist TXT value
+		r.Post("/{id}/persist-txt/verify", m.handler.APIVerifyPersistTXT) // Verify TXT record
+		r.Post("/{id}/ssl/persist", m.handler.APIGenerateSSLPersist)    // Generate SSL using dns-persist-01
 	})
 
 	return r
@@ -136,6 +141,11 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 		r.Get("/{id}/ssl/token", m.handler.APIGetSSLToken)
 		r.Delete("/{id}/ssl/cancel", m.handler.APICancelSSLChallenge)
 		r.Post("/{id}/retry-ssl", m.handler.APIRetrySSL)
+
+		// dns-persist-01 (one-time TXT record)
+		r.Post("/{id}/persist-txt", m.handler.APIGetPersistTXT)
+		r.Post("/{id}/persist-txt/verify", m.handler.APIVerifyPersistTXT)
+		r.Post("/{id}/ssl/persist", m.handler.APIGenerateSSLPersist)
 	})
 
 	return r

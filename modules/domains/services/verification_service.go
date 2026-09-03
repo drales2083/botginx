@@ -1426,3 +1426,256 @@ func (s *VerificationService) LegoCancelChallenge(domain string) error {
 
 	return nil
 }
+
+// ==================== DNS-PERSIST-01 Functions ====================
+// These functions implement the new dns-persist-01 challenge type which uses
+// a one-time static TXT record at _validation-persist.<domain> instead of
+// dynamic _acme-challenge records that change every renewal.
+
+// PersistTXTResult holds the result of generating a persist TXT value
+type PersistTXTResult struct {
+	TXTName    string `json:"txtName"`    // _validation-persist.example.com
+	TXTValue   string `json:"txtValue"`   // letsencrypt.org; accounturi=...; policy=wildcard
+	AccountURI string `json:"accountUri"` // https://acme-v02.api.letsencrypt.org/acme/acct/123
+}
+
+// GeneratePersistTXTValue creates an ACME account and generates the persistent
+// TXT record value that the user must add to _validation-persist.<domain>
+func (s *VerificationService) GeneratePersistTXTValue(domain, email string) (*PersistTXTResult, error) {
+	server, err := s.getServer()
+	if err != nil {
+		return nil, fmt.Errorf("no deploy server available")
+	}
+
+	baseDomain := GetBaseDomain(domain)
+	if email == "" {
+		email = "admin@" + baseDomain
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return nil, fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Ensure lego v5+ is installed
+	if err := s.ensureLegoV5Installed(client); err != nil {
+		return nil, err
+	}
+
+	legoPath := fmt.Sprintf("/root/.lego-%s", baseDomain)
+
+	// Create ACME account and get account URI
+	// Using production Let's Encrypt server
+	createAccountCmd := fmt.Sprintf(`
+		mkdir -p %s
+		lego --email="%s" --accept-tos --path=%s \
+			--domains="*.%s" \
+			run --dry-run 2>&1 || true
+
+		# Extract account URI from account.json
+		cat %s/accounts/acme-v02.api.letsencrypt.org/%s/account.json 2>/dev/null | grep -oP '"accountURL":\s*"\K[^"]+' || echo "NO_ACCOUNT"
+	`, legoPath, email, legoPath, baseDomain, legoPath, email)
+
+	output, err := client.Run(createAccountCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ACME account: %w", err)
+	}
+
+	// Parse account URI from output
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	accountURI := ""
+	for _, line := range lines {
+		if strings.HasPrefix(line, "https://acme-v02.api.letsencrypt.org/acme/acct/") {
+			accountURI = strings.TrimSpace(line)
+			break
+		}
+	}
+
+	if accountURI == "" || accountURI == "NO_ACCOUNT" {
+		return nil, fmt.Errorf("failed to get ACME account URI from output: %s", output)
+	}
+
+	// Generate the TXT record value
+	txtValue := fmt.Sprintf("letsencrypt.org; accounturi=%s; policy=wildcard", accountURI)
+
+	return &PersistTXTResult{
+		TXTName:    "_validation-persist." + baseDomain,
+		TXTValue:   txtValue,
+		AccountURI: accountURI,
+	}, nil
+}
+
+// CheckPersistTXT verifies that the _validation-persist TXT record exists
+// with the correct value
+func (s *VerificationService) CheckPersistTXT(domain, expectedValue string) (bool, string, error) {
+	baseDomain := GetBaseDomain(domain)
+	txtHost := "_validation-persist." + baseDomain
+
+	// Query DNS directly
+	records, err := net.LookupTXT(txtHost)
+	if err != nil {
+		return false, "", nil // Record doesn't exist yet
+	}
+
+	// Check if any record matches
+	for _, record := range records {
+		record = strings.TrimSpace(record)
+		// Normalize whitespace for comparison
+		normalizedExpected := strings.Join(strings.Fields(expectedValue), " ")
+		normalizedRecord := strings.Join(strings.Fields(record), " ")
+
+		if normalizedRecord == normalizedExpected {
+			return true, record, nil
+		}
+	}
+
+	// Return the first record found (for debugging)
+	if len(records) > 0 {
+		return false, records[0], nil
+	}
+
+	return false, "", nil
+}
+
+// IsDNSPersist01Available checks if Let's Encrypt production supports dns-persist-01
+// As of September 2026, it's still staging-only (expected Q3 2026+)
+func (s *VerificationService) IsDNSPersist01Available() bool {
+	// TODO: Check Let's Encrypt production API for dns-persist-01 support
+	// For now, this returns false since production doesn't support it yet
+	return false
+}
+
+// GenerateWildcardSSLPersist generates a wildcard SSL certificate using
+// the dns-persist-01 challenge. This requires the _validation-persist TXT
+// record to already be in place.
+// NOTE: As of September 2026, dns-persist-01 is only available on Let's Encrypt staging.
+// This function will fail on production until Let's Encrypt enables it (expected Q3 2026+).
+func (s *VerificationService) GenerateWildcardSSLPersist(domain, email string) error {
+	server, err := s.getServer()
+	if err != nil {
+		return fmt.Errorf("no deploy server available")
+	}
+
+	baseDomain := GetBaseDomain(domain)
+	if email == "" {
+		email = "admin@" + baseDomain
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Check if cert already exists and is valid
+	checkExisting := fmt.Sprintf(`
+		CERT="/etc/letsencrypt/live/%s/fullchain.pem"
+		if [ -f "$CERT" ]; then
+			EXPIRE=$(openssl x509 -enddate -noout -in "$CERT" 2>/dev/null | cut -d= -f2)
+			if [ -n "$EXPIRE" ]; then
+				EXPIRE_TS=$(date -d "$EXPIRE" +%%s 2>/dev/null || echo 0)
+				NOW_TS=$(date +%%s)
+				DAYS_LEFT=$(( (EXPIRE_TS - NOW_TS) / 86400 ))
+				if [ "$DAYS_LEFT" -gt 30 ]; then
+					echo "VALID:$DAYS_LEFT"
+					exit 0
+				fi
+			fi
+		fi
+		echo "NEEDS_RENEWAL"
+	`, baseDomain)
+
+	existsOutput, _ := client.Run(checkExisting)
+	if strings.HasPrefix(strings.TrimSpace(existsOutput), "VALID:") {
+		return nil // Cert is still valid
+	}
+
+	// Ensure lego v5+ is installed
+	if err := s.ensureLegoV5Installed(client); err != nil {
+		return err
+	}
+
+	legoPath := fmt.Sprintf("/root/.lego-%s", baseDomain)
+
+	// Run lego with dns-persist-01 challenge
+	legoCmd := fmt.Sprintf(`
+		mkdir -p %s
+		lego --email="%s" --accept-tos --path=%s \
+			--domains="*.%s" --domains="%s" \
+			--dns-persist \
+			run 2>&1
+	`, legoPath, email, legoPath, baseDomain, baseDomain)
+
+	output, err := client.Run(legoCmd)
+	if err != nil {
+		// Check for common errors
+		if strings.Contains(output, "missing accounturi") {
+			return fmt.Errorf("TXT record not found or incorrect. Please add _validation-persist.%s TXT record", baseDomain)
+		}
+		if strings.Contains(output, "No available solvers") {
+			return fmt.Errorf("dns-persist-01 not available. Let's Encrypt may not support it yet for this domain")
+		}
+		return fmt.Errorf("SSL generation failed: %s", parseLegoError(output))
+	}
+
+	// Install the certificate
+	return s.installLegoCert(client, baseDomain)
+}
+
+// ensureLegoV5Installed checks if lego v5+ is installed and upgrades if needed
+func (s *VerificationService) ensureLegoV5Installed(client *sshexec.Client) error {
+	// Check current version
+	versionOutput, _ := client.Run(`lego --version 2>/dev/null | grep -oP 'VERSION:\s*\K[0-9]+' || echo "0"`)
+	majorVersion := strings.TrimSpace(versionOutput)
+
+	if majorVersion == "5" || majorVersion == "6" || majorVersion == "7" {
+		return nil // Already v5+
+	}
+
+	// Upgrade to v5.3.0
+	upgradeCmd := `
+		cd /tmp
+		curl -fsSL "https://github.com/go-acme/lego/releases/download/v5.3.0/lego_v5.3.0_linux_amd64.tar.gz" -o lego.tar.gz
+		tar xzf lego.tar.gz lego
+		mv -f lego /usr/local/bin/
+		chmod +x /usr/local/bin/lego
+		rm -f lego.tar.gz
+		lego --version
+	`
+
+	output, err := client.Run(upgradeCmd)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade lego: %w - %s", err, output)
+	}
+
+	return nil
+}
+
+// parseLegoError extracts a user-friendly error message from lego output
+func parseLegoError(output string) string {
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "ERROR") || strings.Contains(line, "error=") {
+			// Extract the error message
+			if idx := strings.Index(line, "error="); idx != -1 {
+				return strings.Trim(line[idx+6:], `"`)
+			}
+			return line
+		}
+	}
+	if len(output) > 200 {
+		return output[:200] + "..."
+	}
+	return output
+}

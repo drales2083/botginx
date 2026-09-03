@@ -1340,6 +1340,133 @@ func (h *Handler) APICancelSSLChallenge(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// ==================== DNS-PERSIST-01 Endpoints ====================
+
+// APIGetPersistTXT generates and returns the persistent TXT record value
+// POST /api/{id}/persist-txt
+func (h *Handler) APIGetPersistTXT(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// If we already have a persist TXT value, return it
+	if domain.PersistTXTValue != nil && *domain.PersistTXTValue != "" {
+		baseDomain := services.GetBaseDomain(domain.Name)
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"txtName":  "_validation-persist." + baseDomain,
+			"txtValue": *domain.PersistTXTValue,
+			"verified": domain.PersistTXTVerified,
+		})
+		return
+	}
+
+	// Generate new persist TXT value
+	result, err := h.verification.GeneratePersistTXTValue(domain.Name, "")
+	if err != nil {
+		h.jsonError(w, "Failed to generate persist TXT: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Save to database
+	h.service.Update(id, models.UpdateDomainInput{
+		PersistTXTValue: &result.TXTValue,
+		LegoAccountURI:  &result.AccountURI,
+	})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"txtName":  result.TXTName,
+		"txtValue": result.TXTValue,
+		"verified": false,
+	})
+}
+
+// APIVerifyPersistTXT checks if the persistent TXT record is correctly configured
+// POST /api/{id}/persist-txt/verify
+func (h *Handler) APIVerifyPersistTXT(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	if domain.PersistTXTValue == nil || *domain.PersistTXTValue == "" {
+		h.jsonError(w, "No persist TXT value generated yet. Call GET persist-txt first.", http.StatusBadRequest)
+		return
+	}
+
+	verified, foundValue, err := h.verification.CheckPersistTXT(domain.Name, *domain.PersistTXTValue)
+	if err != nil {
+		h.jsonError(w, "Failed to check TXT record: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Update verification status in database
+	if verified && !domain.PersistTXTVerified {
+		t := true
+		h.service.Update(id, models.UpdateDomainInput{
+			PersistTXTVerified: &t,
+		})
+	}
+
+	baseDomain := services.GetBaseDomain(domain.Name)
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"verified":      verified,
+		"expectedValue": *domain.PersistTXTValue,
+		"foundValue":    foundValue,
+		"txtName":       "_validation-persist." + baseDomain,
+	})
+}
+
+// APIGenerateSSLPersist generates SSL certificate using dns-persist-01
+// POST /api/{id}/ssl/persist
+func (h *Handler) APIGenerateSSLPersist(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if persist TXT is verified
+	if !domain.PersistTXTVerified {
+		h.jsonError(w, "TXT record not verified. Please verify the TXT record first.", http.StatusBadRequest)
+		return
+	}
+
+	// Generate SSL certificate
+	if err := h.verification.GenerateWildcardSSLPersist(domain.Name, ""); err != nil {
+		// Save error to database
+		errStr := err.Error()
+		h.service.Update(id, models.UpdateDomainInput{
+			SSLError: &errStr,
+		})
+		h.jsonError(w, "SSL generation failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Mark SSL as enabled
+	t := true
+	step := models.SetupStepComplete
+	emptyErr := ""
+	h.service.Update(id, models.UpdateDomainInput{
+		SSLEnabled: &t,
+		SetupStep:  &step,
+		SSLError:   &emptyErr,
+	})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "SSL certificate generated successfully",
+	})
+}
+
 // Helpers
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {
