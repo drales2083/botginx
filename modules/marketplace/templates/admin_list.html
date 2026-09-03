@@ -66,7 +66,7 @@
                             <code>{{.Name}}</code>
                         </td>
                         <td>
-                            <strong class="text-success">${{printf "%.2f" .MarketplacePrice}}</strong>
+                            <strong class="text-success">${{printf "%.2f" (deref .MarketplacePrice)}}</strong>
                         </td>
                         <td>
                             {{if and .DNSVerified .SSLEnabled}}
@@ -87,7 +87,7 @@
                                 <button class="btn btn-outline-primary btn-edit"
                                         data-id="{{.ID}}"
                                         data-name="{{.Name}}"
-                                        data-price="{{.MarketplacePrice}}"
+                                        data-price="{{deref .MarketplacePrice}}"
                                         data-description="{{.MarketplaceDescription}}"
                                         title="Edit">
                                     <i class="bi bi-pencil"></i>

@@ -65,6 +65,13 @@ func defaultFuncs() template.FuncMap {
 		"mulf": func(a, b float64) float64 {
 			return a * b
 		},
+		// Pointer dereference helpers
+		"deref": func(p *float64) float64 {
+			if p == nil {
+				return 0
+			}
+			return *p
+		},
 	}
 }
 

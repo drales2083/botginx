@@ -34,12 +34,12 @@
 
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="h4 text-success mb-0">${{printf "%.2f" .MarketplacePrice}}</span>
+                        <span class="h4 text-success mb-0">${{printf "%.2f" (deref .MarketplacePrice)}}</span>
                     </div>
                     <button class="btn btn-primary btn-purchase"
                             data-id="{{.ID}}"
                             data-name="{{.Name}}"
-                            data-price="{{.MarketplacePrice}}">
+                            data-price="{{deref .MarketplacePrice}}">
                         <i class="bi bi-bag-check me-1"></i>Purchase
                     </button>
                 </div>
