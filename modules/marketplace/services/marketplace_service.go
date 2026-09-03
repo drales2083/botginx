@@ -29,7 +29,7 @@ func (s *MarketplaceService) generateID() string {
 func (s *MarketplaceService) ListForSale() ([]models.MarketplaceDomain, error) {
 	var domains []models.MarketplaceDomain
 	err := s.db.Select(&domains, `
-		SELECT id, name, user_id, status, is_marketplace,
+		SELECT id, name, user_id, dns_verified, ssl_enabled, is_marketplace,
 		       marketplace_price, marketplace_description, marketplace_listed_at, created_at
 		FROM domains
 		WHERE is_marketplace = TRUE
@@ -42,10 +42,10 @@ func (s *MarketplaceService) ListForSale() ([]models.MarketplaceDomain, error) {
 func (s *MarketplaceService) ListAvailable() ([]models.MarketplaceDomain, error) {
 	var domains []models.MarketplaceDomain
 	err := s.db.Select(&domains, `
-		SELECT id, name, user_id, status, is_marketplace,
+		SELECT id, name, user_id, dns_verified, ssl_enabled, is_marketplace,
 		       marketplace_price, marketplace_description, marketplace_listed_at, created_at
 		FROM domains
-		WHERE is_marketplace = TRUE AND status = 'active'
+		WHERE is_marketplace = TRUE AND dns_verified = TRUE AND ssl_enabled = TRUE
 		ORDER BY marketplace_listed_at DESC
 	`)
 	return domains, err
@@ -55,7 +55,7 @@ func (s *MarketplaceService) ListAvailable() ([]models.MarketplaceDomain, error)
 func (s *MarketplaceService) GetDomain(domainID string) (*models.MarketplaceDomain, error) {
 	var domain models.MarketplaceDomain
 	err := s.db.Get(&domain, `
-		SELECT id, name, user_id, status, is_marketplace,
+		SELECT id, name, user_id, dns_verified, ssl_enabled, is_marketplace,
 		       marketplace_price, marketplace_description, marketplace_listed_at, created_at
 		FROM domains WHERE id = $1
 	`, domainID)
@@ -77,7 +77,7 @@ func (s *MarketplaceService) MarkForSale(domainID string, price float64, descrip
 			marketplace_price = $2,
 			marketplace_description = $3,
 			marketplace_listed_at = $4
-		WHERE id = $1 AND status = 'active'
+		WHERE id = $1 AND dns_verified = TRUE AND ssl_enabled = TRUE
 	`, domainID, price, description, time.Now())
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (s *MarketplaceService) MarkForSale(domainID string, price float64, descrip
 
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return errors.New("domain not found or not active")
+		return errors.New("domain not found or not fully configured")
 	}
 	return nil
 }
@@ -148,10 +148,11 @@ func (s *MarketplaceService) Purchase(domainID, buyerUserID string) error {
 		UserID           string   `db:"user_id"`
 		IsMarketplace    bool     `db:"is_marketplace"`
 		MarketplacePrice *float64 `db:"marketplace_price"`
-		Status           string   `db:"status"`
+		DNSVerified      bool     `db:"dns_verified"`
+		SSLEnabled       bool     `db:"ssl_enabled"`
 	}
 	err = tx.Get(&domain, `
-		SELECT id, user_id, is_marketplace, marketplace_price, status
+		SELECT id, user_id, is_marketplace, marketplace_price, dns_verified, ssl_enabled
 		FROM domains WHERE id = $1 FOR UPDATE
 	`, domainID)
 	if err != nil {
@@ -161,8 +162,8 @@ func (s *MarketplaceService) Purchase(domainID, buyerUserID string) error {
 	if !domain.IsMarketplace {
 		return errors.New("domain is not for sale")
 	}
-	if domain.Status != "active" {
-		return errors.New("domain is not active")
+	if !domain.DNSVerified || !domain.SSLEnabled {
+		return errors.New("domain is not fully configured")
 	}
 	if domain.MarketplacePrice == nil {
 		return errors.New("domain price not set")
@@ -233,13 +234,14 @@ func (s *MarketplaceService) GetUserBalance(userID string) float64 {
 	return balance
 }
 
-// ListSellable returns domains that can be listed for sale (active, not shared, not already in marketplace)
+// ListSellable returns domains that can be listed for sale (verified, SSL enabled, not shared, not already in marketplace)
 func (s *MarketplaceService) ListSellable() ([]models.MarketplaceDomain, error) {
 	var domains []models.MarketplaceDomain
 	err := s.db.Select(&domains, `
-		SELECT id, name, user_id, status, is_marketplace, created_at
+		SELECT id, name, user_id, dns_verified, ssl_enabled, is_marketplace, created_at
 		FROM domains
-		WHERE status = 'active'
+		WHERE dns_verified = TRUE
+		  AND ssl_enabled = TRUE
 		  AND COALESCE(is_shared, FALSE) = FALSE
 		  AND COALESCE(is_marketplace, FALSE) = FALSE
 		ORDER BY created_at DESC

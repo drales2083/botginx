@@ -7,7 +7,8 @@ type MarketplaceDomain struct {
 	ID                     string     `db:"id" json:"id"`
 	Name                   string     `db:"name" json:"name"`
 	UserID                 string     `db:"user_id" json:"userId"`
-	Status                 string     `db:"status" json:"status"`
+	DNSVerified            bool       `db:"dns_verified" json:"dnsVerified"`
+	SSLEnabled             bool       `db:"ssl_enabled" json:"sslEnabled"`
 	IsMarketplace          bool       `db:"is_marketplace" json:"isMarketplace"`
 	MarketplacePrice       *float64   `db:"marketplace_price" json:"marketplacePrice,omitempty"`
 	MarketplaceDescription *string    `db:"marketplace_description" json:"marketplaceDescription,omitempty"`

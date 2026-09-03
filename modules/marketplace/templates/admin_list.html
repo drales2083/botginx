@@ -69,12 +69,12 @@
                             <strong class="text-success">${{printf "%.2f" .MarketplacePrice}}</strong>
                         </td>
                         <td>
-                            {{if eq .Status "active"}}
+                            {{if and .DNSVerified .SSLEnabled}}
                             <span class="badge bg-success">Ready</span>
-                            {{else if eq .Status "pending"}}
-                            <span class="badge bg-warning">Pending Setup</span>
+                            {{else if .DNSVerified}}
+                            <span class="badge bg-warning">SSL Pending</span>
                             {{else}}
-                            <span class="badge bg-secondary">{{.Status}}</span>
+                            <span class="badge bg-secondary">DNS Pending</span>
                             {{end}}
                         </td>
                         <td>
