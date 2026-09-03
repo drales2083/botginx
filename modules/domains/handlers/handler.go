@@ -92,11 +92,20 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	// Get deploy server IP for DNS instructions
 	deployIP := h.service.GetDeployIP()
 
-	module.RenderUserSection(w, r, h.templates, "domains:show.html", map[string]interface{}{
+	data := map[string]interface{}{
 		"Title":    domain.Name,
 		"Domain":   domain,
 		"ServerIP": deployIP,
-	})
+	}
+
+	// If admin, pass users list for assign feature
+	user := ctx.GetUser(r)
+	if user != nil && user.IsAdmin() {
+		users, _ := h.service.ListAllUsers()
+		data["Users"] = users
+	}
+
+	module.RenderUserSection(w, r, h.templates, "domains:show.html", data)
 }
 
 // Admin page handlers -- the shared platform pool
@@ -294,6 +303,41 @@ func (h *Handler) APIAdminAssign(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusCreated, map[string]interface{}{
 		"success": true,
 		"domain":  domain,
+	})
+}
+
+// APITransferOwnership transfers a domain to another user (admin only)
+func (h *Handler) APITransferOwnership(w http.ResponseWriter, r *http.Request) {
+	// Verify admin
+	user := ctx.GetUser(r)
+	if user == nil || !user.IsAdmin() {
+		h.jsonError(w, "Admin access required", http.StatusForbidden)
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	var input struct {
+		UserID string `json:"userId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if input.UserID == "" {
+		h.jsonError(w, "User ID required", http.StatusBadRequest)
+		return
+	}
+
+	// Transfer ownership
+	if err := h.service.TransferOwnership(id, input.UserID); err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Domain transferred successfully",
 	})
 }
 

@@ -309,6 +309,22 @@ func (s *DomainService) Delete(id string) error {
 	return err
 }
 
+// TransferOwnership changes the owner of a domain to another user
+func (s *DomainService) TransferOwnership(domainID, newUserID string) error {
+	result, err := s.db.Exec(`
+		UPDATE domains SET user_id = $1, is_shared = FALSE, updated_at = NOW()
+		WHERE id = $2
+	`, newUserID, domainID)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return ErrDomainNotFound
+	}
+	return nil
+}
+
 // CountRedirectLinks returns the number of redirect links using this domain
 func (s *DomainService) CountRedirectLinks(domainID string) (int, error) {
 	var count int
