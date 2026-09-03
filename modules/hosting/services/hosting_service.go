@@ -293,7 +293,8 @@ func (s *HostingService) ListAccountsByUser(userID string) ([]models.HostingAcco
 			COALESCE(s.panel_url, '') as panel_url,
 			COALESCE(p.name, '') as package_name,
 			COALESCE(p.price_monthly, 0) as package_price,
-			(SELECT COUNT(*) FROM hosting_domains WHERE account_id = a.id) as domain_count
+			(SELECT COUNT(*) FROM hosting_domains WHERE account_id = a.id) as domain_count,
+			COALESCE((SELECT domain FROM hosting_domains WHERE account_id = a.id ORDER BY created_at LIMIT 1), '') as primary_domain
 		FROM hosting_accounts a
 		LEFT JOIN hosting_servers s ON s.id = a.server_id
 		LEFT JOIN hosting_packages p ON p.id = a.package_id

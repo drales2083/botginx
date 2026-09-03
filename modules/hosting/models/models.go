@@ -80,10 +80,11 @@ type HostingAccount struct {
 	ServerName     string `db:"server_name" json:"serverName,omitempty"`
 	ServerHostname string `db:"server_hostname" json:"serverHostname,omitempty"`
 	PanelURL       string `db:"panel_url" json:"panelUrl,omitempty"`
-	PackageName  string  `db:"package_name" json:"packageName,omitempty"`
-	PackagePrice float64 `db:"package_price" json:"packagePrice,omitempty"`
-	UserEmail    string  `db:"user_email" json:"userEmail,omitempty"`
-	DomainCount  int     `db:"domain_count" json:"domainCount,omitempty"`
+	PackageName   string  `db:"package_name" json:"packageName,omitempty"`
+	PackagePrice  float64 `db:"package_price" json:"packagePrice,omitempty"`
+	UserEmail     string  `db:"user_email" json:"userEmail,omitempty"`
+	DomainCount   int     `db:"domain_count" json:"domainCount,omitempty"`
+	PrimaryDomain string  `db:"primary_domain" json:"primaryDomain,omitempty"`
 }
 
 // HostingDomain represents a domain hosted on a hosting account
