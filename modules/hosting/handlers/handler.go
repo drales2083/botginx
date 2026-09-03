@@ -167,6 +167,11 @@ func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var primaryDomain *models.HostingDomain
+	if len(domains) > 0 {
+		primaryDomain = &domains[0]
+	}
+
 	module.RenderUserSection(w, r, h.templates, "hosting:overview.html", map[string]interface{}{
 		"Title":             account.PackageName + " Hosting",
 		"Account":           account,
@@ -175,6 +180,8 @@ func (h *Handler) UserOverview(w http.ResponseWriter, r *http.Request) {
 		"SetupComplete":     setupComplete,
 		"Domains":           domains,
 		"PendingDomains":    pendingDomains,
+		"PrimaryDomain":     primaryDomain,
+		"NavActive":         "overview",
 	})
 }
 
@@ -187,10 +194,17 @@ func (h *Handler) UserDomains(w http.ResponseWriter, r *http.Request) {
 
 	domains, _ := h.service.ListDomains(account.ID)
 
+	var primaryDomain *models.HostingDomain
+	if len(domains) > 0 {
+		primaryDomain = &domains[0]
+	}
+
 	module.RenderUserSection(w, r, h.templates, "hosting:domains.html", map[string]interface{}{
-		"Title":   "Domain Protection",
-		"Account": account,
-		"Domains": domains,
+		"Title":         "Domain Protection",
+		"Account":       account,
+		"Domains":       domains,
+		"PrimaryDomain": primaryDomain,
+		"NavActive":     "domains",
 	})
 }
 
@@ -227,17 +241,25 @@ func (h *Handler) UserDomainSetup(w http.ResponseWriter, r *http.Request) {
 	isProxied := dnsResolved && !directMatch && httpReachable
 	dnsOK := directMatch || httpReachable
 
+	domains, _ := h.service.ListDomains(account.ID)
+	var primaryDomain *models.HostingDomain
+	if len(domains) > 0 {
+		primaryDomain = &domains[0]
+	}
+
 	module.RenderUserSection(w, r, h.templates, "hosting:domain_setup.html", map[string]interface{}{
-		"Title":       "Domain Setup - " + domain.Domain,
-		"Account":     account,
-		"Domain":      domain,
-		"ServerIP":    serverIP,
-		"CurrentIP":   currentIP,
-		"DNSResolved": dnsResolved,
-		"DirectMatch": directMatch,
-		"IsProxied":   isProxied,
-		"DNSOK":       dnsOK,
+		"Title":         "Domain Setup - " + domain.Domain,
+		"Account":       account,
+		"Domain":        domain,
+		"ServerIP":      serverIP,
+		"CurrentIP":     currentIP,
+		"DNSResolved":   dnsResolved,
+		"DirectMatch":   directMatch,
+		"IsProxied":     isProxied,
+		"DNSOK":         dnsOK,
 		"HTTPReachable": httpReachable,
+		"PrimaryDomain": primaryDomain,
+		"NavActive":     "domains",
 	})
 }
 
@@ -264,11 +286,19 @@ func (h *Handler) UserDomainSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	domains, _ := h.service.ListDomains(account.ID)
+	var primaryDomain *models.HostingDomain
+	if len(domains) > 0 {
+		primaryDomain = &domains[0]
+	}
+
 	module.RenderUserSection(w, r, h.templates, "hosting:domain_settings.html", map[string]interface{}{
-		"Title":    "Protection Settings",
-		"Account":  account,
-		"Domain":   domain,
-		"Settings": settings,
+		"Title":         "Protection Settings",
+		"Account":       account,
+		"Domain":        domain,
+		"Settings":      settings,
+		"PrimaryDomain": primaryDomain,
+		"NavActive":     "protection",
 	})
 }
 

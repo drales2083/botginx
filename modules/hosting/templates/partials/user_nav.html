@@ -8,8 +8,18 @@
         {{if ne .Account.Status "pending"}}
         <a href="/user/hosting/{{.Account.ID}}/domains"
            class="list-group-item list-group-item-action {{if eq .NavActive "domains"}}active{{end}}">
-            <i class="bi bi-shield-check me-2"></i>Domain Protection
+            <i class="bi bi-globe me-2"></i>Domains
         </a>
+        {{if .PrimaryDomain}}
+        <a href="/user/hosting/{{.Account.ID}}/domains/{{.PrimaryDomain.ID}}/settings#tab-analytics"
+           class="list-group-item list-group-item-action {{if eq .NavActive "analytics"}}active{{end}}">
+            <i class="bi bi-graph-up me-2"></i>Analytics
+        </a>
+        <a href="/user/hosting/{{.Account.ID}}/domains/{{.PrimaryDomain.ID}}/settings#tab-settings"
+           class="list-group-item list-group-item-action {{if eq .NavActive "protection"}}active{{end}}">
+            <i class="bi bi-shield-check me-2"></i>Protection Settings
+        </a>
+        {{end}}
         {{end}}
     </div>
 </div>

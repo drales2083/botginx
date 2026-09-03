@@ -1,18 +1,23 @@
 {{define "content"}}
-<div class="row mb-3">
-    <div class="col-12">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/user/hosting">Hosting</a></li>
-                <li class="breadcrumb-item"><a href="/user/hosting/{{.Account.ID}}">{{.Account.PackageName}}</a></li>
-                <li class="breadcrumb-item"><a href="/user/hosting/{{.Account.ID}}/domains">Domains</a></li>
-                <li class="breadcrumb-item active">{{.Domain.Domain}}</li>
-            </ol>
-        </nav>
+<div class="row">
+    <div class="col-md-3">
+        {{template "hosting_user_nav" .}}
     </div>
-</div>
+    <div class="col-md-9">
+        <div class="row mb-3">
+            <div class="col-12">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/user/hosting">Hosting</a></li>
+                        <li class="breadcrumb-item"><a href="/user/hosting/{{.Account.ID}}">{{.Account.PackageName}}</a></li>
+                        <li class="breadcrumb-item"><a href="/user/hosting/{{.Account.ID}}/domains">Domains</a></li>
+                        <li class="breadcrumb-item active">{{.Domain.Domain}}</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
 
-<!-- Tabs -->
+        <!-- Tabs -->
 <ul class="nav nav-tabs mb-4" role="tablist">
     <li class="nav-item">
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-analytics" type="button">
@@ -395,5 +400,28 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save Settings';
 });
+
+// Tab persistence with URL hash
+document.addEventListener('DOMContentLoaded', () => {
+    // Restore tab from hash
+    const hash = window.location.hash;
+    if (hash) {
+        const tab = document.querySelector(`button[data-bs-target="${hash}"]`);
+        if (tab) {
+            const bsTab = new bootstrap.Tab(tab);
+            bsTab.show();
+        }
+    }
+
+    // Save tab to hash when changed
+    document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', (e) => {
+            const target = e.target.getAttribute('data-bs-target');
+            history.replaceState(null, null, target);
+        });
+    });
+});
 </script>
+    </div>
+</div>
 {{end}}
