@@ -104,6 +104,16 @@ func (p *ProvisioningService) ProvisionAccount(accountID string) error {
 		return errors.New("failed to create site on server: " + err.Error())
 	}
 
+	// Configure nginx to route through botection (8080 -> 8081)
+	// This is critical for antibot protection to work
+	if client.IsBotectionInstalled() {
+		log.Printf("[provisioning] configuring botection proxy for %s", domain)
+		if err := client.ConfigureBotectionProxy(domain); err != nil {
+			log.Printf("[provisioning] warning: failed to configure botection proxy: %v", err)
+			// Don't fail - site is created, just needs manual config
+		}
+	}
+
 	// Create CloudPanel panel user so they can login to web interface
 	email := "user@" + domain
 	log.Printf("[provisioning] creating panel user %s for site %s", account.PanelUsername, domain)

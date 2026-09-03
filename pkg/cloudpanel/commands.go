@@ -271,3 +271,191 @@ func (c *Client) RestartPHP(version PHPVersion) error {
 	_, err := c.Execute(cmd)
 	return err
 }
+
+// ConfigureBotectionProxy modifies a site's nginx config to route through botection.
+// This creates a two-server setup:
+//   1. External server (80/443) -> proxy_pass to botection (8080)
+//   2. Backend server (8081) -> serves actual site content
+// Traffic flow: Internet -> nginx:443 -> botection:8080 -> nginx:8081 -> PHP/files
+func (c *Client) ConfigureBotectionProxy(domain string) error {
+	// This script modifies the CloudPanel-generated nginx config for botection integration
+	script := fmt.Sprintf(`
+#!/bin/bash
+set -e
+DOMAIN=%s
+CONF="/etc/nginx/sites-enabled/${DOMAIN}.conf"
+BACKEND_PORT=8081
+BOTECTION_PORT=8080
+
+if [ ! -f "$CONF" ]; then
+    echo "Config not found: $CONF"
+    exit 1
+fi
+
+# Skip if already configured for botection
+if grep -q "proxy_pass http://127.0.0.1:${BOTECTION_PORT}" "$CONF"; then
+    echo "Already configured for botection"
+    exit 0
+fi
+
+# Backup original
+cp "$CONF" "${CONF}.pre-botection"
+
+# Get the site user from the config
+SITE_USER=$(grep -oP "root /home/\K[^/]+" "$CONF" | head -1)
+if [ -z "$SITE_USER" ]; then
+    echo "Could not determine site user"
+    exit 1
+fi
+
+# Get PHP-FPM port from config
+PHP_PORT=$(grep -oP "fastcgi_pass 127.0.0.1:\K\d+" "$CONF" | head -1)
+if [ -z "$PHP_PORT" ]; then
+    PHP_PORT=9000
+fi
+
+# Determine root directory
+ROOT_DIR="/home/${SITE_USER}/htdocs/${DOMAIN}"
+
+# Create new config with botection integration
+cat > "$CONF" << 'NGINXEOF'
+# Botection-integrated config for DOMAIN_PLACEHOLDER
+# Traffic: Internet -> nginx:443 -> botection:8080 -> nginx:8081 -> PHP
+
+# Redirect www to non-www
+server {
+    listen 80;
+    listen [::]:80;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    ssl_certificate_key /etc/nginx/ssl-certificates/DOMAIN_PLACEHOLDER.key;
+    ssl_certificate /etc/nginx/ssl-certificates/DOMAIN_PLACEHOLDER.crt;
+    server_name www.DOMAIN_PLACEHOLDER;
+    return 301 https://DOMAIN_PLACEHOLDER$request_uri;
+}
+
+# Main site - external traffic goes through botection
+server {
+    listen 80;
+    listen [::]:80;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    ssl_certificate_key /etc/nginx/ssl-certificates/DOMAIN_PLACEHOLDER.key;
+    ssl_certificate /etc/nginx/ssl-certificates/DOMAIN_PLACEHOLDER.crt;
+    server_name DOMAIN_PLACEHOLDER;
+    root ROOT_DIR_PLACEHOLDER;
+
+    access_log /home/SITE_USER_PLACEHOLDER/logs/nginx/access.log;
+    error_log /home/SITE_USER_PLACEHOLDER/logs/nginx/error.log;
+
+    # Force HTTPS
+    if ($scheme != "https") {
+        rewrite ^ https://$host$request_uri permanent;
+    }
+
+    # ACME challenge bypass (for SSL renewal)
+    location ~ /.well-known {
+        auth_basic off;
+        allow all;
+    }
+
+    # All traffic through botection
+    location / {
+        proxy_pass http://127.0.0.1:BOTECTION_PORT_PLACEHOLDER;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_hide_header X-Varnish;
+        proxy_redirect off;
+        proxy_max_temp_file_size 0;
+        proxy_connect_timeout 720;
+        proxy_send_timeout 720;
+        proxy_read_timeout 720;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+        proxy_temp_file_write_size 256k;
+    }
+
+    # Static files bypass (optional - can go through botection too)
+    location ~* ^.+\.(css|js|jpg|jpeg|gif|png|ico|svg|woff|woff2)$ {
+        add_header Access-Control-Allow-Origin "*";
+        expires max;
+        access_log off;
+    }
+
+    # Deny hidden files
+    location ~ /\.(ht|svn|git) {
+        deny all;
+    }
+}
+
+# Backend server - receives traffic from botection
+server {
+    listen 127.0.0.1:BACKEND_PORT_PLACEHOLDER;
+    server_name DOMAIN_PLACEHOLDER;
+    root ROOT_DIR_PLACEHOLDER;
+
+    index index.php index.html;
+    try_files $uri $uri/ /index.php?$args;
+
+    # PHP handling
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_intercept_errors on;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        try_files $uri =404;
+        fastcgi_read_timeout 3600;
+        fastcgi_send_timeout 3600;
+        fastcgi_param HTTPS "on";
+        fastcgi_param SERVER_PORT 443;
+        fastcgi_pass 127.0.0.1:PHP_PORT_PLACEHOLDER;
+        fastcgi_param PHP_VALUE "
+error_log=/home/SITE_USER_PLACEHOLDER/logs/php/error.log;
+memory_limit=512M;
+max_execution_time=60;
+max_input_time=60;
+max_input_vars=10000;
+post_max_size=64M;
+upload_max_filesize=64M;
+date.timezone=UTC;
+display_errors=off;";
+    }
+
+    # Deny hidden files
+    location ~ /\.(ht|svn|git) {
+        deny all;
+    }
+}
+NGINXEOF
+
+# Replace placeholders
+sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" "$CONF"
+sed -i "s|ROOT_DIR_PLACEHOLDER|${ROOT_DIR}|g" "$CONF"
+sed -i "s/SITE_USER_PLACEHOLDER/${SITE_USER}/g" "$CONF"
+sed -i "s/BOTECTION_PORT_PLACEHOLDER/${BOTECTION_PORT}/g" "$CONF"
+sed -i "s/BACKEND_PORT_PLACEHOLDER/${BACKEND_PORT}/g" "$CONF"
+sed -i "s/PHP_PORT_PLACEHOLDER/${PHP_PORT}/g" "$CONF"
+
+# Test and reload nginx
+nginx -t && systemctl reload nginx
+echo "Botection proxy configured for ${DOMAIN}"
+`, shellEscape(domain))
+
+	_, err := c.Execute(script)
+	return err
+}
+
+// IsBotectionInstalled checks if botection is running on the server
+func (c *Client) IsBotectionInstalled() bool {
+	output, err := c.Execute("systemctl is-active botection 2>/dev/null || echo inactive")
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(output) == "active"
+}

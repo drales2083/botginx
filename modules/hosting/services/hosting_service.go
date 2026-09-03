@@ -845,6 +845,15 @@ func (s *HostingService) ProvisionDomain(accountID, domain string) (*models.Host
 		return nil, fmt.Errorf("failed to create site: %v", err)
 	}
 
+	// Configure nginx to route through botection (8080 -> 8081)
+	// This is critical for antibot protection to work
+	if client.IsBotectionInstalled() {
+		if err := client.ConfigureBotectionProxy(domain); err != nil {
+			// Log but don't fail - site is created, just needs manual config
+			fmt.Printf("[hosting] warning: failed to configure botection proxy for %s: %v\n", domain, err)
+		}
+	}
+
 	// Add to database
 	d := &models.HostingDomain{
 		ID:        s.generateID(),
