@@ -343,7 +343,14 @@ async function completeSSLChallenge() {
         const data = await res.json();
 
         if (data.status === 'dns_not_ready') {
-            showToast(data.message || 'TXT record not found yet. Please wait for DNS propagation.', 'warning');
+            // Check if token changed (wildcard certs need 2 validations)
+            if (data.token && data.token !== sslToken) {
+                sslToken = data.token;
+                document.getElementById('ssl-txt-value').value = data.token;
+                showToast('TOKEN CHANGED! Wildcard SSL needs a second validation. Update your TXT record with the new value shown above.', 'warning');
+            } else {
+                showToast(data.message || 'TXT record not found yet. Please wait for DNS propagation.', 'warning');
+            }
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Complete SSL';
             return;
