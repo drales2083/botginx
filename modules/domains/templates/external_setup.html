@@ -123,10 +123,11 @@
             <div class="card-body">
                 <!-- Phase 1: Get Token -->
                 <div id="ssl-phase1">
-                    <p class="text-muted mb-3">Wildcard SSL requires a TXT record for verification. Click the button to generate your token.</p>
-                    <button class="btn btn-primary" onclick="startSSLChallenge()">
+                    <p class="text-muted mb-3">Wildcard SSL requires a TXT record for verification. Complete steps 1 and 2 first, then click the button to generate your token.</p>
+                    <button class="btn btn-primary" id="btn-get-ssl-token" onclick="startSSLChallenge()" disabled>
                         <i class="bi bi-key me-1"></i>Get SSL Token
                     </button>
+                    <small class="text-muted ms-2" id="ssl-prereq-hint">Waiting for A record and verify TXT...</small>
                 </div>
 
                 <!-- Phase 2: Add TXT and Complete -->
@@ -292,6 +293,28 @@ const initialSSLEnabled = {{if .Domain.SSLEnabled}}true{{else}}false{{end}};
 const isWildcard = {{if .SetupInfo.IsWildcard}}true{{else}}false{{end}};
 let sslToken = '';
 let pollInterval;
+let dnsVerified = { aRecord: false, verifyTxt: false };
+
+// Update SSL button state based on DNS verification
+function updateSSLButtonState() {
+    const btn = document.getElementById('btn-get-ssl-token');
+    const hint = document.getElementById('ssl-prereq-hint');
+    if (!btn) return;
+
+    if (dnsVerified.aRecord && dnsVerified.verifyTxt) {
+        btn.disabled = false;
+        if (hint) hint.classList.add('d-none');
+    } else {
+        btn.disabled = true;
+        if (hint) {
+            hint.classList.remove('d-none');
+            const missing = [];
+            if (!dnsVerified.aRecord) missing.push('A record');
+            if (!dnsVerified.verifyTxt) missing.push('verify TXT');
+            hint.textContent = `Waiting for ${missing.join(' and ')}...`;
+        }
+    }
+}
 
 // Two-phase SSL: Start challenge (get token)
 async function startSSLChallenge() {
@@ -494,6 +517,11 @@ async function manualCheck() {
         updateBadge('badge-a', status.aRecordFound);
         updateBadge('badge-verify', status.verifyTxtFound);
 
+        // Track DNS verification state for SSL button
+        dnsVerified.aRecord = status.aRecordFound;
+        dnsVerified.verifyTxt = status.verifyTxtFound;
+        updateSSLButtonState();
+
         // For wildcard: SSL badge shows pending until user completes two-phase flow
         if (isWildcard) {
             // SSL status depends on whether SSL is enabled
@@ -573,6 +601,11 @@ async function checkStatus() {
         // Update badges
         updateBadge('badge-a', status.aRecordFound);
         updateBadge('badge-verify', status.verifyTxtFound);
+
+        // Track DNS verification state for SSL button
+        dnsVerified.aRecord = status.aRecordFound;
+        dnsVerified.verifyTxt = status.verifyTxtFound;
+        updateSSLButtonState();
 
         // For wildcard: SSL badge shows pending until user completes two-phase flow
         if (isWildcard) {
