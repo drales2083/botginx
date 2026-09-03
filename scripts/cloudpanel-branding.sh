@@ -304,20 +304,30 @@ inject_assets() {
         "$CLOUDPANEL_DIR/files/templates/Admin/layout.html.twig"
     )
 
+    # Inline CSS to hide elements IMMEDIATELY (prevents flash)
+    local inline_style='<style>.announcement,[class*="announcement"],.theme-switcher,#theme-switch,footer .nav{display:none!important}</style>'
     local css_link='<link rel="stylesheet" href="/css/custom-branding.css">'
     local js_link='<script src="/js/custom-branding.js"></script>'
 
     for layout in "${layouts[@]}"; do
         if [[ -f "$layout" ]]; then
-            # Inject CSS if not present
-            if ! grep -q "custom-branding.css" "$layout" 2>/dev/null; then
-                sed -i "s|</head>|    ${css_link}\n    </head>|" "$layout"
-                ok "CSS injected: $(basename "$layout")"
+            # Inject inline CSS right after <head> (first, to prevent flash)
+            if ! grep -q "announcement.*display:none" "$layout" 2>/dev/null; then
+                sed -i "s|<head>|<head>\n    ${inline_style}|" "$layout"
+                ok "inline CSS injected: $(basename "$layout")"
             else
-                log "CSS already in: $(basename "$layout")"
+                log "inline CSS already in: $(basename "$layout")"
             fi
 
-            # Inject JS if not present
+            # Inject external CSS before </head>
+            if ! grep -q "custom-branding.css" "$layout" 2>/dev/null; then
+                sed -i "s|</head>|    ${css_link}\n    </head>|" "$layout"
+                ok "CSS link injected: $(basename "$layout")"
+            else
+                log "CSS link already in: $(basename "$layout")"
+            fi
+
+            # Inject JS before </head>
             if ! grep -q "custom-branding.js" "$layout" 2>/dev/null; then
                 sed -i "s|</head>|    ${js_link}\n    </head>|" "$layout"
                 ok "JS injected: $(basename "$layout")"
