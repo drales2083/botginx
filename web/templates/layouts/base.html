@@ -189,6 +189,7 @@
           {{if .UserMenu}}
           <ul class="nav sidebar-menu flex-column" role="menu">
             {{range .UserMenu}}
+            {{if not .Hidden}}
             <li class="nav-item">
               <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
                 <i class="nav-icon bi {{.Icon}}"></i>
@@ -208,6 +209,7 @@
               </ul>
               {{end}}
             </li>
+            {{end}}
             {{end}}
           </ul>
           {{end}}

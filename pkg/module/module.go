@@ -58,6 +58,7 @@ type MenuItem struct {
 	Children []MenuItem  // Nested items
 	Order    int         // Sort order
 	Section  MenuSection // admin or user section
+	Hidden   bool        // If true, routes mount but menu item doesn't show
 }
 
 // Widget for dashboard
