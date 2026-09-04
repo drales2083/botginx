@@ -299,6 +299,8 @@ func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		CountryMode      string   `json:"countryMode"`
 		CountryList      []string `json:"countryList"`
+		ASNMode          string   `json:"asnMode"`
+		ASNList          []string `json:"asnList"`
 		DeviceMode       string   `json:"deviceMode"`
 		DeviceList       []string `json:"deviceList"`
 		BlockBots        bool     `json:"blockBots"`
@@ -319,6 +321,8 @@ func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		LinkID:           linkID,
 		CountryMode:      input.CountryMode,
 		CountryList:      input.CountryList,
+		ASNMode:          input.ASNMode,
+		ASNList:          input.ASNList,
 		DeviceMode:       input.DeviceMode,
 		DeviceList:       input.DeviceList,
 		BlockBots:        input.BlockBots,
@@ -385,6 +389,8 @@ func (h *Handler) pushSettingsToVPS(linkID string, settings *models.LinkSettings
 		BlockHeadless:    settings.BlockHeadless,
 		CountryMode:      settings.CountryMode,
 		CountryList:      settings.CountryList,
+		ASNMode:          settings.ASNMode,
+		ASNList:          settings.ASNList,
 		DeviceMode:       settings.DeviceMode,
 		DeviceList:       settings.DeviceList,
 		MinBehaviorScore: settings.MinBehaviorScore,
