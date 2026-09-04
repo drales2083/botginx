@@ -299,8 +299,8 @@ func (m *Module) apiCountries(w http.ResponseWriter, r *http.Request) {
 }
 
 type visitorPoint struct {
-	Lat     float64 `db:"lat" json:"lat"`
-	Lng     float64 `db:"lng" json:"lng"`
+	Lat     float64 `db:"latitude" json:"lat"`
+	Lng     float64 `db:"longitude" json:"lng"`
 	Country string  `db:"country" json:"country"`
 	City    string  `db:"city" json:"city"`
 	Blocked bool    `db:"blocked" json:"blocked"`
@@ -311,7 +311,7 @@ func (m *Module) apiVisitors(w http.ResponseWriter, r *http.Request) {
 
 	var points []visitorPoint
 	m.DB().Select(&points, `
-		SELECT latitude as lat, longitude as lng, country, city, blocked
+		SELECT latitude, longitude, country, city, blocked
 		FROM visits
 		WHERE user_id = $1 AND latitude != 0 AND longitude != 0
 		ORDER BY created_at DESC
