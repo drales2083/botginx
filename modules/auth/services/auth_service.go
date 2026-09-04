@@ -39,6 +39,10 @@ func (s *AuthService) generateToken() string {
 }
 
 func (s *AuthService) Signup(input models.SignupInput) (*models.User, error) {
+	return s.SignupWithReferral(input, "")
+}
+
+func (s *AuthService) SignupWithReferral(input models.SignupInput, refCode string) (*models.User, error) {
 	// Check if email exists
 	var count int
 	s.db.Get(&count, "SELECT COUNT(*) FROM users WHERE email = $1", input.Email)
@@ -52,6 +56,9 @@ func (s *AuthService) Signup(input models.SignupInput) (*models.User, error) {
 		return nil, err
 	}
 
+	// Generate referral code for new user
+	newRefCode := s.generateID()[:8]
+
 	user := &models.User{
 		ID:           s.generateID(),
 		Email:        input.Email,
@@ -63,11 +70,23 @@ func (s *AuthService) Signup(input models.SignupInput) (*models.User, error) {
 	}
 
 	_, err = s.db.NamedExec(`
-		INSERT INTO users (id, email, password_hash, name, is_active, created_at, updated_at)
-		VALUES (:id, :email, :password_hash, :name, :is_active, :created_at, :updated_at)
+		INSERT INTO users (id, email, password_hash, name, is_active, created_at, updated_at, referral_code)
+		VALUES (:id, :email, :password_hash, :name, :is_active, :created_at, :updated_at, '`+newRefCode+`')
 	`, user)
+	if err != nil {
+		return nil, err
+	}
 
-	return user, err
+	// Set referrer if valid code provided
+	if refCode != "" {
+		var referrerID string
+		err := s.db.Get(&referrerID, `SELECT id FROM users WHERE referral_code = $1`, refCode)
+		if err == nil && referrerID != user.ID {
+			s.db.Exec(`UPDATE users SET referred_by_id = $1 WHERE id = $2`, referrerID, user.ID)
+		}
+	}
+
+	return user, nil
 }
 
 func (s *AuthService) Login(input models.LoginInput) (*models.User, string, error) {

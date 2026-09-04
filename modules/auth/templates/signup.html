@@ -69,7 +69,11 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
     try {
-        const res = await fetch('/auth/api/signup', {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ref = urlParams.get('ref');
+        const signupUrl = ref ? '/auth/api/signup?ref=' + encodeURIComponent(ref) : '/auth/api/signup';
+
+        const res = await fetch(signupUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

@@ -287,7 +287,10 @@ func (h *Handler) APISignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.Signup(input)
+	// Capture referral code from query param
+	refCode := r.URL.Query().Get("ref")
+
+	user, err := h.service.SignupWithReferral(input, refCode)
 	if err != nil {
 		if err == services.ErrEmailExists {
 			h.jsonError(w, "Email already registered", http.StatusConflict)

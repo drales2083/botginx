@@ -1,0 +1,216 @@
+{{define "content"}}
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-link-45deg me-2"></i>Your Referral Link</h5>
+            </div>
+            <div class="card-body">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="referral-link"
+                        value="{{$.BaseURL}}/auth/register?ref={{.Stats.ReferralCode}}" readonly>
+                    <button class="btn btn-primary" type="button" onclick="copyLink()">
+                        <i class="bi bi-clipboard me-1"></i>Copy
+                    </button>
+                </div>
+                <small class="text-muted mt-2 d-block">
+                    Share this link to earn commissions when your referrals subscribe.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-primary">
+            <div class="inner">
+                <h3>{{.Stats.Level1Count}}</h3>
+                <p>Level 1 Referrals</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-person-plus"></i>
+            </div>
+            <span class="small-box-footer">
+                {{.Settings.Level1Rate}}% commission
+            </span>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-info">
+            <div class="inner">
+                <h3>{{.Stats.Level2Count}}</h3>
+                <p>Level 2 Referrals</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-people"></i>
+            </div>
+            <span class="small-box-footer">
+                {{.Settings.Level2Rate}}% commission
+            </span>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-warning">
+            <div class="inner">
+                <h3>{{.Stats.Level3Count}}</h3>
+                <p>Level 3 Referrals</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-diagram-3"></i>
+            </div>
+            <span class="small-box-footer">
+                {{.Settings.Level3Rate}}% commission
+            </span>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-success">
+            <div class="inner">
+                <h3>${{printf "%.2f" .Stats.TotalEarnings}}</h3>
+                <p>Total Earned</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-wallet2"></i>
+            </div>
+            <span class="small-box-footer">
+                Balance: ${{printf "%.2f" .Stats.Balance}}
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="bi bi-people me-2"></i>Your Referrals</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary level-btn active" data-level="1">L1</button>
+                    <button class="btn btn-outline-primary level-btn" data-level="2">L2</button>
+                    <button class="btn btn-outline-primary level-btn" data-level="3">L3</button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="referrals-list" class="p-3">
+                    <div class="text-muted small text-center py-3">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-cash-stack me-2"></i>Recent Earnings</h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="earnings-list" class="p-3">
+                    <div class="text-muted small text-center py-3">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>How It Works</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <div class="p-3">
+                            <i class="bi bi-share display-4 text-primary"></i>
+                            <h6 class="mt-3">1. Share Your Link</h6>
+                            <p class="text-muted small mb-0">Share your unique referral link with friends and colleagues.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <div class="p-3">
+                            <i class="bi bi-person-check display-4 text-success"></i>
+                            <h6 class="mt-3">2. They Subscribe</h6>
+                            <p class="text-muted small mb-0">When they sign up and subscribe, you earn commission.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3">
+                            <i class="bi bi-cash-coin display-4 text-warning"></i>
+                            <h6 class="mt-3">3. Earn Forever</h6>
+                            <p class="text-muted small mb-0">Earn on every renewal, up to 3 levels deep!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyLink() {
+    const input = document.getElementById('referral-link');
+    navigator.clipboard.writeText(input.value).then(() => {
+        window.showToast && showToast('Link copied to clipboard!', 'success');
+    });
+}
+
+async function loadReferrals(level) {
+    const res = await fetch('/user/referrals/api/referrals?level=' + level);
+    const referrals = await res.json();
+    const el = document.getElementById('referrals-list');
+
+    if (!referrals || referrals.length === 0) {
+        el.innerHTML = '<div class="text-muted small text-center py-3">No Level ' + level + ' referrals yet</div>';
+        return;
+    }
+
+    el.innerHTML = referrals.map(r => `
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+            <div>
+                <span class="badge bg-secondary me-2">L${r.level}</span>
+                <span class="text-muted small">${r.email}</span>
+            </div>
+            <span class="text-muted small">${r.created_at}</span>
+        </div>
+    `).join('');
+}
+
+async function loadEarnings() {
+    const res = await fetch('/user/referrals/api/earnings?limit=10');
+    const earnings = await res.json();
+    const el = document.getElementById('earnings-list');
+
+    if (!earnings || earnings.length === 0) {
+        el.innerHTML = '<div class="text-muted small text-center py-3">No earnings yet</div>';
+        return;
+    }
+
+    el.innerHTML = earnings.map(e => `
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+            <div>
+                <span class="badge bg-${e.level === 1 ? 'primary' : e.level === 2 ? 'info' : 'warning'} me-2">L${e.level}</span>
+                <span class="text-muted small">${e.from_email}</span>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-success">+$${e.commission_amount.toFixed(2)}</span>
+                <div class="text-muted small">${e.created_at}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+document.querySelectorAll('.level-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadReferrals(btn.dataset.level);
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadReferrals(1);
+    loadEarnings();
+});
+</script>
+{{end}}

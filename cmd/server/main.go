@@ -15,6 +15,7 @@ import (
 
 	"github.com/botginx/botginx/modules/admindash"
 	"github.com/botginx/botginx/modules/analytics"
+	"github.com/botginx/botginx/modules/referrals"
 	analyticshandlers "github.com/botginx/botginx/modules/analytics/handlers"
 	"github.com/botginx/botginx/modules/auth"
 	"github.com/botginx/botginx/modules/dashboard"
@@ -253,6 +254,7 @@ func main() {
 	registry.Register(help.New())                // Help/FAQ module
 	registry.Register(users.New())               // Admin module
 	registry.Register(admindash.New())           // Admin dashboard (stats)
+	registry.Register(referrals.New())           // Referral commission system
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
 
 	// Initialize all modules

@@ -1,0 +1,164 @@
+{{define "content"}}
+<div class="row g-3 mb-4">
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-people display-4 text-primary"></i>
+                <h2 class="mt-3 mb-1">{{.TotalReferrals}}</h2>
+                <p class="text-muted mb-0">Total Referrals</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-cash-stack display-4 text-success"></i>
+                <h2 class="mt-3 mb-1">${{printf "%.2f" .TotalCommissions}}</h2>
+                <p class="text-muted mb-0">Total Commissions Paid</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-person-check display-4 text-info"></i>
+                <h2 class="mt-3 mb-1">{{.ActiveReferrers}}</h2>
+                <p class="text-muted mb-0">Active Referrers</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-sliders me-2"></i>Commission Rates</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/admin/referrals/settings">
+                    <div class="mb-4">
+                        <label class="form-label d-flex justify-content-between">
+                            <span><i class="bi bi-1-circle me-2"></i>Level 1 (Direct Referral)</span>
+                            <span id="level1-value" class="badge bg-primary">{{.Settings.Level1Rate}}%</span>
+                        </label>
+                        <input type="range" class="form-range" name="level1_rate" id="level1_rate"
+                            min="0" max="50" value="{{.Settings.Level1Rate}}"
+                            oninput="document.getElementById('level1-value').textContent = this.value + '%'">
+                        <small class="text-muted">Commission for direct referrals (someone you referred)</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label d-flex justify-content-between">
+                            <span><i class="bi bi-2-circle me-2"></i>Level 2 (Indirect Referral)</span>
+                            <span id="level2-value" class="badge bg-info">{{.Settings.Level2Rate}}%</span>
+                        </label>
+                        <input type="range" class="form-range" name="level2_rate" id="level2_rate"
+                            min="0" max="30" value="{{.Settings.Level2Rate}}"
+                            oninput="document.getElementById('level2-value').textContent = this.value + '%'">
+                        <small class="text-muted">Commission for your L1 referrals' referrals</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label d-flex justify-content-between">
+                            <span><i class="bi bi-3-circle me-2"></i>Level 3 (Network Referral)</span>
+                            <span id="level3-value" class="badge bg-warning">{{.Settings.Level3Rate}}%</span>
+                        </label>
+                        <input type="range" class="form-range" name="level3_rate" id="level3_rate"
+                            min="0" max="20" value="{{.Settings.Level3Rate}}"
+                            oninput="document.getElementById('level3-value').textContent = this.value + '%'">
+                        <small class="text-muted">Commission for your L2 referrals' referrals</small>
+                    </div>
+
+                    <div class="alert alert-info mb-4">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Total max commission per payment:</strong>
+                        <span id="total-commission">{{add (add .Settings.Level1Rate .Settings.Level2Rate) .Settings.Level3Rate}}%</span>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="enabled" id="enabled"
+                                {{if .Settings.Enabled}}checked{{end}}>
+                            <label class="form-check-label" for="enabled">
+                                Enable referral system
+                            </label>
+                        </div>
+                        <small class="text-muted">When disabled, no new commissions will be recorded</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Save Settings
+                    </button>
+
+                    {{if eq (index $.Query "saved") "1"}}
+                    <span class="text-success ms-3"><i class="bi bi-check-circle"></i> Settings saved!</span>
+                    {{end}}
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>About Referrals</h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    The referral system allows users to earn commission when their referrals pay for subscriptions.
+                </p>
+                <ul class="small text-muted ps-3">
+                    <li class="mb-2"><strong>Level 1:</strong> Direct referrals (someone who used the user's link)</li>
+                    <li class="mb-2"><strong>Level 2:</strong> Referrals brought in by Level 1 users</li>
+                    <li class="mb-2"><strong>Level 3:</strong> Referrals brought in by Level 2 users</li>
+                </ul>
+                <p class="small text-muted mb-0">
+                    Commissions are credited instantly to user balances and can be used for subscriptions or withdrawals.
+                </p>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-diagram-3 me-2"></i>Commission Flow</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="d-flex flex-column align-items-center">
+                    <div class="badge bg-success mb-2 p-2">New Payment: $100</div>
+                    <i class="bi bi-arrow-down text-muted"></i>
+                    <div class="d-flex justify-content-around w-100 mt-2">
+                        <div class="text-center">
+                            <div class="badge bg-primary mb-1">L1</div>
+                            <div class="small" id="l1-example">$25</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="badge bg-info mb-1">L2</div>
+                            <div class="small" id="l2-example">$15</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="badge bg-warning mb-1">L3</div>
+                            <div class="small" id="l3-example">$10</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateTotal() {
+    const l1 = parseInt(document.getElementById('level1_rate').value);
+    const l2 = parseInt(document.getElementById('level2_rate').value);
+    const l3 = parseInt(document.getElementById('level3_rate').value);
+    document.getElementById('total-commission').textContent = (l1 + l2 + l3) + '%';
+    document.getElementById('l1-example').textContent = '$' + l1;
+    document.getElementById('l2-example').textContent = '$' + l2;
+    document.getElementById('l3-example').textContent = '$' + l3;
+}
+
+document.getElementById('level1_rate').addEventListener('input', updateTotal);
+document.getElementById('level2_rate').addEventListener('input', updateTotal);
+document.getElementById('level3_rate').addEventListener('input', updateTotal);
+</script>
+{{end}}
