@@ -344,7 +344,7 @@ function renderCountries(containerId, type) {
                 <input type="checkbox" class="form-check-input country-${type}" value="${c.code}" id="${type}_${c.code}"
                     ${selectedCountries[type].has(c.code) ? 'checked' : ''} onchange="toggleCountry('${type}', '${c.code}')">
                 <label class="form-check-label d-flex align-items-center gap-2 small" for="${type}_${c.code}">
-                    <img src="https://flagcdn.com/h20/${c.code.toLowerCase()}.png" alt="${c.code}" style="height:12px;border-radius:1px;">
+                    <img src="/static/flags/${c.code.toLowerCase()}.png" alt="${c.code}" style="height:12px;border-radius:1px;">
                     <span class="text-muted" style="min-width:24px;">${c.code}</span>
                     <span>${c.name}</span>
                 </label>
