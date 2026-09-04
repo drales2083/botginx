@@ -100,13 +100,6 @@ func (m *Module) Templates() fs.FS {
 func (m *Module) MenuItems() []module.MenuItem {
 	return []module.MenuItem{
 		{
-			Title:   "Buy Domain",
-			Icon:    "bi-bag",
-			Path:    "/user/marketplace",
-			Order:   25,
-			Section: module.MenuSectionUser,
-		},
-		{
 			Title:   "Sell Domain",
 			Icon:    "bi-tag",
 			Path:    "/admin/marketplace",

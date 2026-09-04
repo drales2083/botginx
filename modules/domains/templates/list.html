@@ -1,12 +1,15 @@
 {{define "content"}}
 {{$canWrite := .Subscription.Active}}
 <div class="row mb-3">
-    <div class="col-12">
+    <div class="col-12 d-flex gap-2">
         {{if $canWrite}}
         <a href="/user/domains/new" class="btn btn-primary">
             <i class="bi bi-plus-lg me-1"></i> {{t "domains.add"}}
         </a>
         {{end}}
+        <a href="/user/marketplace" class="btn btn-outline-primary">
+            <i class="bi bi-bag me-1"></i> Buy Domain
+        </a>
     </div>
 </div>
 
