@@ -134,6 +134,12 @@ Used by settings push (`pkg/settingspush/`) to SCP link settings to deploy serve
 | `DEPLOY_VPS_PASSWORD` | SSH password |
 | `DEPLOY_VPS_PORT` | SSH port (default: 22) |
 
+### ACME DNS (Wildcard SSL)
+
+| Variable | Description |
+|----------|-------------|
+| `ACME_DNS_DOMAIN` | Domain for acme-dns CNAME delegation (e.g. `acme.pamach.online`) |
+
 ## Related Documentation
 
 - `docs/DEPLOYMENT.md` — Full deployment guide

@@ -88,7 +88,7 @@ type ExternalSetupInfo struct {
 	AcmeTXTName     string `json:"acmeTxtName"`   // _acme-challenge.domain.com (legacy)
 
 	// acme-dns CNAME delegation (new - 100% reliable)
-	AcmeCnameTarget   string `json:"acmeCnameTarget,omitempty"`   // abc123.acme.guardbot.sbs
+	AcmeCnameTarget   string `json:"acmeCnameTarget,omitempty"`   // abc123.<ACME_DNS_DOMAIN>
 	AcmeCnameVerified bool   `json:"acmeCnameVerified"`
 	UseAcmeDns        bool   `json:"useAcmeDns"` // true = use CNAME delegation
 }

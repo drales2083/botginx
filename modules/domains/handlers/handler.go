@@ -837,6 +837,60 @@ func (h *Handler) APICheckAcmeCname(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// APIGenerateSSLAcmeDNS generates SSL certificate using acme-dns CNAME delegation
+func (h *Handler) APIGenerateSSLAcmeDNS(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Check ownership
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	// Check acme-dns registration
+	if domain.AcmeSubdomain == nil || *domain.AcmeSubdomain == "" {
+		h.jsonError(w, "Domain not registered with acme-dns", http.StatusBadRequest)
+		return
+	}
+
+	// Check CNAME verification
+	if !domain.AcmeCnameVerified {
+		h.jsonError(w, "CNAME record not verified", http.StatusBadRequest)
+		return
+	}
+
+	// Generate SSL via acme-dns
+	if err := h.verification.GenerateWildcardSSLWithAcmeDNS(
+		domain.Name,
+		*domain.AcmeSubdomain,
+		*domain.AcmeUsername,
+		*domain.AcmePassword,
+	); err != nil {
+		h.jsonError(w, "SSL generation failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Setup nginx and enable SSL
+	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+		h.jsonError(w, "Nginx setup failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Update database
+	t := true
+	h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "SSL certificate generated and enabled",
+	})
+}
+
 // APIGetSetupStatus returns the current DNS setup status for polling
 func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")

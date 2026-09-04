@@ -152,7 +152,7 @@ listen = "0.0.0.0:53"
 protocol = "both"
 domain = "$ACME_DOMAIN"
 nsname = "$ACME_DOMAIN"
-nsadmin = "admin.guardbot.sbs"
+nsadmin = "admin.$ACME_DOMAIN"
 debug = false
 
 [database]

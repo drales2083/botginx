@@ -55,7 +55,12 @@ echo "  lego installed: $(lego --version 2>&1 | head -1)"
 
 # Install acme-dns (for CNAME delegation - users add CNAME once, renewals are automatic)
 echo "Installing acme-dns server..."
-ACME_DOMAIN="${ACME_DOMAIN:-acme.guardbot.sbs}"
+# ACME_DOMAIN must be set - the domain for acme-dns CNAME delegation
+# Example: ACME_DOMAIN=acme.pamach.online
+if [ -z "$ACME_DOMAIN" ]; then
+    echo "ERROR: ACME_DOMAIN is required (e.g., acme.pamach.online)"
+    exit 1
+fi
 cd /tmp
 ACMEDNS_VERSION="1.0"
 curl -fsSL "https://github.com/joohoi/acme-dns/releases/download/v${ACMEDNS_VERSION}/acme-dns_${ACMEDNS_VERSION}_linux_amd64.tar.gz" -o acme-dns.tar.gz
@@ -72,7 +77,7 @@ listen = "0.0.0.0:53"
 protocol = "both"
 domain = "$ACME_DOMAIN"
 nsname = "$ACME_DOMAIN"
-nsadmin = "admin.guardbot.sbs"
+nsadmin = "admin.$ACME_DOMAIN"
 records = [
     "$ACME_DOMAIN. A $VPS_IP",
 ]

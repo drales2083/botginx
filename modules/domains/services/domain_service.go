@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/botginx/botginx/modules/domains/models"
@@ -425,7 +426,11 @@ func (s *DomainService) RegisterWithAcmeDNS(domainID string) (*acmedns.Registrat
 	// Check if acme-dns is installed
 	if !client.IsInstalled() {
 		// Try to set it up
-		if err := client.Setup("acme.guardbot.sbs"); err != nil {
+		acmeDomain := os.Getenv("ACME_DNS_DOMAIN")
+		if acmeDomain == "" {
+			return nil, fmt.Errorf("ACME_DNS_DOMAIN environment variable not set")
+		}
+		if err := client.Setup(acmeDomain); err != nil {
 			return nil, fmt.Errorf("acme-dns not installed and setup failed: %w", err)
 		}
 	}
