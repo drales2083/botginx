@@ -23,7 +23,11 @@
                 </div>
             </div>
             <div class="card-body">
-                <p class="text-muted">Add these DNS records in your cPanel Zone Editor or DNS provider. The page checks automatically every 30 seconds.</p>
+                {{if .SetupInfo.IsWildcard}}
+                <p class="text-muted">Add the DNS records below. The CNAME record is a one-time setup — SSL certificates will renew automatically forever.</p>
+                {{else}}
+                <p class="text-muted">Add these DNS records in your DNS provider. SSL will be generated automatically once verified.</p>
+                {{end}}
             </div>
         </div>
 
@@ -322,7 +326,7 @@
                         <span class="badge bg-secondary"><i class="bi bi-clock"></i></span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center" id="progress-ssl">
-                        <span><i class="bi bi-lock me-2"></i>SSL Certificate</span>
+                        <span><i class="bi bi-lock me-2"></i>{{if .SetupInfo.IsWildcard}}CNAME + SSL{{else}}SSL Certificate{{end}}</span>
                         <span class="badge bg-secondary"><i class="bi bi-clock"></i></span>
                     </li>
                 </ul>
@@ -352,24 +356,26 @@
                 <h5 class="card-title mb-0"><i class="bi bi-lightning-fill me-2"></i>TTL Tip</h5>
             </div>
             <div class="card-body">
-                <p class="mb-2">When adding DNS records, set <strong>TTL to 30 seconds</strong> (not 14000).</p>
-                <p class="text-muted small mb-0">Lower TTL = faster DNS propagation = faster SSL generation. You can increase it back to 14400 after setup is complete.</p>
+                <p class="mb-2">Set <strong>TTL to 30 seconds</strong> for all DNS records.</p>
+                <p class="text-muted small mb-0">Lower TTL = faster DNS propagation = faster setup. You can increase TTL to 14400 (4 hours) after setup is complete.</p>
             </div>
         </div>
 
         <!-- Instructions Card -->
         <div class="card">
             <div class="card-header bg-info text-white">
-                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>cPanel Instructions</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Quick Setup Guide</h5>
             </div>
             <div class="card-body">
                 <ol class="mb-0 ps-3">
-                    <li class="mb-2">Login to cPanel</li>
-                    <li class="mb-2">Go to <strong>Zone Editor</strong></li>
-                    <li class="mb-2">Click <strong>Manage</strong> for <code>{{.SetupInfo.BaseDomain}}</code></li>
-                    <li class="mb-2">Click <strong>+ Add Record</strong></li>
-                    <li class="mb-2">Add each record above</li>
-                    <li><strong>Set TTL to 30</strong> (not 14400)</li>
+                    <li class="mb-2">Go to your DNS provider (cPanel, Cloudflare, etc.)</li>
+                    <li class="mb-2">Find <strong>DNS Zone Editor</strong> or <strong>DNS Records</strong></li>
+                    <li class="mb-2">Add each record shown on the left</li>
+                    <li class="mb-2">Set <strong>TTL to 30 seconds</strong></li>
+                    {{if .SetupInfo.IsWildcard}}
+                    <li class="mb-2">The <strong>CNAME</strong> record is one-time — SSL renews automatically</li>
+                    {{end}}
+                    <li>Click <strong>Verify</strong> buttons to check progress</li>
                 </ol>
             </div>
         </div>
