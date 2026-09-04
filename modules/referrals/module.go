@@ -138,6 +138,14 @@ func (m *Module) AdminRoutes() chi.Router {
 	return r
 }
 
+// RoutesForSection returns routes for the requested section (user or admin)
+func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
+	if section == module.MenuSectionAdmin {
+		return m.AdminRoutes()
+	}
+	return m.Routes()
+}
+
 type Settings struct {
 	ID         string `db:"id"`
 	Level1Rate int    `db:"level1_rate"`
@@ -148,8 +156,12 @@ type Settings struct {
 
 func (m *Module) GetSettings() (*Settings, error) {
 	var s Settings
-	err := m.DB().Get(&s, `SELECT * FROM referral_settings LIMIT 1`)
-	return &s, err
+	err := m.DB().Get(&s, `SELECT id, level1_rate, level2_rate, level3_rate, enabled FROM referral_settings LIMIT 1`)
+	if err != nil {
+		// Return default settings if query fails
+		return &Settings{Level1Rate: 25, Level2Rate: 15, Level3Rate: 10, Enabled: true}, nil
+	}
+	return &s, nil
 }
 
 type UserStats struct {
