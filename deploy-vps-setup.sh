@@ -43,17 +43,83 @@ systemctl enable nginx redis-server cron
 systemctl start nginx redis-server cron
 
 # Install lego (for wildcard SSL via DNS-01 challenge)
-if [ ! -x /usr/local/bin/lego ]; then
-    echo "Installing lego ACME client..."
-    cd /tmp
-    LEGO_VERSION="v4.14.2"
-    curl -fsSL "https://github.com/go-acme/lego/releases/download/${LEGO_VERSION}/lego_${LEGO_VERSION}_linux_amd64.tar.gz" -o lego.tar.gz
-    tar xzf lego.tar.gz lego
-    mv lego /usr/local/bin/
-    chmod +x /usr/local/bin/lego
-    rm -f lego.tar.gz
-    echo "lego installed: $(lego --version)"
+echo "Installing lego ACME client..."
+cd /tmp
+LEGO_VERSION="v5.3.0"
+curl -fsSL "https://github.com/go-acme/lego/releases/download/${LEGO_VERSION}/lego_${LEGO_VERSION}_linux_amd64.tar.gz" -o lego.tar.gz
+tar xzf lego.tar.gz lego
+mv -f lego /usr/local/bin/
+chmod +x /usr/local/bin/lego
+rm -f lego.tar.gz
+echo "  lego installed: $(lego --version 2>&1 | head -1)"
+
+# Install acme-dns (for CNAME delegation - users add CNAME once, renewals are automatic)
+echo "Installing acme-dns server..."
+ACME_DOMAIN="${ACME_DOMAIN:-acme.guardbot.sbs}"
+cd /tmp
+ACMEDNS_VERSION="1.0"
+curl -fsSL "https://github.com/joohoi/acme-dns/releases/download/v${ACMEDNS_VERSION}/acme-dns_${ACMEDNS_VERSION}_linux_amd64.tar.gz" -o acme-dns.tar.gz
+tar xzf acme-dns.tar.gz
+mv -f acme-dns /usr/local/bin/
+chmod +x /usr/local/bin/acme-dns
+rm -f acme-dns.tar.gz
+
+mkdir -p /etc/acme-dns /var/lib/acme-dns
+
+cat > /etc/acme-dns/config.cfg << EOF
+[general]
+listen = "0.0.0.0:53"
+protocol = "both"
+domain = "$ACME_DOMAIN"
+nsname = "$ACME_DOMAIN"
+nsadmin = "admin.guardbot.sbs"
+records = [
+    "$ACME_DOMAIN. A $VPS_IP",
+]
+debug = false
+
+[database]
+engine = "sqlite3"
+connection = "/var/lib/acme-dns/acme-dns.db"
+
+[api]
+ip = "127.0.0.1"
+port = "8053"
+tls = "none"
+disable_registration = false
+
+[logconfig]
+loglevel = "info"
+logformat = "text"
+EOF
+
+cat > /etc/systemd/system/acme-dns.service << 'EOF'
+[Unit]
+Description=acme-dns server for ACME DNS-01 challenges
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/acme-dns -c /etc/acme-dns/config.cfg
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Disable systemd-resolved (conflicts on port 53)
+systemctl stop systemd-resolved 2>/dev/null || true
+systemctl disable systemd-resolved 2>/dev/null || true
+if [ -L /etc/resolv.conf ]; then
+    rm /etc/resolv.conf
+    echo -e "nameserver 8.8.8.8\nnameserver 1.1.1.1" > /etc/resolv.conf
 fi
+
+systemctl daemon-reload
+systemctl enable acme-dns
+systemctl start acme-dns
+echo "  acme-dns installed and running"
 
 # Fix nginx for long domain names
 if ! grep -q "^[[:space:]]*server_names_hash_bucket_size 128;" /etc/nginx/nginx.conf; then
@@ -140,11 +206,13 @@ ufw --force reset >/dev/null
 ufw default deny incoming >/dev/null
 ufw default allow outgoing >/dev/null
 ufw allow 22/tcp >/dev/null
+ufw allow 53/udp >/dev/null  # DNS for acme-dns
+ufw allow 53/tcp >/dev/null  # DNS for acme-dns
 ufw allow 80/tcp >/dev/null
 ufw allow 443/tcp >/dev/null
 
 ufw --force enable >/dev/null
-echo "  Firewall enabled (SSH + HTTP/HTTPS)"
+echo "  Firewall enabled (SSH + DNS + HTTP/HTTPS)"
 
 # =============================================================================
 # 4. Add-site helper script
@@ -208,6 +276,7 @@ echo ""
 echo "Services:"
 echo "  Nginx:     $(systemctl is-active nginx)"
 echo "  Redis:     $(systemctl is-active redis-server)"
+echo "  acme-dns:  $(systemctl is-active acme-dns)"
 
 echo ""
 echo "========================================="
@@ -221,17 +290,24 @@ echo "  Internet -> :80/:443 -> nginx -> site files"
 echo ""
 echo "Sites directory: $SITES_DIR"
 echo ""
-echo "To add a new site:"
-echo "  add-site example.com"
-echo "  add-site example.com subdomain"
-echo ""
 echo "========================================="
-echo "  NEXT: Install Botection for protection"
+echo "  NEXT STEPS"
 echo "========================================="
 echo ""
-echo "  git clone https://github.com/robertp2083/antibot.git /var/www/antibot"
-echo "  cd /var/www/antibot && SERVER_TYPE=templates bash deploy.sh"
+echo "1. Add DNS records for acme-dns (if not already done):"
+echo "   ${ACME_DOMAIN}  A   $VPS_IP"
+echo "   ${ACME_DOMAIN}  NS  ${ACME_DOMAIN}"
+echo ""
+echo "2. Add this server to botginx panel at /admin/servers"
+echo ""
+echo "3. Install Botection for protection:"
+echo "   git clone https://github.com/robertp2083/antibot.git /var/www/antibot"
+echo "   cd /var/www/antibot && SERVER_TYPE=templates bash deploy.sh"
 echo ""
 echo "After botection is installed, traffic flow becomes:"
 echo "  Internet -> :80/:443 -> nginx -> botection:8080 -> nginx:8081 -> site files"
+echo ""
+echo "Wildcard SSL (CNAME delegation):"
+echo "  Users add: _acme-challenge.domain.com CNAME xxx.${ACME_DOMAIN}"
+echo "  Renewals are automatic - no user action needed"
 echo ""

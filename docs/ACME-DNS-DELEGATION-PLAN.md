@@ -530,3 +530,172 @@ If acme-dns server is down:
 - Show error: "SSL service temporarily unavailable"
 - Domains with existing valid SSL continue working
 - Queue failed generations for retry when service recovers
+
+---
+
+## Deploy Script Updates
+
+When provisioning a fresh Deploy VPS, the deploy scripts must automatically install and configure acme-dns.
+
+### Files to Update
+
+| Script | Purpose | Changes Needed |
+|--------|---------|----------------|
+| `deploy.sh` | Production deploy (Guard VPS) | No changes (Guard VPS doesn't run acme-dns) |
+| `deploy-cloudpanel.sh` | Provision CloudPanel hosting | No changes (Hosting module, not redirect links) |
+| `deploy-hestia.sh` | Provision HestiaCP hosting | No changes (Hosting module) |
+| **New: `setup-deploy-vps.sh`** | Provision fresh Deploy VPS | Install nginx, lego, acme-dns, firewall |
+
+### New Script: setup-deploy-vps.sh
+
+Create a script to provision a fresh Deploy VPS with all required components:
+
+```bash
+#!/bin/bash
+# setup-deploy-vps.sh - Provision a fresh Deploy VPS for redirect links
+# Usage: SSH_HOST=x.x.x.x SSH_USER=root SSH_PASS=xxx ./setup-deploy-vps.sh
+
+set -e
+
+# Required environment variables
+: "${SSH_HOST:?SSH_HOST is required}"
+: "${SSH_USER:?SSH_USER is required}"
+: "${SSH_PASS:?SSH_PASS is required}"
+: "${ACME_DOMAIN:=acme.guardbot.sbs}"
+
+echo "=== Provisioning Deploy VPS at $SSH_HOST ==="
+
+sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST bash << 'REMOTE_SCRIPT'
+set -e
+
+echo ">>> Installing dependencies..."
+apt-get update
+apt-get install -y nginx certbot curl jq
+
+echo ">>> Installing lego v5.3.0..."
+cd /tmp
+curl -fsSL "https://github.com/go-acme/lego/releases/download/v5.3.0/lego_v5.3.0_linux_amd64.tar.gz" -o lego.tar.gz
+tar xzf lego.tar.gz lego
+mv -f lego /usr/local/bin/
+chmod +x /usr/local/bin/lego
+rm -f lego.tar.gz
+lego --version
+
+echo ">>> Installing acme-dns..."
+cd /tmp
+curl -fsSL "https://github.com/joohoi/acme-dns/releases/download/v1.0/acme-dns_1.0_linux_amd64.tar.gz" -o acme-dns.tar.gz
+tar xzf acme-dns_1.0_linux_amd64.tar.gz
+mv -f acme-dns /usr/local/bin/
+chmod +x /usr/local/bin/acme-dns
+rm -f acme-dns.tar.gz
+
+echo ">>> Configuring acme-dns..."
+mkdir -p /etc/acme-dns /var/lib/acme-dns
+
+# Get server's public IP
+SERVER_IP=$(curl -s https://api.ipify.org)
+
+cat > /etc/acme-dns/config.cfg << EOF
+[general]
+listen = "0.0.0.0:53"
+protocol = "both"
+domain = "ACME_DOMAIN_PLACEHOLDER"
+nsname = "ACME_DOMAIN_PLACEHOLDER"
+nsadmin = "admin.guardbot.sbs"
+records = [
+    "ACME_DOMAIN_PLACEHOLDER. A $SERVER_IP",
+]
+debug = false
+
+[database]
+engine = "sqlite3"
+connection = "/var/lib/acme-dns/acme-dns.db"
+
+[api]
+ip = "127.0.0.1"
+port = "8053"
+tls = "none"
+
+[logconfig]
+loglevel = "info"
+logformat = "text"
+EOF
+
+# Replace placeholder (done outside heredoc to preserve variable)
+sed -i "s/ACME_DOMAIN_PLACEHOLDER/$ACME_DOMAIN/g" /etc/acme-dns/config.cfg
+
+echo ">>> Creating acme-dns systemd service..."
+cat > /etc/systemd/system/acme-dns.service << 'EOF'
+[Unit]
+Description=acme-dns server for ACME DNS-01 challenges
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/acme-dns -c /etc/acme-dns/config.cfg
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable acme-dns
+systemctl start acme-dns
+
+echo ">>> Configuring firewall..."
+ufw allow 22/tcp   # SSH
+ufw allow 53/udp   # DNS
+ufw allow 53/tcp   # DNS
+ufw allow 80/tcp   # HTTP (Let's Encrypt validation)
+ufw allow 443/tcp  # HTTPS
+ufw --force enable
+
+echo ">>> Creating directories..."
+mkdir -p /var/www/sites
+mkdir -p /etc/letsencrypt/live
+
+echo ">>> Verifying installation..."
+lego --version
+systemctl status acme-dns --no-pager || true
+curl -s http://127.0.0.1:8053/health || echo "(acme-dns health check - may need DNS configured)"
+
+echo ">>> Deploy VPS provisioning complete!"
+echo ""
+echo "NEXT STEPS:"
+echo "1. Add DNS records for acme.guardbot.sbs:"
+echo "   acme.guardbot.sbs  A   $SERVER_IP"
+echo "   acme.guardbot.sbs  NS  acme.guardbot.sbs"
+echo ""
+echo "2. Add this server to botginx panel at /admin/servers"
+echo ""
+echo "3. Test acme-dns: dig @$SERVER_IP acme.guardbot.sbs"
+REMOTE_SCRIPT
+
+echo "=== Deploy VPS provisioning complete ==="
+```
+
+### Integration with Existing Deploy Scripts
+
+The existing `deploy.sh` deploys the **botginx binary to Guard VPS**. It should NOT be modified for acme-dns since Guard VPS doesn't run acme-dns.
+
+**Recommended approach:**
+1. Keep `deploy.sh` for Guard VPS (botginx panel)
+2. Add `setup-deploy-vps.sh` for Deploy VPS (nginx + lego + acme-dns)
+3. Document the two-server setup in `docs/DEPLOYMENT.md`
+
+### Auto-Setup via Botginx Panel (Future Enhancement)
+
+Add a button in `/admin/servers` to auto-provision a new Deploy VPS:
+
+```go
+// POST /admin/servers/api/{id}/provision
+func (h *Handler) APIProvisionServer(w http.ResponseWriter, r *http.Request) {
+    // 1. SSH to server
+    // 2. Run setup commands (nginx, lego, acme-dns)
+    // 3. Return success/failure
+}
+```
+
+This allows admins to add a fresh VPS IP and have botginx configure it automatically.
