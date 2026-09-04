@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"embed"
+	"encoding/json"
 	"io/fs"
 	"net/http"
 
@@ -49,6 +50,11 @@ func (m *Module) Routes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", m.handleDashboard)
+
+	// API endpoints for charts
+	r.Get("/api/timeline", m.apiTimeline)
+	r.Get("/api/countries", m.apiCountries)
+	r.Get("/api/visitors", m.apiVisitors)
 
 	return r
 }
@@ -197,4 +203,121 @@ func (m *Module) MenuItems() []module.MenuItem {
 
 func (m *Module) Widgets() []module.Widget {
 	return nil
+}
+
+// API handlers for dashboard charts
+
+type timelinePoint struct {
+	Time    string `db:"time_bucket" json:"time"`
+	Total   int    `db:"total" json:"total"`
+	Blocked int    `db:"blocked" json:"blocked"`
+	Unique  int    `db:"unique_count" json:"unique"`
+}
+
+func (m *Module) apiTimeline(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "hourly"
+	}
+
+	var query string
+	switch period {
+	case "hourly":
+		query = `
+			SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
+				COUNT(*) as total,
+				COUNT(*) FILTER (WHERE blocked = true) as blocked,
+				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+			FROM visits
+			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+			GROUP BY time_bucket
+			ORDER BY time_bucket
+		`
+	case "daily":
+		query = `
+			SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as time_bucket,
+				COUNT(*) as total,
+				COUNT(*) FILTER (WHERE blocked = true) as blocked,
+				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+			FROM visits
+			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '7 days'
+			GROUP BY time_bucket
+			ORDER BY time_bucket
+		`
+	case "monthly":
+		query = `
+			SELECT TO_CHAR(created_at, 'YYYY-MM') as time_bucket,
+				COUNT(*) as total,
+				COUNT(*) FILTER (WHERE blocked = true) as blocked,
+				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+			FROM visits
+			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '12 months'
+			GROUP BY time_bucket
+			ORDER BY time_bucket
+		`
+	default:
+		query = `
+			SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
+				COUNT(*) as total,
+				COUNT(*) FILTER (WHERE blocked = true) as blocked,
+				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+			FROM visits
+			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+			GROUP BY time_bucket
+			ORDER BY time_bucket
+		`
+	}
+
+	var timeline []timelinePoint
+	m.DB().Select(&timeline, query, userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(timeline)
+}
+
+type countryStats struct {
+	Country string `db:"country" json:"country"`
+	Count   int    `db:"count" json:"count"`
+}
+
+func (m *Module) apiCountries(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+
+	var countries []countryStats
+	m.DB().Select(&countries, `
+		SELECT country, COUNT(*) as count
+		FROM visits
+		WHERE user_id = $1 AND country != ''
+		GROUP BY country
+		ORDER BY count DESC
+		LIMIT 20
+	`, userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(countries)
+}
+
+type visitorPoint struct {
+	Lat     float64 `db:"lat" json:"lat"`
+	Lng     float64 `db:"lng" json:"lng"`
+	Country string  `db:"country" json:"country"`
+	City    string  `db:"city" json:"city"`
+	Blocked bool    `db:"blocked" json:"blocked"`
+}
+
+func (m *Module) apiVisitors(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+
+	var points []visitorPoint
+	m.DB().Select(&points, `
+		SELECT latitude as lat, longitude as lng, country, city, blocked
+		FROM visits
+		WHERE user_id = $1 AND latitude != 0 AND longitude != 0
+		ORDER BY created_at DESC
+		LIMIT 500
+	`, userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(points)
 }

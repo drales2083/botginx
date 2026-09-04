@@ -570,3 +570,86 @@ func contains(slice []string, item string) bool {
 	}
 	return false
 }
+
+// GetUserCountryStats returns visits by country for all user's links
+func (s *AnalyticsService) GetUserCountryStats(userID string, limit int) ([]models.CountryStats, error) {
+	var stats []models.CountryStats
+	err := s.db.Select(&stats, `
+		SELECT country, COUNT(*) as count
+		FROM visits
+		WHERE user_id = $1 AND country != ''
+		GROUP BY country
+		ORDER BY count DESC
+		LIMIT $2
+	`, userID, limit)
+	return stats, err
+}
+
+// GetUserTimelineMultiSeries returns timeline with total, blocked, and unique visits
+func (s *AnalyticsService) GetUserTimelineMultiSeries(userID string, period string) ([]models.TimelineMultiPoint, error) {
+	var query string
+	switch period {
+	case "hourly":
+		query = `
+			SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
+				COUNT(*) as total,
+				COUNT(*) FILTER (WHERE blocked = true) as blocked,
+				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+			FROM visits
+			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+			GROUP BY time_bucket
+			ORDER BY time_bucket
+		`
+	case "daily":
+		query = `
+			SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as time_bucket,
+				COUNT(*) as total,
+				COUNT(*) FILTER (WHERE blocked = true) as blocked,
+				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+			FROM visits
+			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '7 days'
+			GROUP BY time_bucket
+			ORDER BY time_bucket
+		`
+	case "monthly":
+		query = `
+			SELECT TO_CHAR(created_at, 'YYYY-MM') as time_bucket,
+				COUNT(*) as total,
+				COUNT(*) FILTER (WHERE blocked = true) as blocked,
+				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+			FROM visits
+			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '12 months'
+			GROUP BY time_bucket
+			ORDER BY time_bucket
+		`
+	default:
+		query = `
+			SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
+				COUNT(*) as total,
+				COUNT(*) FILTER (WHERE blocked = true) as blocked,
+				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+			FROM visits
+			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+			GROUP BY time_bucket
+			ORDER BY time_bucket
+		`
+	}
+
+	var timeline []models.TimelineMultiPoint
+	err := s.db.Select(&timeline, query, userID)
+	return timeline, err
+}
+
+// GetUserVisitorPoints returns lat/lng points for map visualization
+func (s *AnalyticsService) GetUserVisitorPoints(userID string, limit int) ([]models.VisitorPoint, error) {
+	var points []models.VisitorPoint
+	err := s.db.Select(&points, `
+		SELECT latitude as lat, longitude as lng, country, city,
+			created_at as time, blocked
+		FROM visits
+		WHERE user_id = $1 AND latitude != 0 AND longitude != 0
+		ORDER BY created_at DESC
+		LIMIT $2
+	`, userID, limit)
+	return points, err
+}

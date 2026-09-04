@@ -187,3 +187,19 @@ type ThreatStats struct {
 	AutomationCount int `json:"automationCount"`
 	LowBehaviorCount int `json:"lowBehaviorCount"`
 }
+
+type TimelineMultiPoint struct {
+	Time    string `db:"time_bucket" json:"time"`
+	Total   int    `db:"total" json:"total"`
+	Blocked int    `db:"blocked" json:"blocked"`
+	Unique  int    `db:"unique_count" json:"unique"`
+}
+
+type VisitorPoint struct {
+	Lat     float64   `db:"lat" json:"lat"`
+	Lng     float64   `db:"lng" json:"lng"`
+	Country string    `db:"country" json:"country"`
+	City    string    `db:"city" json:"city"`
+	Time    time.Time `db:"time" json:"time"`
+	Blocked bool      `db:"blocked" json:"blocked"`
+}

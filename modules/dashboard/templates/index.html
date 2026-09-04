@@ -139,68 +139,223 @@
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-6">
-        <div class="card h-100">
+<!-- Traffic Analytics -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="card-title mb-0">{{t "domains.title"}}</h3>
-                <a href="/user/domains" class="btn btn-sm btn-outline-primary">View All</a>
-            </div>
-            <div class="card-body p-0">
-                {{if .Domains}}
-                <ul class="list-group list-group-flush">
-                    {{range .Domains}}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <a href="/user/domains/{{.ID}}" class="text-decoration-none">{{.Name}}</a>
-                        {{if eq .SSLStatus "ready"}}
-                        <span class="badge bg-success">SSL Ready</span>
-                        {{else if eq .SSLStatus "pending"}}
-                        <span class="badge bg-warning">SSL Pending</span>
-                        {{else}}
-                        <span class="badge bg-secondary">{{.SSLStatus}}</span>
-                        {{end}}
-                    </li>
-                    {{end}}
-                </ul>
-                {{else}}
-                <div class="p-3">
-                    <p class="text-muted mb-0">Add a domain to deploy your links to. <a href="/user/domains/new">{{t "domains.add"}}</a></p>
+                <h5 class="card-title mb-0"><i class="bi bi-graph-up me-2"></i>Traffic Overview</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary period-btn active" data-period="hourly">24 Hours</button>
+                    <button class="btn btn-outline-primary period-btn" data-period="daily">7 Days</button>
+                    <button class="btn btn-outline-primary period-btn" data-period="monthly">12 Months</button>
                 </div>
-                {{end}}
             </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="card-title mb-0">{{t "redirectlinks.title"}}</h3>
-                <a href="/user/redirectlinks" class="btn btn-sm btn-outline-primary">View All</a>
-            </div>
-            <div class="card-body p-0">
-                {{if .Links}}
-                <ul class="list-group list-group-flush">
-                    {{range .Links}}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <a href="/user/redirectlinks/{{.ID}}" class="text-decoration-none text-truncate" style="max-width:200px">
-                            {{.Subdomain}}.{{.DomainName}}{{if .Path}}/{{.Path}}{{end}}
-                        </a>
-                        {{if eq .DeployStatus "deployed"}}
-                        <span class="badge bg-success">Deployed</span>
-                        {{else if eq .DeployStatus "pending"}}
-                        <span class="badge bg-warning">Pending</span>
-                        {{else}}
-                        <span class="badge bg-danger">Failed</span>
-                        {{end}}
-                    </li>
-                    {{end}}
-                </ul>
-                {{else}}
-                <div class="p-3">
-                    <p class="text-muted mb-0">{{t "redirectlinks.no_links"}} <a href="/user/redirectlinks/new">{{t "redirectlinks.create"}}</a></p>
+            <div class="card-body">
+                <canvas id="traffic-chart" height="280"></canvas>
+                <div id="chart-empty" class="text-center text-muted py-5 d-none">
+                    <i class="bi bi-graph-up" style="font-size:3rem"></i>
+                    <p class="mt-2 mb-0">No traffic data yet</p>
                 </div>
-                {{end}}
             </div>
         </div>
     </div>
 </div>
+
+<!-- Visitor Map -->
+<div class="row g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-geo-alt me-2"></i>Visitor Map</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="vmap-layout">
+                    <div class="vmap-container">
+                        <div id="visitor-map" class="vmap-host"></div>
+                        <div class="vmap-legend">
+                            <div class="row"><span class="dot" style="background:#22d3ee"></span> Allowed</div>
+                            <div class="row"><span class="dot" style="background:#ef4444"></span> Blocked</div>
+                        </div>
+                        <div id="map-empty" class="vmap-empty d-none">No geolocated visits yet</div>
+                    </div>
+                    <div class="vmap-sidebar">
+                        <h4>Top Countries</h4>
+                        <div id="country-list">
+                            <div class="text-muted small text-center py-3">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.vmap-layout { display:flex; gap:0; height:420px; }
+.vmap-container { flex:1; min-width:0; position:relative; }
+.vmap-host { width:100%; height:420px; }
+.vmap-sidebar { width:200px; flex-shrink:0; padding:16px; overflow-y:auto; border-left:1px solid var(--bs-border-color); }
+@media(max-width:768px) { .vmap-layout{flex-direction:column;height:auto;} .vmap-host{height:300px;} .vmap-sidebar{width:100%;max-height:200px;border-left:none;border-top:1px solid var(--bs-border-color);} }
+.vmap-legend { position:absolute; bottom:10px; left:10px; z-index:1000; border-radius:6px; padding:6px 10px; font-size:11px; background:rgba(15,23,42,.85); border:1px solid rgba(255,255,255,.08); color:#d1d5db; }
+.vmap-legend .row { display:flex; align-items:center; gap:6px; margin-bottom:2px; }
+.vmap-legend .row:last-child { margin-bottom:0; }
+.vmap-legend .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+.vmap-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#6b7280; font-size:13px; pointer-events:none; background:rgba(0,0,0,.3); }
+.vmap-sidebar h4 { font-size:10px; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; margin:0 0 12px; }
+.vmap-country-row { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-radius:5px; margin-bottom:2px; }
+.vmap-country-row:hover { background:rgba(255,255,255,.04); }
+.vmap-country-row .left { display:flex; align-items:center; gap:8px; font-size:13px; }
+.vmap-country-row .count { font-size:12px; color:#9ca3af; }
+.leaflet-popup-content-wrapper { background:rgba(15,23,42,.92)!important; color:#e2e8f0!important; border:1px solid rgba(255,255,255,.1)!important; border-radius:8px!important; }
+.leaflet-popup-tip { background:rgba(15,23,42,.92)!important; }
+.leaflet-control-zoom a { background:rgba(15,23,42,.8)!important; color:#e2e8f0!important; border-color:rgba(255,255,255,.1)!important; }
+.marker-cluster-small { background:rgba(34,211,238,.25)!important; }
+.marker-cluster-small div { background:rgba(34,211,238,.6)!important; color:#fff!important; }
+.marker-cluster-medium { background:rgba(16,185,129,.25)!important; }
+.marker-cluster-medium div { background:rgba(16,185,129,.6)!important; color:#fff!important; }
+.marker-cluster-large { background:rgba(245,158,11,.25)!important; }
+.marker-cluster-large div { background:rgba(245,158,11,.6)!important; color:#fff!important; }
+</style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<script>
+// Flag emoji from country code
+function flagEmoji(code) {
+    if (!code || code.length !== 2) return '🌐';
+    return String.fromCodePoint(code.charCodeAt(0)+127397, code.charCodeAt(1)+127397);
+}
+
+// Traffic Chart
+let trafficChart = null;
+
+async function loadChart(period) {
+    const res = await fetch('/user/dashboard/api/timeline?period=' + period);
+    const data = await res.json();
+
+    const canvas = document.getElementById('traffic-chart');
+    const empty = document.getElementById('chart-empty');
+
+    if (!data || data.length === 0) {
+        canvas.style.display = 'none';
+        empty.classList.remove('d-none');
+        return;
+    }
+    canvas.style.display = 'block';
+    empty.classList.add('d-none');
+
+    const labels = data.map(d => {
+        if (period === 'monthly') return d.time;
+        if (period === 'daily') return d.time.slice(5);
+        return d.time.slice(11, 16);
+    });
+
+    if (trafficChart) trafficChart.destroy();
+
+    trafficChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Total Visitors', data: data.map(d => d.total), borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,.1)', fill: true, tension: .3 },
+                { label: 'Blocked', data: data.map(d => d.blocked), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.1)', fill: true, tension: .3 },
+                { label: 'Unique', data: data.map(d => d.unique), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.1)', fill: true, tension: .3 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadChart(btn.dataset.period);
+    });
+});
+
+// Visitor Map
+let visitorMap = null;
+
+async function loadMap() {
+    const [pointsRes, countriesRes] = await Promise.all([
+        fetch('/user/dashboard/api/visitors'),
+        fetch('/user/dashboard/api/countries')
+    ]);
+    const points = await pointsRes.json();
+    const countries = await countriesRes.json();
+
+    const mapEl = document.getElementById('visitor-map');
+    const empty = document.getElementById('map-empty');
+    const countryList = document.getElementById('country-list');
+
+    // Country sidebar
+    if (!countries || countries.length === 0) {
+        countryList.innerHTML = '<div class="text-muted small text-center py-3">No visitors yet</div>';
+    } else {
+        countryList.innerHTML = countries.slice(0, 12).map(c => `
+            <div class="vmap-country-row">
+                <div class="left">
+                    <span>${flagEmoji(c.country)}</span>
+                    <span>${c.country || '—'}</span>
+                </div>
+                <span class="count">${c.count}</span>
+            </div>
+        `).join('');
+    }
+
+    // Map
+    if (!points || points.length === 0) {
+        empty.classList.remove('d-none');
+    } else {
+        empty.classList.add('d-none');
+    }
+
+    if (visitorMap) visitorMap.remove();
+
+    visitorMap = L.map('visitor-map', { center: [20, 0], zoom: 2, minZoom: 2, maxZoom: 12, zoomControl: true, attributionControl: false });
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }).addTo(visitorMap);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, pane: 'overlayPane' }).addTo(visitorMap);
+
+    if (points && points.length > 0) {
+        const cluster = L.markerClusterGroup({ maxClusterRadius: 40, showCoverageOnHover: false });
+        const heat = [];
+
+        points.forEach(p => {
+            const color = p.blocked ? '#ef4444' : '#22d3ee';
+            const m = L.circleMarker([p.lat, p.lng], { radius: 6, fillColor: color, color: color, weight: 2, opacity: .6, fillOpacity: .8 });
+            const where = [p.city, p.country].filter(Boolean).join(', ') || 'Unknown';
+            m.bindPopup(`<div style="font-weight:600">${flagEmoji(p.country)} ${where}</div><div style="margin-top:4px"><span style="background:${p.blocked?'rgba(239,68,68,.25)':'rgba(34,211,238,.25)'};color:${p.blocked?'#f87171':'#22d3ee'};padding:2px 6px;border-radius:4px;font-size:10px">${p.blocked?'blocked':'allowed'}</span></div>`, { closeButton: false });
+            cluster.addLayer(m);
+            heat.push([p.lat, p.lng, p.blocked ? 0.8 : 0.4]);
+        });
+
+        visitorMap.addLayer(cluster);
+        L.heatLayer(heat, { radius: 25, blur: 18, maxZoom: 8, gradient: { 0.2: '#22d3ee', 0.5: '#10b981', 0.8: '#ef4444', 1.0: '#ef4444' } }).addTo(visitorMap);
+
+        const bounds = cluster.getBounds();
+        if (bounds.isValid()) visitorMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 5 });
+    }
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    loadChart('hourly');
+    loadMap();
+});
+</script>
 {{end}}
