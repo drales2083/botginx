@@ -334,10 +334,11 @@ async function loadMap() {
     if (points && points.length > 0) {
         const cluster = L.markerClusterGroup({ maxClusterRadius: 40, showCoverageOnHover: false });
         const heat = [];
+        const jitter = () => (Math.random() - 0.5) * 0.001;
 
         points.forEach(p => {
             const color = p.blocked ? '#ef4444' : '#22d3ee';
-            const m = L.circleMarker([p.lat, p.lng], { radius: 6, fillColor: color, color: color, weight: 2, opacity: .6, fillOpacity: .8 });
+            const m = L.circleMarker([p.lat + jitter(), p.lng + jitter()], { radius: 6, fillColor: color, color: color, weight: 2, opacity: .6, fillOpacity: .8 });
             const where = [p.city, p.country].filter(Boolean).join(', ') || 'Unknown';
             m.bindPopup(`<div style="font-weight:600">${flagEmoji(p.country)} ${where}</div><div style="margin-top:4px"><span style="background:${p.blocked?'rgba(239,68,68,.25)':'rgba(34,211,238,.25)'};color:${p.blocked?'#f87171':'#22d3ee'};padding:2px 6px;border-radius:4px;font-size:10px">${p.blocked?'blocked':'allowed'}</span></div>`, { closeButton: false });
             cluster.addLayer(m);
