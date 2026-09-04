@@ -38,67 +38,84 @@
                     <!-- IP & Networks Tab -->
                     <div class="tab-pane active show" id="tab_networks" role="tabpanel">
                         <div class="row g-3">
-                            <div class="col-12">
-                                <div class="card border mb-0">
+                            <div class="col-lg-6">
+                                <div class="card border h-100 mb-0">
                                     <div class="card-body">
                                         <div class="d-flex align-items-center justify-content-between mb-3">
                                             <h5 class="card-title mb-0">
-                                                <i class="bi bi-hdd-network text-primary me-1"></i>ASN Filtering
-                                                <span class="badge bg-primary ms-1" id="asn_count">0</span>
+                                                <i class="bi bi-x-circle text-danger me-1"></i>Blocked ASNs
+                                                <span class="badge bg-danger ms-1" id="asn_blk_count">0</span>
                                             </h5>
-                                        </div>
-                                        <p class="text-muted small mb-3">Block or allow entire networks/ISPs by AS number. Find ASNs at <a href="https://bgp.he.net" target="_blank">bgp.he.net</a></p>
-
-                                        <div class="row g-3 mb-3">
-                                            <div class="col-lg-4">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="asnMode" value="allow" id="asn_mode_allow"
-                                                        {{if or (eq .Settings.ASNMode "allow") (eq .Settings.ASNMode "")}}checked{{end}}>
-                                                    <label class="form-check-label" for="asn_mode_allow">
-                                                        <i class="bi bi-globe2 text-muted me-1"></i>Allow All
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-4">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="asnMode" value="blacklist" id="asn_mode_blacklist"
-                                                        {{if eq .Settings.ASNMode "blacklist"}}checked{{end}}>
-                                                    <label class="form-check-label" for="asn_mode_blacklist">
-                                                        <i class="bi bi-x-circle text-danger me-1"></i>Block Listed
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-4">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="asnMode" value="whitelist" id="asn_mode_whitelist"
-                                                        {{if eq .Settings.ASNMode "whitelist"}}checked{{end}}>
-                                                    <label class="form-check-label" for="asn_mode_whitelist">
-                                                        <i class="bi bi-check-circle text-success me-1"></i>Allow Listed Only
-                                                    </label>
-                                                </div>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="radio" name="asnMode" value="blacklist" id="asn_mode_blacklist"
+                                                    {{if eq .Settings.ASNMode "blacklist"}}checked{{end}}>
                                             </div>
                                         </div>
+                                        <p class="text-muted small mb-2">Block traffic from these networks/ISPs</p>
+                                        <div class="input-group mb-2">
+                                            <input type="text" class="form-control form-control-sm" id="asnBlockInput" placeholder="AS14061, AS16509...">
+                                            <button class="btn btn-outline-danger btn-sm" type="button" onclick="addASN('block')">
+                                                <i class="bi bi-plus-lg"></i>
+                                            </button>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-1 mb-2" id="asn_block_tags" style="min-height: 32px;"></div>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <small class="text-muted"><span id="asn_blk_display">0</span> networks</small>
+                                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="clearASNs('block')">Clear</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                                        <div id="asn_list_container" style="{{if or (eq .Settings.ASNMode "allow") (eq .Settings.ASNMode "")}}display:none{{end}}">
-                                            <div class="input-group mb-2">
-                                                <input type="text" class="form-control" id="asnInput" placeholder="AS14061, AS16509, AS13335...">
-                                                <button class="btn btn-outline-primary" type="button" onclick="addASN()">
-                                                    <i class="bi bi-plus-lg"></i> Add
-                                                </button>
+                            <div class="col-lg-6">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-3">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-check-circle text-success me-1"></i>Allowed ASNs Only
+                                                <span class="badge bg-success ms-1" id="asn_allow_count">0</span>
+                                            </h5>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="radio" name="asnMode" value="whitelist" id="asn_mode_whitelist"
+                                                    {{if eq .Settings.ASNMode "whitelist"}}checked{{end}}>
                                             </div>
-                                            <div class="d-flex flex-wrap gap-2 mb-2" id="asn_tags"></div>
-                                            <small class="text-muted">
-                                                <i class="bi bi-info-circle me-1"></i>Common ASNs: AS14061 (DigitalOcean), AS16509 (Amazon AWS), AS15169 (Google Cloud), AS13335 (Cloudflare)
-                                            </small>
+                                        </div>
+                                        <p class="text-muted small mb-2">Only allow traffic from these networks</p>
+                                        <div class="input-group mb-2">
+                                            <input type="text" class="form-control form-control-sm" id="asnAllowInput" placeholder="AS7922, AS701...">
+                                            <button class="btn btn-outline-success btn-sm" type="button" onclick="addASN('allow')">
+                                                <i class="bi bi-plus-lg"></i>
+                                            </button>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-1 mb-2" id="asn_allow_tags" style="min-height: 32px;"></div>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <small class="text-muted"><span id="asn_allow_display">0</span> networks</small>
+                                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="clearASNs('allow')">Clear</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="col-12">
-                                <div class="alert alert-info mb-0">
-                                    <i class="bi bi-lightbulb me-2"></i>
-                                    <strong>Tip:</strong> Use ASN filtering to block entire hosting providers (AWS, GCP, DigitalOcean) or allow only specific ISPs. This is more reliable than IP blocking since IP ranges change frequently.
+                                <div class="card border mb-0">
+                                    <div class="card-body">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="asnMode" value="allow" id="asn_mode_allow"
+                                                {{if or (eq .Settings.ASNMode "allow") (eq .Settings.ASNMode "")}}checked{{end}}>
+                                            <label class="form-check-label" for="asn_mode_allow">
+                                                <i class="bi bi-globe2 me-1"></i><strong>Allow All Networks</strong>
+                                                <span class="text-muted ms-2">— No ASN restrictions</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="alert alert-secondary mb-0 small">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    <strong>Common ASNs:</strong> AS14061 (DigitalOcean), AS16509 (AWS), AS15169 (Google), AS13335 (Cloudflare), AS7922 (Comcast), AS701 (Verizon).
+                                    Find more at <a href="https://bgp.he.net" target="_blank">bgp.he.net</a>
                                 </div>
                             </div>
                         </div>
@@ -404,48 +421,64 @@ const selectedCountries = {
     allow: new Set()
 };
 
-// ASN list management
-const asnList = new Set();
-const existingASNs = {{json .Settings.ASNList}};
-if (existingASNs) existingASNs.forEach(asn => asnList.add(asn));
+// ASN list management (similar to countries)
+const selectedASNs = {
+    block: new Set(),
+    allow: new Set()
+};
 
-function renderASNTags() {
-    const container = document.getElementById('asn_tags');
-    container.innerHTML = Array.from(asnList).map(asn => `
-        <span class="badge bg-secondary d-flex align-items-center gap-1">
-            ${asn}
-            <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;" onclick="removeASN('${asn}')"></button>
-        </span>
-    `).join('');
-    document.getElementById('asn_count').textContent = asnList.size;
+// Load existing ASN settings
+const existingASNs = {{if .Settings.ASNList}}{{.Settings.ASNList}}{{else}}[]{{end}};
+const asnMode = "{{.Settings.ASNMode}}";
+if (asnMode === "blacklist") {
+    existingASNs.forEach(asn => selectedASNs.block.add(asn));
+} else if (asnMode === "whitelist") {
+    existingASNs.forEach(asn => selectedASNs.allow.add(asn));
 }
 
-function addASN() {
-    const input = document.getElementById('asnInput');
+function renderASNTags(type) {
+    const container = document.getElementById('asn_' + type + '_tags');
+    const color = type === 'block' ? 'danger' : 'success';
+    container.innerHTML = Array.from(selectedASNs[type]).map(asn => `
+        <span class="badge bg-${color} d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+            ${asn}
+            <button type="button" class="btn-close btn-close-white" style="font-size: 0.5rem;" onclick="removeASN('${type}', '${asn}')"></button>
+        </span>
+    `).join('');
+    updateASNCounters();
+}
+
+function updateASNCounters() {
+    document.getElementById('asn_blk_count').textContent = selectedASNs.block.size;
+    document.getElementById('asn_blk_display').textContent = selectedASNs.block.size;
+    document.getElementById('asn_allow_count').textContent = selectedASNs.allow.size;
+    document.getElementById('asn_allow_display').textContent = selectedASNs.allow.size;
+}
+
+function addASN(type) {
+    const inputId = type === 'block' ? 'asnBlockInput' : 'asnAllowInput';
+    const input = document.getElementById(inputId);
     const values = input.value.split(/[,\s]+/).filter(v => v.trim());
     values.forEach(v => {
         let asn = v.trim().toUpperCase();
         if (!asn.startsWith('AS')) asn = 'AS' + asn;
         if (/^AS\d+$/.test(asn)) {
-            asnList.add(asn);
+            selectedASNs[type].add(asn);
         }
     });
     input.value = '';
-    renderASNTags();
+    renderASNTags(type);
 }
 
-function removeASN(asn) {
-    asnList.delete(asn);
-    renderASNTags();
+function removeASN(type, asn) {
+    selectedASNs[type].delete(asn);
+    renderASNTags(type);
 }
 
-// Toggle ASN list visibility based on mode
-document.querySelectorAll('input[name="asnMode"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        const container = document.getElementById('asn_list_container');
-        container.style.display = this.value === 'allow' ? 'none' : '';
-    });
-});
+function clearASNs(type) {
+    selectedASNs[type].clear();
+    renderASNTags(type);
+}
 
 // Load existing country settings
 const existingCountries = {{json .Settings.CountryList}};
@@ -528,63 +561,78 @@ if (deviceList) deviceList.forEach(d => {
 document.addEventListener('DOMContentLoaded', () => {
     renderCountries('countries_block', 'block');
     renderCountries('countries_allow', 'allow');
-    renderASNTags();
+    renderASNTags('block');
+    renderASNTags('allow');
     updateScoreDisplay(document.getElementById('minBehaviorScore').value);
 });
 
 // Allow Enter key to add ASN
-document.getElementById('asnInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        addASN();
-    }
+document.getElementById('asnBlockInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); addASN('block'); }
+});
+document.getElementById('asnAllowInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); addASN('allow'); }
 });
 
 // Save
 document.getElementById('save-btn').addEventListener('click', async () => {
-    const mode = document.querySelector('input[name="countryMode"]:checked').value;
-    let countryList = [];
-    if (mode === 'blacklist') {
-        countryList = Array.from(selectedCountries.block);
-    } else if (mode === 'whitelist') {
-        countryList = Array.from(selectedCountries.allow);
-    }
-
-    const deviceListSel = Array.from(document.querySelectorAll('.device-check:checked')).map(c => c.value);
-    const asnMode = document.querySelector('input[name="asnMode"]:checked').value;
-
-    const data = {
-        countryMode: mode,
-        countryList: countryList,
-        asnMode: asnMode,
-        asnList: Array.from(asnList),
-        deviceMode: document.getElementById('deviceMode').value,
-        deviceList: deviceListSel,
-        blockBots: document.getElementById('blockBots').checked,
-        blockTor: document.getElementById('blockTor').checked,
-        blockProxy: document.getElementById('blockProxy').checked,
-        blockDatacenter: document.getElementById('blockDatacenter').checked,
-        blockHeadless: document.getElementById('blockHeadless').checked,
-        minBehaviorScore: parseInt(document.getElementById('minBehaviorScore').value) || 0,
-        redirectOnBlock: document.getElementById('redirectOnBlock').value
-    };
-
     const btn = document.getElementById('save-btn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
-    const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainID}/settings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
+    try {
+        const countryModeEl = document.querySelector('input[name="countryMode"]:checked');
+        const mode = countryModeEl ? countryModeEl.value : 'all';
+        let countryList = [];
+        if (mode === 'blacklist') {
+            countryList = Array.from(selectedCountries.block);
+        } else if (mode === 'whitelist') {
+            countryList = Array.from(selectedCountries.allow);
+        }
 
-    if (res.ok) {
-        flashToast('Settings saved', 'success');
-    } else {
-        const d = await res.json().catch(() => ({}));
-        showToast(d.error || 'Failed to save settings', 'danger');
+        const asnModeEl = document.querySelector('input[name="asnMode"]:checked');
+        const asnModeVal = asnModeEl ? asnModeEl.value : 'allow';
+        let asnList = [];
+        if (asnModeVal === 'blacklist') {
+            asnList = Array.from(selectedASNs.block);
+        } else if (asnModeVal === 'whitelist') {
+            asnList = Array.from(selectedASNs.allow);
+        }
+
+        const deviceListSel = Array.from(document.querySelectorAll('.device-check:checked')).map(c => c.value);
+
+        const data = {
+            countryMode: mode,
+            countryList: countryList,
+            asnMode: asnModeVal,
+            asnList: asnList,
+            deviceMode: document.getElementById('deviceMode').value,
+            deviceList: deviceListSel,
+            blockBots: document.getElementById('blockBots').checked,
+            blockTor: document.getElementById('blockTor').checked,
+            blockProxy: document.getElementById('blockProxy').checked,
+            blockDatacenter: document.getElementById('blockDatacenter').checked,
+            blockHeadless: document.getElementById('blockHeadless').checked,
+            minBehaviorScore: parseInt(document.getElementById('minBehaviorScore').value) || 0,
+            redirectOnBlock: document.getElementById('redirectOnBlock').value
+        };
+
+        const res = await fetch(`/user/hosting/api/${accountID}/domains/${domainID}/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            flashToast('Settings saved', 'success');
+        } else {
+            const d = await res.json().catch(() => ({}));
+            showToast(d.error || 'Failed to save settings', 'danger');
+        }
+    } catch (err) {
+        showToast('Error saving settings', 'danger');
     }
+
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Settings';
 });
