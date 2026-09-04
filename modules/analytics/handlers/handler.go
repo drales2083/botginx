@@ -428,6 +428,16 @@ func (h *Handler) APIRecordVisit(w http.ResponseWriter, r *http.Request) {
 	}
 	visit.UserID = owner
 
+	// GeoIP lookup if country not provided
+	if visit.Country == "" && visit.IP != "" {
+		if ipInfo, err := geoip.Lookup(visit.IP); err == nil && ipInfo != nil {
+			visit.Country = ipInfo.CountryCode
+			visit.City = ipInfo.City
+			visit.Latitude = ipInfo.Latitude
+			visit.Longitude = ipInfo.Longitude
+		}
+	}
+
 	// Check if should be blocked
 	blocked, reason := h.service.ShouldBlock(
 		visit.LinkID, visit.Country, visit.Device,
@@ -812,6 +822,16 @@ func (h *Handler) handleRequestEvent(data any) {
 	visit.Device = h.detectDevice(visit.UserAgent)
 	visit.Browser = h.detectBrowser(visit.UserAgent)
 	visit.OS = h.detectOS(visit.UserAgent)
+
+	// GeoIP lookup if country not provided by webhook
+	if visit.Country == "" && visit.IP != "" {
+		if ipInfo, err := geoip.Lookup(visit.IP); err == nil && ipInfo != nil {
+			visit.Country = ipInfo.CountryCode
+			visit.City = ipInfo.City
+			visit.Latitude = ipInfo.Latitude
+			visit.Longitude = ipInfo.Longitude
+		}
+	}
 
 	// Use botection's actual decision from the action field
 	// action = "allow", "block", or "challenge"
