@@ -955,6 +955,7 @@ func (s *HostingService) GetDomainSettings(domainID string) (*models.HostingDoma
 		return nil, err
 	}
 	json.Unmarshal([]byte(settings.CountryListRaw), &settings.CountryList)
+	json.Unmarshal([]byte(settings.ASNListRaw), &settings.ASNList)
 	json.Unmarshal([]byte(settings.DeviceListRaw), &settings.DeviceList)
 	return &settings, nil
 }
@@ -962,15 +963,18 @@ func (s *HostingService) GetDomainSettings(domainID string) (*models.HostingDoma
 // UpdateDomainSettings updates antibot settings for a domain and pushes to server
 func (s *HostingService) UpdateDomainSettings(domainID string, input models.UpdateDomainSettingsInput) error {
 	countryJSON, _ := json.Marshal(input.CountryList)
+	asnJSON, _ := json.Marshal(input.ASNList)
 	deviceJSON, _ := json.Marshal(input.DeviceList)
 
 	_, err := s.db.Exec(`
 		UPDATE hosting_domain_settings SET
-			country_mode = $2, country_list = $3, device_mode = $4, device_list = $5,
-			block_bots = $6, block_tor = $7, block_proxy = $8, block_datacenter = $9, block_headless = $10,
-			min_behavior_score = $11, redirect_on_block = $12, updated_at = $13
+			country_mode = $2, country_list = $3, asn_mode = $4, asn_list = $5,
+			device_mode = $6, device_list = $7,
+			block_bots = $8, block_tor = $9, block_proxy = $10, block_datacenter = $11, block_headless = $12,
+			min_behavior_score = $13, redirect_on_block = $14, updated_at = $15
 		WHERE domain_id = $1
-	`, domainID, input.CountryMode, string(countryJSON), input.DeviceMode, string(deviceJSON),
+	`, domainID, input.CountryMode, string(countryJSON), input.ASNMode, string(asnJSON),
+		input.DeviceMode, string(deviceJSON),
 		input.BlockBots, input.BlockTor, input.BlockProxy, input.BlockDatacenter, input.BlockHeadless,
 		input.MinBehaviorScore, input.RedirectOnBlock, time.Now())
 	if err != nil {
@@ -1031,6 +1035,8 @@ func (s *HostingService) pushDomainSettingsToServer(domainID string) {
 		"block_headless":     settings.BlockHeadless,
 		"country_mode":       settings.CountryMode,
 		"country_list":       settings.CountryList,
+		"asn_mode":           settings.ASNMode,
+		"asn_list":           settings.ASNList,
 		"device_mode":        settings.DeviceMode,
 		"device_list":        settings.DeviceList,
 		"min_behavior_score": settings.MinBehaviorScore,
@@ -1109,6 +1115,8 @@ func (s *HostingService) PushDomainSettingsSync(domainID string) error {
 		"block_headless":     settings.BlockHeadless,
 		"country_mode":       settings.CountryMode,
 		"country_list":       settings.CountryList,
+		"asn_mode":           settings.ASNMode,
+		"asn_list":           settings.ASNList,
 		"device_mode":        settings.DeviceMode,
 		"device_list":        settings.DeviceList,
 		"min_behavior_score": settings.MinBehaviorScore,

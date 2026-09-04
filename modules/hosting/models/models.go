@@ -114,6 +114,9 @@ type HostingDomainSettings struct {
 	CountryMode      string    `db:"country_mode" json:"countryMode"`
 	CountryListRaw   string    `db:"country_list" json:"-"`
 	CountryList      []string  `json:"countryList"`
+	ASNMode          string    `db:"asn_mode" json:"asnMode"`
+	ASNListRaw       string    `db:"asn_list" json:"-"`
+	ASNList          []string  `json:"asnList"`
 	DeviceMode       string    `db:"device_mode" json:"deviceMode"`
 	DeviceListRaw    string    `db:"device_list" json:"-"`
 	DeviceList       []string  `json:"deviceList"`
@@ -262,6 +265,8 @@ type LinkAccountInput struct {
 type UpdateDomainSettingsInput struct {
 	CountryMode      string   `json:"countryMode"`
 	CountryList      []string `json:"countryList"`
+	ASNMode          string   `json:"asnMode"`
+	ASNList          []string `json:"asnList"`
 	DeviceMode       string   `json:"deviceMode"`
 	DeviceList       []string `json:"deviceList"`
 	BlockBots        bool     `json:"blockBots"`

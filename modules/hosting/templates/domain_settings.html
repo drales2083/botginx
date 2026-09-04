@@ -4,156 +4,351 @@
         {{template "hosting_user_nav" .}}
     </div>
     <div class="col-md-9">
-        <h4 class="mb-4"><i class="bi bi-shield-check me-2"></i>Protection Settings - {{.Domain.Domain}}</h4>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h4 class="mb-0"><i class="bi bi-shield-check me-2"></i>Protection Settings</h4>
+            <span class="badge bg-primary">{{.Domain.Domain}}</span>
+        </div>
 
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-body">
-                        <form id="settings-form">
-                            <h6 class="text-muted mb-3">Country Filtering</h6>
-                            <div class="row mb-4">
-                                <div class="col-md-4">
-                                    <label class="form-label">Mode</label>
-                                    <select class="form-select" id="countryMode" name="countryMode">
-                                        <option value="all" {{if eq .Settings.CountryMode "all"}}selected{{end}}>All Countries</option>
-                                        <option value="whitelist" {{if eq .Settings.CountryMode "whitelist"}}selected{{end}}>Whitelist Only</option>
-                                        <option value="blacklist" {{if eq .Settings.CountryMode "blacklist"}}selected{{end}}>Blacklist</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-8">
-                                    <label class="form-label">Countries (comma-separated ISO codes)</label>
-                                    <input type="text" class="form-control" id="countryList" placeholder="US, GB, DE, FR"
-                                        value="{{range $i, $c := .Settings.CountryList}}{{if $i}}, {{end}}{{$c}}{{end}}">
-                                    <small class="text-muted">Example: US, GB, DE, FR, CA</small>
+        <div class="card">
+            <div class="card-body">
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#tab_networks" role="tab">
+                            <i class="bi bi-diagram-3 me-1"></i>IP & Networks
+                        </a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tab_geo" role="tab">
+                            <i class="bi bi-globe me-1"></i>Countries
+                        </a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tab_devices" role="tab">
+                            <i class="bi bi-display me-1"></i>Devices
+                        </a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tab_det" role="tab">
+                            <i class="bi bi-sliders me-1"></i>Detection Engine
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="tab-content pt-4">
+                    <!-- IP & Networks Tab -->
+                    <div class="tab-pane active show" id="tab_networks" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="card border mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-3">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-hdd-network text-primary me-1"></i>ASN Filtering
+                                                <span class="badge bg-primary ms-1" id="asn_count">0</span>
+                                            </h5>
+                                        </div>
+                                        <p class="text-muted small mb-3">Block or allow entire networks/ISPs by AS number. Find ASNs at <a href="https://bgp.he.net" target="_blank">bgp.he.net</a></p>
+
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-lg-4">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="asnMode" value="allow" id="asn_mode_allow"
+                                                        {{if or (eq .Settings.ASNMode "allow") (eq .Settings.ASNMode "")}}checked{{end}}>
+                                                    <label class="form-check-label" for="asn_mode_allow">
+                                                        <i class="bi bi-globe2 text-muted me-1"></i>Allow All
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-4">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="asnMode" value="blacklist" id="asn_mode_blacklist"
+                                                        {{if eq .Settings.ASNMode "blacklist"}}checked{{end}}>
+                                                    <label class="form-check-label" for="asn_mode_blacklist">
+                                                        <i class="bi bi-x-circle text-danger me-1"></i>Block Listed
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-4">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="asnMode" value="whitelist" id="asn_mode_whitelist"
+                                                        {{if eq .Settings.ASNMode "whitelist"}}checked{{end}}>
+                                                    <label class="form-check-label" for="asn_mode_whitelist">
+                                                        <i class="bi bi-check-circle text-success me-1"></i>Allow Listed Only
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div id="asn_list_container" style="{{if or (eq .Settings.ASNMode "allow") (eq .Settings.ASNMode "")}}display:none{{end}}">
+                                            <div class="input-group mb-2">
+                                                <input type="text" class="form-control" id="asnInput" placeholder="AS14061, AS16509, AS13335...">
+                                                <button class="btn btn-outline-primary" type="button" onclick="addASN()">
+                                                    <i class="bi bi-plus-lg"></i> Add
+                                                </button>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-2 mb-2" id="asn_tags"></div>
+                                            <small class="text-muted">
+                                                <i class="bi bi-info-circle me-1"></i>Common ASNs: AS14061 (DigitalOcean), AS16509 (Amazon AWS), AS15169 (Google Cloud), AS13335 (Cloudflare)
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <h6 class="text-muted mb-3">Device Filtering</h6>
-                            <div class="row mb-4">
-                                <div class="col-md-4">
-                                    <label class="form-label">Mode</label>
-                                    <select class="form-select" id="deviceMode" name="deviceMode">
-                                        <option value="all" {{if eq .Settings.DeviceMode "all"}}selected{{end}}>All Devices</option>
-                                        <option value="whitelist" {{if eq .Settings.DeviceMode "whitelist"}}selected{{end}}>Whitelist Only</option>
-                                        <option value="blacklist" {{if eq .Settings.DeviceMode "blacklist"}}selected{{end}}>Blacklist</option>
-                                    </select>
+                            <div class="col-12">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-lightbulb me-2"></i>
+                                    <strong>Tip:</strong> Use ASN filtering to block entire hosting providers (AWS, GCP, DigitalOcean) or allow only specific ISPs. This is more reliable than IP blocking since IP ranges change frequently.
                                 </div>
-                                <div class="col-md-8">
-                                    <label class="form-label">Devices</label>
-                                    <div class="d-flex gap-3">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Countries Tab -->
+                    <div class="tab-pane" id="tab_geo" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-lg-6">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-3">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-x-circle text-danger me-1"></i>Blocked Countries
+                                                <span class="badge bg-danger ms-1" id="cnt_blk">0</span>
+                                            </h5>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="radio" name="countryMode" value="blacklist" id="mode_blacklist"
+                                                    {{if eq .Settings.CountryMode "blacklist"}}checked{{end}}>
+                                            </div>
+                                        </div>
+                                        <input type="text" class="form-control mb-2" placeholder="Search countries..."
+                                            oninput="filterPicker(this.value, 'pick_block')">
+                                        <div class="border rounded p-2 mb-2 overflow-auto" style="max-height: 280px;" id="pick_block">
+                                            <div class="row g-1" id="countries_block"></div>
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <small class="text-muted"><span id="cnt_blk_display">0</span> selected</small>
+                                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="clearPicks('block')">Clear</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-3">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-check-circle text-success me-1"></i>Allowed Only
+                                                <span class="badge bg-success ms-1" id="cnt_allow">0</span>
+                                            </h5>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="radio" name="countryMode" value="whitelist" id="mode_whitelist"
+                                                    {{if eq .Settings.CountryMode "whitelist"}}checked{{end}}>
+                                            </div>
+                                        </div>
+                                        <input type="text" class="form-control mb-2" placeholder="Search countries..."
+                                            oninput="filterPicker(this.value, 'pick_allow')">
+                                        <div class="border rounded p-2 mb-2 overflow-auto" style="max-height: 280px;" id="pick_allow">
+                                            <div class="row g-1" id="countries_allow"></div>
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <small class="text-muted"><span id="cnt_allow_display">0</span> selected</small>
+                                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="clearPicks('allow')">Clear</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="card border mb-0">
+                                    <div class="card-body">
                                         <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="countryMode" value="all" id="mode_all"
+                                                {{if or (eq .Settings.CountryMode "all") (eq .Settings.CountryMode "")}}checked{{end}}>
+                                            <label class="form-check-label" for="mode_all">
+                                                <i class="bi bi-globe2 me-1"></i><strong>Allow All Countries</strong>
+                                                <span class="text-muted ms-2">— No geographic restrictions</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Devices Tab -->
+                    <div class="tab-pane" id="tab_devices" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-lg-4">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body text-center">
+                                        <div class="form-check d-inline-block">
                                             <input class="form-check-input device-check" type="checkbox" value="desktop" id="device-desktop">
                                             <label class="form-check-label" for="device-desktop">
-                                                <i class="bi bi-display me-1"></i> Desktop
+                                                <i class="bi bi-display" style="font-size: 2rem;"></i>
+                                                <div class="mt-2">Desktop</div>
                                             </label>
                                         </div>
-                                        <div class="form-check">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body text-center">
+                                        <div class="form-check d-inline-block">
                                             <input class="form-check-input device-check" type="checkbox" value="mobile" id="device-mobile">
                                             <label class="form-check-label" for="device-mobile">
-                                                <i class="bi bi-phone me-1"></i> Mobile
+                                                <i class="bi bi-phone" style="font-size: 2rem;"></i>
+                                                <div class="mt-2">Mobile</div>
                                             </label>
                                         </div>
-                                        <div class="form-check">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body text-center">
+                                        <div class="form-check d-inline-block">
                                             <input class="form-check-input device-check" type="checkbox" value="tablet" id="device-tablet">
                                             <label class="form-check-label" for="device-tablet">
-                                                <i class="bi bi-tablet me-1"></i> Tablet
+                                                <i class="bi bi-tablet" style="font-size: 2rem;"></i>
+                                                <div class="mt-2">Tablet</div>
                                             </label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <h6 class="text-muted mb-3">Bot & Threat Protection</h6>
-                            <div class="row mb-4">
-                                <div class="col-md-6">
-                                    <div class="form-check form-switch mb-2">
-                                        <input class="form-check-input" type="checkbox" id="blockBots" {{if .Settings.BlockBots}}checked{{end}}>
-                                        <label class="form-check-label" for="blockBots">
-                                            <i class="bi bi-robot me-1"></i> Block known bots
-                                        </label>
-                                    </div>
-                                    <div class="form-check form-switch mb-2">
-                                        <input class="form-check-input" type="checkbox" id="blockTor" {{if .Settings.BlockTor}}checked{{end}}>
-                                        <label class="form-check-label" for="blockTor">
-                                            <i class="bi bi-shield-exclamation me-1"></i> Block Tor exit nodes
-                                        </label>
-                                    </div>
-                                    <div class="form-check form-switch mb-2">
-                                        <input class="form-check-input" type="checkbox" id="blockProxy" {{if .Settings.BlockProxy}}checked{{end}}>
-                                        <label class="form-check-label" for="blockProxy">
-                                            <i class="bi bi-incognito me-1"></i> Block proxy/VPN
-                                        </label>
+                            <div class="col-12">
+                                <div class="card border mb-0">
+                                    <div class="card-body">
+                                        <label class="form-label">Device Filter Mode</label>
+                                        <select class="form-select" id="deviceMode" style="max-width: 300px;">
+                                            <option value="all" {{if eq .Settings.DeviceMode "all"}}selected{{end}}>Allow All Devices</option>
+                                            <option value="whitelist" {{if eq .Settings.DeviceMode "whitelist"}}selected{{end}}>Allow Selected Only</option>
+                                            <option value="blacklist" {{if eq .Settings.DeviceMode "blacklist"}}selected{{end}}>Block Selected</option>
+                                        </select>
+                                        <small class="text-muted d-block mt-2">
+                                            <i class="bi bi-info-circle me-1"></i>Select devices above, then choose how to filter them.
+                                        </small>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="form-check form-switch mb-2">
-                                        <input class="form-check-input" type="checkbox" id="blockDatacenter" {{if .Settings.BlockDatacenter}}checked{{end}}>
-                                        <label class="form-check-label" for="blockDatacenter">
-                                            <i class="bi bi-hdd-rack me-1"></i> Block datacenter IPs
-                                        </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detection Engine Tab -->
+                    <div class="tab-pane" id="tab_det" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-lg-6">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h5 class="card-title mb-0"><i class="bi bi-robot text-warning me-1"></i>Block Known Bots</h5>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" id="blockBots" {{if .Settings.BlockBots}}checked{{end}}>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mb-0">Block crawlers, scrapers, and automated tools identified by user agent.</p>
                                     </div>
-                                    <div class="form-check form-switch mb-2">
-                                        <input class="form-check-input" type="checkbox" id="blockHeadless" {{if .Settings.BlockHeadless}}checked{{end}}>
-                                        <label class="form-check-label" for="blockHeadless">
-                                            <i class="bi bi-window-x me-1"></i> Block headless browsers
-                                        </label>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h5 class="card-title mb-0"><i class="bi bi-window-x text-success me-1"></i>Block Headless Browsers</h5>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" id="blockHeadless" {{if .Settings.BlockHeadless}}checked{{end}}>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mb-0">Block Puppeteer, Selenium, Playwright via fingerprint analysis.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h5 class="card-title mb-0"><i class="bi bi-shield-exclamation text-danger me-1"></i>Block Tor</h5>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" id="blockTor" {{if .Settings.BlockTor}}checked{{end}}>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mb-0">Block visitors coming through Tor exit nodes.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h5 class="card-title mb-0"><i class="bi bi-incognito text-info me-1"></i>Block Proxy/VPN</h5>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" id="blockProxy" {{if .Settings.BlockProxy}}checked{{end}}>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mb-0">Block visitors using VPN or proxy services.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card border h-100 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h5 class="card-title mb-0"><i class="bi bi-hdd-rack text-secondary me-1"></i>Block Datacenter IPs</h5>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" id="blockDatacenter" {{if .Settings.BlockDatacenter}}checked{{end}}>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mb-0">Block traffic from AWS, GCP, Azure, and hosting providers.</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <h6 class="text-muted mb-3">Behavior Score Threshold</h6>
-                            <div class="row mb-4">
-                                <div class="col-md-6">
-                                    <label class="form-label">Minimum behavior score (0-100)</label>
-                                    <input type="number" class="form-control" id="minBehaviorScore" min="0" max="100"
-                                        value="{{.Settings.MinBehaviorScore}}" placeholder="0">
-                                    <small class="text-muted">Block visitors with low behavior scores. 0 = disabled.</small>
+                            <div class="col-12">
+                                <div class="card border mb-0">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="bi bi-speedometer2 text-primary me-1"></i>Behavior Score Threshold</h5>
+                                        <p class="text-muted small mb-3">Block visitors with behavior scores below this value. Higher = stricter filtering.</p>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <span class="text-muted small fw-semibold">OFF</span>
+                                            <input type="range" class="form-range flex-grow-1" min="0" max="100" step="5" id="minBehaviorScore"
+                                                value="{{.Settings.MinBehaviorScore}}"
+                                                oninput="updateScoreDisplay(this.value)">
+                                            <span class="text-muted small fw-semibold">STRICT</span>
+                                            <span class="badge bg-primary" id="score_value" style="min-width:45px;text-align:center;">{{.Settings.MinBehaviorScore}}</span>
+                                        </div>
+                                        <div class="text-muted small text-center mt-2" id="score_hint"></div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <h6 class="text-muted mb-3">Blocked Visitor Redirect</h6>
-                            <div class="row mb-4">
-                                <div class="col-12">
-                                    <label class="form-label">Redirect URL (when visitor is blocked)</label>
-                                    <input type="url" class="form-control" id="redirectOnBlock"
-                                        placeholder="https://www.google.com" value="{{.Settings.RedirectOnBlock}}">
-                                    <small class="text-muted">Where to send blocked visitors</small>
+                            <div class="col-12">
+                                <div class="card border mb-0">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="bi bi-arrow-return-right text-warning me-1"></i>Blocked Visitor Redirect</h5>
+                                        <p class="text-muted small mb-3">Where to send visitors when blocked. Leave empty for blank page.</p>
+                                        <input type="url" class="form-control" id="redirectOnBlock"
+                                            placeholder="https://example.com/blocked" value="{{.Settings.RedirectOnBlock}}"
+                                            style="max-width: 500px;">
+                                    </div>
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-1"></i> Save Settings
-                            </button>
-                        </form>
+                            <div class="col-12 d-flex align-items-center justify-content-between pt-2">
+                                <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>Changes take effect immediately after saving.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="card-title mb-0">How It Works</h6>
-                    </div>
-                    <div class="card-body small text-muted">
-                        <p class="mb-2"><strong>Whitelist:</strong> Only allow selected countries/devices.</p>
-                        <p class="mb-2"><strong>Blacklist:</strong> Block selected countries/devices.</p>
-                        <p class="mb-0"><strong>Bot Protection:</strong> Blocks bots, Tor, VPNs, datacenters.</p>
-                    </div>
-                </div>
-
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h6 class="card-title mb-0">Behavior Score</h6>
-                    </div>
-                    <div class="card-body small text-muted">
-                        <ul class="mb-0 ps-3">
-                            <li><code>0</code> - Disabled (default)</li>
-                            <li><code>20-30</code> - Block obvious bots</li>
-                            <li><code>40-50</code> - Moderate filtering</li>
-                            <li><code>60+</code> - Strict</li>
-                        </ul>
-                    </div>
+                <hr class="my-4">
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" id="save-btn">
+                        <i class="bi bi-check-lg me-1"></i>Save Settings
+                    </button>
+                    <a href="/user/hosting/{{.Account.ID}}/domains/{{.Domain.ID}}" class="btn btn-secondary">Cancel</a>
                 </div>
             </div>
         </div>
@@ -164,25 +359,207 @@
 const accountID = '{{.Account.ID}}';
 const domainID = '{{.Domain.ID}}';
 
-// Initialize device checkboxes from settings
-const deviceList = {{json .Settings.DeviceList}};
-deviceList.forEach(d => {
-    const checkbox = document.getElementById('device-' + d);
-    if (checkbox) checkbox.checked = true;
+const COUNTRIES = [
+    {code:"AF",name:"Afghanistan"},{code:"AL",name:"Albania"},{code:"DZ",name:"Algeria"},{code:"AD",name:"Andorra"},
+    {code:"AO",name:"Angola"},{code:"AR",name:"Argentina"},{code:"AM",name:"Armenia"},{code:"AU",name:"Australia"},
+    {code:"AT",name:"Austria"},{code:"AZ",name:"Azerbaijan"},{code:"BH",name:"Bahrain"},{code:"BD",name:"Bangladesh"},
+    {code:"BY",name:"Belarus"},{code:"BE",name:"Belgium"},{code:"BZ",name:"Belize"},{code:"BJ",name:"Benin"},
+    {code:"BT",name:"Bhutan"},{code:"BO",name:"Bolivia"},{code:"BA",name:"Bosnia"},{code:"BW",name:"Botswana"},
+    {code:"BR",name:"Brazil"},{code:"BN",name:"Brunei"},{code:"BG",name:"Bulgaria"},{code:"BF",name:"Burkina Faso"},
+    {code:"BI",name:"Burundi"},{code:"KH",name:"Cambodia"},{code:"CM",name:"Cameroon"},{code:"CA",name:"Canada"},
+    {code:"CL",name:"Chile"},{code:"CN",name:"China"},{code:"CO",name:"Colombia"},{code:"CD",name:"Congo (DRC)"},
+    {code:"CR",name:"Costa Rica"},{code:"HR",name:"Croatia"},{code:"CU",name:"Cuba"},{code:"CY",name:"Cyprus"},
+    {code:"CZ",name:"Czech Republic"},{code:"DK",name:"Denmark"},{code:"DJ",name:"Djibouti"},{code:"DO",name:"Dominican Rep."},
+    {code:"EC",name:"Ecuador"},{code:"EG",name:"Egypt"},{code:"SV",name:"El Salvador"},{code:"EE",name:"Estonia"},
+    {code:"ET",name:"Ethiopia"},{code:"FI",name:"Finland"},{code:"FR",name:"France"},{code:"GA",name:"Gabon"},
+    {code:"GE",name:"Georgia"},{code:"DE",name:"Germany"},{code:"GH",name:"Ghana"},{code:"GR",name:"Greece"},
+    {code:"GT",name:"Guatemala"},{code:"GN",name:"Guinea"},{code:"HT",name:"Haiti"},{code:"HN",name:"Honduras"},
+    {code:"HK",name:"Hong Kong"},{code:"HU",name:"Hungary"},{code:"IS",name:"Iceland"},{code:"IN",name:"India"},
+    {code:"ID",name:"Indonesia"},{code:"IR",name:"Iran"},{code:"IQ",name:"Iraq"},{code:"IE",name:"Ireland"},
+    {code:"IL",name:"Israel"},{code:"IT",name:"Italy"},{code:"JM",name:"Jamaica"},{code:"JP",name:"Japan"},
+    {code:"JO",name:"Jordan"},{code:"KZ",name:"Kazakhstan"},{code:"KE",name:"Kenya"},{code:"KW",name:"Kuwait"},
+    {code:"KG",name:"Kyrgyzstan"},{code:"LA",name:"Laos"},{code:"LV",name:"Latvia"},{code:"LB",name:"Lebanon"},
+    {code:"LY",name:"Libya"},{code:"LT",name:"Lithuania"},{code:"LU",name:"Luxembourg"},{code:"MO",name:"Macau"},
+    {code:"MK",name:"N. Macedonia"},{code:"MG",name:"Madagascar"},{code:"MY",name:"Malaysia"},{code:"ML",name:"Mali"},
+    {code:"MT",name:"Malta"},{code:"MX",name:"Mexico"},{code:"MD",name:"Moldova"},{code:"MN",name:"Mongolia"},
+    {code:"ME",name:"Montenegro"},{code:"MA",name:"Morocco"},{code:"MZ",name:"Mozambique"},{code:"MM",name:"Myanmar"},
+    {code:"NA",name:"Namibia"},{code:"NP",name:"Nepal"},{code:"NL",name:"Netherlands"},{code:"NZ",name:"New Zealand"},
+    {code:"NI",name:"Nicaragua"},{code:"NE",name:"Niger"},{code:"NG",name:"Nigeria"},{code:"NO",name:"Norway"},
+    {code:"OM",name:"Oman"},{code:"PK",name:"Pakistan"},{code:"PA",name:"Panama"},{code:"PY",name:"Paraguay"},
+    {code:"PE",name:"Peru"},{code:"PH",name:"Philippines"},{code:"PL",name:"Poland"},{code:"PT",name:"Portugal"},
+    {code:"QA",name:"Qatar"},{code:"RO",name:"Romania"},{code:"RU",name:"Russia"},{code:"RW",name:"Rwanda"},
+    {code:"SA",name:"Saudi Arabia"},{code:"SN",name:"Senegal"},{code:"RS",name:"Serbia"},{code:"SG",name:"Singapore"},
+    {code:"SK",name:"Slovakia"},{code:"SI",name:"Slovenia"},{code:"SO",name:"Somalia"},{code:"ZA",name:"South Africa"},
+    {code:"KR",name:"South Korea"},{code:"ES",name:"Spain"},{code:"LK",name:"Sri Lanka"},{code:"SD",name:"Sudan"},
+    {code:"SE",name:"Sweden"},{code:"CH",name:"Switzerland"},{code:"SY",name:"Syria"},{code:"TW",name:"Taiwan"},
+    {code:"TJ",name:"Tajikistan"},{code:"TZ",name:"Tanzania"},{code:"TH",name:"Thailand"},{code:"TN",name:"Tunisia"},
+    {code:"TR",name:"Turkey"},{code:"TM",name:"Turkmenistan"},{code:"UG",name:"Uganda"},{code:"UA",name:"Ukraine"},
+    {code:"AE",name:"UAE"},{code:"GB",name:"United Kingdom"},{code:"US",name:"United States"},{code:"UY",name:"Uruguay"},
+    {code:"UZ",name:"Uzbekistan"},{code:"VE",name:"Venezuela"},{code:"VN",name:"Vietnam"},{code:"YE",name:"Yemen"},
+    {code:"ZM",name:"Zambia"},{code:"ZW",name:"Zimbabwe"}
+];
+
+const selectedCountries = {
+    block: new Set(),
+    allow: new Set()
+};
+
+// ASN list management
+const asnList = new Set();
+const existingASNs = {{json .Settings.ASNList}};
+if (existingASNs) existingASNs.forEach(asn => asnList.add(asn));
+
+function renderASNTags() {
+    const container = document.getElementById('asn_tags');
+    container.innerHTML = Array.from(asnList).map(asn => `
+        <span class="badge bg-secondary d-flex align-items-center gap-1">
+            ${asn}
+            <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;" onclick="removeASN('${asn}')"></button>
+        </span>
+    `).join('');
+    document.getElementById('asn_count').textContent = asnList.size;
+}
+
+function addASN() {
+    const input = document.getElementById('asnInput');
+    const values = input.value.split(/[,\s]+/).filter(v => v.trim());
+    values.forEach(v => {
+        let asn = v.trim().toUpperCase();
+        if (!asn.startsWith('AS')) asn = 'AS' + asn;
+        if (/^AS\d+$/.test(asn)) {
+            asnList.add(asn);
+        }
+    });
+    input.value = '';
+    renderASNTags();
+}
+
+function removeASN(asn) {
+    asnList.delete(asn);
+    renderASNTags();
+}
+
+// Toggle ASN list visibility based on mode
+document.querySelectorAll('input[name="asnMode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const container = document.getElementById('asn_list_container');
+        container.style.display = this.value === 'allow' ? 'none' : '';
+    });
 });
 
-document.getElementById('settings-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+// Load existing country settings
+const existingCountries = {{json .Settings.CountryList}};
+const countryMode = "{{.Settings.CountryMode}}";
+if (countryMode === "blacklist" && existingCountries) {
+    existingCountries.forEach(c => selectedCountries.block.add(c));
+} else if (countryMode === "whitelist" && existingCountries) {
+    existingCountries.forEach(c => selectedCountries.allow.add(c));
+}
 
-    const countryInput = document.getElementById('countryList').value;
-    const countryList = countryInput ? countryInput.split(',').map(c => c.trim().toUpperCase()).filter(c => c) : [];
-    const deviceList = Array.from(document.querySelectorAll('.device-check:checked')).map(c => c.value);
+function renderCountries(containerId, type) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = COUNTRIES.map(c => `
+        <div class="col-6 pick-item" data-search="${c.code.toLowerCase()} ${c.name.toLowerCase()}">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input country-${type}" value="${c.code}" id="${type}_${c.code}"
+                    ${selectedCountries[type].has(c.code) ? 'checked' : ''} onchange="toggleCountry('${type}', '${c.code}')">
+                <label class="form-check-label d-flex align-items-center gap-2 small" for="${type}_${c.code}">
+                    <img src="/static/flags/${c.code.toLowerCase()}.png" alt="${c.code}" style="height:12px;border-radius:1px;">
+                    <span class="text-muted" style="min-width:24px;">${c.code}</span>
+                    <span>${c.name}</span>
+                </label>
+            </div>
+        </div>
+    `).join('');
+    updateCounters();
+}
+
+function toggleCountry(type, code) {
+    if (selectedCountries[type].has(code)) {
+        selectedCountries[type].delete(code);
+    } else {
+        selectedCountries[type].add(code);
+    }
+    updateCounters();
+}
+
+function updateCounters() {
+    document.getElementById('cnt_blk').textContent = selectedCountries.block.size;
+    document.getElementById('cnt_blk_display').textContent = selectedCountries.block.size;
+    document.getElementById('cnt_allow').textContent = selectedCountries.allow.size;
+    document.getElementById('cnt_allow_display').textContent = selectedCountries.allow.size;
+}
+
+function clearPicks(type) {
+    selectedCountries[type].clear();
+    document.querySelectorAll(`.country-${type}`).forEach(cb => cb.checked = false);
+    updateCounters();
+}
+
+function filterPicker(query, containerId) {
+    const q = query.toLowerCase();
+    document.querySelectorAll(`#${containerId} .pick-item`).forEach(el => {
+        el.style.display = el.dataset.search.includes(q) ? '' : 'none';
+    });
+}
+
+function updateScoreDisplay(value) {
+    document.getElementById('score_value').textContent = value;
+    const hint = document.getElementById('score_hint');
+    if (value == 0) {
+        hint.textContent = 'Disabled — all visitors pass behavior check';
+    } else if (value <= 30) {
+        hint.textContent = 'Light — blocks obvious bots only';
+    } else if (value <= 60) {
+        hint.textContent = 'Moderate — balanced filtering';
+    } else {
+        hint.textContent = 'Strict — may block some real users';
+    }
+}
+
+// Initialize device checkboxes
+const deviceList = {{json .Settings.DeviceList}};
+if (deviceList) deviceList.forEach(d => {
+    const cb = document.getElementById('device-' + d);
+    if (cb) cb.checked = true;
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    renderCountries('countries_block', 'block');
+    renderCountries('countries_allow', 'allow');
+    renderASNTags();
+    updateScoreDisplay(document.getElementById('minBehaviorScore').value);
+});
+
+// Allow Enter key to add ASN
+document.getElementById('asnInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addASN();
+    }
+});
+
+// Save
+document.getElementById('save-btn').addEventListener('click', async () => {
+    const mode = document.querySelector('input[name="countryMode"]:checked').value;
+    let countryList = [];
+    if (mode === 'blacklist') {
+        countryList = Array.from(selectedCountries.block);
+    } else if (mode === 'whitelist') {
+        countryList = Array.from(selectedCountries.allow);
+    }
+
+    const deviceListSel = Array.from(document.querySelectorAll('.device-check:checked')).map(c => c.value);
+    const asnMode = document.querySelector('input[name="asnMode"]:checked').value;
 
     const data = {
-        countryMode: document.getElementById('countryMode').value,
+        countryMode: mode,
         countryList: countryList,
+        asnMode: asnMode,
+        asnList: Array.from(asnList),
         deviceMode: document.getElementById('deviceMode').value,
-        deviceList: deviceList,
+        deviceList: deviceListSel,
         blockBots: document.getElementById('blockBots').checked,
         blockTor: document.getElementById('blockTor').checked,
         blockProxy: document.getElementById('blockProxy').checked,
@@ -192,7 +569,7 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
         redirectOnBlock: document.getElementById('redirectOnBlock').value
     };
 
-    const btn = e.target.querySelector('button[type="submit"]');
+    const btn = document.getElementById('save-btn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
@@ -203,13 +580,33 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
     });
 
     if (res.ok) {
-        showToast('Settings saved', 'success');
+        flashToast('Settings saved', 'success');
     } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Failed to save', 'danger');
+        const d = await res.json().catch(() => ({}));
+        showToast(d.error || 'Failed to save settings', 'danger');
     }
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save Settings';
+    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Settings';
+});
+
+// Tab persistence via URL hash
+document.querySelectorAll('.nav-tabs .nav-link').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', function(e) {
+        const hash = e.target.getAttribute('href');
+        history.replaceState(null, null, hash);
+    });
+});
+
+// Restore active tab from hash on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const hash = window.location.hash;
+    if (hash) {
+        const tab = document.querySelector(`.nav-tabs .nav-link[href="${hash}"]`);
+        if (tab) {
+            const bsTab = new bootstrap.Tab(tab);
+            bsTab.show();
+        }
+    }
 });
 </script>
 {{end}}

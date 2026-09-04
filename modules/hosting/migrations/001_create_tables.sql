@@ -122,3 +122,7 @@ CREATE TABLE IF NOT EXISTS hosting_ftp (
 
 -- Add balance to users table
 ALTER TABLE users ADD COLUMN IF NOT EXISTS balance DECIMAL(10,2) DEFAULT 0;
+
+-- Add ASN filtering columns to hosting domain settings (v1.8.152+)
+ALTER TABLE hosting_domain_settings ADD COLUMN IF NOT EXISTS asn_mode VARCHAR(20) DEFAULT 'allow';
+ALTER TABLE hosting_domain_settings ADD COLUMN IF NOT EXISTS asn_list TEXT DEFAULT '[]';
