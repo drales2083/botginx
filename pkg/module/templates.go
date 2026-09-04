@@ -56,6 +56,12 @@ func defaultFuncs() template.FuncMap {
 		"upper": strings.ToUpper,
 		"lower": strings.ToLower,
 		// Math helpers for templates
+		"sub": func(a, b int) int {
+			return a - b
+		},
+		"add": func(a, b int) int {
+			return a + b
+		},
 		"divf": func(a, b int) float64 {
 			if b == 0 {
 				return 0
