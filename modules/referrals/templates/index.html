@@ -8,7 +8,7 @@
             <div class="card-body">
                 <div class="input-group">
                     <input type="text" class="form-control" id="referral-link"
-                        value="{{$.BaseURL}}/auth/register?ref={{.Stats.ReferralCode}}" readonly>
+                        value="" readonly data-ref="{{.Stats.ReferralCode}}">
                     <button class="btn btn-primary" type="button" onclick="copyLink()">
                         <i class="bi bi-clipboard me-1"></i>Copy
                     </button>
@@ -209,6 +209,10 @@ document.querySelectorAll('.level-btn').forEach(btn => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Set referral link with current host
+    const linkInput = document.getElementById('referral-link');
+    linkInput.value = window.location.origin + '/auth/register?ref=' + linkInput.dataset.ref;
+
     loadReferrals(1);
     loadEarnings();
 });

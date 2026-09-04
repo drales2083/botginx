@@ -87,6 +87,38 @@ func (m *Module) Migrate() error {
 	// Generate referral codes for existing users without one
 	m.DB().Exec(`UPDATE users SET referral_code = UPPER(SUBSTR(MD5(RANDOM()::TEXT), 1, 8)) WHERE referral_code IS NULL`)
 
+	// Seed FAQ category and items for referrals
+	m.DB().Exec(`INSERT INTO faq_categories (id, name, icon, sort_order) VALUES
+		('cat_referrals', 'Referrals', 'bi-people', 7)
+		ON CONFLICT (id) DO NOTHING`)
+
+	m.DB().Exec(`INSERT INTO faq_items (id, category_id, question, answer, sort_order) VALUES
+		('faq_ref_1', 'cat_referrals', 'How does the referral program work?',
+		 'Share your unique referral link with others. When they register and pay for a subscription, you earn commission. You can earn up to 3 levels deep: 25%% from direct referrals (Level 1), 15%% from their referrals (Level 2), and 10%% from the next level (Level 3).',
+		 1),
+		('faq_ref_2', 'cat_referrals', 'Where do I find my referral link?',
+		 'Go to the <a href="/user/referrals">Referrals</a> page in your dashboard. Your unique referral link is displayed at the top. Click the copy button to copy it to your clipboard.',
+		 2),
+		('faq_ref_3', 'cat_referrals', 'When do I receive my referral earnings?',
+		 'Referral commissions are credited to your balance immediately when your referral makes a payment. You can use this balance for your own subscription or request a withdrawal.',
+		 3),
+		('faq_ref_4', 'cat_referrals', 'Do I earn from subscription renewals?',
+		 'Yes! You earn commission every time your referrals renew their subscription, not just on their first payment. This includes all 3 levels of referrals.',
+		 4),
+		('faq_ref_5', 'cat_referrals', 'What are Level 1, Level 2, and Level 3 referrals?',
+		 'Level 1 are users who registered using YOUR link (you earn 25%%). Level 2 are users who registered using your Level 1 referrals'' links (you earn 15%%). Level 3 are users who registered using your Level 2 referrals'' links (you earn 10%%).',
+		 5),
+		('faq_ref_6', 'cat_referrals', 'Is there a limit to how many people I can refer?',
+		 'No limit! Refer as many people as you want. The more active referrals you have, the more you earn from the 3-level commission structure.',
+		 6),
+		('faq_ref_7', 'cat_referrals', 'Can I refer myself or create fake accounts?',
+		 'No. Self-referrals and fraudulent accounts are prohibited and will result in forfeiture of all referral earnings and possible account termination.',
+		 7),
+		('faq_ref_8', 'cat_referrals', 'How do I withdraw my referral earnings?',
+		 'Your referral earnings are added to your account balance. You can use this balance to pay for your own subscription, or request a cryptocurrency withdrawal from the Payments section.',
+		 8)
+		ON CONFLICT (id) DO NOTHING`)
+
 	return nil
 }
 
