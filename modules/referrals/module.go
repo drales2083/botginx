@@ -50,8 +50,8 @@ func (m *Module) Migrate() error {
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS balance DECIMAL(10,2) DEFAULT 0`,
 		`CREATE TABLE IF NOT EXISTS referral_earnings (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			user_id UUID NOT NULL REFERENCES users(id),
-			from_user_id UUID NOT NULL REFERENCES users(id),
+			user_id UUID NOT NULL,
+			from_user_id UUID NOT NULL,
 			level INT NOT NULL CHECK (level BETWEEN 1 AND 3),
 			payment_type VARCHAR(20) NOT NULL,
 			payment_amount DECIMAL(10,2) NOT NULL,
