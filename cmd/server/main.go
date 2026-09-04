@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/botginx/botginx/modules/admindash"
 	"github.com/botginx/botginx/modules/analytics"
 	analyticshandlers "github.com/botginx/botginx/modules/analytics/handlers"
 	"github.com/botginx/botginx/modules/auth"
@@ -251,6 +252,7 @@ func main() {
 	registry.Register(paymentsModule)            // Crypto payments
 	registry.Register(help.New())                // Help/FAQ module
 	registry.Register(users.New())               // Admin module
+	registry.Register(admindash.New())           // Admin dashboard (stats)
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
 
 	// Initialize all modules

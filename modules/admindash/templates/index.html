@@ -1,0 +1,248 @@
+{{define "content"}}
+<div class="row g-3 mb-4">
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-primary">
+            <div class="inner">
+                <h3>{{.Stats.totalUsers}}</h3>
+                <p>Total Users</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-people"></i>
+            </div>
+            <a href="/admin/users" class="small-box-footer">
+                View Users <i class="bi bi-arrow-right-circle-fill"></i>
+            </a>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-success">
+            <div class="inner">
+                <h3>{{.Stats.activeUsers}}</h3>
+                <p>Active Subscriptions</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <a href="/admin/users" class="small-box-footer">
+                Manage <i class="bi bi-arrow-right-circle-fill"></i>
+            </a>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-warning">
+            <div class="inner">
+                <h3>{{.Stats.totalDomains}}</h3>
+                <p>Total Domains</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-globe"></i>
+            </div>
+            <a href="/admin/domains/all" class="small-box-footer">
+                View All <i class="bi bi-arrow-right-circle-fill"></i>
+            </a>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box text-bg-info">
+            <div class="inner">
+                <h3>{{.Stats.totalLinks}}</h3>
+                <p>Redirect Links</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-link-45deg"></i>
+            </div>
+            <span class="small-box-footer">
+                {{.Stats.deployedLinks}} deployed
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-3 col-6">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h2 class="mb-1">{{.Stats.totalVisits}}</h2>
+                <p class="text-muted mb-0">Total Visits</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h2 class="mb-1 text-success">{{.Stats.todayVisits}}</h2>
+                <p class="text-muted mb-0">Today</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h2 class="mb-1 text-danger">{{.Stats.blockedVisits}}</h2>
+                <p class="text-muted mb-0">Blocked</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h2 class="mb-1 text-info">{{.Stats.uniqueVisits}}</h2>
+                <p class="text-muted mb-0">Unique IPs</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Traffic Chart -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="bi bi-graph-up me-2"></i>Platform Traffic</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary period-btn active" data-period="hourly">24 Hours</button>
+                    <button class="btn btn-outline-primary period-btn" data-period="daily">7 Days</button>
+                    <button class="btn btn-outline-primary period-btn" data-period="monthly">12 Months</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="traffic-chart" height="280"></canvas>
+                <div id="chart-empty" class="text-center text-muted py-5 d-none">
+                    <i class="bi bi-graph-up" style="font-size:3rem"></i>
+                    <p class="mt-2 mb-0">No traffic data yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Countries -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-geo-alt me-2"></i>Top Countries</h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="country-list" class="p-3">
+                    <div class="text-muted small text-center py-3">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Quick Stats</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Shared Domains</span>
+                        <strong>{{.Stats.sharedDomains}}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>User Domains</span>
+                        <strong>{{sub .Stats.totalDomains .Stats.sharedDomains}}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Deployed Links</span>
+                        <strong>{{.Stats.deployedLinks}}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Block Rate</span>
+                        <strong>{{if .Stats.totalVisits}}{{printf "%.1f" (divf (mulf .Stats.blockedVisits 100.0) .Stats.totalVisits)}}%{{else}}0%{{end}}</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+function flagEmoji(code) {
+    if (!code || code.length !== 2) return '🌐';
+    return String.fromCodePoint(code.charCodeAt(0)+127397, code.charCodeAt(1)+127397);
+}
+
+let trafficChart = null;
+
+async function loadChart(period) {
+    const res = await fetch('/admin/dashboard/api/timeline?period=' + period);
+    const data = await res.json();
+
+    const canvas = document.getElementById('traffic-chart');
+    const empty = document.getElementById('chart-empty');
+
+    if (!data || data.length === 0) {
+        canvas.style.display = 'none';
+        empty.classList.remove('d-none');
+        return;
+    }
+    canvas.style.display = 'block';
+    empty.classList.add('d-none');
+
+    const labels = data.map(d => {
+        if (period === 'monthly') return d.time;
+        if (period === 'daily') return d.time.slice(5);
+        return d.time.slice(11, 16);
+    });
+
+    if (trafficChart) trafficChart.destroy();
+
+    trafficChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Total', data: data.map(d => d.total), borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,.1)', fill: true, tension: .3 },
+                { label: 'Blocked', data: data.map(d => d.blocked), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.1)', fill: true, tension: .3 },
+                { label: 'Unique', data: data.map(d => d.unique), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.1)', fill: true, tension: .3 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+async function loadCountries() {
+    const res = await fetch('/admin/dashboard/api/countries');
+    const countries = await res.json();
+    const el = document.getElementById('country-list');
+
+    if (!countries || countries.length === 0) {
+        el.innerHTML = '<div class="text-muted small text-center py-3">No data yet</div>';
+        return;
+    }
+
+    el.innerHTML = countries.slice(0, 10).map(c => `
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+            <div>
+                <span class="me-2">${flagEmoji(c.country)}</span>
+                <span>${c.country || 'Unknown'}</span>
+            </div>
+            <span class="badge bg-secondary">${c.count}</span>
+        </div>
+    `).join('');
+}
+
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadChart(btn.dataset.period);
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadChart('hourly');
+    loadCountries();
+});
+</script>
+{{end}}
