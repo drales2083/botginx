@@ -574,10 +574,29 @@ document.getElementById('save-btn').addEventListener('click', async () => {
 
     if (res.ok) {
         flashToast('Settings saved', 'success');
-        window.location.href = '/user/analytics/link/{{.LinkID}}';
     } else {
         const d = await res.json().catch(() => ({}));
         showToast(d.error || 'Failed to save settings', 'danger');
+    }
+});
+
+// Tab persistence via URL hash
+document.querySelectorAll('.nav-tabs .nav-link').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', function(e) {
+        const hash = e.target.getAttribute('href');
+        history.replaceState(null, null, hash);
+    });
+});
+
+// Restore active tab from hash on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const hash = window.location.hash;
+    if (hash) {
+        const tab = document.querySelector(`.nav-tabs .nav-link[href="${hash}"]`);
+        if (tab) {
+            const bsTab = new bootstrap.Tab(tab);
+            bsTab.show();
+        }
     }
 });
 </script>
