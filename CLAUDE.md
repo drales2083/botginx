@@ -138,7 +138,7 @@ Used by settings push (`pkg/settingspush/`) to SCP link settings to deploy serve
 
 | Variable | Description |
 |----------|-------------|
-| `ACME_DNS_DOMAIN` | Domain for acme-dns CNAME delegation (e.g. `acme.pamach.online`) |
+| `ACME_DNS_DOMAIN` | Domain for acme-dns CNAME delegation (e.g. `acme.pamach.xyz`) |
 
 ## Related Documentation
 

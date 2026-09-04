@@ -56,9 +56,9 @@ echo "  lego installed: $(lego --version 2>&1 | head -1)"
 # Install acme-dns (for CNAME delegation - users add CNAME once, renewals are automatic)
 echo "Installing acme-dns server..."
 # ACME_DOMAIN must be set - the domain for acme-dns CNAME delegation
-# Example: ACME_DOMAIN=acme.pamach.online
+# Example: ACME_DOMAIN=acme.pamach.xyz
 if [ -z "$ACME_DOMAIN" ]; then
-    echo "ERROR: ACME_DOMAIN is required (e.g., acme.pamach.online)"
+    echo "ERROR: ACME_DOMAIN is required (e.g., acme.pamach.xyz)"
     exit 1
 fi
 cd /tmp
