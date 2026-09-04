@@ -90,10 +90,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-check-lg me-1"></i>Save Settings
                     </button>
-
-                    {{if eq (index $.Query "saved") "1"}}
-                    <span class="text-success ms-3"><i class="bi bi-check-circle"></i> Settings saved!</span>
-                    {{end}}
+                    <span id="save-success" class="text-success ms-3 d-none"><i class="bi bi-check-circle"></i> Settings saved!</span>
                 </form>
             </div>
         </div>
@@ -160,5 +157,12 @@ function updateTotal() {
 document.getElementById('level1_rate').addEventListener('input', updateTotal);
 document.getElementById('level2_rate').addEventListener('input', updateTotal);
 document.getElementById('level3_rate').addEventListener('input', updateTotal);
+
+// Show success message if saved=1 in URL
+if (new URLSearchParams(window.location.search).get('saved') === '1') {
+    document.getElementById('save-success').classList.remove('d-none');
+    // Remove from URL without reload
+    history.replaceState(null, '', window.location.pathname);
+}
 </script>
 {{end}}
