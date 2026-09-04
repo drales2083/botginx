@@ -253,8 +253,10 @@ func main() {
 	registry.Register(paymentsModule)            // Crypto payments
 	registry.Register(help.New())                // Help/FAQ module
 	registry.Register(users.New())               // Admin module
+	referralsModule := referrals.New()
+
 	registry.Register(admindash.New())           // Admin dashboard (stats)
-	registry.Register(referrals.New())           // Referral commission system
+	registry.Register(referralsModule)           // Referral commission system
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
 
 	// Initialize all modules
@@ -275,6 +277,7 @@ func main() {
 	analyticsModule.SetHostingVisitRecorder(&hostingVisitRecorderAdapter{hosting: hostingModule})
 	redirectLinksModule.SetServerProvider(serversModule)
 	iplistsModule.SetServerProvider(&iplistServerAdapter{servers: serversModule})
+	hostingModule.SetPaymentProcessor(referralsModule) // Referral commissions on hosting payments
 
 	// Run migrations
 	if err := registry.MigrateAll(); err != nil {

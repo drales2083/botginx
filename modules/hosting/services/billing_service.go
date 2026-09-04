@@ -9,10 +9,21 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// PaymentProcessor is called when a user makes a payment (for referral commissions)
+type PaymentProcessor interface {
+	ProcessPayment(db *sqlx.DB, userID string, amount float64, paymentType string) error
+}
+
 // BillingService handles monthly recurring charges for hosting accounts
 type BillingService struct {
-	db      *sqlx.DB
-	hosting *HostingService
+	db               *sqlx.DB
+	hosting          *HostingService
+	paymentProcessor PaymentProcessor
+}
+
+// SetPaymentProcessor sets the callback for referral commission processing
+func (s *BillingService) SetPaymentProcessor(p PaymentProcessor) {
+	s.paymentProcessor = p
 }
 
 // NewBillingService creates a new billing service instance
@@ -81,6 +92,13 @@ func (s *BillingService) processAccount(account models.HostingAccount) bool {
 		if err != nil {
 			log.Printf("Billing: failed to deduct for account %s: %v", account.ID, err)
 			return false
+		}
+
+		// Process referral commissions
+		if s.paymentProcessor != nil {
+			if err := s.paymentProcessor.ProcessPayment(s.db, account.UserID, price, "hosting"); err != nil {
+				log.Printf("Billing: referral commission failed for account %s: %v", account.ID, err)
+			}
 		}
 
 		nextBilling := time.Now().AddDate(0, 0, 30)

@@ -273,3 +273,8 @@ func (m *Module) CronRoutes() chi.Router {
 func (m *Module) Service() *services.HostingService {
 	return m.service
 }
+
+// SetPaymentProcessor sets the callback for referral commission processing
+func (m *Module) SetPaymentProcessor(p services.PaymentProcessor) {
+	m.billing.SetPaymentProcessor(p)
+}
