@@ -229,6 +229,13 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Order:   0,
 			Section: module.MenuSectionAdmin,
 		},
+		{
+			Title:   "All Domains",
+			Icon:    "bi-globe2",
+			Path:    "/admin/admindash/domains/all",
+			Order:   5,
+			Section: module.MenuSectionAdmin,
+		},
 	}
 }
 
