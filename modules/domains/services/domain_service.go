@@ -227,7 +227,11 @@ func (s *DomainService) create(userID string, input models.CreateDomainInput, sh
 
 	// Set default setup values
 	domain.SetupType = models.SetupTypeDirect
-	domain.SetupStep = models.SetupStepComplete
+	if domain.IsWildcard {
+		domain.SetupStep = models.SetupStepPending // Wildcard needs CNAME setup
+	} else {
+		domain.SetupStep = models.SetupStepComplete
+	}
 
 	_, err := s.db.NamedExec(`
 		INSERT INTO domains (id, user_id, name, verify_token, server_id, dns_verified, ssl_enabled, is_shared,
