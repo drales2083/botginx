@@ -332,7 +332,7 @@ async function loadMap() {
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, pane: 'overlayPane' }).addTo(visitorMap);
 
     if (points && points.length > 0) {
-        const cluster = L.markerClusterGroup({ maxClusterRadius: 40, showCoverageOnHover: false });
+        const cluster = L.markerClusterGroup({ maxClusterRadius: 40, showCoverageOnHover: false, spiderfyOnMaxZoom: true, zoomToBoundsOnClick: true });
         const heat = [];
         const jitter = () => (Math.random() - 0.5) * 0.001;
 
