@@ -49,8 +49,8 @@
                         <span class="badge bg-secondary">{{.LinkCount}}</span>
                     </td>
                     <td>
-                        {{if .MarketPrice}}
-                            <span class="badge bg-success">${{.MarketPrice}}</span>
+                        {{if gt .MarketplacePrice 0.0}}
+                            <span class="badge bg-success">${{printf "%.0f" .MarketplacePrice}}</span>
                         {{else}}
                             <span class="text-muted">-</span>
                         {{end}}

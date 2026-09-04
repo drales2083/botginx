@@ -184,25 +184,24 @@ func (m *Module) apiCountries(w http.ResponseWriter, r *http.Request) {
 }
 
 type domainRow struct {
-	ID           string  `db:"id"`
-	Name         string  `db:"name"`
-	UserEmail    string  `db:"user_email"`
-	IsShared     bool    `db:"is_shared"`
-	SSLStatus    string  `db:"ssl_status"`
-	DNSVerified  bool    `db:"dns_verified"`
-	SSLEnabled   bool    `db:"ssl_enabled"`
-	LinkCount    int     `db:"link_count"`
-	MarketPrice  *int    `db:"market_price"`
-	CreatedAt    string  `db:"created_at"`
+	ID               string  `db:"id"`
+	Name             string  `db:"name"`
+	UserEmail        string  `db:"user_email"`
+	IsShared         bool    `db:"is_shared"`
+	DNSVerified      bool    `db:"dns_verified"`
+	SSLEnabled       bool    `db:"ssl_enabled"`
+	LinkCount        int     `db:"link_count"`
+	MarketplacePrice float64 `db:"marketplace_price"`
+	CreatedAt        string  `db:"created_at"`
 }
 
 func (m *Module) handleAllDomains(w http.ResponseWriter, r *http.Request) {
 	var domains []domainRow
 	m.DB().Select(&domains, `
-		SELECT d.id, d.name, u.email as user_email, d.is_shared,
-			d.ssl_status, d.dns_verified, d.ssl_enabled,
+		SELECT d.id, d.name, COALESCE(u.email, '') as user_email, d.is_shared,
+			d.dns_verified, d.ssl_enabled,
 			(SELECT COUNT(*) FROM redirect_links WHERE domain_id = d.id) as link_count,
-			d.market_price,
+			COALESCE(d.marketplace_price, 0) as marketplace_price,
 			TO_CHAR(d.created_at, 'YYYY-MM-DD') as created_at
 		FROM domains d
 		LEFT JOIN users u ON u.id = d.user_id
