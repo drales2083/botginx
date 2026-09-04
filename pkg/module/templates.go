@@ -40,6 +40,21 @@ func NewTemplateEngine(layouts fs.FS) *TemplateEngine {
 	}
 }
 
+func toFloat(v any) float64 {
+	switch n := v.(type) {
+	case int:
+		return float64(n)
+	case int64:
+		return float64(n)
+	case float64:
+		return n
+	case float32:
+		return float64(n)
+	default:
+		return 0
+	}
+}
+
 func defaultFuncs() template.FuncMap {
 	return template.FuncMap{
 		"safeHTML": func(s string) template.HTML { return template.HTML(s) },
@@ -62,14 +77,18 @@ func defaultFuncs() template.FuncMap {
 		"add": func(a, b int) int {
 			return a + b
 		},
-		"divf": func(a, b int) float64 {
-			if b == 0 {
+		"divf": func(a, b any) float64 {
+			af := toFloat(a)
+			bf := toFloat(b)
+			if bf == 0 {
 				return 0
 			}
-			return float64(a) / float64(b)
+			return af / bf
 		},
-		"mulf": func(a, b float64) float64 {
-			return a * b
+		"mulf": func(a, b any) float64 {
+			af := toFloat(a)
+			bf := toFloat(b)
+			return af * bf
 		},
 		// Pointer dereference helpers
 		"deref": func(p *float64) float64 {
