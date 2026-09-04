@@ -359,7 +359,7 @@ func (m *Module) handleIndex(w http.ResponseWriter, r *http.Request) {
 	stats, _ := m.GetUserStats(userID)
 	settings, _ := m.GetSettings()
 
-	module.Render(w, r, m.templates, "referrals:index.html", map[string]interface{}{
+	module.RenderUserSection(w, r, m.templates, "referrals:index.html", map[string]interface{}{
 		"Title":    "Referrals",
 		"Stats":    stats,
 		"Settings": settings,
