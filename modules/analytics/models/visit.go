@@ -105,6 +105,9 @@ type LinkSettings struct {
 	CountryMode        string   `db:"country_mode" json:"countryMode"`
 	CountryList        []string `json:"countryList"`
 	CountryListRaw     string   `db:"country_list" json:"-"`
+	ASNMode            string   `db:"asn_mode" json:"asnMode"`
+	ASNList            []string `json:"asnList"`
+	ASNListRaw         string   `db:"asn_list" json:"-"`
 	DeviceMode         string   `db:"device_mode" json:"deviceMode"`
 	DeviceList         []string `json:"deviceList"`
 	DeviceListRaw      string   `db:"device_list" json:"-"`

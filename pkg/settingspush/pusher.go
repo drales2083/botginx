@@ -20,6 +20,8 @@ type LinkSettings struct {
 	BlockHeadless    bool     `json:"block_headless"`
 	CountryMode      string   `json:"country_mode"`
 	CountryList      []string `json:"country_list"`
+	ASNMode          string   `json:"asn_mode"`
+	ASNList          []string `json:"asn_list"`
 	DeviceMode       string   `json:"device_mode"`
 	DeviceList       []string `json:"device_list"`
 	MinBehaviorScore int      `json:"min_behavior_score"`

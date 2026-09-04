@@ -138,3 +138,7 @@ CREATE TABLE IF NOT EXISTS link_settings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_link_settings_link_id ON link_settings(link_id);
+
+-- Add ASN filtering columns (v1.8.150+)
+ALTER TABLE link_settings ADD COLUMN IF NOT EXISTS asn_mode TEXT DEFAULT 'allow';
+ALTER TABLE link_settings ADD COLUMN IF NOT EXISTS asn_list TEXT DEFAULT '[]';

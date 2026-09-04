@@ -409,9 +409,11 @@ func (s *AnalyticsService) GetLinkSettings(linkID string) (*models.LinkSettings,
 		// Default settings: bot protection enabled, redirect to Google
 		return &models.LinkSettings{
 			LinkID:          linkID,
-			CountryMode:     "all",
+			CountryMode:     "allow",
 			CountryList:     []string{},
-			DeviceMode:      "all",
+			ASNMode:         "allow",
+			ASNList:         []string{},
+			DeviceMode:      "allow",
 			DeviceList:      []string{},
 			BlockBots:       true,
 			BlockTor:        true,
@@ -423,6 +425,7 @@ func (s *AnalyticsService) GetLinkSettings(linkID string) (*models.LinkSettings,
 	}
 
 	json.Unmarshal([]byte(settings.CountryListRaw), &settings.CountryList)
+	json.Unmarshal([]byte(settings.ASNListRaw), &settings.ASNList)
 	json.Unmarshal([]byte(settings.DeviceListRaw), &settings.DeviceList)
 
 	return &settings, nil
@@ -430,35 +433,38 @@ func (s *AnalyticsService) GetLinkSettings(linkID string) (*models.LinkSettings,
 
 func (s *AnalyticsService) SaveLinkSettings(settings *models.LinkSettings) error {
 	countryJSON, _ := json.Marshal(settings.CountryList)
+	asnJSON, _ := json.Marshal(settings.ASNList)
 	deviceJSON, _ := json.Marshal(settings.DeviceList)
 	settings.CountryListRaw = string(countryJSON)
+	settings.ASNListRaw = string(asnJSON)
 	settings.DeviceListRaw = string(deviceJSON)
 	settings.UpdatedAt = time.Now()
 
 	if settings.ID == "" {
 		settings.ID = s.generateID()
 		_, err := s.db.Exec(`
-			INSERT INTO link_settings (id, link_id, country_mode, country_list, device_mode, device_list,
-				block_bots, block_tor, block_proxy, block_datacenter, block_headless,
-				min_behavior_score, redirect_on_block, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			INSERT INTO link_settings (id, link_id, country_mode, country_list, asn_mode, asn_list,
+				device_mode, device_list, block_bots, block_tor, block_proxy, block_datacenter,
+				block_headless, min_behavior_score, redirect_on_block, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		`, settings.ID, settings.LinkID, settings.CountryMode, settings.CountryListRaw,
-			settings.DeviceMode, settings.DeviceListRaw, settings.BlockBots, settings.BlockTor,
-			settings.BlockProxy, settings.BlockDatacenter, settings.BlockHeadless,
-			settings.MinBehaviorScore, settings.RedirectOnBlock, settings.UpdatedAt)
+			settings.ASNMode, settings.ASNListRaw, settings.DeviceMode, settings.DeviceListRaw,
+			settings.BlockBots, settings.BlockTor, settings.BlockProxy, settings.BlockDatacenter,
+			settings.BlockHeadless, settings.MinBehaviorScore, settings.RedirectOnBlock, settings.UpdatedAt)
 		return err
 	}
 
 	_, err := s.db.Exec(`
 		UPDATE link_settings
-		SET country_mode = $2, country_list = $3, device_mode = $4, device_list = $5,
-			block_bots = $6, block_tor = $7, block_proxy = $8, block_datacenter = $9,
-			block_headless = $10, min_behavior_score = $11, redirect_on_block = $12, updated_at = $13
+		SET country_mode = $2, country_list = $3, asn_mode = $4, asn_list = $5,
+			device_mode = $6, device_list = $7, block_bots = $8, block_tor = $9,
+			block_proxy = $10, block_datacenter = $11, block_headless = $12,
+			min_behavior_score = $13, redirect_on_block = $14, updated_at = $15
 		WHERE link_id = $1
 	`, settings.LinkID, settings.CountryMode, settings.CountryListRaw,
-		settings.DeviceMode, settings.DeviceListRaw, settings.BlockBots, settings.BlockTor,
-		settings.BlockProxy, settings.BlockDatacenter, settings.BlockHeadless,
-		settings.MinBehaviorScore, settings.RedirectOnBlock, settings.UpdatedAt)
+		settings.ASNMode, settings.ASNListRaw, settings.DeviceMode, settings.DeviceListRaw,
+		settings.BlockBots, settings.BlockTor, settings.BlockProxy, settings.BlockDatacenter,
+		settings.BlockHeadless, settings.MinBehaviorScore, settings.RedirectOnBlock, settings.UpdatedAt)
 	return err
 }
 
