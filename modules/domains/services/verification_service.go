@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -690,6 +691,38 @@ rm -f /etc/botection/links/*.%s.json
 	client.Run("nginx -t && systemctl reload nginx 2>/dev/null || true")
 
 	return nil
+}
+
+// CleanupRedirectLinkSettings removes botection settings files for specific link IDs
+func (s *VerificationService) CleanupRedirectLinkSettings(linkIDs []string) {
+	if len(linkIDs) == 0 {
+		return
+	}
+
+	server, err := s.getServer()
+	if err != nil {
+		log.Printf("[cleanup] no server available for link settings cleanup")
+		return
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		log.Printf("[cleanup] SSH connection failed for link settings: %v", err)
+		return
+	}
+	defer client.Close()
+
+	// Build rm command for all link IDs
+	for _, id := range linkIDs {
+		settingsPath := fmt.Sprintf("/etc/botection/links/%s.json", id)
+		client.Run(fmt.Sprintf("rm -f %s", settingsPath))
+	}
+	log.Printf("[cleanup] removed botection settings for %d links", len(linkIDs))
 }
 
 // DetectDomainType checks if domain A record points to our server

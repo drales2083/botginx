@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -207,7 +208,7 @@ func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{"deleted": true})
 }
 
-// cleanupVPS removes deployed files from the VPS
+// cleanupVPS removes deployed files from the Deploy VPS
 func (h *Handler) cleanupVPS(link *models.RedirectLink) {
 	if h.serverProvider == nil {
 		return
@@ -216,6 +217,7 @@ func (h *Handler) cleanupVPS(link *models.RedirectLink) {
 	// Get server SSH details
 	ip, port, user, password, err := h.serverProvider.GetServerForDomain(link.DomainID)
 	if err != nil || ip == "" {
+		log.Printf("[cleanup] no server found for domain %s", link.DomainID)
 		return
 	}
 
@@ -227,17 +229,85 @@ func (h *Handler) cleanupVPS(link *models.RedirectLink) {
 
 	client, err := sshexec.NewClient(ip, portStr, user, password)
 	if err != nil {
+		log.Printf("[cleanup] failed to connect to %s: %v", ip, err)
 		return
 	}
 	defer client.Close()
 
+	baseDomain := link.BaseDomain()
+	subdomain := link.Subdomain
+
 	// Delete botection settings file
 	settingsPath := fmt.Sprintf("/etc/botection/links/%s.json", link.ID)
-	client.Run(fmt.Sprintf("rm -f %s", settingsPath))
+	if _, err := client.Run(fmt.Sprintf("rm -f %s", settingsPath)); err == nil {
+		log.Printf("[cleanup] deleted botection settings: %s", settingsPath)
+	}
 
-	// Delete site directory
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
-	client.Run(fmt.Sprintf("rm -rf %s", siteDir))
+	// Delete site directory for this link
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", baseDomain, subdomain)
+	if _, err := client.Run(fmt.Sprintf("rm -rf %s", siteDir)); err == nil {
+		log.Printf("[cleanup] deleted site directory: %s", siteDir)
+	}
+
+	// Clean up empty parent directory if no other subdomains exist
+	parentDir := fmt.Sprintf("/var/www/sites/%s", baseDomain)
+	client.Run(fmt.Sprintf("rmdir %s 2>/dev/null || true", parentDir))
+}
+
+// APIBulkDelete deletes multiple redirect links at once
+func (h *Handler) APIBulkDelete(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(input.IDs) == 0 {
+		h.jsonError(w, "No IDs provided", http.StatusBadRequest)
+		return
+	}
+
+	if len(input.IDs) > 100 {
+		h.jsonError(w, "Maximum 100 items at once", http.StatusBadRequest)
+		return
+	}
+
+	userID := r.Context().Value("userID").(string)
+	deleted := 0
+	failed := 0
+
+	for _, id := range input.IDs {
+		// Get link and verify ownership
+		link, err := h.service.Get(id)
+		if err != nil {
+			failed++
+			continue
+		}
+
+		// Verify ownership
+		if link.UserID != userID {
+			failed++
+			continue
+		}
+
+		// Cleanup VPS files (async per link)
+		go h.cleanupVPS(link)
+
+		// Delete from database
+		if err := h.service.Delete(id); err != nil {
+			failed++
+			continue
+		}
+		deleted++
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"deleted": deleted,
+		"failed":  failed,
+		"total":   len(input.IDs),
+	})
 }
 
 func (h *Handler) APIUpdateCustomization(w http.ResponseWriter, r *http.Request) {

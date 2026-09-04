@@ -487,11 +487,23 @@ func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cleanup VPS: nginx config, SSL certs, site directories
-	if cleanupErr := h.verification.CleanupDomain(domain.Name); cleanupErr != nil {
-		// Log but don't fail - VPS might be unreachable
-		// We still want to remove from our database
-	}
+	// Cleanup VPS files (async to not block response)
+	go func() {
+		// Clean up domain files: nginx config, SSL certs, site directories
+		if cleanupErr := h.verification.CleanupDomain(domain.Name); cleanupErr != nil {
+			log.Printf("[domains] cleanup failed for %s (continuing with DB delete): %v", domain.Name, cleanupErr)
+		} else {
+			log.Printf("[domains] cleaned up VPS files for %s", domain.Name)
+		}
+
+		// Also clean up redirect link botection settings by link ID
+		// (CleanupDomain handles site dirs, but botection settings are by link ID)
+		if linkCount > 0 {
+			if linkIDs, err := h.service.GetRedirectLinkIDs(id); err == nil {
+				h.verification.CleanupRedirectLinkSettings(linkIDs)
+			}
+		}
+	}()
 
 	// Delete from database (cascade removes redirect_links)
 	if err := h.service.Delete(id); err != nil {

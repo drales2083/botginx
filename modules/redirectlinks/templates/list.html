@@ -42,6 +42,9 @@
     <div class="card-header d-flex flex-wrap gap-2 align-items-center">
         <h3 class="card-title mb-0 me-auto">{{t "redirect_links"}}</h3>
         {{if $canWrite}}
+        <button class="btn btn-danger btn-sm d-none" id="bulk-delete-btn">
+            <i class="bi bi-trash me-1"></i><span id="selected-count">0</span> Selected — Delete
+        </button>
         <a href="/user/redirectlinks/new" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-lg me-1"></i> {{t "create"}}
         </a>
@@ -49,9 +52,10 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="6">
+            <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="0,7">
                 <thead>
                     <tr>
+                        {{if $canWrite}}<th style="width:40px"><input type="checkbox" class="form-check-input" id="select-all" title="Select all"></th>{{end}}
                         <th>Link</th>
                         <th>Type</th>
                         <th>Views</th>
@@ -62,7 +66,8 @@
                 </thead>
                 <tbody>
                     {{range .Links}}
-                    <tr data-status="{{.DeployStatus}}">
+                    <tr data-status="{{.DeployStatus}}" data-id="{{.ID}}">
+                        {{if $canWrite}}<td><input type="checkbox" class="form-check-input row-select" data-id="{{.ID}}"></td>{{end}}
                         <td>
                             {{if .DeployedURL}}
                             <a href="{{.FullURL}}" target="_blank" class="fw-semibold text-decoration-none">
@@ -136,7 +141,7 @@
                     </tr>
                     {{else}}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
+                        <td colspan="{{if $canWrite}}7{{else}}6{{end}}" class="text-center text-muted py-4">
                             No redirect links yet.
                             {{if $canWrite}}
                             <a href="/user/redirectlinks/new">Create your first link</a>.
@@ -150,7 +155,7 @@
     </div>
 </div>
 
-<!-- Delete Modal -->
+<!-- Delete Modal (single) -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -172,6 +177,28 @@
     </div>
 </div>
 
+<!-- Bulk Delete Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Multiple Links</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="bulk-count">0</strong> redirect links?</p>
+                <p class="text-muted small mb-0">This will remove all deployed pages and analytics data for these links.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">
+                    <i class="bi bi-trash me-1"></i>Delete All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // Calculate stats
 let deployed = 0, pending = 0, failed = 0;
@@ -187,11 +214,40 @@ document.getElementById('stat-failed').textContent = failed;
 
 let deleteId = null;
 let deleteModal = null;
+let bulkDeleteModal = null;
+let selectedIds = new Set();
+
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+const confirmBulkDeleteBtn = document.getElementById('confirmBulkDeleteBtn');
+const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+const selectAllCheckbox = document.getElementById('select-all');
 
 document.addEventListener('DOMContentLoaded', () => {
     deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    bulkDeleteModal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
 });
+
+// Update selection UI
+function updateSelectionUI() {
+    const count = selectedIds.size;
+    document.getElementById('selected-count').textContent = count;
+
+    if (bulkDeleteBtn) {
+        if (count > 0) {
+            bulkDeleteBtn.classList.remove('d-none');
+        } else {
+            bulkDeleteBtn.classList.add('d-none');
+        }
+    }
+
+    // Update select-all checkbox state
+    if (selectAllCheckbox) {
+        const allCheckboxes = document.querySelectorAll('.row-select');
+        const checkedCount = document.querySelectorAll('.row-select:checked').length;
+        selectAllCheckbox.checked = checkedCount > 0 && checkedCount === allCheckboxes.length;
+        selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
+    }
+}
 
 // Delegated event handlers
 document.addEventListener('click', async (e) => {
@@ -216,6 +272,41 @@ document.addEventListener('click', async (e) => {
     }
 });
 
+// Handle row checkbox changes
+document.addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-select')) {
+        const id = e.target.dataset.id;
+        if (e.target.checked) {
+            selectedIds.add(id);
+        } else {
+            selectedIds.delete(id);
+        }
+        updateSelectionUI();
+    }
+
+    // Handle select-all checkbox
+    if (e.target.id === 'select-all') {
+        document.querySelectorAll('.row-select').forEach(cb => {
+            cb.checked = e.target.checked;
+            if (e.target.checked) {
+                selectedIds.add(cb.dataset.id);
+            } else {
+                selectedIds.delete(cb.dataset.id);
+            }
+        });
+        updateSelectionUI();
+    }
+});
+
+// Bulk delete button
+if (bulkDeleteBtn) {
+    bulkDeleteBtn.addEventListener('click', () => {
+        document.getElementById('bulk-count').textContent = selectedIds.size;
+        bulkDeleteModal.show();
+    });
+}
+
+// Single delete
 confirmDeleteBtn.addEventListener('click', async () => {
     if (!deleteId) return;
 
@@ -231,6 +322,37 @@ confirmDeleteBtn.addEventListener('click', async () => {
         deleteModal.hide();
         confirmDeleteBtn.disabled = false;
         confirmDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+    }
+});
+
+// Bulk delete
+confirmBulkDeleteBtn.addEventListener('click', async () => {
+    if (selectedIds.size === 0) return;
+
+    confirmBulkDeleteBtn.disabled = true;
+    confirmBulkDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+
+    try {
+        const res = await fetch('/user/redirectlinks/api/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: Array.from(selectedIds) })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            reloadWithToast(`Deleted ${data.deleted} links`, 'success');
+        } else {
+            showToast(data.error || 'Failed to delete', 'danger');
+            bulkDeleteModal.hide();
+            confirmBulkDeleteBtn.disabled = false;
+            confirmBulkDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete All';
+        }
+    } catch (e) {
+        showToast('Network error', 'danger');
+        bulkDeleteModal.hide();
+        confirmBulkDeleteBtn.disabled = false;
+        confirmBulkDeleteBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete All';
     }
 });
 </script>
