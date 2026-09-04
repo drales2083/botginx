@@ -45,8 +45,8 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 func (m *Module) Migrate() error {
 	migrations := []string{
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(8) UNIQUE`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_id UUID REFERENCES users(id)`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(8)`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_id UUID`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS balance DECIMAL(10,2) DEFAULT 0`,
 		`CREATE TABLE IF NOT EXISTS referral_earnings (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
