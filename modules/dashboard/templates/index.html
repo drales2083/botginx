@@ -1,60 +1,48 @@
 {{define "content"}}
 <div class="row g-3 mb-4">
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-success">
-            <div class="inner">
-                <h3>{{.Stats.redirectLinks}}</h3>
-                <p>{{t "redirects"}}</p>
-            </div>
-            <div class="small-box-icon">
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-success shadow-sm">
                 <i class="bi bi-link-45deg"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">{{t "redirects"}}</span>
+                <span class="info-box-number">{{.Stats.redirectLinks}}</span>
             </div>
-            <a href="/user/redirectlinks" class="small-box-footer">
-                {{t "redirectlinks.create"}} <i class="bi bi-arrow-right-circle-fill"></i>
-            </a>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-warning">
-            <div class="inner">
-                <h3>{{.Stats.domains}}</h3>
-                <p>{{t "domains.title"}}</p>
-            </div>
-            <div class="small-box-icon">
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-warning shadow-sm">
                 <i class="bi bi-globe"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">{{t "domains.title"}}</span>
+                <span class="info-box-number">{{.Stats.domains}}</span>
             </div>
-            <a href="/user/domains" class="small-box-footer">
-                {{t "domains.add"}} <i class="bi bi-arrow-right-circle-fill"></i>
-            </a>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-info">
-            <div class="inner">
-                <h3>{{.Stats.live}}</h3>
-                <p>{{t "live"}}</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-info shadow-sm">
+                <i class="bi bi-cloud-check-fill"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">{{t "live"}}</span>
+                <span class="info-box-number">{{.Stats.live}}</span>
             </div>
-            <div class="small-box-icon">
-                <i class="bi bi-cloud-check"></i>
-            </div>
-            <a href="/user/redirectlinks" class="small-box-footer">
-                {{t "actions"}} <i class="bi bi-arrow-right-circle-fill"></i>
-            </a>
         </div>
     </div>
     {{if .Hosting.available}}
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-secondary">
-            <div class="inner">
-                <h3>{{.Hosting.activeCount}}</h3>
-                <p>Hosting Accounts</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-secondary shadow-sm">
+                <i class="bi bi-hdd-rack-fill"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Hosting Accounts</span>
+                <span class="info-box-number">{{.Hosting.activeCount}}</span>
             </div>
-            <div class="small-box-icon">
-                <i class="bi bi-hdd-rack"></i>
-            </div>
-            <a href="/user/hosting" class="small-box-footer">
-                Buy Hosting <i class="bi bi-arrow-right-circle-fill"></i>
-            </a>
         </div>
     </div>
     {{end}}

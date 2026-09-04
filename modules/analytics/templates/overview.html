@@ -1,39 +1,47 @@
 {{define "content"}}
-<div class="row mb-4">
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-primary">
-            <div class="inner">
-                <h3>{{.Stats.TotalVisits}}</h3>
-                <p>Total Visits</p>
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-primary shadow-sm">
+                <i class="bi bi-eye-fill"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Total Visits</span>
+                <span class="info-box-number">{{.Stats.TotalVisits}}</span>
             </div>
-            <div class="small-box-icon"><i class="bi bi-eye"></i></div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-success">
-            <div class="inner">
-                <h3>{{.Stats.UniqueVisits}}</h3>
-                <p>Unique Visitors</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-success shadow-sm">
+                <i class="bi bi-person-check-fill"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Unique Visitors</span>
+                <span class="info-box-number">{{.Stats.UniqueVisits}}</span>
             </div>
-            <div class="small-box-icon"><i class="bi bi-person-check"></i></div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-warning">
-            <div class="inner">
-                <h3>{{.Stats.BotVisits}}</h3>
-                <p>Bot Visits</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-warning shadow-sm">
+                <i class="bi bi-robot"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Bot Visits</span>
+                <span class="info-box-number">{{.Stats.BotVisits}}</span>
             </div>
-            <div class="small-box-icon"><i class="bi bi-robot"></i></div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-info">
-            <div class="inner">
-                <h3>{{.Stats.TodayVisits}}</h3>
-                <p>Today</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-info shadow-sm">
+                <i class="bi bi-calendar-day-fill"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Today</span>
+                <span class="info-box-number">{{.Stats.TodayVisits}}</span>
             </div>
-            <div class="small-box-icon"><i class="bi bi-calendar-day"></i></div>
         </div>
     </div>
 </div>

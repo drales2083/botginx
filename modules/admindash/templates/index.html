@@ -1,93 +1,93 @@
 {{define "content"}}
 <div class="row g-3 mb-4">
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-primary">
-            <div class="inner">
-                <h3>{{.Stats.totalUsers}}</h3>
-                <p>Total Users</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-people"></i>
-            </div>
-            <a href="/admin/users" class="small-box-footer">
-                View Users <i class="bi bi-arrow-right-circle-fill"></i>
-            </a>
-        </div>
-    </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-success">
-            <div class="inner">
-                <h3>{{.Stats.activeUsers}}</h3>
-                <p>Active Subscriptions</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-check-circle"></i>
-            </div>
-            <a href="/admin/users" class="small-box-footer">
-                Manage <i class="bi bi-arrow-right-circle-fill"></i>
-            </a>
-        </div>
-    </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-warning">
-            <div class="inner">
-                <h3>{{.Stats.totalDomains}}</h3>
-                <p>Total Domains</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-globe"></i>
-            </div>
-            <a href="/admin/admindash/domains/all" class="small-box-footer">
-                View All <i class="bi bi-arrow-right-circle-fill"></i>
-            </a>
-        </div>
-    </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-info">
-            <div class="inner">
-                <h3>{{.Stats.totalLinks}}</h3>
-                <p>Redirect Links</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-link-45deg"></i>
-            </div>
-            <span class="small-box-footer">
-                {{.Stats.deployedLinks}} deployed
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-primary shadow-sm">
+                <i class="bi bi-people-fill"></i>
             </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Total Users</span>
+                <span class="info-box-number">{{.Stats.totalUsers}}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-success shadow-sm">
+                <i class="bi bi-check-circle-fill"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Active Subscriptions</span>
+                <span class="info-box-number">{{.Stats.activeUsers}}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-warning shadow-sm">
+                <i class="bi bi-globe"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Total Domains</span>
+                <span class="info-box-number">{{.Stats.totalDomains}}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-info shadow-sm">
+                <i class="bi bi-link-45deg"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Redirect Links</span>
+                <span class="info-box-number">{{.Stats.totalLinks}}</span>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-lg-3 col-6">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <h2 class="mb-1">{{.Stats.totalVisits}}</h2>
-                <p class="text-muted mb-0">Total Visits</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-secondary shadow-sm">
+                <i class="bi bi-eye-fill"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Total Visits</span>
+                <span class="info-box-number">{{.Stats.totalVisits}}</span>
             </div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <h2 class="mb-1 text-success">{{.Stats.todayVisits}}</h2>
-                <p class="text-muted mb-0">Today</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-success shadow-sm">
+                <i class="bi bi-calendar-check-fill"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Today</span>
+                <span class="info-box-number">{{.Stats.todayVisits}}</span>
             </div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <h2 class="mb-1 text-danger">{{.Stats.blockedVisits}}</h2>
-                <p class="text-muted mb-0">Blocked</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-danger shadow-sm">
+                <i class="bi bi-shield-x"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Blocked</span>
+                <span class="info-box-number">{{.Stats.blockedVisits}}</span>
             </div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <h2 class="mb-1 text-info">{{.Stats.uniqueVisits}}</h2>
-                <p class="text-muted mb-0">Unique IPs</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-info shadow-sm">
+                <i class="bi bi-person-badge-fill"></i>
+            </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Unique IPs</span>
+                <span class="info-box-number">{{.Stats.uniqueVisits}}</span>
             </div>
         </div>
     </div>

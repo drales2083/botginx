@@ -22,60 +22,52 @@
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-primary">
-            <div class="inner">
-                <h3>{{.Stats.Level1Count}}</h3>
-                <p>Level 1 Referrals</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-person-plus"></i>
-            </div>
-            <span class="small-box-footer">
-                {{.Settings.Level1Rate}}% commission
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-primary shadow-sm">
+                <i class="bi bi-person-plus-fill"></i>
             </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Level 1 Referrals</span>
+                <span class="info-box-number">{{.Stats.Level1Count}}</span>
+                <small class="text-muted">{{.Settings.Level1Rate}}% commission</small>
+            </div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-info">
-            <div class="inner">
-                <h3>{{.Stats.Level2Count}}</h3>
-                <p>Level 2 Referrals</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-people"></i>
-            </div>
-            <span class="small-box-footer">
-                {{.Settings.Level2Rate}}% commission
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-info shadow-sm">
+                <i class="bi bi-people-fill"></i>
             </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Level 2 Referrals</span>
+                <span class="info-box-number">{{.Stats.Level2Count}}</span>
+                <small class="text-muted">{{.Settings.Level2Rate}}% commission</small>
+            </div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-warning">
-            <div class="inner">
-                <h3>{{.Stats.Level3Count}}</h3>
-                <p>Level 3 Referrals</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-diagram-3"></i>
-            </div>
-            <span class="small-box-footer">
-                {{.Settings.Level3Rate}}% commission
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-warning shadow-sm">
+                <i class="bi bi-diagram-3-fill"></i>
             </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Level 3 Referrals</span>
+                <span class="info-box-number">{{.Stats.Level3Count}}</span>
+                <small class="text-muted">{{.Settings.Level3Rate}}% commission</small>
+            </div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-success">
-            <div class="inner">
-                <h3>${{printf "%.2f" .Stats.TotalEarnings}}</h3>
-                <p>Total Earned</p>
-            </div>
-            <div class="small-box-icon">
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon text-bg-success shadow-sm">
                 <i class="bi bi-wallet2"></i>
-            </div>
-            <span class="small-box-footer">
-                Balance: ${{printf "%.2f" .Stats.Balance}}
             </span>
+            <div class="info-box-content">
+                <span class="info-box-text">Total Earned</span>
+                <span class="info-box-number">${{printf "%.2f" .Stats.TotalEarnings}}</span>
+                <small class="text-muted">Balance: ${{printf "%.2f" .Stats.Balance}}</small>
+            </div>
         </div>
     </div>
 </div>
