@@ -113,8 +113,8 @@
 </div>
 
 <div class="row g-3 mt-3">
-    <div class="col-12">
-        <div class="card">
+    <div class="col-lg-7">
+        <div class="card h-100">
             <div class="card-header">
                 <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>How It Works</h5>
             </div>
@@ -131,16 +131,65 @@
                         <div class="p-3">
                             <i class="bi bi-person-check display-4 text-success"></i>
                             <h6 class="mt-3">2. They Subscribe</h6>
-                            <p class="text-muted small mb-0">When they sign up and subscribe, you earn commission.</p>
+                            <p class="text-muted small mb-0">When they sign up and pay, you earn commission instantly.</p>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="p-3">
                             <i class="bi bi-cash-coin display-4 text-warning"></i>
                             <h6 class="mt-3">3. Earn Forever</h6>
-                            <p class="text-muted small mb-0">Earn on every renewal, up to 3 levels deep!</p>
+                            <p class="text-muted small mb-0">Earn on every payment they make, plus their referrals too!</p>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-calculator me-2"></i>Commission Rates</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
+                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px">
+                        <span class="text-white fw-bold">L1</span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">Direct Referrals</div>
+                        <small class="text-muted">People who use your link</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-primary fs-5">{{.Settings.Level1Rate}}%</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
+                    <div class="bg-info rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px">
+                        <span class="text-white fw-bold">L2</span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">Their Referrals</div>
+                        <small class="text-muted">People your L1s refer</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-info fs-5">{{.Settings.Level2Rate}}%</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px">
+                        <span class="text-dark fw-bold">L3</span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">Network Referrals</div>
+                        <small class="text-muted">People your L2s refer</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-warning fs-5">{{.Settings.Level3Rate}}%</span>
+                    </div>
+                </div>
+                <div class="alert alert-success mt-3 mb-0 small">
+                    <i class="bi bi-lightning-charge me-1"></i>
+                    <strong>Example:</strong> If someone pays $100, you earn ${{.Settings.Level1Rate}} instantly!
                 </div>
             </div>
         </div>
