@@ -624,7 +624,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
         });
 
         if (res.ok) {
-            flashToast('Settings saved', 'success');
+            showToast('Settings saved', 'success');
         } else {
             const d = await res.json().catch(() => ({}));
             showToast(d.error || 'Failed to save settings', 'danger');
