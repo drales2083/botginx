@@ -225,7 +225,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 		{
 			Title:   "Dashboard",
 			Icon:    "bi-speedometer2",
-			Path:    "/admin/dashboard",
+			Path:    "/admin/admindash",
 			Order:   0,
 			Section: module.MenuSectionAdmin,
 		},
