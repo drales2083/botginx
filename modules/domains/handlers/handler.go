@@ -911,16 +911,43 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 
 	status := models.SetupStatus{
 		SetupStep: domain.SetupStep,
+		CheckedAt: time.Now().Unix(),
 	}
 
-	// Check A record
+	// Check A record with rich status
 	status.ARecordFound, status.ARecordIP = h.verification.CheckARecord(domain.Name, deployIP)
+	status.ARecord = models.RecordStatus{
+		Expected: deployIP,
+		Found:    status.ARecordIP,
+	}
+	if status.ARecordFound {
+		status.ARecord.Status = "verified"
+		status.ARecord.Message = "A record correctly points to server"
+	} else if status.ARecordIP != "" {
+		status.ARecord.Status = "mismatch"
+		status.ARecord.Message = fmt.Sprintf("Found %s, expected %s", status.ARecordIP, deployIP)
+	} else {
+		status.ARecord.Status = "not_found"
+		status.ARecord.Message = "No A record found"
+	}
 
-	// Check verify TXT
+	// Check verify TXT with rich status
 	verified, verifyErr := h.verification.VerifyDNS(baseDomain, domain.VerifyToken)
 	status.VerifyTXTFound = verified
-	if verifyErr != nil {
-		status.ErrorMessage = fmt.Sprintf("Verify check: %s (looking for %s at _guardbot-verify.%s)", verifyErr.Error(), domain.VerifyToken, baseDomain)
+	status.VerifyTXT = models.RecordStatus{
+		Expected: domain.VerifyToken,
+	}
+	if verified {
+		status.VerifyTXT.Status = "verified"
+		status.VerifyTXT.Found = domain.VerifyToken
+		status.VerifyTXT.Message = "Ownership verified"
+	} else if verifyErr != nil {
+		status.VerifyTXT.Status = "not_found"
+		status.VerifyTXT.Message = fmt.Sprintf("TXT record not found at _guardbot-verify.%s", baseDomain)
+		status.ErrorMessage = status.VerifyTXT.Message
+	} else {
+		status.VerifyTXT.Status = "not_found"
+		status.VerifyTXT.Message = "Waiting for TXT record"
 	}
 
 	// Check SSL readiness for wildcard domains
@@ -929,13 +956,26 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 		if domain.AcmeSubdomain != nil && domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
 			// Using acme-dns - check CNAME instead of ACME TXT
 			status.AcmeTXTFound = domain.AcmeCnameVerified
+			status.CnameOrTXT = models.RecordStatus{
+				Expected: *domain.AcmeFulldomain,
+			}
 			if !domain.AcmeCnameVerified {
 				// Check if CNAME is now configured
 				if h.verification.CheckAcmeCnameRecord(domain.Name, *domain.AcmeFulldomain) {
 					status.AcmeTXTFound = true
 					verified := true
 					h.service.Update(id, models.UpdateDomainInput{AcmeCnameVerified: &verified})
+					status.CnameOrTXT.Status = "verified"
+					status.CnameOrTXT.Found = *domain.AcmeFulldomain
+					status.CnameOrTXT.Message = "CNAME verified - SSL renewals will be automatic"
+				} else {
+					status.CnameOrTXT.Status = "not_found"
+					status.CnameOrTXT.Message = fmt.Sprintf("Add CNAME: _acme-challenge.%s → %s", baseDomain, *domain.AcmeFulldomain)
 				}
+			} else {
+				status.CnameOrTXT.Status = "verified"
+				status.CnameOrTXT.Found = *domain.AcmeFulldomain
+				status.CnameOrTXT.Message = "CNAME verified - SSL renewals will be automatic"
 			}
 			// Clear old ACME token from response (not needed with acme-dns)
 			status.AcmeToken = ""
@@ -943,19 +983,41 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 			// Legacy: using ACME TXT (fallback)
 			status.AcmeToken = *domain.AcmeToken
 			status.AcmeTXTFound = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
-
-			// Check for stale ACME record that needs to be deleted
-			if !status.AcmeTXTFound {
+			status.CnameOrTXT = models.RecordStatus{
+				Expected: *domain.AcmeToken,
+			}
+			if status.AcmeTXTFound {
+				status.CnameOrTXT.Status = "verified"
+				status.CnameOrTXT.Found = *domain.AcmeToken
+				status.CnameOrTXT.Message = "TXT record verified"
+			} else {
+				// Check for stale ACME record that needs to be deleted
 				existingValue := h.verification.GetAcmeTXTValue(domain.Name)
 				if existingValue != "" && existingValue != *domain.AcmeToken {
 					status.AcmeTXTStale = true
 					status.AcmeTXTStaleValue = existingValue
+					status.CnameOrTXT.Status = "mismatch"
+					status.CnameOrTXT.Found = existingValue
+					status.CnameOrTXT.Message = fmt.Sprintf("Wrong value found - delete old TXT and add: %s", *domain.AcmeToken)
+				} else {
+					status.CnameOrTXT.Status = "not_found"
+					status.CnameOrTXT.Message = "Waiting for TXT record"
 				}
+			}
+		} else {
+			// No acme-dns registration yet
+			status.CnameOrTXT = models.RecordStatus{
+				Status:  "not_found",
+				Message: "Registering with acme-dns...",
 			}
 		}
 	} else {
 		// Non-wildcard: ACME TXT not needed (HTTP-01 challenge)
 		status.AcmeTXTFound = true
+		status.CnameOrTXT = models.RecordStatus{
+			Status:  "verified",
+			Message: "Not required - using HTTP-01 challenge",
+		}
 	}
 
 	// Update verification status in DB

@@ -59,6 +59,14 @@ type Domain struct {
 	ServerName string `db:"server_name" json:"serverName,omitempty"`
 }
 
+// RecordStatus represents the verification state of a single DNS record
+type RecordStatus struct {
+	Status   string `json:"status"`             // "verified", "mismatch", "not_found", "checking"
+	Found    string `json:"found,omitempty"`    // What was found in DNS
+	Expected string `json:"expected,omitempty"` // What we expected to find
+	Message  string `json:"message,omitempty"`  // Human-readable status message
+}
+
 // SetupStatus represents the current state of DNS records for external setup
 type SetupStatus struct {
 	ARecordFound      bool   `json:"aRecordFound"`
@@ -72,6 +80,14 @@ type SetupStatus struct {
 	SSLReady          bool   `json:"sslReady"`
 	ErrorMessage      string `json:"errorMessage,omitempty"`
 	AcmeToken         string `json:"acmeToken,omitempty"` // Current expected token
+
+	// Rich status for each record type
+	ARecord    RecordStatus `json:"aRecord"`
+	VerifyTXT  RecordStatus `json:"verifyTxt"`
+	CnameOrTXT RecordStatus `json:"cnameOrTxt"` // CNAME for acme-dns, TXT for legacy
+
+	// Timing info
+	CheckedAt int64 `json:"checkedAt"` // Unix timestamp of this check
 }
 
 // ExternalSetupInfo contains all info needed for the setup wizard

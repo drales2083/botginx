@@ -39,7 +39,7 @@
                     A Record — Point to Server
                 </h5>
                 <div class="card-tools">
-                    <span id="badge-a" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Waiting</span>
+                    <span id="badge-a" class="badge bg-secondary" title="Checking DNS..."><i class="bi bi-hourglass-split"></i> Waiting</span>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -68,6 +68,7 @@
                         </tr>
                     </tbody>
                 </table>
+                <div class="px-3 py-2 border-top" id="detail-a"></div>
             </div>
         </div>
 
@@ -79,7 +80,7 @@
                     TXT Record — Verify Ownership
                 </h5>
                 <div class="card-tools">
-                    <span id="badge-verify" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Waiting</span>
+                    <span id="badge-verify" class="badge bg-secondary" title="Checking DNS..."><i class="bi bi-hourglass-split"></i> Waiting</span>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -108,6 +109,7 @@
                         </tr>
                     </tbody>
                 </table>
+                <div class="px-3 py-2 border-top" id="detail-verify"></div>
             </div>
         </div>
 
@@ -156,6 +158,7 @@
                         </tr>
                     </tbody>
                 </table>
+                <div id="detail-ssl" class="mb-3"></div>
                 <div class="alert alert-success small mb-3">
                     <i class="bi bi-check-circle me-1"></i>
                     <strong>One-time setup!</strong> This CNAME never changes. SSL certificates will renew automatically forever.
@@ -334,11 +337,12 @@
             <div class="card-footer" id="poll-status">
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
-                        <i class="bi bi-arrow-repeat me-1"></i>Auto-check every 30s
+                        <i class="bi bi-clock me-1"></i>Last: <span id="last-check-time">--:--</span>
+                        <span class="ms-2"><i class="bi bi-arrow-repeat me-1"></i>Auto-check every 30s</span>
                     </small>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-primary" id="btn-check-now" onclick="manualCheck()">
-                            <i class="bi bi-arrow-clockwise me-1"></i>Check
+                            <i class="bi bi-arrow-clockwise me-1"></i>Check Now
                         </button>
                         {{if not .SetupInfo.IsWildcard}}
                         <button class="btn btn-warning" id="btn-retry-ssl" onclick="retrySSL()" title="Force retry SSL generation">
@@ -675,28 +679,51 @@ async function manualCheck() {
 
         const status = await res.json();
 
-        // Update badges
-        updateBadge('badge-a', status.aRecordFound);
-        updateBadge('badge-verify', status.verifyTxtFound);
+        // Update rich badges with detailed status
+        if (status.aRecord) {
+            updateRichBadge('badge-a', status.aRecord);
+            updateStatusDetail('detail-a', status.aRecord);
+        } else {
+            updateBadge('badge-a', status.aRecordFound);
+        }
+
+        if (status.verifyTxt) {
+            updateRichBadge('badge-verify', status.verifyTxt);
+            updateStatusDetail('detail-verify', status.verifyTxt);
+        } else {
+            updateBadge('badge-verify', status.verifyTxtFound);
+        }
 
         // Track DNS verification state for SSL button
         dnsVerified.aRecord = status.aRecordFound;
         dnsVerified.verifyTxt = status.verifyTxtFound;
         updateSSLButtonState();
 
-        // For wildcard: SSL badge shows pending until user completes two-phase flow
+        // For wildcard: update CNAME/SSL status
         if (isWildcard) {
-            // SSL status depends on whether SSL is enabled
-            updateBadge('badge-ssl', status.sslReady);
-            updateProgress('progress-ssl', status.sslReady);
+            if (status.cnameOrTxt) {
+                updateRichBadge('badge-ssl', status.cnameOrTxt);
+                updateStatusDetail('detail-ssl', status.cnameOrTxt);
+            } else {
+                updateBadge('badge-ssl', status.sslReady);
+            }
+            updateProgress('progress-ssl', status.acmeTxtFound || status.sslReady);
         } else {
-            // Non-wildcard: SSL is automatic once DNS is ready
             updateProgress('progress-ssl', status.aRecordFound && status.verifyTxtFound);
         }
 
         // Update progress for A and verify
         updateProgress('progress-a', status.aRecordFound);
         updateProgress('progress-verify', status.verifyTxtFound);
+
+        // Update last check time
+        if (status.checkedAt) {
+            const lastCheck = document.getElementById('last-check-time');
+            if (lastCheck) {
+                const date = new Date(status.checkedAt * 1000);
+                lastCheck.textContent = date.toLocaleTimeString();
+            }
+        }
 
         // Check if complete
         if (status.sslReady) {
@@ -712,14 +739,13 @@ async function manualCheck() {
                 sslErrorEl.classList.add('d-none');
             }
 
-            // Show feedback
-            const totalChecks = 2; // A record + verify TXT (SSL is separate flow for wildcards)
-            const found = [status.aRecordFound, status.verifyTxtFound].filter(Boolean).length;
-            let msg = `Checked: ${found}/${totalChecks} verified`;
-            if (status.errorMessage) {
-                msg += ` | ${status.errorMessage}`;
-            }
-            showToast(msg, found > 0 ? 'info' : 'warning');
+            // Build feedback message from rich status
+            const statuses = [status.aRecord, status.verifyTxt].filter(s => s && s.status);
+            const verified = statuses.filter(s => s.status === 'verified').length;
+            const mismatched = statuses.filter(s => s.status === 'mismatch').length;
+            let msg = `${verified}/${statuses.length} verified`;
+            if (mismatched > 0) msg += `, ${mismatched} mismatch`;
+            showToast(msg, verified === statuses.length ? 'success' : (mismatched > 0 ? 'warning' : 'info'));
         }
 
     } catch (e) {
@@ -741,6 +767,48 @@ function updateBadge(id, found) {
     }
 }
 
+function updateRichBadge(id, recordStatus) {
+    const el = document.getElementById(id);
+    if (!el || !recordStatus) return;
+
+    switch (recordStatus.status) {
+        case 'verified':
+            el.innerHTML = '<i class="bi bi-check-lg"></i> Verified';
+            el.className = 'badge bg-success';
+            el.title = recordStatus.message || 'Record verified';
+            break;
+        case 'mismatch':
+            el.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Mismatch';
+            el.className = 'badge bg-warning text-dark';
+            el.title = recordStatus.message || `Found: ${recordStatus.found}, Expected: ${recordStatus.expected}`;
+            break;
+        case 'not_found':
+            el.innerHTML = '<i class="bi bi-x-lg"></i> Not Found';
+            el.className = 'badge bg-danger';
+            el.title = recordStatus.message || 'Record not found in DNS';
+            break;
+        default:
+            el.innerHTML = '<i class="bi bi-hourglass-split"></i> Checking';
+            el.className = 'badge bg-secondary';
+            el.title = 'Checking DNS...';
+    }
+}
+
+function updateStatusDetail(id, recordStatus) {
+    const el = document.getElementById(id);
+    if (!el || !recordStatus) return;
+
+    let html = '';
+    if (recordStatus.status === 'verified') {
+        html = `<small class="text-success"><i class="bi bi-check-circle me-1"></i>${recordStatus.message}</small>`;
+    } else if (recordStatus.status === 'mismatch') {
+        html = `<small class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>${recordStatus.message}</small>`;
+    } else if (recordStatus.status === 'not_found') {
+        html = `<small class="text-muted"><i class="bi bi-clock me-1"></i>${recordStatus.message}</small>`;
+    }
+    el.innerHTML = html;
+}
+
 function updateProgress(id, found) {
     const el = document.getElementById(id);
     const badge = el.querySelector('.badge');
@@ -760,19 +828,35 @@ async function checkStatus() {
 
         const status = await res.json();
 
-        // Update badges
-        updateBadge('badge-a', status.aRecordFound);
-        updateBadge('badge-verify', status.verifyTxtFound);
+        // Update rich badges with detailed status
+        if (status.aRecord) {
+            updateRichBadge('badge-a', status.aRecord);
+            updateStatusDetail('detail-a', status.aRecord);
+        } else {
+            updateBadge('badge-a', status.aRecordFound);
+        }
+
+        if (status.verifyTxt) {
+            updateRichBadge('badge-verify', status.verifyTxt);
+            updateStatusDetail('detail-verify', status.verifyTxt);
+        } else {
+            updateBadge('badge-verify', status.verifyTxtFound);
+        }
 
         // Track DNS verification state for SSL button
         dnsVerified.aRecord = status.aRecordFound;
         dnsVerified.verifyTxt = status.verifyTxtFound;
         updateSSLButtonState();
 
-        // For wildcard: SSL badge shows pending until user completes two-phase flow
+        // For wildcard: update CNAME/SSL status
         if (isWildcard) {
-            updateBadge('badge-ssl', status.sslReady);
-            updateProgress('progress-ssl', status.sslReady);
+            if (status.cnameOrTxt) {
+                updateRichBadge('badge-ssl', status.cnameOrTxt);
+                updateStatusDetail('detail-ssl', status.cnameOrTxt);
+            } else {
+                updateBadge('badge-ssl', status.sslReady);
+            }
+            updateProgress('progress-ssl', status.acmeTxtFound || status.sslReady);
         } else {
             updateProgress('progress-ssl', status.aRecordFound && status.verifyTxtFound);
         }
@@ -780,6 +864,15 @@ async function checkStatus() {
         // Update progress
         updateProgress('progress-a', status.aRecordFound);
         updateProgress('progress-verify', status.verifyTxtFound);
+
+        // Update last check time
+        if (status.checkedAt) {
+            const lastCheck = document.getElementById('last-check-time');
+            if (lastCheck) {
+                const date = new Date(status.checkedAt * 1000);
+                lastCheck.textContent = date.toLocaleTimeString();
+            }
+        }
 
         // Check if complete
         if (status.sslReady) {
