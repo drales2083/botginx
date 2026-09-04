@@ -44,6 +44,11 @@ type Domain struct {
 	AcmeFulldomain    *string `db:"acme_fulldomain" json:"acmeFulldomain,omitempty"`
 	AcmeCnameVerified bool    `db:"acme_cname_verified" json:"acmeCnameVerified"`
 
+	// dns-persist-01 fields (columns exist from migration, kept for schema compatibility)
+	PersistTXTValue    *string `db:"persist_txt_value" json:"-"`
+	PersistTXTVerified bool    `db:"persist_txt_verified" json:"-"`
+	LegoAccountURI     *string `db:"lego_account_uri" json:"-"`
+
 	// Marketplace fields
 	IsMarketplace          bool       `db:"is_marketplace" json:"isMarketplace"`
 	MarketplacePrice       *float64   `db:"marketplace_price" json:"marketplacePrice,omitempty"`
