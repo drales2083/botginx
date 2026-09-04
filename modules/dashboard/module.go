@@ -141,12 +141,12 @@ type hostingAccount struct {
 }
 
 func (m *Module) hostingStats(userID string) map[string]interface{} {
-	var accountCount, activeCount, hostingDomains, packageCount int
+	var accountCount, activeCount, hostingDomains, serverCount int
 	var balance float64
 
-	// Check if hosting feature is available (any packages exist)
-	m.DB().Get(&packageCount,
-		`SELECT COUNT(*) FROM hosting_packages WHERE is_active = true`)
+	// Check if hosting feature is available (any servers exist)
+	m.DB().Get(&serverCount,
+		`SELECT COUNT(*) FROM hosting_servers WHERE is_active = true`)
 
 	// Count hosting accounts
 	m.DB().Get(&accountCount,
@@ -180,7 +180,7 @@ func (m *Module) hostingStats(userID string) map[string]interface{} {
 	`, userID)
 
 	return map[string]interface{}{
-		"available":      packageCount > 0,
+		"available":      serverCount > 0,
 		"accountCount":   accountCount,
 		"activeCount":    activeCount,
 		"hostingDomains": hostingDomains,
