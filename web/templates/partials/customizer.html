@@ -1,0 +1,920 @@
+{{define "customizer"}}
+<style>
+  /* Customizer Panel Styles */
+  .cust-panel {
+    background: var(--bs-dark-bg-subtle);
+    border-radius: var(--bs-border-radius);
+    border: 1px solid var(--bs-border-color);
+  }
+  .cust-section {
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+  .cust-section:last-child {
+    border-bottom: none;
+  }
+  .cust-section-header {
+    padding: 0.75rem 1rem;
+    background: rgba(0,0,0,0.2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    user-select: none;
+  }
+  .cust-section-header:hover {
+    background: rgba(0,0,0,0.3);
+  }
+  .cust-section-header i.bi-chevron-down {
+    transition: transform 0.2s;
+  }
+  .cust-section.collapsed .cust-section-header i.bi-chevron-down {
+    transform: rotate(-90deg);
+  }
+  .cust-section-body {
+    padding: 1rem;
+  }
+  .cust-section.collapsed .cust-section-body {
+    display: none;
+  }
+  .cust-row {
+    margin-bottom: 0.75rem;
+  }
+  .cust-row:last-child {
+    margin-bottom: 0;
+  }
+  .cust-row label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--bs-secondary-color);
+    margin-bottom: 0.25rem;
+  }
+  .cust-row-inline {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .cust-row-inline label {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+  .cust-row-inline .form-control,
+  .cust-row-inline .form-select {
+    flex: 1;
+  }
+  .cust-color-picker {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .cust-color-picker input[type="color"] {
+    width: 40px;
+    height: 38px;
+    padding: 2px;
+    border-radius: var(--bs-border-radius);
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    cursor: pointer;
+  }
+  .cust-color-picker input[type="text"] {
+    flex: 1;
+    font-family: monospace;
+    text-transform: uppercase;
+  }
+  .cust-preview-frame {
+    position: sticky;
+    top: 1rem;
+  }
+  .cust-preview-container {
+    background: #0a0a0a;
+    border-radius: var(--bs-border-radius);
+    border: 1px solid var(--bs-border-color);
+    overflow: hidden;
+    aspect-ratio: 16/10;
+  }
+  .cust-preview-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+  .cust-preview-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.7);
+    color: var(--bs-secondary-color);
+    font-size: 0.9rem;
+  }
+  .cust-actions {
+    padding: 1rem;
+    background: rgba(0,0,0,0.2);
+    border-top: 1px solid var(--bs-border-color);
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+  /* Range slider styling */
+  .cust-range-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .cust-range-row input[type="range"] {
+    flex: 1;
+  }
+  .cust-range-row .cust-range-value {
+    min-width: 3rem;
+    text-align: right;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--bs-secondary-color);
+  }
+  /* Image upload area */
+  .cust-upload-area {
+    border: 2px dashed var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .cust-upload-area:hover {
+    border-color: var(--bs-primary);
+  }
+  .cust-upload-area.has-image {
+    border-style: solid;
+    padding: 0.5rem;
+  }
+  .cust-upload-preview {
+    max-width: 100%;
+    max-height: 80px;
+    border-radius: var(--bs-border-radius);
+  }
+  .cust-upload-actions {
+    margin-top: 0.5rem;
+  }
+</style>
+
+<div class="row" id="customizer-root">
+  <!-- Left Panel: Controls -->
+  <div class="col-lg-4 mb-4 mb-lg-0">
+    <div class="cust-panel">
+      <!-- Background Section -->
+      <div class="cust-section" data-section="background">
+        <div class="cust-section-header" onclick="toggleSection(this)">
+          <span><i class="bi bi-palette me-2"></i>Background</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="cust-section-body">
+          <div class="cust-row">
+            <label>Primary Color</label>
+            <div class="cust-color-picker">
+              <input type="color" id="cust-bgColor" value="#0a0a0a">
+              <input type="text" class="form-control form-control-sm" id="cust-bgColor-text" value="#0a0a0a" maxlength="7">
+            </div>
+          </div>
+          <div class="cust-row">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="cust-gradientEnabled">
+              <label class="form-check-label" for="cust-gradientEnabled">Enable Gradient</label>
+            </div>
+          </div>
+          <div class="cust-row" id="cust-bgColorSecondary-row" style="display:none;">
+            <label>Secondary Color</label>
+            <div class="cust-color-picker">
+              <input type="color" id="cust-bgColorSecondary" value="#1a1a1a">
+              <input type="text" class="form-control form-control-sm" id="cust-bgColorSecondary-text" value="#1a1a1a" maxlength="7">
+            </div>
+          </div>
+          <div class="cust-row">
+            <label>Pattern</label>
+            <select class="form-select form-select-sm" id="cust-pattern">
+              <option value="none">None</option>
+              {{range .Patterns}}
+              <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+          </div>
+          <div class="cust-row" id="cust-patternColor-row" style="display:none;">
+            <label>Pattern Color</label>
+            <div class="cust-color-picker">
+              <input type="color" id="cust-patternColor" value="#333333">
+              <input type="text" class="form-control form-control-sm" id="cust-patternColor-text" value="#333333" maxlength="7">
+            </div>
+          </div>
+          <div class="cust-row" id="cust-patternOpacity-row" style="display:none;">
+            <label>Pattern Opacity</label>
+            <div class="cust-range-row">
+              <input type="range" class="form-range" id="cust-patternOpacity" min="10" max="100" value="100">
+              <span class="cust-range-value" id="cust-patternOpacity-value">100%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Animation Section -->
+      <div class="cust-section" data-section="animation">
+        <div class="cust-section-header" onclick="toggleSection(this)">
+          <span><i class="bi bi-hourglass-split me-2"></i>Animation</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="cust-section-body">
+          <div class="cust-row">
+            <label>Loader Style</label>
+            <select class="form-select form-select-sm" id="cust-loader">
+              {{$currentCat := ""}}
+              {{range .Loaders}}
+              {{if ne .Category $currentCat}}
+              {{if ne $currentCat ""}}
+              </optgroup>
+              {{end}}
+              <optgroup label="{{.Category}}">
+              {{$currentCat = .Category}}
+              {{end}}
+              <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+              </optgroup>
+            </select>
+          </div>
+          <div class="cust-row">
+            <label>Primary Color</label>
+            <div class="cust-color-picker">
+              <input type="color" id="cust-loaderColorPrimary" value="#4f46e5">
+              <input type="text" class="form-control form-control-sm" id="cust-loaderColorPrimary-text" value="#4f46e5" maxlength="7">
+            </div>
+          </div>
+          <div class="cust-row">
+            <label>Secondary Color</label>
+            <div class="cust-color-picker">
+              <input type="color" id="cust-loaderColorSecondary" value="#e5e7eb">
+              <input type="text" class="form-control form-control-sm" id="cust-loaderColorSecondary-text" value="#e5e7eb" maxlength="7">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text Section -->
+      <div class="cust-section" data-section="text">
+        <div class="cust-section-header" onclick="toggleSection(this)">
+          <span><i class="bi bi-type me-2"></i>Text</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="cust-section-body">
+          <div class="cust-row">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="cust-headingVisible" checked>
+              <label class="form-check-label" for="cust-headingVisible">Show Heading</label>
+            </div>
+          </div>
+          <div class="cust-row" id="cust-heading-row">
+            <label>Heading Text</label>
+            <input type="text" class="form-control form-control-sm" id="cust-heading" value="Please Wait" maxlength="100">
+          </div>
+          <div class="cust-row">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="cust-subheadingVisible" checked>
+              <label class="form-check-label" for="cust-subheadingVisible">Show Subheading</label>
+            </div>
+          </div>
+          <div class="cust-row" id="cust-subheading-row">
+            <label>Subheading Text</label>
+            <input type="text" class="form-control form-control-sm" id="cust-subheading" value="We're redirecting you..." maxlength="200">
+          </div>
+          <div class="cust-row">
+            <label>Font Family</label>
+            <select class="form-select form-select-sm" id="cust-font">
+              {{$currentCat := ""}}
+              {{range .Fonts}}
+              {{if ne .Category $currentCat}}
+              {{if ne $currentCat ""}}
+              </optgroup>
+              {{end}}
+              <optgroup label="{{.Category}}">
+              {{$currentCat = .Category}}
+              {{end}}
+              <option value="{{.Name}}" data-weights="{{range $i, $w := .Weights}}{{if $i}},{{end}}{{$w}}{{end}}">{{.Name}}</option>
+              {{end}}
+              </optgroup>
+            </select>
+          </div>
+          <div class="cust-row">
+            <label>Font Weight</label>
+            <select class="form-select form-select-sm" id="cust-fontWeight">
+              <option value="400">Regular (400)</option>
+              <option value="600">Semi-Bold (600)</option>
+              <option value="700" selected>Bold (700)</option>
+              <option value="800">Extra-Bold (800)</option>
+            </select>
+          </div>
+          <div class="cust-row">
+            <label>Text Size</label>
+            <div class="cust-range-row">
+              <input type="range" class="form-range" id="cust-textSize" min="18" max="72" value="36">
+              <span class="cust-range-value" id="cust-textSize-value">36px</span>
+            </div>
+          </div>
+          <div class="cust-row">
+            <label>Text Color</label>
+            <div class="cust-color-picker">
+              <input type="color" id="cust-textColor" value="#ffffff">
+              <input type="text" class="form-control form-control-sm" id="cust-textColor-text" value="#ffffff" maxlength="7">
+            </div>
+          </div>
+          <div class="cust-row">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="cust-textShadow">
+              <label class="form-check-label" for="cust-textShadow">Text Shadow</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image Section -->
+      <div class="cust-section" data-section="image">
+        <div class="cust-section-header" onclick="toggleSection(this)">
+          <span><i class="bi bi-image me-2"></i>Image / Logo</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="cust-section-body">
+          <div class="cust-row">
+            <label>Image Mode</label>
+            <select class="form-select form-select-sm" id="cust-imageMode">
+              <option value="none">None</option>
+              <option value="logo">Logo (above/below content)</option>
+              <option value="background">Full Background</option>
+            </select>
+          </div>
+          <div class="cust-row" id="cust-imageUpload-row" style="display:none;">
+            <label>Image</label>
+            <div class="cust-upload-area" id="cust-uploadArea" onclick="document.getElementById('cust-imageFile').click()">
+              <div id="cust-uploadPlaceholder">
+                <i class="bi bi-cloud-upload fs-4 d-block mb-2"></i>
+                <span class="text-muted">Click to upload or drag image</span>
+              </div>
+              <img id="cust-uploadPreview" class="cust-upload-preview" style="display:none;">
+              <div class="cust-upload-actions" id="cust-uploadActions" style="display:none;">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearImage(event)">
+                  <i class="bi bi-trash"></i> Remove
+                </button>
+              </div>
+            </div>
+            <input type="file" id="cust-imageFile" accept="image/*" style="display:none;">
+          </div>
+          <div class="cust-row" id="cust-imageSize-row" style="display:none;">
+            <label>Image Size</label>
+            <div class="cust-range-row">
+              <input type="range" class="form-range" id="cust-imageSize" min="50" max="400" value="150">
+              <span class="cust-range-value" id="cust-imageSize-value">150px</span>
+            </div>
+          </div>
+          <div class="cust-row" id="cust-imageOverlay-row" style="display:none;">
+            <label>Background Overlay</label>
+            <div class="cust-range-row">
+              <input type="range" class="form-range" id="cust-imageOverlay" min="0" max="100" value="90">
+              <span class="cust-range-value" id="cust-imageOverlay-value">90%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layout Section -->
+      <div class="cust-section" data-section="layout">
+        <div class="cust-section-header" onclick="toggleSection(this)">
+          <span><i class="bi bi-layout-wtf me-2"></i>Layout</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="cust-section-body">
+          <div class="cust-row">
+            <label>Content Order</label>
+            <select class="form-select form-select-sm" id="cust-contentOrder">
+              <option value="loader-text">Loader, then Text</option>
+              <option value="text-loader">Text, then Loader</option>
+            </select>
+          </div>
+          <div class="cust-row">
+            <label>Text Alignment</label>
+            <div class="btn-group w-100" role="group">
+              <input type="radio" class="btn-check" name="cust-textAlign" id="cust-textAlign-left" value="left">
+              <label class="btn btn-outline-secondary btn-sm" for="cust-textAlign-left"><i class="bi bi-text-left"></i></label>
+              <input type="radio" class="btn-check" name="cust-textAlign" id="cust-textAlign-center" value="center" checked>
+              <label class="btn btn-outline-secondary btn-sm" for="cust-textAlign-center"><i class="bi bi-text-center"></i></label>
+              <input type="radio" class="btn-check" name="cust-textAlign" id="cust-textAlign-right" value="right">
+              <label class="btn btn-outline-secondary btn-sm" for="cust-textAlign-right"><i class="bi bi-text-right"></i></label>
+            </div>
+          </div>
+          <div class="cust-row">
+            <label>Vertical Position</label>
+            <div class="cust-range-row">
+              <input type="range" class="form-range" id="cust-vPos" min="-30" max="30" value="0">
+              <span class="cust-range-value" id="cust-vPos-value">0%</span>
+            </div>
+          </div>
+          <div class="cust-row">
+            <label>Content Gap</label>
+            <div class="cust-range-row">
+              <input type="range" class="form-range" id="cust-gap" min="10" max="80" value="30">
+              <span class="cust-range-value" id="cust-gap-value">30px</span>
+            </div>
+          </div>
+          <div class="cust-row">
+            <label>Page Title</label>
+            <input type="text" class="form-control form-control-sm" id="cust-pageTitle" value="Loading..." maxlength="100">
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="cust-actions">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetCustomization()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" id="cust-save-btn" onclick="saveCustomization()">
+          <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Preview -->
+  <div class="col-lg-8">
+    <div class="cust-preview-frame">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small">Preview</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="refreshPreview()">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+      <div class="cust-preview-container position-relative">
+        <iframe id="cust-preview-iframe" srcdoc="<html><body style='background:#0a0a0a;color:#666;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui'>Loading preview...</body></html>"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Customizer state
+  let custState = {
+    previewUrl: '',
+    saveUrl: '',
+    debounceTimer: null,
+    imageDataUrl: ''
+  };
+
+  // Toggle section collapse
+  window.toggleSection = function(header) {
+    const section = header.closest('.cust-section');
+    section.classList.toggle('collapsed');
+  };
+
+  // Sync color picker with text input
+  function syncColorInputs(colorId) {
+    const colorInput = document.getElementById(colorId);
+    const textInput = document.getElementById(colorId + '-text');
+    if (!colorInput || !textInput) return;
+
+    colorInput.addEventListener('input', () => {
+      textInput.value = colorInput.value.toUpperCase();
+      schedulePreviewUpdate();
+    });
+
+    textInput.addEventListener('input', () => {
+      let val = textInput.value;
+      if (!val.startsWith('#')) val = '#' + val;
+      if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        colorInput.value = val;
+        schedulePreviewUpdate();
+      }
+    });
+
+    textInput.addEventListener('blur', () => {
+      textInput.value = colorInput.value.toUpperCase();
+    });
+  }
+
+  // Update range value display
+  function syncRangeDisplay(rangeId, suffix) {
+    const range = document.getElementById(rangeId);
+    const display = document.getElementById(rangeId + '-value');
+    if (!range || !display) return;
+
+    range.addEventListener('input', () => {
+      display.textContent = range.value + suffix;
+      schedulePreviewUpdate();
+    });
+  }
+
+  // Schedule debounced preview update
+  function schedulePreviewUpdate() {
+    clearTimeout(custState.debounceTimer);
+    custState.debounceTimer = setTimeout(refreshPreview, 300);
+  }
+
+  // Get current customization values
+  function getCustomizationData() {
+    return {
+      bgColor: document.getElementById('cust-bgColor').value,
+      bgColorSecondary: document.getElementById('cust-bgColorSecondary').value,
+      gradientEnabled: document.getElementById('cust-gradientEnabled').checked,
+      pattern: document.getElementById('cust-pattern').value,
+      patternColor: document.getElementById('cust-patternColor').value,
+      patternOpacity: parseInt(document.getElementById('cust-patternOpacity').value),
+      loader: document.getElementById('cust-loader').value,
+      loaderColorPrimary: document.getElementById('cust-loaderColorPrimary').value,
+      loaderColorSecondary: document.getElementById('cust-loaderColorSecondary').value,
+      heading: document.getElementById('cust-heading').value,
+      headingVisible: document.getElementById('cust-headingVisible').checked,
+      subheading: document.getElementById('cust-subheading').value,
+      subheadingVisible: document.getElementById('cust-subheadingVisible').checked,
+      font: document.getElementById('cust-font').value,
+      fontWeight: parseInt(document.getElementById('cust-fontWeight').value),
+      textColor: document.getElementById('cust-textColor').value,
+      textSize: parseInt(document.getElementById('cust-textSize').value),
+      textShadow: document.getElementById('cust-textShadow').checked,
+      imageMode: document.getElementById('cust-imageMode').value,
+      imageDataUrl: custState.imageDataUrl,
+      imageSize: parseInt(document.getElementById('cust-imageSize').value),
+      imageOverlay: parseInt(document.getElementById('cust-imageOverlay').value),
+      contentOrder: document.getElementById('cust-contentOrder').value,
+      textAlign: document.querySelector('input[name="cust-textAlign"]:checked').value,
+      vPos: parseInt(document.getElementById('cust-vPos').value),
+      gap: parseInt(document.getElementById('cust-gap').value),
+      pageTitle: document.getElementById('cust-pageTitle').value
+    };
+  }
+
+  // Set form values from data
+  function setCustomizationData(data) {
+    if (!data) return;
+
+    // Background
+    if (data.bgColor) {
+      document.getElementById('cust-bgColor').value = data.bgColor;
+      document.getElementById('cust-bgColor-text').value = data.bgColor.toUpperCase();
+    }
+    if (data.bgColorSecondary) {
+      document.getElementById('cust-bgColorSecondary').value = data.bgColorSecondary;
+      document.getElementById('cust-bgColorSecondary-text').value = data.bgColorSecondary.toUpperCase();
+    }
+    if (data.gradientEnabled !== undefined) {
+      document.getElementById('cust-gradientEnabled').checked = data.gradientEnabled;
+    }
+    if (data.pattern) {
+      document.getElementById('cust-pattern').value = data.pattern;
+    }
+    if (data.patternColor) {
+      document.getElementById('cust-patternColor').value = data.patternColor;
+      document.getElementById('cust-patternColor-text').value = data.patternColor.toUpperCase();
+    }
+    if (data.patternOpacity !== undefined) {
+      document.getElementById('cust-patternOpacity').value = data.patternOpacity;
+      document.getElementById('cust-patternOpacity-value').textContent = data.patternOpacity + '%';
+    }
+
+    // Animation
+    if (data.loader) {
+      document.getElementById('cust-loader').value = data.loader;
+    }
+    if (data.loaderColorPrimary) {
+      document.getElementById('cust-loaderColorPrimary').value = data.loaderColorPrimary;
+      document.getElementById('cust-loaderColorPrimary-text').value = data.loaderColorPrimary.toUpperCase();
+    }
+    if (data.loaderColorSecondary) {
+      document.getElementById('cust-loaderColorSecondary').value = data.loaderColorSecondary;
+      document.getElementById('cust-loaderColorSecondary-text').value = data.loaderColorSecondary.toUpperCase();
+    }
+
+    // Text
+    if (data.heading !== undefined) {
+      document.getElementById('cust-heading').value = data.heading;
+    }
+    if (data.headingVisible !== undefined) {
+      document.getElementById('cust-headingVisible').checked = data.headingVisible;
+    }
+    if (data.subheading !== undefined) {
+      document.getElementById('cust-subheading').value = data.subheading;
+    }
+    if (data.subheadingVisible !== undefined) {
+      document.getElementById('cust-subheadingVisible').checked = data.subheadingVisible;
+    }
+    if (data.font) {
+      document.getElementById('cust-font').value = data.font;
+    }
+    if (data.fontWeight) {
+      document.getElementById('cust-fontWeight').value = data.fontWeight;
+    }
+    if (data.textColor) {
+      document.getElementById('cust-textColor').value = data.textColor;
+      document.getElementById('cust-textColor-text').value = data.textColor.toUpperCase();
+    }
+    if (data.textSize) {
+      document.getElementById('cust-textSize').value = data.textSize;
+      document.getElementById('cust-textSize-value').textContent = data.textSize + 'px';
+    }
+    if (data.textShadow !== undefined) {
+      document.getElementById('cust-textShadow').checked = data.textShadow;
+    }
+
+    // Image
+    if (data.imageMode) {
+      document.getElementById('cust-imageMode').value = data.imageMode;
+    }
+    if (data.imageDataUrl) {
+      custState.imageDataUrl = data.imageDataUrl;
+      showImagePreview(data.imageDataUrl);
+    }
+    if (data.imageSize) {
+      document.getElementById('cust-imageSize').value = data.imageSize;
+      document.getElementById('cust-imageSize-value').textContent = data.imageSize + 'px';
+    }
+    if (data.imageOverlay !== undefined) {
+      document.getElementById('cust-imageOverlay').value = data.imageOverlay;
+      document.getElementById('cust-imageOverlay-value').textContent = data.imageOverlay + '%';
+    }
+
+    // Layout
+    if (data.contentOrder) {
+      document.getElementById('cust-contentOrder').value = data.contentOrder;
+    }
+    if (data.textAlign) {
+      const radio = document.getElementById('cust-textAlign-' + data.textAlign);
+      if (radio) radio.checked = true;
+    }
+    if (data.vPos !== undefined) {
+      document.getElementById('cust-vPos').value = data.vPos;
+      document.getElementById('cust-vPos-value').textContent = data.vPos + '%';
+    }
+    if (data.gap) {
+      document.getElementById('cust-gap').value = data.gap;
+      document.getElementById('cust-gap-value').textContent = data.gap + 'px';
+    }
+    if (data.pageTitle !== undefined) {
+      document.getElementById('cust-pageTitle').value = data.pageTitle;
+    }
+
+    // Update conditional visibility
+    updateConditionalVisibility();
+  }
+
+  // Show/hide conditional fields
+  function updateConditionalVisibility() {
+    const gradientEnabled = document.getElementById('cust-gradientEnabled').checked;
+    document.getElementById('cust-bgColorSecondary-row').style.display = gradientEnabled ? 'block' : 'none';
+
+    const pattern = document.getElementById('cust-pattern').value;
+    const hasPattern = pattern && pattern !== 'none';
+    document.getElementById('cust-patternColor-row').style.display = hasPattern ? 'block' : 'none';
+    document.getElementById('cust-patternOpacity-row').style.display = hasPattern ? 'block' : 'none';
+
+    const headingVisible = document.getElementById('cust-headingVisible').checked;
+    document.getElementById('cust-heading-row').style.display = headingVisible ? 'block' : 'none';
+
+    const subheadingVisible = document.getElementById('cust-subheadingVisible').checked;
+    document.getElementById('cust-subheading-row').style.display = subheadingVisible ? 'block' : 'none';
+
+    const imageMode = document.getElementById('cust-imageMode').value;
+    const hasImage = imageMode && imageMode !== 'none';
+    document.getElementById('cust-imageUpload-row').style.display = hasImage ? 'block' : 'none';
+    document.getElementById('cust-imageSize-row').style.display = imageMode === 'logo' ? 'block' : 'none';
+    document.getElementById('cust-imageOverlay-row').style.display = imageMode === 'background' ? 'block' : 'none';
+  }
+
+  // Show image preview
+  function showImagePreview(dataUrl) {
+    const preview = document.getElementById('cust-uploadPreview');
+    const placeholder = document.getElementById('cust-uploadPlaceholder');
+    const actions = document.getElementById('cust-uploadActions');
+    const area = document.getElementById('cust-uploadArea');
+
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+    placeholder.style.display = 'none';
+    actions.style.display = 'block';
+    area.classList.add('has-image');
+  }
+
+  // Clear image
+  window.clearImage = function(e) {
+    e.stopPropagation();
+    custState.imageDataUrl = '';
+    const preview = document.getElementById('cust-uploadPreview');
+    const placeholder = document.getElementById('cust-uploadPlaceholder');
+    const actions = document.getElementById('cust-uploadActions');
+    const area = document.getElementById('cust-uploadArea');
+    const fileInput = document.getElementById('cust-imageFile');
+
+    preview.src = '';
+    preview.style.display = 'none';
+    placeholder.style.display = 'block';
+    actions.style.display = 'none';
+    area.classList.remove('has-image');
+    fileInput.value = '';
+    schedulePreviewUpdate();
+  };
+
+  // Refresh preview
+  window.refreshPreview = function() {
+    if (!custState.previewUrl) return;
+
+    const data = getCustomizationData();
+    const iframe = document.getElementById('cust-preview-iframe');
+
+    fetch(custState.previewUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(res => res.text())
+    .then(html => {
+      iframe.srcdoc = html;
+    })
+    .catch(err => {
+      console.error('Preview error:', err);
+    });
+  };
+
+  // Reset to defaults
+  window.resetCustomization = function() {
+    if (!confirm('Reset all customization to defaults?')) return;
+
+    const defaults = {
+      bgColor: '#0a0a0a',
+      bgColorSecondary: '#1a1a1a',
+      gradientEnabled: false,
+      pattern: 'none',
+      patternColor: '#333333',
+      patternOpacity: 100,
+      loader: 'dots-bounce',
+      loaderColorPrimary: '#4f46e5',
+      loaderColorSecondary: '#e5e7eb',
+      heading: 'Please Wait',
+      headingVisible: true,
+      subheading: "We're redirecting you...",
+      subheadingVisible: true,
+      font: 'Montserrat',
+      fontWeight: 700,
+      textColor: '#ffffff',
+      textSize: 36,
+      textShadow: false,
+      imageMode: 'none',
+      imageDataUrl: '',
+      imageSize: 150,
+      imageOverlay: 90,
+      contentOrder: 'loader-text',
+      textAlign: 'center',
+      vPos: 0,
+      gap: 30,
+      pageTitle: 'Loading...'
+    };
+
+    custState.imageDataUrl = '';
+    setCustomizationData(defaults);
+    clearImage({ stopPropagation: function(){} });
+    refreshPreview();
+  };
+
+  // Save customization
+  window.saveCustomization = function() {
+    if (!custState.saveUrl) return;
+
+    const btn = document.getElementById('cust-save-btn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    const data = getCustomizationData();
+
+    fetch(custState.saveUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Save failed');
+      return res.json();
+    })
+    .then(() => {
+      showToast('Customization saved', 'success');
+    })
+    .catch(err => {
+      showToast('Failed to save: ' + err.message, 'danger');
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    });
+  };
+
+  // Initialize customizer
+  window.initCustomizer = function(existing, previewUrl, saveUrl) {
+    custState.previewUrl = previewUrl;
+    custState.saveUrl = saveUrl;
+
+    // Setup color pickers
+    syncColorInputs('cust-bgColor');
+    syncColorInputs('cust-bgColorSecondary');
+    syncColorInputs('cust-patternColor');
+    syncColorInputs('cust-loaderColorPrimary');
+    syncColorInputs('cust-loaderColorSecondary');
+    syncColorInputs('cust-textColor');
+
+    // Setup range displays
+    syncRangeDisplay('cust-patternOpacity', '%');
+    syncRangeDisplay('cust-textSize', 'px');
+    syncRangeDisplay('cust-imageSize', 'px');
+    syncRangeDisplay('cust-imageOverlay', '%');
+    syncRangeDisplay('cust-vPos', '%');
+    syncRangeDisplay('cust-gap', 'px');
+
+    // Setup conditional visibility toggles
+    document.getElementById('cust-gradientEnabled').addEventListener('change', () => {
+      updateConditionalVisibility();
+      schedulePreviewUpdate();
+    });
+    document.getElementById('cust-pattern').addEventListener('change', () => {
+      updateConditionalVisibility();
+      schedulePreviewUpdate();
+    });
+    document.getElementById('cust-headingVisible').addEventListener('change', () => {
+      updateConditionalVisibility();
+      schedulePreviewUpdate();
+    });
+    document.getElementById('cust-subheadingVisible').addEventListener('change', () => {
+      updateConditionalVisibility();
+      schedulePreviewUpdate();
+    });
+    document.getElementById('cust-imageMode').addEventListener('change', () => {
+      updateConditionalVisibility();
+      schedulePreviewUpdate();
+    });
+
+    // Setup other change listeners
+    const inputs = document.querySelectorAll('#customizer-root input:not([type="color"]):not([type="range"]):not([type="file"]), #customizer-root select');
+    inputs.forEach(input => {
+      input.addEventListener('change', schedulePreviewUpdate);
+      if (input.type === 'text') {
+        input.addEventListener('input', schedulePreviewUpdate);
+      }
+    });
+
+    // Radio buttons
+    document.querySelectorAll('input[name="cust-textAlign"]').forEach(radio => {
+      radio.addEventListener('change', schedulePreviewUpdate);
+    });
+
+    // Image file upload
+    const fileInput = document.getElementById('cust-imageFile');
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Image must be under 2MB', 'warning');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        custState.imageDataUrl = evt.target.result;
+        showImagePreview(custState.imageDataUrl);
+        schedulePreviewUpdate();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Drag and drop support
+    const uploadArea = document.getElementById('cust-uploadArea');
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = 'var(--bs-primary)';
+    });
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.style.borderColor = '';
+    });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '';
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        fileInput.files = e.dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change'));
+      }
+    });
+
+    // Load existing data
+    if (existing && typeof existing === 'object') {
+      setCustomizationData(existing);
+    }
+
+    // Initial preview
+    setTimeout(refreshPreview, 100);
+  };
+})();
+</script>
+{{end}}
