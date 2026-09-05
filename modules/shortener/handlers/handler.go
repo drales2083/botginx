@@ -172,6 +172,10 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 		h.jsonError(w, "Domain is required", http.StatusBadRequest)
 		return
 	}
+	if input.Subdomain == "" {
+		h.jsonError(w, "Subdomain is required", http.StatusBadRequest)
+		return
+	}
 	if input.Path == "" {
 		h.jsonError(w, "Path is required", http.StatusBadRequest)
 		return
@@ -182,7 +186,7 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check path availability
-	available, _ := h.service.CheckPathAvailable(input.DomainID, input.Path)
+	available, _ := h.service.CheckPathAvailable(input.DomainID, input.Subdomain, input.Path)
 	if !available {
 		h.jsonError(w, "Path already in use", http.StatusConflict)
 		return
@@ -292,14 +296,15 @@ func (h *Handler) APIStats(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) APICheckPath(w http.ResponseWriter, r *http.Request) {
 	domainID := r.URL.Query().Get("domainId")
+	subdomain := r.URL.Query().Get("subdomain")
 	path := r.URL.Query().Get("path")
 
-	if domainID == "" || path == "" {
-		h.jsonError(w, "domainId and path required", http.StatusBadRequest)
+	if domainID == "" || subdomain == "" || path == "" {
+		h.jsonError(w, "domainId, subdomain and path required", http.StatusBadRequest)
 		return
 	}
 
-	available, _ := h.service.CheckPathAvailable(domainID, path)
+	available, _ := h.service.CheckPathAvailable(domainID, subdomain, path)
 	h.json(w, http.StatusOK, map[string]bool{"available": available})
 }
 
@@ -320,6 +325,11 @@ func (h *Handler) autoDeploy(linkID string) {
 
 	// For short links: subdomain.basedomain/path -> /var/www/sites/{baseDomain}/{subdomain}/
 	baseDomain := link.BaseDomain()
+	if link.Subdomain == "" {
+		errMsg := "Subdomain required for short links"
+		h.service.SetDeployStatus(linkID, "failed", nil, &errMsg)
+		return
+	}
 	fullHost := link.Subdomain + "." + baseDomain
 	deployedURL := "https://" + fullHost + "/" + link.Path
 

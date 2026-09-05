@@ -240,13 +240,13 @@ func (s *ShortenerService) GetStats(id string, days int) (*models.ShortLinkStats
 	return stats, nil
 }
 
-// CheckPathAvailable checks if a path is available for a domain
-func (s *ShortenerService) CheckPathAvailable(domainID, path string) (bool, error) {
+// CheckPathAvailable checks if a path is available for a domain+subdomain combo
+func (s *ShortenerService) CheckPathAvailable(domainID, subdomain, path string) (bool, error) {
 	var count int
 	err := s.db.Get(&count, `
 		SELECT COUNT(*) FROM short_links
-		WHERE domain_id = $1 AND path = $2 AND is_active = true
-	`, domainID, path)
+		WHERE domain_id = $1 AND subdomain = $2 AND path = $3 AND is_active = true
+	`, domainID, subdomain, path)
 	return count == 0, err
 }
 
