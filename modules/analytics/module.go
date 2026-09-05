@@ -188,3 +188,8 @@ func (m *Module) SetHostingSettingsProvider(hosting handlers.HostingSettingsProv
 func (m *Module) SetHostingVisitRecorder(recorder handlers.HostingVisitRecorder) {
 	m.handler.SetHostingVisitRecorder(recorder)
 }
+
+// SetShortLinkResolver sets the short link resolver for path-based routing
+func (m *Module) SetShortLinkResolver(resolver handlers.ShortLinkResolver) {
+	m.handler.SetShortLinkResolver(resolver)
+}

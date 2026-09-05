@@ -104,3 +104,20 @@ func (m *Module) MenuItems() []module.MenuItem {
 func (m *Module) Widgets() []module.Widget {
 	return nil
 }
+
+// ShortLinkResolver interface implementation for analytics integration
+
+// ResolveByHostPath resolves a short link by host and path
+func (m *Module) ResolveByHostPath(host, path string) (linkID, userID string, destinations []string, err error) {
+	return m.service.ResolveByHostPath(host, path)
+}
+
+// GetLinkHost returns the host, path, and domain ID for a short link
+func (m *Module) GetLinkHost(linkID string) (host, path, domainID string, err error) {
+	return m.service.GetLinkHost(linkID)
+}
+
+// OwnerOf returns the user ID that owns a short link
+func (m *Module) OwnerOf(linkID string) (string, error) {
+	return m.service.OwnerOf(linkID)
+}

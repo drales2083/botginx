@@ -252,3 +252,71 @@ func (s *ShortenerService) GenerateRandomPath(length int) string {
 	}
 	return string(b)
 }
+
+// ResolveByHostPath resolves a short link by host and path
+// Returns linkID, userID, destinations, error
+func (s *ShortenerService) ResolveByHostPath(host, path string) (linkID, userID string, destinations []string, err error) {
+	// Normalize path - remove leading slash
+	path = strings.TrimPrefix(path, "/")
+	if path == "" {
+		return "", "", nil, fmt.Errorf("empty path")
+	}
+
+	// Normalize host
+	host = strings.ToLower(strings.TrimSpace(host))
+	host = strings.TrimSuffix(host, ".")
+	if idx := strings.LastIndex(host, ":"); idx > -1 {
+		host = host[:idx]
+	}
+
+	var row struct {
+		ID           string                 `db:"id"`
+		UserID       string                 `db:"user_id"`
+		Destinations models.JSONStringArray `db:"destinations"`
+	}
+	err = s.db.Get(&row, `
+		SELECT sl.id, sl.user_id, sl.destinations
+		FROM short_links sl
+		JOIN domains d ON d.id = sl.domain_id
+		WHERE sl.path = $1
+		  AND sl.is_active = true
+		  AND (LOWER(d.name) = $2 OR LOWER(REGEXP_REPLACE(d.name, '^\*\.', '')) = $2)
+		LIMIT 1
+	`, path, host)
+	if err != nil {
+		return "", "", nil, err
+	}
+
+	return row.ID, row.UserID, []string(row.Destinations), nil
+}
+
+// GetLinkHost returns the full hostname for a short link (for settings push)
+func (s *ShortenerService) GetLinkHost(linkID string) (host string, path string, domainID string, err error) {
+	var row struct {
+		Path       string `db:"path"`
+		DomainID   string `db:"domain_id"`
+		DomainName string `db:"domain_name"`
+	}
+	err = s.db.Get(&row, `
+		SELECT sl.path, sl.domain_id, d.name as domain_name
+		FROM short_links sl
+		JOIN domains d ON d.id = sl.domain_id
+		WHERE sl.id = $1
+	`, linkID)
+	if err != nil {
+		return "", "", "", err
+	}
+	// Strip wildcard prefix
+	domainName := row.DomainName
+	if len(domainName) > 2 && domainName[:2] == "*." {
+		domainName = domainName[2:]
+	}
+	return domainName, row.Path, row.DomainID, nil
+}
+
+// OwnerOf returns the user ID that owns a short link
+func (s *ShortenerService) OwnerOf(linkID string) (string, error) {
+	var userID string
+	err := s.db.Get(&userID, `SELECT user_id FROM short_links WHERE id = $1`, linkID)
+	return userID, err
+}

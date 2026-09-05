@@ -33,6 +33,13 @@ type LinkDetails interface {
 	GetLinkHost(linkID string) (host string, domainID string, err error)
 }
 
+// ShortLinkResolver resolves short links by host and path
+type ShortLinkResolver interface {
+	ResolveByHostPath(host, path string) (linkID, userID string, destinations []string, err error)
+	GetLinkHost(linkID string) (host, path, domainID string, err error)
+	OwnerOf(linkID string) (userID string, err error)
+}
+
 // ServerProvider provides server SSH details for settings push
 type ServerProvider interface {
 	GetServerForDomain(domainID string) (ip string, port int, user, password string, err error)
@@ -128,6 +135,7 @@ type Handler struct {
 	servers        ServerProvider
 	hosting        HostingSettingsProvider
 	hostingVisits  HostingVisitRecorder
+	shortLinks     ShortLinkResolver
 	pusher         *settingspush.Pusher
 }
 
@@ -157,6 +165,11 @@ func (h *Handler) SetServerProvider(servers ServerProvider) {
 // SetHostingSettingsProvider sets the hosting settings provider (called after init to avoid circular deps)
 func (h *Handler) SetHostingSettingsProvider(hosting HostingSettingsProvider) {
 	h.hosting = hosting
+}
+
+// SetShortLinkResolver sets the short link resolver (called after init to avoid circular deps)
+func (h *Handler) SetShortLinkResolver(shortLinks ShortLinkResolver) {
+	h.shortLinks = shortLinks
 }
 
 // SetHostingVisitRecorder sets the hosting visit recorder (called after init to avoid circular deps)
@@ -489,6 +502,7 @@ func (h *Handler) APIGetOverview(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ShouldBlockCallback(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Host         string `json:"host"`
+		Path         string `json:"path"`
 		IP           string `json:"ip"`
 		Country      string `json:"country"`
 		IsTor        bool   `json:"is_tor"`
@@ -504,10 +518,20 @@ func (h *Handler) ShouldBlockCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve host to link
+	// First try: resolve by subdomain (redirect links)
 	linkID, _, err := h.links.ResolveByHost(req.Host)
 	if err != nil || linkID == "" {
-		// Not a redirect link - check if it's a hosting domain
+		// Second try: resolve by host+path (short links)
+		if h.shortLinks != nil && req.Path != "" {
+			shortLinkID, _, destinations, err := h.shortLinks.ResolveByHostPath(req.Host, req.Path)
+			if err == nil && shortLinkID != "" && len(destinations) > 0 {
+				// Found short link - handle it
+				h.handleShortLinkCallback(w, r, req, shortLinkID, destinations)
+				return
+			}
+		}
+
+		// Not a redirect link or short link - check if it's a hosting domain
 		if h.hosting != nil {
 			hostingSettings, err := h.hosting.GetDomainSettingsByHost(req.Host)
 			if err == nil && hostingSettings != nil {
@@ -568,10 +592,68 @@ func (h *Handler) ShouldBlockCallback(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, resp)
 }
 
+// handleShortLinkCallback handles the callback for short links (path-based routing).
+// It looks up link settings and returns redirect URL if allowed.
+func (h *Handler) handleShortLinkCallback(w http.ResponseWriter, r *http.Request, req struct {
+	Host         string `json:"host"`
+	Path         string `json:"path"`
+	IP           string `json:"ip"`
+	Country      string `json:"country"`
+	IsTor        bool   `json:"is_tor"`
+	IsProxy      bool   `json:"is_proxy"`
+	IsDatacenter bool   `json:"is_datacenter"`
+	IsHeadless   bool   `json:"is_headless"`
+	UserAgent    string `json:"user_agent"`
+	Score        int    `json:"score"`
+}, linkID string, destinations []string) {
+	// Load link settings from analytics (shared protection settings)
+	settings, err := h.service.GetLinkSettings(linkID)
+	if err != nil || settings.ID == "" {
+		// No settings - allow with redirect to first destination
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"block":    false,
+			"redirect": destinations[0],
+		})
+		return
+	}
+
+	// Detect device from user agent
+	device := h.detectDevice(req.UserAgent)
+	isBot := req.Score >= 70
+
+	// Apply blocking rules
+	block, reason := h.service.ShouldBlock(
+		linkID, req.Country, device,
+		isBot, req.IsTor, req.IsProxy, req.IsDatacenter, req.IsHeadless,
+		req.Score,
+	)
+
+	resp := map[string]interface{}{
+		"block": block,
+	}
+	if block {
+		resp["reason"] = reason
+		if settings.RedirectOnBlock != "" {
+			resp["redirect"] = settings.RedirectOnBlock
+		}
+	} else {
+		// Not blocked - redirect to a destination (random rotation for multiple)
+		dest := destinations[0]
+		if len(destinations) > 1 {
+			// Simple random selection
+			dest = destinations[int(time.Now().UnixNano())%len(destinations)]
+		}
+		resp["redirect"] = dest
+	}
+
+	h.json(w, http.StatusOK, resp)
+}
+
 // handleHostingDomainBlock applies blocking rules for a hosting domain.
 // This is similar to the redirect link blocking but uses hosting domain settings.
 func (h *Handler) handleHostingDomainBlock(w http.ResponseWriter, req struct {
 	Host         string `json:"host"`
+	Path         string `json:"path"`
 	IP           string `json:"ip"`
 	Country      string `json:"country"`
 	IsTor        bool   `json:"is_tor"`
