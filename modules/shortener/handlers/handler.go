@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	domainmodels "github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/shortener/models"
@@ -180,6 +181,9 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Auto-deploy the link immediately after creation
+	go h.autoDeploy(link.ID)
+
 	h.json(w, http.StatusCreated, link)
 }
 
@@ -209,6 +213,9 @@ func (h *Handler) APIUpdate(w http.ResponseWriter, r *http.Request) {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Auto-redeploy to VPS so visitors see changes immediately
+	go h.autoDeploy(id)
 
 	h.json(w, http.StatusOK, updated)
 }
@@ -276,5 +283,25 @@ func (h *Handler) APICheckPath(w http.ResponseWriter, r *http.Request) {
 
 	available, _ := h.service.CheckPathAvailable(domainID, path)
 	h.json(w, http.StatusOK, map[string]bool{"available": available})
+}
+
+// autoDeploy marks a short link as deployed.
+// Short links don't need HTML files - the antibot proxy (botection) handles
+// the redirect directly via the callback API response which includes destinations.
+func (h *Handler) autoDeploy(linkID string) {
+	link, err := h.service.Get(linkID)
+	if err != nil {
+		return
+	}
+
+	// For short links: domain.com/path
+	domainName := link.DomainName
+	// Strip wildcard prefix if present
+	if strings.HasPrefix(domainName, "*.") {
+		domainName = domainName[2:]
+	}
+
+	deployedURL := "https://" + domainName + "/" + link.Path
+	h.service.SetDeployStatus(linkID, "deployed", &deployedURL, nil)
 }
 
