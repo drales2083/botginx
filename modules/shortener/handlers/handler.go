@@ -415,10 +415,10 @@ func generateShortLinkHTML(link *models.ShortLink) string {
 		return `<!DOCTYPE html><html><body>No destination configured</body></html>`
 	}
 
-	destURL := link.Destinations[0]
-
-	// Instant redirect with both meta refresh and JavaScript
-	return fmt.Sprintf(`<!DOCTYPE html>
+	// Single destination: simple redirect
+	if len(link.Destinations) == 1 {
+		destURL := link.Destinations[0]
+		return fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -427,5 +427,23 @@ func generateShortLinkHTML(link *models.ShortLink) string {
 </head>
 <body></body>
 </html>`, destURL, destURL)
+	}
+
+	// Multiple destinations: JavaScript random selection
+	// Build JSON array of destinations
+	destJSON, _ := json.Marshal(link.Destinations)
+
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script>
+var d=%s;
+var u=d[Math.floor(Math.random()*d.length)];
+window.location.replace(u);
+</script>
+</head>
+<body></body>
+</html>`, string(destJSON))
 }
 
