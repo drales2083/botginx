@@ -1,0 +1,743 @@
+{{define "protection-settings"}}
+<style>
+/* Protection Component Styles - all prefixed with prot- */
+.prot-tabs {
+    border-bottom: 1px solid var(--bs-border-color);
+    margin-bottom: 1rem;
+}
+.prot-tabs .nav-link {
+    color: var(--bs-body-color);
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+.prot-tabs .nav-link.active {
+    color: var(--bs-primary);
+    border-bottom-color: var(--bs-primary);
+    background: transparent;
+}
+.prot-section {
+    padding: 1rem 0;
+}
+.prot-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    height: 100%;
+}
+.prot-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+.prot-card-title h6 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.prot-device-selector {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.prot-device-selector input[type="checkbox"] {
+    display: none;
+}
+.prot-device-selector label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px;
+    padding: 1rem 1.5rem;
+    border: 2px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: transparent;
+}
+.prot-device-selector label:hover {
+    border-color: var(--bs-primary);
+    background: rgba(var(--bs-primary-rgb), 0.05);
+}
+.prot-device-selector input:checked + label {
+    border-color: var(--bs-primary);
+    background: rgba(var(--bs-primary-rgb), 0.1);
+    color: var(--bs-primary);
+}
+.prot-device-selector input:checked + label i {
+    color: var(--bs-primary);
+}
+.prot-device-selector label i {
+    font-size: 1.75rem;
+    margin-bottom: 0.25rem;
+    transition: color 0.15s ease;
+}
+.prot-device-selector label span {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.prot-mode-pills {
+    display: inline-flex;
+    background: var(--bs-tertiary-bg);
+    border-radius: 0.375rem;
+    padding: 0.25rem;
+}
+.prot-mode-pills input[type="radio"] {
+    display: none;
+}
+.prot-mode-pills label {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+.prot-mode-pills input:checked + label {
+    background: var(--bs-primary);
+    color: #fff;
+}
+.prot-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.prot-toggle-row:last-child {
+    margin-bottom: 0;
+}
+.prot-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.prot-toggle-label i {
+    font-size: 1.25rem;
+    opacity: 0.8;
+}
+.prot-toggle-label .prot-toggle-text h6 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.prot-toggle-label .prot-toggle-text small {
+    color: var(--bs-secondary-color);
+}
+.prot-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: 32px;
+}
+.prot-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+}
+.prot-tag.prot-tag-danger {
+    background: rgba(var(--bs-danger-rgb), 0.15);
+    color: var(--bs-danger);
+}
+.prot-tag.prot-tag-success {
+    background: rgba(var(--bs-success-rgb), 0.15);
+    color: var(--bs-success);
+}
+.prot-tag button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: 0.6;
+    line-height: 1;
+}
+.prot-tag button:hover {
+    opacity: 1;
+}
+.prot-country-picker {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    max-height: 280px;
+    overflow-y: auto;
+}
+.prot-country-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    font-size: 0.85rem;
+}
+.prot-country-item img {
+    height: 12px;
+    border-radius: 1px;
+}
+</style>
+
+<div class="prot-container" id="prot-container">
+    <ul class="nav prot-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" data-bs-toggle="tab" href="#prot-tab-networks" role="tab">
+                <i class="bi bi-diagram-3 me-1"></i>IP & Networks
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" data-bs-toggle="tab" href="#prot-tab-geo" role="tab">
+                <i class="bi bi-globe me-1"></i>Countries
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" data-bs-toggle="tab" href="#prot-tab-devices" role="tab">
+                <i class="bi bi-display me-1"></i>Devices
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" data-bs-toggle="tab" href="#prot-tab-detection" role="tab">
+                <i class="bi bi-sliders me-1"></i>Detection
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- IP & Networks Tab -->
+        <div class="tab-pane active show prot-section" id="prot-tab-networks" role="tabpanel">
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="prot-card">
+                        <div class="prot-card-title">
+                            <h6><i class="bi bi-x-circle text-danger me-1"></i>Blocked ASNs <span class="badge bg-danger ms-1" id="prot-asn-blk-count">0</span></h6>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="radio" name="prot-asnMode" value="blacklist" id="prot-asnMode-blacklist">
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-2">Block traffic from these networks/ISPs</p>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control form-control-sm" id="prot-asn-block-input" placeholder="AS14061, AS16509...">
+                            <button class="btn btn-outline-danger btn-sm" type="button" onclick="protAddASN('block')">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+                        <div class="prot-tags" id="prot-asn-block-tags"></div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="prot-card">
+                        <div class="prot-card-title">
+                            <h6><i class="bi bi-check-circle text-success me-1"></i>Allowed ASNs Only <span class="badge bg-success ms-1" id="prot-asn-allow-count">0</span></h6>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="radio" name="prot-asnMode" value="whitelist" id="prot-asnMode-whitelist">
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-2">Only allow traffic from these networks</p>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control form-control-sm" id="prot-asn-allow-input" placeholder="AS7922, AS701...">
+                            <button class="btn btn-outline-success btn-sm" type="button" onclick="protAddASN('allow')">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+                        <div class="prot-tags" id="prot-asn-allow-tags"></div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="prot-card">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="prot-asnMode" value="all" id="prot-asnMode-all" checked>
+                            <label class="form-check-label" for="prot-asnMode-all">
+                                <i class="bi bi-globe2 me-1"></i><strong>Allow All Networks</strong>
+                                <span class="text-muted ms-2">— No ASN restrictions</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="alert alert-secondary mb-0 small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Common ASNs:</strong> AS14061 (DigitalOcean), AS16509 (AWS), AS15169 (Google), AS13335 (Cloudflare), AS7922 (Comcast), AS701 (Verizon).
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Countries Tab -->
+        <div class="tab-pane prot-section" id="prot-tab-geo" role="tabpanel">
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="prot-card">
+                        <div class="prot-card-title">
+                            <h6><i class="bi bi-x-circle text-danger me-1"></i>Blocked Countries <span class="badge bg-danger ms-1" id="prot-cnt-blk">0</span></h6>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="radio" name="prot-countryMode" value="blacklist" id="prot-countryMode-blacklist">
+                            </div>
+                        </div>
+                        <input type="text" class="form-control form-control-sm mb-2" placeholder="Search countries..." oninput="protFilterCountries(this.value, 'block')">
+                        <div class="prot-country-picker" id="prot-countries-block"></div>
+                        <div class="d-flex align-items-center justify-content-between mt-2">
+                            <small class="text-muted"><span id="prot-cnt-blk-display">0</span> selected</small>
+                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="protClearCountries('block')">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="prot-card">
+                        <div class="prot-card-title">
+                            <h6><i class="bi bi-check-circle text-success me-1"></i>Allowed Only <span class="badge bg-success ms-1" id="prot-cnt-allow">0</span></h6>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="radio" name="prot-countryMode" value="whitelist" id="prot-countryMode-whitelist">
+                            </div>
+                        </div>
+                        <input type="text" class="form-control form-control-sm mb-2" placeholder="Search countries..." oninput="protFilterCountries(this.value, 'allow')">
+                        <div class="prot-country-picker" id="prot-countries-allow"></div>
+                        <div class="d-flex align-items-center justify-content-between mt-2">
+                            <small class="text-muted"><span id="prot-cnt-allow-display">0</span> selected</small>
+                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="protClearCountries('allow')">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="prot-card">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="prot-countryMode" value="all" id="prot-countryMode-all" checked>
+                            <label class="form-check-label" for="prot-countryMode-all">
+                                <i class="bi bi-globe2 me-1"></i><strong>Allow All Countries</strong>
+                                <span class="text-muted ms-2">— No geographic restrictions</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Devices Tab -->
+        <div class="tab-pane prot-section" id="prot-tab-devices" role="tabpanel">
+            <div class="mb-4">
+                <label class="form-label text-muted small text-uppercase mb-2">Target Devices</label>
+                <div class="prot-device-selector">
+                    <input class="prot-device-check" type="checkbox" value="desktop" id="prot-device-desktop">
+                    <label for="prot-device-desktop">
+                        <i class="bi bi-display"></i>
+                        <span>Desktop</span>
+                    </label>
+                    <input class="prot-device-check" type="checkbox" value="mobile" id="prot-device-mobile">
+                    <label for="prot-device-mobile">
+                        <i class="bi bi-phone"></i>
+                        <span>Mobile</span>
+                    </label>
+                    <input class="prot-device-check" type="checkbox" value="tablet" id="prot-device-tablet">
+                    <label for="prot-device-tablet">
+                        <i class="bi bi-tablet"></i>
+                        <span>Tablet</span>
+                    </label>
+                </div>
+            </div>
+            <div>
+                <label class="form-label text-muted small text-uppercase mb-2">Filter Mode</label>
+                <div class="prot-mode-pills">
+                    <input type="radio" name="prot-deviceMode" id="prot-deviceMode-all" value="all" checked>
+                    <label for="prot-deviceMode-all">Allow All</label>
+                    <input type="radio" name="prot-deviceMode" id="prot-deviceMode-whitelist" value="whitelist">
+                    <label for="prot-deviceMode-whitelist">Allow Selected</label>
+                    <input type="radio" name="prot-deviceMode" id="prot-deviceMode-blacklist" value="blacklist">
+                    <label for="prot-deviceMode-blacklist">Block Selected</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detection Tab -->
+        <div class="tab-pane prot-section" id="prot-tab-detection" role="tabpanel">
+            <div class="mb-4">
+                <label class="form-label text-muted small text-uppercase mb-3">Block Traffic Types</label>
+
+                <div class="prot-toggle-row">
+                    <div class="prot-toggle-label">
+                        <i class="bi bi-robot text-warning"></i>
+                        <div class="prot-toggle-text">
+                            <h6>Known Bots</h6>
+                            <small>Block crawlers, scrapers, and automated tools</small>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="prot-blockBots" checked>
+                    </div>
+                </div>
+
+                <div class="prot-toggle-row">
+                    <div class="prot-toggle-label">
+                        <i class="bi bi-window-x text-success"></i>
+                        <div class="prot-toggle-text">
+                            <h6>Headless Browsers</h6>
+                            <small>Block Puppeteer, Selenium, Playwright</small>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="prot-blockHeadless" checked>
+                    </div>
+                </div>
+
+                <div class="prot-toggle-row">
+                    <div class="prot-toggle-label">
+                        <i class="bi bi-shield-exclamation text-danger"></i>
+                        <div class="prot-toggle-text">
+                            <h6>Tor Exit Nodes</h6>
+                            <small>Block visitors coming through Tor</small>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="prot-blockTor">
+                    </div>
+                </div>
+
+                <div class="prot-toggle-row">
+                    <div class="prot-toggle-label">
+                        <i class="bi bi-incognito text-info"></i>
+                        <div class="prot-toggle-text">
+                            <h6>Proxy/VPN</h6>
+                            <small>Block visitors using VPN or proxy services</small>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="prot-blockProxy">
+                    </div>
+                </div>
+
+                <div class="prot-toggle-row">
+                    <div class="prot-toggle-label">
+                        <i class="bi bi-hdd-rack text-secondary"></i>
+                        <div class="prot-toggle-text">
+                            <h6>Datacenter IPs</h6>
+                            <small>Block traffic from AWS, GCP, Azure, hosting providers</small>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="prot-blockDatacenter">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label text-muted small text-uppercase mb-2">Behavior Score Threshold</label>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted small fw-semibold">OFF</span>
+                    <input type="range" class="form-range flex-grow-1" min="0" max="100" step="5" id="prot-minBehaviorScore" value="0" style="max-width: 300px;">
+                    <span class="text-muted small fw-semibold">STRICT</span>
+                    <span class="badge bg-primary" id="prot-score-value" style="min-width:45px;text-align:center;">0</span>
+                </div>
+                <small class="text-muted" id="prot-score-hint">Disabled — all visitors pass behavior check</small>
+            </div>
+
+            <div>
+                <label class="form-label text-muted small text-uppercase mb-2">Blocked Visitor Redirect</label>
+                <input type="url" class="form-control" id="prot-redirectOnBlock" placeholder="https://example.com/blocked" style="max-width: 400px;">
+                <small class="text-muted">Where to send blocked visitors (leave empty for error page)</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Countries list
+    const PROT_COUNTRIES = [
+        {code:"AF",name:"Afghanistan"},{code:"AL",name:"Albania"},{code:"DZ",name:"Algeria"},{code:"AD",name:"Andorra"},
+        {code:"AO",name:"Angola"},{code:"AR",name:"Argentina"},{code:"AM",name:"Armenia"},{code:"AU",name:"Australia"},
+        {code:"AT",name:"Austria"},{code:"AZ",name:"Azerbaijan"},{code:"BH",name:"Bahrain"},{code:"BD",name:"Bangladesh"},
+        {code:"BY",name:"Belarus"},{code:"BE",name:"Belgium"},{code:"BZ",name:"Belize"},{code:"BJ",name:"Benin"},
+        {code:"BT",name:"Bhutan"},{code:"BO",name:"Bolivia"},{code:"BA",name:"Bosnia"},{code:"BW",name:"Botswana"},
+        {code:"BR",name:"Brazil"},{code:"BN",name:"Brunei"},{code:"BG",name:"Bulgaria"},{code:"BF",name:"Burkina Faso"},
+        {code:"BI",name:"Burundi"},{code:"KH",name:"Cambodia"},{code:"CM",name:"Cameroon"},{code:"CA",name:"Canada"},
+        {code:"CL",name:"Chile"},{code:"CN",name:"China"},{code:"CO",name:"Colombia"},{code:"CD",name:"Congo (DRC)"},
+        {code:"CR",name:"Costa Rica"},{code:"HR",name:"Croatia"},{code:"CU",name:"Cuba"},{code:"CY",name:"Cyprus"},
+        {code:"CZ",name:"Czech Republic"},{code:"DK",name:"Denmark"},{code:"DJ",name:"Djibouti"},{code:"DO",name:"Dominican Rep."},
+        {code:"EC",name:"Ecuador"},{code:"EG",name:"Egypt"},{code:"SV",name:"El Salvador"},{code:"EE",name:"Estonia"},
+        {code:"ET",name:"Ethiopia"},{code:"FI",name:"Finland"},{code:"FR",name:"France"},{code:"GA",name:"Gabon"},
+        {code:"GE",name:"Georgia"},{code:"DE",name:"Germany"},{code:"GH",name:"Ghana"},{code:"GR",name:"Greece"},
+        {code:"GT",name:"Guatemala"},{code:"GN",name:"Guinea"},{code:"HT",name:"Haiti"},{code:"HN",name:"Honduras"},
+        {code:"HK",name:"Hong Kong"},{code:"HU",name:"Hungary"},{code:"IS",name:"Iceland"},{code:"IN",name:"India"},
+        {code:"ID",name:"Indonesia"},{code:"IR",name:"Iran"},{code:"IQ",name:"Iraq"},{code:"IE",name:"Ireland"},
+        {code:"IL",name:"Israel"},{code:"IT",name:"Italy"},{code:"JM",name:"Jamaica"},{code:"JP",name:"Japan"},
+        {code:"JO",name:"Jordan"},{code:"KZ",name:"Kazakhstan"},{code:"KE",name:"Kenya"},{code:"KW",name:"Kuwait"},
+        {code:"KG",name:"Kyrgyzstan"},{code:"LA",name:"Laos"},{code:"LV",name:"Latvia"},{code:"LB",name:"Lebanon"},
+        {code:"LY",name:"Libya"},{code:"LT",name:"Lithuania"},{code:"LU",name:"Luxembourg"},{code:"MO",name:"Macau"},
+        {code:"MK",name:"N. Macedonia"},{code:"MG",name:"Madagascar"},{code:"MY",name:"Malaysia"},{code:"ML",name:"Mali"},
+        {code:"MT",name:"Malta"},{code:"MX",name:"Mexico"},{code:"MD",name:"Moldova"},{code:"MN",name:"Mongolia"},
+        {code:"ME",name:"Montenegro"},{code:"MA",name:"Morocco"},{code:"MZ",name:"Mozambique"},{code:"MM",name:"Myanmar"},
+        {code:"NA",name:"Namibia"},{code:"NP",name:"Nepal"},{code:"NL",name:"Netherlands"},{code:"NZ",name:"New Zealand"},
+        {code:"NI",name:"Nicaragua"},{code:"NE",name:"Niger"},{code:"NG",name:"Nigeria"},{code:"NO",name:"Norway"},
+        {code:"OM",name:"Oman"},{code:"PK",name:"Pakistan"},{code:"PA",name:"Panama"},{code:"PY",name:"Paraguay"},
+        {code:"PE",name:"Peru"},{code:"PH",name:"Philippines"},{code:"PL",name:"Poland"},{code:"PT",name:"Portugal"},
+        {code:"QA",name:"Qatar"},{code:"RO",name:"Romania"},{code:"RU",name:"Russia"},{code:"RW",name:"Rwanda"},
+        {code:"SA",name:"Saudi Arabia"},{code:"SN",name:"Senegal"},{code:"RS",name:"Serbia"},{code:"SG",name:"Singapore"},
+        {code:"SK",name:"Slovakia"},{code:"SI",name:"Slovenia"},{code:"SO",name:"Somalia"},{code:"ZA",name:"South Africa"},
+        {code:"KR",name:"South Korea"},{code:"ES",name:"Spain"},{code:"LK",name:"Sri Lanka"},{code:"SD",name:"Sudan"},
+        {code:"SE",name:"Sweden"},{code:"CH",name:"Switzerland"},{code:"SY",name:"Syria"},{code:"TW",name:"Taiwan"},
+        {code:"TJ",name:"Tajikistan"},{code:"TZ",name:"Tanzania"},{code:"TH",name:"Thailand"},{code:"TN",name:"Tunisia"},
+        {code:"TR",name:"Turkey"},{code:"TM",name:"Turkmenistan"},{code:"UG",name:"Uganda"},{code:"UA",name:"Ukraine"},
+        {code:"AE",name:"UAE"},{code:"GB",name:"United Kingdom"},{code:"US",name:"United States"},{code:"UY",name:"Uruguay"},
+        {code:"UZ",name:"Uzbekistan"},{code:"VE",name:"Venezuela"},{code:"VN",name:"Vietnam"},{code:"YE",name:"Yemen"},
+        {code:"ZM",name:"Zambia"},{code:"ZW",name:"Zimbabwe"}
+    ];
+
+    // State
+    const protState = {
+        countries: { block: new Set(), allow: new Set() },
+        asns: { block: new Set(), allow: new Set() }
+    };
+
+    // Score display
+    const scoreInput = document.getElementById('prot-minBehaviorScore');
+    if (scoreInput) {
+        scoreInput.addEventListener('input', function() {
+            document.getElementById('prot-score-value').textContent = this.value;
+            const hint = document.getElementById('prot-score-hint');
+            if (this.value == 0) {
+                hint.textContent = 'Disabled — all visitors pass behavior check';
+            } else if (this.value <= 30) {
+                hint.textContent = 'Light — blocks obvious bots only';
+            } else if (this.value <= 60) {
+                hint.textContent = 'Moderate — balanced filtering';
+            } else {
+                hint.textContent = 'Strict — may block some real users';
+            }
+        });
+    }
+
+    // Render countries
+    function protRenderCountries(containerId, type) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = PROT_COUNTRIES.map(c => `
+            <div class="prot-country-item" data-search="${c.code.toLowerCase()} ${c.name.toLowerCase()}">
+                <input type="checkbox" class="form-check-input prot-country-${type}" value="${c.code}" id="prot-${type}-${c.code}"
+                    ${protState.countries[type].has(c.code) ? 'checked' : ''} onchange="protToggleCountry('${type}', '${c.code}')">
+                <label class="d-flex align-items-center gap-2" for="prot-${type}-${c.code}">
+                    <img src="/static/flags/${c.code.toLowerCase()}.png" alt="${c.code}">
+                    <span class="text-muted" style="min-width:24px;">${c.code}</span>
+                    <span>${c.name}</span>
+                </label>
+            </div>
+        `).join('');
+        protUpdateCountryCounters();
+    }
+
+    window.protToggleCountry = function(type, code) {
+        if (protState.countries[type].has(code)) {
+            protState.countries[type].delete(code);
+        } else {
+            protState.countries[type].add(code);
+        }
+        protUpdateCountryCounters();
+    };
+
+    window.protFilterCountries = function(query, type) {
+        const q = query.toLowerCase();
+        document.querySelectorAll(`#prot-countries-${type} .prot-country-item`).forEach(el => {
+            el.style.display = el.dataset.search.includes(q) ? '' : 'none';
+        });
+    };
+
+    window.protClearCountries = function(type) {
+        protState.countries[type].clear();
+        document.querySelectorAll(`.prot-country-${type}`).forEach(cb => cb.checked = false);
+        protUpdateCountryCounters();
+    };
+
+    function protUpdateCountryCounters() {
+        document.getElementById('prot-cnt-blk').textContent = protState.countries.block.size;
+        document.getElementById('prot-cnt-blk-display').textContent = protState.countries.block.size;
+        document.getElementById('prot-cnt-allow').textContent = protState.countries.allow.size;
+        document.getElementById('prot-cnt-allow-display').textContent = protState.countries.allow.size;
+    }
+
+    // ASN management
+    function protRenderASNTags(type) {
+        const container = document.getElementById('prot-asn-' + type + '-tags');
+        if (!container) return;
+        const colorClass = type === 'block' ? 'prot-tag-danger' : 'prot-tag-success';
+        container.innerHTML = Array.from(protState.asns[type]).map(asn => `
+            <span class="prot-tag ${colorClass}">${asn} <button type="button" onclick="protRemoveASN('${type}', '${asn}')">&times;</button></span>
+        `).join('');
+        protUpdateASNCounters();
+    }
+
+    function protUpdateASNCounters() {
+        document.getElementById('prot-asn-blk-count').textContent = protState.asns.block.size;
+        document.getElementById('prot-asn-allow-count').textContent = protState.asns.allow.size;
+    }
+
+    window.protAddASN = function(type) {
+        const inputId = type === 'block' ? 'prot-asn-block-input' : 'prot-asn-allow-input';
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const values = input.value.split(/[,\s]+/).filter(v => v.trim());
+        values.forEach(v => {
+            let asn = v.trim().toUpperCase();
+            if (!asn.startsWith('AS')) asn = 'AS' + asn;
+            if (/^AS\d+$/.test(asn)) {
+                protState.asns[type].add(asn);
+            }
+        });
+        input.value = '';
+        protRenderASNTags(type);
+    };
+
+    window.protRemoveASN = function(type, asn) {
+        protState.asns[type].delete(asn);
+        protRenderASNTags(type);
+    };
+
+    // Enter key for ASN inputs
+    ['prot-asn-block-input', 'prot-asn-allow-input'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    protAddASN(id.includes('block') ? 'block' : 'allow');
+                }
+            });
+        }
+    });
+
+    // Public API
+    window.protectionSettings = {
+        getSettings: function() {
+            const countryMode = document.querySelector('input[name="prot-countryMode"]:checked')?.value || 'all';
+            let countryList = [];
+            if (countryMode === 'blacklist') countryList = Array.from(protState.countries.block);
+            else if (countryMode === 'whitelist') countryList = Array.from(protState.countries.allow);
+
+            const asnMode = document.querySelector('input[name="prot-asnMode"]:checked')?.value || 'all';
+            let asnList = [];
+            if (asnMode === 'blacklist') asnList = Array.from(protState.asns.block);
+            else if (asnMode === 'whitelist') asnList = Array.from(protState.asns.allow);
+
+            return {
+                countryMode: countryMode,
+                countryList: countryList,
+                asnMode: asnMode,
+                asnList: asnList,
+                deviceMode: document.querySelector('input[name="prot-deviceMode"]:checked')?.value || 'all',
+                deviceList: Array.from(document.querySelectorAll('.prot-device-check:checked')).map(c => c.value),
+                blockBots: document.getElementById('prot-blockBots')?.checked || false,
+                blockTor: document.getElementById('prot-blockTor')?.checked || false,
+                blockProxy: document.getElementById('prot-blockProxy')?.checked || false,
+                blockDatacenter: document.getElementById('prot-blockDatacenter')?.checked || false,
+                blockHeadless: document.getElementById('prot-blockHeadless')?.checked || false,
+                minBehaviorScore: parseInt(document.getElementById('prot-minBehaviorScore')?.value) || 0,
+                redirectOnBlock: document.getElementById('prot-redirectOnBlock')?.value || ''
+            };
+        },
+
+        setSettings: function(data) {
+            if (!data) return;
+
+            // Country mode
+            if (data.countryMode) {
+                const radio = document.getElementById('prot-countryMode-' + data.countryMode);
+                if (radio) radio.checked = true;
+            }
+            if (data.countryList && Array.isArray(data.countryList)) {
+                const mode = data.countryMode || 'all';
+                if (mode === 'blacklist') {
+                    protState.countries.block = new Set(data.countryList);
+                } else if (mode === 'whitelist') {
+                    protState.countries.allow = new Set(data.countryList);
+                }
+            }
+
+            // ASN mode
+            if (data.asnMode) {
+                const radio = document.getElementById('prot-asnMode-' + data.asnMode);
+                if (radio) radio.checked = true;
+            }
+            if (data.asnList && Array.isArray(data.asnList)) {
+                const mode = data.asnMode || 'all';
+                if (mode === 'blacklist') {
+                    protState.asns.block = new Set(data.asnList);
+                } else if (mode === 'whitelist') {
+                    protState.asns.allow = new Set(data.asnList);
+                }
+            }
+
+            // Device mode
+            if (data.deviceMode) {
+                const radio = document.getElementById('prot-deviceMode-' + data.deviceMode);
+                if (radio) radio.checked = true;
+            }
+            if (data.deviceList && Array.isArray(data.deviceList)) {
+                data.deviceList.forEach(d => {
+                    const cb = document.getElementById('prot-device-' + d);
+                    if (cb) cb.checked = true;
+                });
+            }
+
+            // Detection toggles
+            if (data.blockBots !== undefined) {
+                const el = document.getElementById('prot-blockBots');
+                if (el) el.checked = data.blockBots;
+            }
+            if (data.blockTor !== undefined) {
+                const el = document.getElementById('prot-blockTor');
+                if (el) el.checked = data.blockTor;
+            }
+            if (data.blockProxy !== undefined) {
+                const el = document.getElementById('prot-blockProxy');
+                if (el) el.checked = data.blockProxy;
+            }
+            if (data.blockDatacenter !== undefined) {
+                const el = document.getElementById('prot-blockDatacenter');
+                if (el) el.checked = data.blockDatacenter;
+            }
+            if (data.blockHeadless !== undefined) {
+                const el = document.getElementById('prot-blockHeadless');
+                if (el) el.checked = data.blockHeadless;
+            }
+
+            // Score
+            if (data.minBehaviorScore !== undefined) {
+                const el = document.getElementById('prot-minBehaviorScore');
+                if (el) {
+                    el.value = data.minBehaviorScore;
+                    el.dispatchEvent(new Event('input'));
+                }
+            }
+
+            // Redirect
+            if (data.redirectOnBlock !== undefined) {
+                const el = document.getElementById('prot-redirectOnBlock');
+                if (el) el.value = data.redirectOnBlock;
+            }
+
+            // Re-render after setting data
+            protRenderCountries('prot-countries-block', 'block');
+            protRenderCountries('prot-countries-allow', 'allow');
+            protRenderASNTags('block');
+            protRenderASNTags('allow');
+        },
+
+        init: function(data) {
+            // Initialize country pickers
+            protRenderCountries('prot-countries-block', 'block');
+            protRenderCountries('prot-countries-allow', 'allow');
+            // Set initial data
+            if (data) this.setSettings(data);
+        }
+    };
+
+    // Auto-init on DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', function() {
+        protRenderCountries('prot-countries-block', 'block');
+        protRenderCountries('prot-countries-allow', 'allow');
+    });
+})();
+</script>
+{{end}}

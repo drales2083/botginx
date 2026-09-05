@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/botginx/botginx/pkg/ctx"
+	"github.com/botginx/botginx/pkg/protection"
 	"github.com/botginx/botginx/pkg/subscription"
 )
 
@@ -166,6 +167,12 @@ func (te *TemplateEngine) RegisterModule(moduleID string, tmplFS fs.FS) error {
 	// If partials directory doesn't exist, that's fine - not all modules have partials
 	if err != nil {
 		// Ignore the error - partials are optional
+	}
+
+	// Load global protection partial (shared across all modules)
+	protPartial, protErr := fs.ReadFile(protection.TemplatesFS, "templates/settings.html")
+	if protErr == nil {
+		partials = append(partials, protPartial)
 	}
 
 	return fs.WalkDir(tmplFS, ".", func(path string, d fs.DirEntry, err error) error {
