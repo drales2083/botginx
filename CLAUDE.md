@@ -1,6 +1,6 @@
 # Botginx
 
-Go-based redirect link panel with AdminLTE v4.9.1, dark mode, red primary theme.
+Go-based redirect generator panel with AdminLTE v4.9.1, dark mode, red primary theme.
 
 ## Project Structure
 

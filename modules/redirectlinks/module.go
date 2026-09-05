@@ -43,8 +43,8 @@ func New(domains DomainProvider, servers ServerPool) *Module {
 	return &Module{
 		BaseModule: module.NewBaseModule(
 			"redirectlinks",
-			"Redirect Links",
-			"Custom redirect links deployed to VPS",
+			"Redirect Generator",
+			"Create and manage custom redirects",
 		),
 		domains: domains,
 		servers: servers,
@@ -122,8 +122,8 @@ func (m *Module) Templates() fs.FS {
 func (m *Module) MenuItems() []module.MenuItem {
 	return []module.MenuItem{
 		{
-			Title:   "Redirect Links",
-			Icon:    "bi-link-45deg",
+			Title:   "Redirect Generator",
+			Icon:    "bi-arrow-repeat",
 			Path:    "/user/redirectlinks",
 			Order:   20,
 			Section: module.MenuSectionUser,
