@@ -283,9 +283,9 @@ func (s *ShortenerService) GenerateRandomPath(length int) string {
 	return string(b)
 }
 
-// GenerateSubdomain generates a readable subdomain like "amber-canyon"
+// GenerateSubdomain generates a single-word subdomain
 func (s *ShortenerService) GenerateSubdomain() string {
-	return namegen.Subdomain()
+	return namegen.Path()
 }
 
 // ResolveByHostPath resolves a short link by host and path
