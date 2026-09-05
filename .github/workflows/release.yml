@@ -7,9 +7,34 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
+  cleanup-first:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old caches before build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Cleaning up old caches before build..."
+          gh api repos/${{ github.repository }}/actions/caches \
+            --paginate -q '.actions_caches[].id' | \
+            xargs -I{} gh api -X DELETE repos/${{ github.repository }}/actions/caches/{} 2>/dev/null || true
+          echo "Cache cleanup complete"
+
+      - name: Delete old artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Cleaning up old artifacts..."
+          gh api repos/${{ github.repository }}/actions/artifacts \
+            --paginate -q '.artifacts[].id' | \
+            xargs -I{} gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/{} 2>/dev/null || true
+          echo "Artifact cleanup complete"
+
   build:
+    needs: cleanup-first
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,6 +50,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+          cache: false
 
       - name: Build binary
         env:
@@ -41,6 +67,7 @@ jobs:
         with:
           name: botginx-${{ matrix.goos }}-${{ matrix.goarch }}
           path: botginx-${{ matrix.goos }}-${{ matrix.goarch }}
+          retention-days: 1
 
   release:
     needs: build
@@ -70,21 +97,12 @@ jobs:
             release/SHA256SUMS
           generate_release_notes: true
 
-  cleanup:
+  cleanup-after:
     needs: release
     runs-on: ubuntu-latest
+    if: always()
     steps:
-      - name: Delete old caches
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Cleaning up old caches..."
-          gh api repos/${{ github.repository }}/actions/caches \
-            --paginate -q '.actions_caches[].id' | \
-            xargs -I{} gh api -X DELETE repos/${{ github.repository }}/actions/caches/{} || true
-          echo "Cache cleanup complete"
-
-      - name: Delete old artifacts
+      - name: Delete build artifacts
         uses: geekyeggo/delete-artifact@v5
         with:
           name: |
