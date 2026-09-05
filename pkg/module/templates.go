@@ -186,7 +186,8 @@ func (te *TemplateEngine) RegisterModule(moduleID string, tmplFS fs.FS) error {
 		}
 
 		// Parse with layouts
-		tmpl := template.New(path).Funcs(te.funcs)
+		// Create the root template - all associated templates will be accessible from it
+		root := template.New(path).Funcs(te.funcs)
 
 		// Parse layout files first
 		if te.layouts != nil {
@@ -196,27 +197,29 @@ func (te *TemplateEngine) RegisterModule(moduleID string, tmplFS fs.FS) error {
 				if err != nil {
 					continue
 				}
-				tmpl, _ = tmpl.Parse(string(lContent))
+				// Parse returns a different template if content has {{define}},
+				// but all templates stay associated with root
+				root.Parse(string(lContent))
 			}
 		}
 
-		// Parse module partials
+		// Parse module partials - they define named templates that become associated
 		for i, partial := range partials {
-			var parseErr error
-			tmpl, parseErr = tmpl.Parse(string(partial))
+			_, parseErr := root.Parse(string(partial))
 			if parseErr != nil {
 				log.Printf("[templates] Module %s template %s: error parsing partial %d: %v", moduleID, path, i, parseErr)
 			}
 		}
 
-		// Parse module template
-		tmpl, err = tmpl.Parse(string(content))
+		// Parse module template content
+		_, err = root.Parse(string(content))
 		if err != nil {
 			return err
 		}
 
+		// Store the root template - it has access to all associated templates
 		key := moduleID + ":" + path
-		te.templates[key] = tmpl
+		te.templates[key] = root
 		return nil
 	})
 }
