@@ -1,0 +1,115 @@
+name: Cleanup
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:      # Manual trigger
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  KEEP_RELEASES: 10
+  KEEP_RUNS: 20
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete ALL caches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧹 Deleting all caches..."
+          count=$(gh api repos/${{ github.repository }}/actions/caches -q '.total_count' 2>/dev/null || echo "0")
+          echo "Found $count caches"
+
+          gh api repos/${{ github.repository }}/actions/caches \
+            --paginate -q '.actions_caches[].id' 2>/dev/null | \
+            xargs -I{} gh api -X DELETE repos/${{ github.repository }}/actions/caches/{} 2>/dev/null || true
+          echo "✅ Caches cleared"
+
+      - name: Delete ALL artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧹 Deleting all artifacts..."
+          count=$(gh api repos/${{ github.repository }}/actions/artifacts -q '.total_count' 2>/dev/null || echo "0")
+          echo "Found $count artifacts"
+
+          gh api repos/${{ github.repository }}/actions/artifacts \
+            --paginate -q '.artifacts[].id' 2>/dev/null | \
+            xargs -I{} gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/{} 2>/dev/null || true
+          echo "✅ Artifacts cleared"
+
+      - name: Delete old releases (keep last ${{ env.KEEP_RELEASES }})
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧹 Cleaning old releases (keeping last $KEEP_RELEASES)..."
+
+          total=$(gh api repos/${{ github.repository }}/releases -q 'length' 2>/dev/null || echo "0")
+          echo "Total releases: $total"
+
+          if [ "$total" -gt "$KEEP_RELEASES" ]; then
+            to_delete=$((total - KEEP_RELEASES))
+            echo "Will delete $to_delete old releases"
+
+            gh api repos/${{ github.repository }}/releases --paginate -q '.[].tag_name' | \
+              tail -n +$((KEEP_RELEASES + 1)) | \
+              while read tag; do
+                echo "  Deleting: $tag"
+                gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+              done
+          else
+            echo "Nothing to delete"
+          fi
+
+          echo "✅ Old releases cleaned"
+
+      - name: Delete old workflow runs (keep last ${{ env.KEEP_RUNS }})
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧹 Cleaning old workflow runs (keeping last $KEEP_RUNS)..."
+
+          total=$(gh api repos/${{ github.repository }}/actions/runs -q '.total_count' 2>/dev/null || echo "0")
+          echo "Total workflow runs: $total"
+
+          if [ "$total" -gt "$KEEP_RUNS" ]; then
+            to_delete=$((total - KEEP_RUNS))
+            echo "Will delete approximately $to_delete old runs"
+
+            gh api repos/${{ github.repository }}/actions/runs \
+              --paginate -q '.workflow_runs[].id' 2>/dev/null | \
+              tail -n +$((KEEP_RUNS + 1)) | head -100 | \
+              xargs -I{} sh -c 'echo "  Deleting run: {}"; gh api -X DELETE repos/${{ github.repository }}/actions/runs/{} 2>/dev/null || true'
+          else
+            echo "Nothing to delete"
+          fi
+
+          echo "✅ Old workflow runs cleaned"
+
+      - name: Delete draft releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧹 Deleting draft releases..."
+          gh api repos/${{ github.repository }}/releases \
+            --paginate -q '.[] | select(.draft==true) | .tag_name' 2>/dev/null | \
+            while read tag; do
+              echo "  Deleting draft: $tag"
+              gh release delete "$tag" --yes 2>/dev/null || true
+            done
+          echo "✅ Draft releases cleaned"
+
+      - name: Summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "📊 Cleanup Summary:"
+          echo "  Caches: $(gh api repos/${{ github.repository }}/actions/caches -q '.total_count' 2>/dev/null || echo 0)"
+          echo "  Artifacts: $(gh api repos/${{ github.repository }}/actions/artifacts -q '.total_count' 2>/dev/null || echo 0)"
+          echo "  Releases: $(gh api repos/${{ github.repository }}/releases -q 'length' 2>/dev/null || echo 0)"
+          echo "  Workflow runs: $(gh api repos/${{ github.repository }}/actions/runs -q '.total_count' 2>/dev/null || echo 0)"

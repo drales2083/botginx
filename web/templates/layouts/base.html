@@ -120,7 +120,7 @@
           <!--begin::Balance-->
           {{if .User}}
           <li class="nav-item">
-            <a class="nav-link" href="/user/payments/deposit" title="{{t "balance"}}">
+            <a class="nav-link" href="/user/payments" title="{{t "balance"}}">
               <i class="bi bi-wallet2 me-1"></i>
               <span class="text-success">${{printf "%.2f" .User.Balance}}</span>
             </a>
