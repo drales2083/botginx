@@ -35,6 +35,11 @@ func Path() string {
 	return nouns[rand.IntN(len(nouns))]
 }
 
+// ShortWord returns a random short word (max 5 chars) for compact subdomains.
+func ShortWord() string {
+	return shortWords[rand.IntN(len(shortWords))]
+}
+
 // Combinations reports how many distinct names the vocabulary can produce.
 func Combinations() int {
 	return len(adjectives) * len(nouns)

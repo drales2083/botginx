@@ -303,9 +303,9 @@ func (s *ShortenerService) GenerateRandomPath(length int) string {
 	return string(b)
 }
 
-// GenerateSubdomain generates a single-word subdomain
+// GenerateSubdomain generates a short single-word subdomain (max 5 chars)
 func (s *ShortenerService) GenerateSubdomain() string {
-	return namegen.Path()
+	return namegen.ShortWord()
 }
 
 // ResolveByHostPath resolves a short link by host and path
