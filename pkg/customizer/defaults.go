@@ -16,7 +16,7 @@ func GetDefaultCustomization() Customization {
 		HeadingVisible:       true,
 		Subheading:           "We're redirecting you...",
 		SubheadingVisible:    true,
-		Font:                 "Montserrat",
+		Font:                 "montserrat",
 		FontWeight:           700,
 		TextColor:            "#ffffff",
 		TextSize:             36,

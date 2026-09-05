@@ -372,7 +372,7 @@
               <optgroup label="{{.Category}}">
               {{$currentCat = .Category}}
               {{end}}
-              <option value="{{.Name}}" data-weights="{{range $i, $w := .Weights}}{{if $i}},{{end}}{{$w}}{{end}}">{{.Name}}</option>
+              <option value="{{.ID}}" data-weights="{{range $i, $w := .Weights}}{{if $i}},{{end}}{{$w}}{{end}}">{{.Name}}</option>
               {{end}}
               </optgroup>
             </select>
@@ -820,7 +820,7 @@
       headingVisible: true,
       subheading: "We're redirecting you...",
       subheadingVisible: true,
-      font: 'Montserrat',
+      font: 'montserrat',
       fontWeight: 700,
       textColor: '#ffffff',
       textSize: 36,

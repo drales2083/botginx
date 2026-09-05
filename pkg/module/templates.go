@@ -149,7 +149,7 @@ func (te *TemplateEngine) RegisterModule(moduleID string, tmplFS fs.FS) error {
 
 	// Collect partials first (files in partials/ directory)
 	var partials [][]byte
-	fs.WalkDir(tmplFS, "partials", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(tmplFS, "partials", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
 		}
@@ -163,6 +163,10 @@ func (te *TemplateEngine) RegisterModule(moduleID string, tmplFS fs.FS) error {
 		partials = append(partials, content)
 		return nil
 	})
+	// If partials directory doesn't exist, that's fine - not all modules have partials
+	if err != nil {
+		// Ignore the error - partials are optional
+	}
 
 	return fs.WalkDir(tmplFS, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -197,8 +201,12 @@ func (te *TemplateEngine) RegisterModule(moduleID string, tmplFS fs.FS) error {
 		}
 
 		// Parse module partials
-		for _, partial := range partials {
-			tmpl, _ = tmpl.Parse(string(partial))
+		for i, partial := range partials {
+			var parseErr error
+			tmpl, parseErr = tmpl.Parse(string(partial))
+			if parseErr != nil {
+				log.Printf("[templates] Module %s template %s: error parsing partial %d: %v", moduleID, path, i, parseErr)
+			}
 		}
 
 		// Parse module template
