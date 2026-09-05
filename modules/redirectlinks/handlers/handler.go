@@ -328,6 +328,9 @@ func (h *Handler) APIUpdateCustomization(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Auto-redeploy to VPS so visitors see changes immediately
+	go h.autoDeploy(id)
+
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
