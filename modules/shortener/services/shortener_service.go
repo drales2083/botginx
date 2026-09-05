@@ -71,6 +71,11 @@ func (s *ShortenerService) Create(userID string, input models.CreateShortLinkInp
 		input.BotError = 403
 	}
 
+	// Ensure unique subdomain for this domain
+	if input.Subdomain != "" {
+		input.Subdomain = s.ensureUniqueSubdomain(input.DomainID, input.Subdomain)
+	}
+
 	now := time.Now()
 	_, err := s.db.Exec(`
 		INSERT INTO short_links (
@@ -89,6 +94,21 @@ func (s *ShortenerService) Create(userID string, input models.CreateShortLinkInp
 	}
 
 	return s.Get(id)
+}
+
+// ensureUniqueSubdomain appends a suffix if subdomain is already taken for this domain
+func (s *ShortenerService) ensureUniqueSubdomain(domainID, subdomain string) string {
+	base := subdomain
+	for i := 1; i <= 99; i++ {
+		var count int
+		s.db.Get(&count, `SELECT COUNT(*) FROM short_links WHERE domain_id = $1 AND subdomain = $2`, domainID, subdomain)
+		if count == 0 {
+			return subdomain
+		}
+		subdomain = fmt.Sprintf("%s%d", base, i)
+	}
+	// Fallback: append random chars
+	return base + s.GenerateRandomPath(3)
 }
 
 // Update updates a short link
