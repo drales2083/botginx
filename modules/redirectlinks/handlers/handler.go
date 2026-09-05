@@ -317,15 +317,28 @@ func (h *Handler) APIBulkDelete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APIUpdateCustomization(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	var customization models.JSONMap
-	if err := json.NewDecoder(r.Body).Decode(&customization); err != nil {
+	var input struct {
+		Customization models.JSONMap `json:"customization"`
+		RedirectURL   string         `json:"redirectUrl"`
+		Delay         int            `json:"delay"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.service.UpdateCustomization(id, customization); err != nil {
+	// Update customization
+	if err := h.service.UpdateCustomization(id, input.Customization); err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Update redirect URL and delay if provided
+	if input.RedirectURL != "" {
+		if err := h.service.UpdateDestinationAndDelay(id, input.RedirectURL, input.Delay); err != nil {
+			h.jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Auto-redeploy to VPS so visitors see changes immediately

@@ -215,6 +215,19 @@ func (s *RedirectLinkService) UpdateCustomization(id string, customization model
 	return err
 }
 
+func (s *RedirectLinkService) UpdateDestinationAndDelay(id string, url string, delay int) error {
+	if delay < 1 {
+		delay = 3
+	}
+	if delay > 30 {
+		delay = 30
+	}
+	_, err := s.db.Exec(`
+		UPDATE redirect_links SET destination_urls = $2, delay = $3, updated_at = NOW() WHERE id = $1
+	`, id, models.JSONArray([]string{url}), delay)
+	return err
+}
+
 func (s *RedirectLinkService) UpdateDestinationURLs(id string, urls []string) (*models.RedirectLink, error) {
 	_, err := s.db.Exec(`
 		UPDATE redirect_links SET destination_urls = $2, updated_at = NOW() WHERE id = $1

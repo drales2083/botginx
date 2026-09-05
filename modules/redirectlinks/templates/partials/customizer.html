@@ -217,6 +217,28 @@
   <!-- Left: Controls -->
   <aside class="cust-controls">
     <div class="cust-controls-body">
+      <!-- Destination Section -->
+      <div class="cust-section" data-section="destination">
+        <div class="cust-section-header" onclick="toggleSection(this)">
+          <span><i class="bi bi-link-45deg me-2"></i>Destination</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="cust-section-body">
+          <div class="cust-row">
+            <label>Redirect URL</label>
+            <input type="url" class="form-control form-control-sm" id="cust-redirectUrl" placeholder="https://example.com/page" value="{{if .Link}}{{index .Link.DestinationURLs 0}}{{end}}">
+            <small class="text-muted mt-1 d-block">Where visitors will be redirected</small>
+          </div>
+          <div class="cust-row">
+            <label>Delay (seconds)</label>
+            <div class="cust-range-row">
+              <input type="range" class="form-range" id="cust-delay" min="1" max="10" value="{{if .Link}}{{.Link.Delay}}{{else}}3{{end}}">
+              <span class="cust-range-value" id="cust-delay-value">{{if .Link}}{{.Link.Delay}}{{else}}3{{end}}s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Background Section -->
       <div class="cust-section" data-section="background">
         <div class="cust-section-header" onclick="toggleSection(this)">
@@ -828,7 +850,15 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
-    const data = getCustomizationData();
+    const customization = getCustomizationData();
+    const redirectUrl = document.getElementById('cust-redirectUrl')?.value || '';
+    const delay = parseInt(document.getElementById('cust-delay')?.value || '3');
+
+    const data = {
+      customization: customization,
+      redirectUrl: redirectUrl,
+      delay: delay
+    };
 
     fetch(custState.saveUrl, {
       method: 'PUT',
@@ -840,7 +870,7 @@
       return res.json();
     })
     .then(() => {
-      showToast('Customization saved', 'success');
+      showToast('Customization saved & deployed', 'success');
     })
     .catch(err => {
       showToast('Failed to save: ' + err.message, 'danger');
@@ -862,6 +892,7 @@
     syncColorInputs('cust-loaderColorSecondary');
     syncColorInputs('cust-textColor');
 
+    syncRangeDisplay('cust-delay', 's');
     syncRangeDisplay('cust-patternOpacity', '%');
     syncRangeDisplay('cust-textSize', 'px');
     syncRangeDisplay('cust-imageSize', 'px');

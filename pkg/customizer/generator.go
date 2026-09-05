@@ -104,19 +104,26 @@ func buildCSS(c Customization) string {
 	b.WriteString("      flex-direction: column;\n")
 	b.WriteString("      align-items: center;\n")
 
-	// Vertical position
+	// Vertical position: vPos is -30 to +30 where 0 is center
+	// Negative = higher (towards top), Positive = lower (towards bottom)
 	vPos := c.VPos
-	if vPos == 0 {
-		vPos = 50 // default center
-	}
-	if vPos <= 33 {
+	if vPos < -10 {
+		// Top area
 		b.WriteString("      justify-content: flex-start;\n")
-		b.WriteString(fmt.Sprintf("      padding-top: %d%%;\n", vPos))
-	} else if vPos >= 67 {
+		padding := 10 + (vPos + 30) // -30 -> 10%, -10 -> 30%
+		b.WriteString(fmt.Sprintf("      padding-top: %d%%;\n", padding))
+	} else if vPos > 10 {
+		// Bottom area
 		b.WriteString("      justify-content: flex-end;\n")
-		b.WriteString(fmt.Sprintf("      padding-bottom: %d%%;\n", 100-vPos))
+		padding := 10 + (30 - vPos) // +30 -> 10%, +10 -> 30%
+		b.WriteString(fmt.Sprintf("      padding-bottom: %d%%;\n", padding))
 	} else {
+		// Center area (-10 to +10)
 		b.WriteString("      justify-content: center;\n")
+		if vPos != 0 {
+			// Fine-tune center position with transform
+			b.WriteString(fmt.Sprintf("      transform: translateY(%d%%);\n", vPos*2))
+		}
 	}
 
 	// Background (solid or gradient)
