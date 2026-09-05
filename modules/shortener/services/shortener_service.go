@@ -229,6 +229,35 @@ func (s *ShortenerService) CheckPathAvailable(domainID, path string) (bool, erro
 	return count == 0, err
 }
 
+// RecordClick increments click counts for a short link
+func (s *ShortenerService) RecordClick(linkID string, isBot bool, country, device, ip, userAgent string) error {
+	// Increment counters on the link
+	if isBot {
+		_, err := s.db.Exec(`
+			UPDATE short_links SET click_count = click_count + 1, bot_count = bot_count + 1, updated_at = NOW()
+			WHERE id = $1
+		`, linkID)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err := s.db.Exec(`
+			UPDATE short_links SET click_count = click_count + 1, human_count = human_count + 1, updated_at = NOW()
+			WHERE id = $1
+		`, linkID)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Also record in clicks table for detailed analytics
+	_, err := s.db.Exec(`
+		INSERT INTO short_link_clicks (link_id, ip, country, device, user_agent, is_bot, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+	`, linkID, ip, country, device, userAgent, isBot)
+	return err
+}
+
 // SetDeployStatus updates deployment status
 func (s *ShortenerService) SetDeployStatus(id string, status string, url, errorMsg *string) error {
 	_, err := s.db.Exec(`

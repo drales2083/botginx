@@ -38,6 +38,7 @@ type ShortLinkResolver interface {
 	ResolveByHostPath(host, path string) (linkID, userID string, destinations []string, err error)
 	GetLinkHost(linkID string) (host, path, domainID string, err error)
 	OwnerOf(linkID string) (userID string, err error)
+	RecordClick(linkID string, isBot bool, country, device, ip, userAgent string) error
 }
 
 // ServerProvider provides server SSH details for settings push
@@ -860,15 +861,20 @@ func (h *Handler) handleRequestEvent(data any) {
 
 	linkID, userID := h.resolveLink(eventData)
 	if linkID == "" {
-		// Not a redirect link - try hosting domain
+		// Not a redirect link - try short link
+		host := getString(eventData, "host")
+		path := getString(eventData, "path")
+		if h.tryRecordShortLinkVisit(eventData, host, path) {
+			return // Successfully recorded as short link visit
+		}
+
+		// Not a short link - try hosting domain
 		if h.hostingVisits != nil {
-			host := getString(eventData, "host")
 			if h.tryRecordHostingVisit(eventData, host) {
 				return // Successfully recorded as hosting visit
 			}
 		}
-		log.Printf("Webhook: could not resolve link or hosting domain for host=%s path=%s",
-			getString(eventData, "host"), getString(eventData, "path"))
+		log.Printf("Webhook: could not resolve link or hosting domain for host=%s path=%s", host, path)
 		return
 	}
 
@@ -1059,6 +1065,32 @@ func (h *Handler) resolveLink(data map[string]interface{}) (linkID, userID strin
 	}
 
 	return linkID, userID
+}
+
+// tryRecordShortLinkVisit attempts to record a visit for a short link.
+// Returns true if the host+path was a short link and the visit was recorded.
+func (h *Handler) tryRecordShortLinkVisit(eventData map[string]interface{}, host, path string) bool {
+	if h.shortLinks == nil {
+		return false
+	}
+
+	linkID, _, _, err := h.shortLinks.ResolveByHostPath(host, path)
+	if err != nil || linkID == "" {
+		return false
+	}
+
+	// Record the click
+	isBot := getFloat(eventData, "score") >= 70
+	country := getString(eventData, "country")
+	device := getString(eventData, "device")
+	ip := getString(eventData, "ip")
+	userAgent := getString(eventData, "user_agent")
+
+	if err := h.shortLinks.RecordClick(linkID, isBot, country, device, ip, userAgent); err != nil {
+		log.Printf("Short link click record failed for %s: %v", linkID, err)
+	}
+
+	return true
 }
 
 // tryRecordHostingVisit attempts to record a visit for a hosting domain.
