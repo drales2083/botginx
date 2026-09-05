@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	domainmodels "github.com/botginx/botginx/modules/domains/models"
 	servermodels "github.com/botginx/botginx/modules/servers/models"
@@ -262,6 +261,11 @@ func (h *Handler) APIRandomPath(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]string{"path": path})
 }
 
+func (h *Handler) APIRandomSubdomain(w http.ResponseWriter, r *http.Request) {
+	subdomain := h.service.GenerateSubdomain()
+	h.json(w, http.StatusOK, map[string]string{"subdomain": subdomain})
+}
+
 func (h *Handler) APIStats(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -314,13 +318,10 @@ func (h *Handler) autoDeploy(linkID string) {
 		return
 	}
 
-	// For short links: domain.com/path -> /var/www/sites/{domain}/_root/{path}/index.html
-	domainName := link.DomainName
-	if strings.HasPrefix(domainName, "*.") {
-		domainName = domainName[2:]
-	}
-
-	deployedURL := "https://" + domainName + "/" + link.Path
+	// For short links: subdomain.basedomain/path -> /var/www/sites/{baseDomain}/{subdomain}/
+	baseDomain := link.BaseDomain()
+	fullHost := link.Subdomain + "." + baseDomain
+	deployedURL := "https://" + fullHost + "/" + link.Path
 
 	port := fmt.Sprintf("%d", server.Port)
 	if server.Port == 0 {
@@ -335,8 +336,8 @@ func (h *Handler) autoDeploy(linkID string) {
 	}
 	defer client.Close()
 
-	// Create directory: /var/www/sites/{domain}/_root/{path}/
-	siteDir := fmt.Sprintf("/var/www/sites/%s/_root/%s", domainName, link.Path)
+	// Create directory: /var/www/sites/{baseDomain}/{subdomain}/
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", baseDomain, link.Subdomain)
 	client.Run(fmt.Sprintf("mkdir -p %s", siteDir))
 
 	// Generate redirect HTML
@@ -350,7 +351,7 @@ func (h *Handler) autoDeploy(linkID string) {
 	}
 
 	// Push protection settings to botection
-	h.pushSettings(link, server, domainName)
+	h.pushSettings(link, server, fullHost)
 
 	h.service.SetDeployStatus(linkID, "deployed", &deployedURL, nil)
 }

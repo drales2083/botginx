@@ -81,6 +81,7 @@ func (m *Module) Routes() chi.Router {
 		r.Get("/", m.handler.APIList)
 		r.Post("/", m.handler.APICreate)
 		r.Get("/random-path", m.handler.APIRandomPath)
+		r.Get("/random-subdomain", m.handler.APIRandomSubdomain)
 		r.Get("/check-path", m.handler.APICheckPath)
 		r.Get("/{id}", m.handler.APIGet)
 		r.Put("/{id}", m.handler.APIUpdate)

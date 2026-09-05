@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/botginx/botginx/modules/shortener/models"
+	"github.com/botginx/botginx/pkg/namegen"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -73,12 +74,12 @@ func (s *ShortenerService) Create(userID string, input models.CreateShortLinkInp
 	now := time.Now()
 	_, err := s.db.Exec(`
 		INSERT INTO short_links (
-			id, user_id, domain_id, path, destinations, rotation_mode,
+			id, user_id, domain_id, subdomain, path, destinations, rotation_mode,
 			bot_error, qr_enabled, protection_settings, deploy_status,
 			is_active, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`,
-		id, userID, input.DomainID, input.Path,
+		id, userID, input.DomainID, input.Subdomain, input.Path,
 		models.JSONStringArray(input.Destinations), input.RotationMode,
 		input.BotError, input.QREnabled, input.ProtectionSettings,
 		"pending", true, now, now,
@@ -280,6 +281,11 @@ func (s *ShortenerService) GenerateRandomPath(length int) string {
 		b[i] = charset[int(b[i])%len(charset)]
 	}
 	return string(b)
+}
+
+// GenerateSubdomain generates a readable subdomain like "amber-canyon"
+func (s *ShortenerService) GenerateSubdomain() string {
+	return namegen.Subdomain()
 }
 
 // ResolveByHostPath resolves a short link by host and path

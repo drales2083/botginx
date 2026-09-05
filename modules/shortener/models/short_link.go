@@ -39,6 +39,7 @@ type ShortLink struct {
 	UserID             string              `db:"user_id" json:"userId"`
 	DomainID           string              `db:"domain_id" json:"domainId"`
 	DomainName         string              `db:"domain_name" json:"domainName"` // joined from domains
+	Subdomain          string              `db:"subdomain" json:"subdomain"`
 	Path               string              `db:"path" json:"path"`
 	Destinations       JSONStringArray     `db:"destinations" json:"destinations"`
 	RotationMode       string              `db:"rotation_mode" json:"rotationMode"` // random, sequential
@@ -57,12 +58,24 @@ type ShortLink struct {
 	UpdatedAt          time.Time           `db:"updated_at" json:"updatedAt"`
 }
 
+// BaseDomain returns the domain name without wildcard prefix
+func (s *ShortLink) BaseDomain() string {
+	if len(s.DomainName) > 2 && s.DomainName[:2] == "*." {
+		return s.DomainName[2:]
+	}
+	return s.DomainName
+}
+
 // FullURL returns the complete short link URL
 func (s *ShortLink) FullURL() string {
-	if s.DomainName != "" {
-		return "https://" + s.DomainName + "/" + s.Path
+	if s.DomainName == "" {
+		return ""
 	}
-	return ""
+	baseDomain := s.BaseDomain()
+	if s.Subdomain != "" {
+		return "https://" + s.Subdomain + "." + baseDomain + "/" + s.Path
+	}
+	return "https://" + baseDomain + "/" + s.Path
 }
 
 // ShortLinkClick represents a single click/visit
@@ -87,6 +100,7 @@ type ShortLinkClick struct {
 // CreateShortLinkInput for creating new short links
 type CreateShortLinkInput struct {
 	DomainID           string              `json:"domainId"`
+	Subdomain          string              `json:"subdomain"`
 	Path               string              `json:"path"`
 	Destinations       []string            `json:"destinations"`
 	RotationMode       string              `json:"rotationMode"`

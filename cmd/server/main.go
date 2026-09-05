@@ -207,6 +207,7 @@ func main() {
 		"appVersion": buildinfo.Version,
 		"appBuild":   buildinfo.Build,
 		"appName":    getAppName,
+		"hasPrefix":  strings.HasPrefix,
 	})
 	// Rebuilt per render so "t" resolves in the visitor's chosen language
 	// rather than the configured default.
