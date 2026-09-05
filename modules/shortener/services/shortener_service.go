@@ -252,8 +252,8 @@ func (s *ShortenerService) RecordClick(linkID string, isBot bool, country, devic
 
 	// Also record in clicks table for detailed analytics
 	_, err := s.db.Exec(`
-		INSERT INTO short_link_clicks (link_id, ip, country, device, user_agent, is_bot, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		INSERT INTO short_link_clicks (id, link_id, visitor_ip_hash, country, device, user_agent, is_bot, created_at)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NOW())
 	`, linkID, ip, country, device, userAgent, isBot)
 	return err
 }
