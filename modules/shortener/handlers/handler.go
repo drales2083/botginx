@@ -2,15 +2,18 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
 	domainmodels "github.com/botginx/botginx/modules/domains/models"
+	servermodels "github.com/botginx/botginx/modules/servers/models"
 	"github.com/botginx/botginx/modules/shortener/models"
 	"github.com/botginx/botginx/modules/shortener/services"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/protection"
+	"github.com/botginx/botginx/pkg/sshexec"
 	"github.com/go-chi/chi/v5"
 	"github.com/skip2/go-qrcode"
 )
@@ -19,17 +22,24 @@ type DomainProvider interface {
 	ListAvailable(userID string) ([]domainmodels.Domain, error)
 }
 
+// ServerPool hands out a deploy target chosen by the platform.
+type ServerPool interface {
+	PickRandom() (*servermodels.Server, error)
+}
+
 type Handler struct {
 	service   *services.ShortenerService
 	templates *module.TemplateEngine
 	domains   DomainProvider
+	servers   ServerPool
 }
 
-func NewHandler(service *services.ShortenerService, templates *module.TemplateEngine, domains DomainProvider) *Handler {
+func NewHandler(service *services.ShortenerService, templates *module.TemplateEngine, domains DomainProvider, servers ServerPool) *Handler {
 	return &Handler{
 		service:   service,
 		templates: templates,
 		domains:   domains,
+		servers:   servers,
 	}
 }
 
@@ -285,23 +295,76 @@ func (h *Handler) APICheckPath(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]bool{"available": available})
 }
 
-// autoDeploy marks a short link as deployed.
-// Short links don't need HTML files - the antibot proxy (botection) handles
-// the redirect directly via the callback API response which includes destinations.
+// autoDeploy deploys a short link HTML file to the Deploy VPS.
+// The HTML instantly redirects to the destination URL.
 func (h *Handler) autoDeploy(linkID string) {
 	link, err := h.service.Get(linkID)
 	if err != nil {
 		return
 	}
 
-	// For short links: domain.com/path
+	server, err := h.servers.PickRandom()
+	if err != nil {
+		errMsg := "No servers available"
+		h.service.SetDeployStatus(linkID, "failed", nil, &errMsg)
+		return
+	}
+
+	// For short links: domain.com/path -> /var/www/sites/{domain}/_root/{path}/index.html
 	domainName := link.DomainName
-	// Strip wildcard prefix if present
 	if strings.HasPrefix(domainName, "*.") {
 		domainName = domainName[2:]
 	}
 
 	deployedURL := "https://" + domainName + "/" + link.Path
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	client, err := sshexec.NewClient(server.IP, port, server.SSHUser, server.SSHPassword)
+	if err != nil {
+		errMsg := "SSH connection failed: " + err.Error()
+		h.service.SetDeployStatus(linkID, "failed", nil, &errMsg)
+		return
+	}
+	defer client.Close()
+
+	// Create directory: /var/www/sites/{domain}/_root/{path}/
+	siteDir := fmt.Sprintf("/var/www/sites/%s/_root/%s", domainName, link.Path)
+	client.Run(fmt.Sprintf("mkdir -p %s", siteDir))
+
+	// Generate redirect HTML
+	deployHTML := generateShortLinkHTML(link)
+	htmlPath := fmt.Sprintf("%s/index.html", siteDir)
+	writeHTMLCmd := fmt.Sprintf("cat > %s << 'HTMLEOF'\n%s\nHTMLEOF", htmlPath, deployHTML)
+	if _, err := client.Run(writeHTMLCmd); err != nil {
+		errMsg := "Failed to write page: " + err.Error()
+		h.service.SetDeployStatus(linkID, "failed", nil, &errMsg)
+		return
+	}
+
 	h.service.SetDeployStatus(linkID, "deployed", &deployedURL, nil)
+}
+
+// generateShortLinkHTML creates instant redirect HTML for a short link
+func generateShortLinkHTML(link *models.ShortLink) string {
+	if len(link.Destinations) == 0 {
+		return `<!DOCTYPE html><html><body>No destination configured</body></html>`
+	}
+
+	destURL := link.Destinations[0]
+
+	// Instant redirect with both meta refresh and JavaScript
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0;url=%s">
+<script>window.location.replace("%s");</script>
+</head>
+<body></body>
+</html>`, destURL, destURL)
 }
 

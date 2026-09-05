@@ -239,7 +239,7 @@ func main() {
 	iplistsModule := iplists.New()
 
 	hostingModule := hosting.New()
-	shortenerModule := shortener.New(domainsModule)
+	shortenerModule := shortener.New(domainsModule, serversModule)
 	marketplaceModule := marketplace.New()
 	paymentsModule := payments.New()
 

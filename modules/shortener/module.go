@@ -5,6 +5,7 @@ import (
 	"io/fs"
 
 	domainmodels "github.com/botginx/botginx/modules/domains/models"
+	servermodels "github.com/botginx/botginx/modules/servers/models"
 	"github.com/botginx/botginx/modules/shortener/handlers"
 	"github.com/botginx/botginx/modules/shortener/services"
 	"github.com/botginx/botginx/pkg/module"
@@ -21,14 +22,19 @@ type DomainProvider interface {
 	ListAvailable(userID string) ([]domainmodels.Domain, error)
 }
 
+type ServerPool interface {
+	PickRandom() (*servermodels.Server, error)
+}
+
 type Module struct {
 	*module.BaseModule
 	service *services.ShortenerService
 	handler *handlers.Handler
 	domains DomainProvider
+	servers ServerPool
 }
 
-func New(domains DomainProvider) *Module {
+func New(domains DomainProvider, servers ServerPool) *Module {
 	return &Module{
 		BaseModule: module.NewBaseModule(
 			"shortener",
@@ -36,6 +42,7 @@ func New(domains DomainProvider) *Module {
 			"Create short links with protection",
 		),
 		domains: domains,
+		servers: servers,
 	}
 }
 
@@ -43,7 +50,7 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 
 	m.service = services.NewShortenerService(deps.DB)
-	m.handler = handlers.NewHandler(m.service, deps.Templates, m.domains)
+	m.handler = handlers.NewHandler(m.service, deps.Templates, m.domains, m.servers)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
