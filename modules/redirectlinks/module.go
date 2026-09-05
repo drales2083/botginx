@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-//go:embed templates/*.html
+//go:embed templates/*.html templates/partials/*.html
 var templatesFS embed.FS
 
 //go:embed migrations/*.sql
