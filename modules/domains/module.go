@@ -162,7 +162,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Domains",
 			Icon:    "bi-globe",
 			Path:    "/user/domains",
-			Order:   15,
+			Order:   35,
 			Section: module.MenuSectionUser,
 		},
 		{

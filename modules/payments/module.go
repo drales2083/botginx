@@ -117,7 +117,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Deposit",
 			Icon:    "bi-wallet2",
 			Path:    "/user/payments",
-			Order:   5,
+			Order:   25,
 			Section: module.MenuSectionUser,
 		},
 		{

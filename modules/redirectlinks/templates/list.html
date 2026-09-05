@@ -60,6 +60,7 @@
                         <th>Type</th>
                         <th>Views</th>
                         <th>Status</th>
+                        <th class="text-center">Bot Settings</th>
                         <th>Created</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -105,6 +106,11 @@
                             <span class="badge text-bg-danger" title="{{.DeployError}}">Failed</span>
                             {{end}}
                         </td>
+                        <td class="text-center">
+                            <a href="/user/analytics/link/{{.ID}}/settings" class="btn btn-sm btn-outline-secondary" title="Bot Settings">
+                                <i class="bi bi-gear"></i>
+                            </a>
+                        </td>
                         <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
                         <td class="text-end">
                             <div class="btn-group btn-group-sm">
@@ -141,7 +147,7 @@
                     </tr>
                     {{else}}
                     <tr>
-                        <td colspan="{{if $canWrite}}7{{else}}6{{end}}" class="text-center text-muted py-4">
+                        <td colspan="{{if $canWrite}}8{{else}}7{{end}}" class="text-center text-muted py-4">
                             No redirect links yet.
                             {{if $canWrite}}
                             <a href="/user/redirectlinks/new">Create your first link</a>.

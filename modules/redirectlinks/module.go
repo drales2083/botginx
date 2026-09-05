@@ -125,7 +125,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Redirect Generator",
 			Icon:    "bi-arrow-repeat",
 			Path:    "/user/redirectlinks",
-			Order:   20,
+			Order:   5,
 			Section: module.MenuSectionUser,
 		},
 	}

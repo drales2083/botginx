@@ -62,7 +62,6 @@ func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 		"Title":             "Create Short Link",
 		"Domains":           domains,
 		"DefaultProtection": protection.GetDefaultSettings(),
-		"BotErrors":         getBotErrors(),
 	})
 }
 
@@ -84,11 +83,10 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	stats, _ := h.service.GetStats(id, 30)
 
 	module.RenderUserSection(w, r, h.templates, "shortener:show.html", map[string]interface{}{
-		"Title":     "Short Link",
-		"Link":      link,
-		"Stats":     stats,
-		"BotErrors": getBotErrors(),
-		"Settings":  link.ProtectionSettings,
+		"Title":    "Short Link",
+		"Link":     link,
+		"Stats":    stats,
+		"Settings": link.ProtectionSettings,
 	})
 }
 
@@ -280,20 +278,3 @@ func (h *Handler) APICheckPath(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]bool{"available": available})
 }
 
-// Helpers
-
-func getBotErrors() []map[string]interface{} {
-	return []map[string]interface{}{
-		{"code": 400, "name": "Bad Request"},
-		{"code": 401, "name": "Unauthorized"},
-		{"code": 403, "name": "Forbidden"},
-		{"code": 404, "name": "Not Found"},
-		{"code": 405, "name": "Method Not Allowed"},
-		{"code": 408, "name": "Request Timeout"},
-		{"code": 410, "name": "Gone"},
-		{"code": 429, "name": "Too Many Requests"},
-		{"code": 500, "name": "Internal Server Error"},
-		{"code": 502, "name": "Bad Gateway"},
-		{"code": 503, "name": "Service Unavailable"},
-	}
-}

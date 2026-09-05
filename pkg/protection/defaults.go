@@ -10,11 +10,11 @@ func GetDefaultSettings() Settings {
 		DeviceMode:       "all",
 		DeviceList:       []string{},
 		BlockBots:        true,
-		BlockTor:         false,
-		BlockProxy:       false,
-		BlockDatacenter:  false,
+		BlockTor:         true,
+		BlockProxy:       true,
+		BlockDatacenter:  true,
 		BlockHeadless:    true,
-		MinBehaviorScore: 0,
+		MinBehaviorScore: 50,
 		RedirectOnBlock:  "",
 	}
 }

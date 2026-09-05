@@ -24,7 +24,7 @@
                 </div>
 
                 <!-- Path -->
-                <div class="col-md-3">
+                <div class="col-md-6">
                     <label class="form-label">Path</label>
                     <div class="input-group">
                         <span class="input-group-text">/</span>
@@ -33,16 +33,6 @@
                             <i class="bi bi-shuffle"></i>
                         </button>
                     </div>
-                </div>
-
-                <!-- Bot Error -->
-                <div class="col-md-3">
-                    <label class="form-label">Bot Response</label>
-                    <select class="form-select" id="botError">
-                        {{range .BotErrors}}
-                        <option value="{{.code}}" {{if eq .code 403}}selected{{end}}>{{.code}} - {{.name}}</option>
-                        {{end}}
-                    </select>
                 </div>
 
                 <!-- QR -->
@@ -160,7 +150,6 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
             path: document.getElementById('path').value,
             destinations: destinations,
             rotationMode: 'random',
-            botError: parseInt(document.getElementById('botError').value),
             qrEnabled: document.getElementById('qrEnabled').checked,
             protectionSettings: window.protectionSettings ? window.protectionSettings.getSettings() : {}
         };

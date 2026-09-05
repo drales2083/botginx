@@ -107,15 +107,11 @@
     <div class="card-body">
         <div id="settings-view">
             <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="text-muted small text-uppercase">Bot Response</label>
-                    <div>{{.Link.BotError}} Error</div>
-                </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="text-muted small text-uppercase">QR Code</label>
                     <div>{{if .Link.QREnabled}}Enabled{{else}}Disabled{{end}}</div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="text-muted small text-uppercase">Rotation</label>
                     <div>{{.Link.RotationMode}}</div>
                 </div>
@@ -125,15 +121,7 @@
         <div id="settings-edit" style="display: none;">
             <form id="settings-form">
                 <div class="row g-3 mb-4">
-                    <div class="col-md-4">
-                        <label class="form-label">Bot Response</label>
-                        <select class="form-select" id="edit-botError">
-                            {{range $.BotErrors}}
-                            <option value="{{.code}}" {{if eq .code $.Link.BotError}}selected{{end}}>{{.code}} - {{.name}}</option>
-                            {{end}}
-                        </select>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label">QR Code</label>
                         <div class="form-check form-switch mt-2">
                             <input class="form-check-input" type="checkbox" id="edit-qrEnabled" {{if .Link.QREnabled}}checked{{end}}>
@@ -225,7 +213,6 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
 
     try {
         const data = {
-            botError: parseInt(document.getElementById('edit-botError').value),
             qrEnabled: document.getElementById('edit-qrEnabled').checked,
             protectionSettings: window.protectionSettings ? window.protectionSettings.getSettings() : {}
         };

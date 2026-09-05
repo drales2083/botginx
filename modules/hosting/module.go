@@ -249,7 +249,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Hosting",
 			Icon:    "bi-shield-check",
 			Path:    "/user/hosting",
-			Order:   50,
+			Order:   30,
 			Section: module.MenuSectionUser,
 		},
 		{

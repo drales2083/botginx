@@ -95,7 +95,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Link Shortener",
 			Icon:    "bi-link-45deg",
 			Path:    "/user/shortener",
-			Order:   15,
+			Order:   10,
 			Section: module.MenuSectionUser,
 		},
 	}
