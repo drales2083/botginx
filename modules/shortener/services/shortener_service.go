@@ -324,6 +324,16 @@ func (s *ShortenerService) ResolveByHostPath(host, path string) (linkID, userID 
 		host = host[:idx]
 	}
 
+	// Parse subdomain from host: "bolt.kemore.sbs" -> subdomain="bolt", baseDomain="kemore.sbs"
+	subdomain := ""
+	baseDomain := host
+	parts := strings.SplitN(host, ".", 2)
+	if len(parts) == 2 && len(parts[0]) > 0 && strings.Contains(parts[1], ".") {
+		// Has subdomain: bolt.kemore.sbs -> ["bolt", "kemore.sbs"]
+		subdomain = parts[0]
+		baseDomain = parts[1]
+	}
+
 	var row struct {
 		ID           string                 `db:"id"`
 		UserID       string                 `db:"user_id"`
@@ -335,9 +345,10 @@ func (s *ShortenerService) ResolveByHostPath(host, path string) (linkID, userID 
 		JOIN domains d ON d.id = sl.domain_id
 		WHERE sl.path = $1
 		  AND sl.is_active = true
-		  AND (LOWER(d.name) = $2 OR LOWER(REGEXP_REPLACE(d.name, '^\*\.', '')) = $2)
+		  AND sl.subdomain = $2
+		  AND LOWER(REGEXP_REPLACE(d.name, '^\*\.', '')) = $3
 		LIMIT 1
-	`, path, host)
+	`, path, subdomain, baseDomain)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -349,11 +360,12 @@ func (s *ShortenerService) ResolveByHostPath(host, path string) (linkID, userID 
 func (s *ShortenerService) GetLinkHost(linkID string) (host string, path string, domainID string, err error) {
 	var row struct {
 		Path       string `db:"path"`
+		Subdomain  string `db:"subdomain"`
 		DomainID   string `db:"domain_id"`
 		DomainName string `db:"domain_name"`
 	}
 	err = s.db.Get(&row, `
-		SELECT sl.path, sl.domain_id, d.name as domain_name
+		SELECT sl.path, sl.subdomain, sl.domain_id, d.name as domain_name
 		FROM short_links sl
 		JOIN domains d ON d.id = sl.domain_id
 		WHERE sl.id = $1
@@ -361,10 +373,13 @@ func (s *ShortenerService) GetLinkHost(linkID string) (host string, path string,
 	if err != nil {
 		return "", "", "", err
 	}
-	// Strip wildcard prefix
+	// Strip wildcard prefix and prepend subdomain
 	domainName := row.DomainName
 	if len(domainName) > 2 && domainName[:2] == "*." {
 		domainName = domainName[2:]
+	}
+	if row.Subdomain != "" {
+		domainName = row.Subdomain + "." + domainName
 	}
 	return domainName, row.Path, row.DomainID, nil
 }
