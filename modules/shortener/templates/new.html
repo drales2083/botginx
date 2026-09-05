@@ -13,7 +13,7 @@
         <form id="create-form">
             <div class="row g-3">
                 <!-- Domain -->
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label">Domain</label>
                     <select class="form-select" id="domainId" required>
                         <option value="">Select domain...</option>
@@ -23,8 +23,19 @@
                     </select>
                 </div>
 
+                <!-- Subdomain -->
+                <div class="col-md-3">
+                    <label class="form-label">Subdomain</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="subdomain" pattern="[a-z0-9\-]+" required>
+                        <button type="button" class="btn btn-outline-secondary" onclick="randomizeSubdomain()" title="Generate random">
+                            <i class="bi bi-shuffle"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Path -->
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">Path</label>
                     <div class="input-group">
                         <span class="input-group-text">/</span>
@@ -87,8 +98,9 @@
 </div>
 
 <script>
-// Generate random path on load
+// Generate random subdomain and path on load
 document.addEventListener('DOMContentLoaded', () => {
+    randomizeSubdomain();
     randomizePath();
 
     // Initialize protection with defaults
@@ -105,6 +117,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('protection-chevron').classList.replace('bi-chevron-up', 'bi-chevron-down');
     });
 });
+
+async function randomizeSubdomain() {
+    const res = await fetch('/user/shortener/api/random-subdomain');
+    const data = await res.json();
+    document.getElementById('subdomain').value = data.subdomain;
+}
 
 async function randomizePath() {
     const res = await fetch('/user/shortener/api/random-path');
@@ -147,6 +165,7 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
 
         const data = {
             domainId: document.getElementById('domainId').value,
+            subdomain: document.getElementById('subdomain').value.toLowerCase(),
             path: document.getElementById('path').value,
             destinations: destinations,
             rotationMode: 'random',
