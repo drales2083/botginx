@@ -183,5 +183,22 @@
   "payments.view_blockchain": "View on blockchain",
   "payments.no_transactions": "No Transactions",
   "payments.no_transactions_desc": "You haven't made any deposits or withdrawals yet.",
-  "payments.make_deposit": "Make a Deposit"
+  "payments.make_deposit": "Make a Deposit",
+
+  "marketplace.buy_domain": "Buy Domain",
+  "marketplace.buy_domain_desc": "Purchase pre-configured domains ready for immediate use",
+  "marketplace.ready": "Ready",
+  "marketplace.purchase": "Purchase",
+  "marketplace.ssl_configured": "SSL configured",
+  "marketplace.ready_to_use": "Ready to use",
+  "marketplace.no_domains": "No Domains Available",
+  "marketplace.no_domains_desc": "Check back later for new domains",
+  "marketplace.confirm_purchase": "Confirm Purchase",
+  "marketplace.price": "Price",
+  "marketplace.after_purchase": "After Purchase",
+  "marketplace.purchase_info": "This domain is fully configured and ready to use immediately. After purchase, it will appear in your Domains list.",
+  "marketplace.insufficient_balance": "Insufficient balance. Please top up first.",
+  "marketplace.processing": "Processing...",
+  "marketplace.purchase_success": "Domain purchased successfully!",
+  "marketplace.purchase_failed": "Purchase failed"
 }

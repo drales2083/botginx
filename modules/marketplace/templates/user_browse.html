@@ -1,13 +1,13 @@
 {{define "content"}}
 <div class="row mb-4">
     <div class="col">
-        <h4><i class="bi bi-bag me-2"></i>Buy Domain</h4>
-        <p class="text-secondary mb-0">Purchase pre-configured domains ready for immediate use</p>
+        <h4><i class="bi bi-bag me-2"></i>{{t "marketplace.buy_domain"}}</h4>
+        <p class="text-secondary mb-0">{{t "marketplace.buy_domain_desc"}}</p>
     </div>
     <div class="col-auto">
         <div class="card bg-dark">
             <div class="card-body py-2 px-3">
-                <small class="text-muted">Your Balance:</small>
+                <small class="text-muted">{{t "payments.your_balance"}}:</small>
                 <strong class="text-success ms-2">${{printf "%.2f" .Balance}}</strong>
             </div>
         </div>
@@ -25,7 +25,7 @@
                         <i class="bi bi-globe me-2 text-primary"></i>
                         <code>{{.Name}}</code>
                     </h5>
-                    <span class="badge bg-success">Ready</span>
+                    <span class="badge bg-success">{{t "marketplace.ready"}}</span>
                 </div>
 
                 {{if .MarketplaceDescription}}
@@ -40,14 +40,14 @@
                             data-id="{{.ID}}"
                             data-name="{{.Name}}"
                             data-price="{{deref .MarketplacePrice}}">
-                        <i class="bi bi-bag-check me-1"></i>Purchase
+                        <i class="bi bi-bag-check me-1"></i>{{t "marketplace.purchase"}}
                     </button>
                 </div>
             </div>
             <div class="card-footer bg-transparent">
                 <small class="text-muted">
-                    <i class="bi bi-check-circle text-success me-1"></i>SSL configured
-                    <i class="bi bi-check-circle text-success ms-3 me-1"></i>Ready to use
+                    <i class="bi bi-check-circle text-success me-1"></i>{{t "marketplace.ssl_configured"}}
+                    <i class="bi bi-check-circle text-success ms-3 me-1"></i>{{t "marketplace.ready_to_use"}}
                 </small>
             </div>
         </div>
@@ -58,8 +58,8 @@
 <div class="card">
     <div class="card-body text-center py-5">
         <i class="bi bi-bag display-1 text-muted mb-3"></i>
-        <h5>No Domains Available</h5>
-        <p class="text-muted mb-0">Check back later for new domains</p>
+        <h5>{{t "marketplace.no_domains"}}</h5>
+        <p class="text-muted mb-0">{{t "marketplace.no_domains_desc"}}</p>
     </div>
 </div>
 {{end}}
@@ -69,7 +69,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-bag-check me-2"></i>Confirm Purchase</h5>
+                <h5 class="modal-title"><i class="bi bi-bag-check me-2"></i>{{t "marketplace.confirm_purchase"}}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -81,28 +81,28 @@
 
                 <table class="table table-sm">
                     <tr>
-                        <td>Price:</td>
+                        <td>{{t "marketplace.price"}}:</td>
                         <td class="text-end"><strong class="text-success" id="purchasePrice"></strong></td>
                     </tr>
                     <tr>
-                        <td>Your Balance:</td>
+                        <td>{{t "payments.your_balance"}}:</td>
                         <td class="text-end">${{printf "%.2f" .Balance}}</td>
                     </tr>
                     <tr class="border-top">
-                        <td>After Purchase:</td>
+                        <td>{{t "marketplace.after_purchase"}}:</td>
                         <td class="text-end"><strong id="balanceAfter"></strong></td>
                     </tr>
                 </table>
 
                 <div class="alert alert-info small mb-0">
                     <i class="bi bi-info-circle me-1"></i>
-                    This domain is fully configured and ready to use immediately. After purchase, it will appear in your Domains list.
+                    {{t "marketplace.purchase_info"}}
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{t "cancel"}}</button>
                 <button type="button" class="btn btn-success" id="confirmPurchase">
-                    <i class="bi bi-bag-check me-1"></i>Confirm Purchase
+                    <i class="bi bi-bag-check me-1"></i>{{t "marketplace.confirm_purchase"}}
                 </button>
             </div>
         </div>
@@ -116,13 +116,12 @@ let purchaseModal;
 document.addEventListener('DOMContentLoaded', function() {
     purchaseModal = new bootstrap.Modal(document.getElementById('purchaseModal'));
 
-    // Purchase button click
     document.querySelectorAll('.btn-purchase').forEach(btn => {
         btn.addEventListener('click', () => {
             const price = parseFloat(btn.dataset.price);
 
             if (balance < price) {
-                showToast('Insufficient balance. Please top up first.', 'warning');
+                showToast('{{t "marketplace.insufficient_balance"}}', 'warning');
                 return;
             }
 
@@ -135,13 +134,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Confirm purchase
     document.getElementById('confirmPurchase').addEventListener('click', async () => {
         const domainId = document.getElementById('purchaseDomainId').value;
         const btn = document.getElementById('confirmPurchase');
 
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{{t "marketplace.processing"}}';
 
         const res = await fetch(`/user/marketplace/api/purchase/${domainId}`, {
             method: 'POST',
@@ -150,13 +148,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (res.ok) {
             purchaseModal.hide();
-            flashToast('Domain purchased successfully!', 'success');
+            flashToast('{{t "marketplace.purchase_success"}}', 'success');
             window.location.href = '/user/domains';
         } else {
             const data = await res.json().catch(() => ({}));
-            showToast(data.error || 'Purchase failed', 'danger');
+            showToast(data.error || '{{t "marketplace.purchase_failed"}}', 'danger');
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-bag-check me-1"></i>Confirm Purchase';
+            btn.innerHTML = '<i class="bi bi-bag-check me-1"></i>{{t "marketplace.confirm_purchase"}}';
         }
     });
 });

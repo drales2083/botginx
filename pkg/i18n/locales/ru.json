@@ -183,5 +183,22 @@
   "payments.view_blockchain": "Посмотреть в блокчейне",
   "payments.no_transactions": "Нет транзакций",
   "payments.no_transactions_desc": "У вас пока нет пополнений или выводов.",
-  "payments.make_deposit": "Пополнить"
+  "payments.make_deposit": "Пополнить",
+
+  "marketplace.buy_domain": "Купить домен",
+  "marketplace.buy_domain_desc": "Покупайте готовые домены для мгновенного использования",
+  "marketplace.ready": "Готов",
+  "marketplace.purchase": "Купить",
+  "marketplace.ssl_configured": "SSL настроен",
+  "marketplace.ready_to_use": "Готов к использованию",
+  "marketplace.no_domains": "Нет доступных доменов",
+  "marketplace.no_domains_desc": "Загляните позже за новыми доменами",
+  "marketplace.confirm_purchase": "Подтвердить покупку",
+  "marketplace.price": "Цена",
+  "marketplace.after_purchase": "После покупки",
+  "marketplace.purchase_info": "Этот домен полностью настроен и готов к использованию. После покупки он появится в вашем списке доменов.",
+  "marketplace.insufficient_balance": "Недостаточно средств. Пожалуйста, пополните баланс.",
+  "marketplace.processing": "Обработка...",
+  "marketplace.purchase_success": "Домен успешно куплен!",
+  "marketplace.purchase_failed": "Покупка не удалась"
 }
