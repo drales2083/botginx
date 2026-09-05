@@ -12,8 +12,9 @@ import (
 	servermodels "github.com/botginx/botginx/modules/servers/models"
 	"github.com/botginx/botginx/modules/redirectlinks/services"
 	"github.com/botginx/botginx/pkg/ctx"
-	"github.com/botginx/botginx/pkg/namegen"
+	"github.com/botginx/botginx/pkg/customizer"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/botginx/botginx/pkg/namegen"
 	"github.com/botginx/botginx/pkg/sshexec"
 	"github.com/go-chi/chi/v5"
 )
@@ -107,8 +108,11 @@ func (h *Handler) Customize(w http.ResponseWriter, r *http.Request) {
 	}
 
 	module.RenderUserSection(w, r, h.templates, "redirectlinks:customize.html", map[string]interface{}{
-		"Title": "Customize Redirect",
-		"Link":  link,
+		"Title":    "Customize Redirect",
+		"Link":     link,
+		"Loaders":  customizer.GetLoaders(),
+		"Patterns": customizer.GetPatterns(),
+		"Fonts":    customizer.GetFonts(),
 	})
 }
 
@@ -520,158 +524,118 @@ func generateRedirectHTML(link *models.RedirectLink) string {
 		duration = 3
 	}
 
-	// Extract customization with defaults
-	bgColor := "#0a0a0a"
-	bgColorSecondary := "#1a1a1a"
-	gradientEnabled := false
-	textColor := "#ffffff"
-	textSize := 32
-	loaderColor := "#3b82f6"
-	loaderType := "spinner"
-	heading := "Please Wait"
-	subheading := "Redirecting..."
-	pageTitle := "Redirecting"
+	// Convert JSONMap to customizer.Customization
+	c := jsonMapToCustomization(link.Customization)
 
-	if link.Customization != nil {
-		if v, ok := link.Customization["bgColor"].(string); ok && v != "" {
-			bgColor = v
-		}
-		if v, ok := link.Customization["bgColorSecondary"].(string); ok && v != "" {
-			bgColorSecondary = v
-		}
-		if v, ok := link.Customization["gradientEnabled"].(bool); ok {
-			gradientEnabled = v
-		}
-		if v, ok := link.Customization["textColor"].(string); ok && v != "" {
-			textColor = v
-		}
-		if v, ok := link.Customization["textSize"].(float64); ok && v > 0 {
-			textSize = int(v)
-		}
-		if v, ok := link.Customization["loaderColorPrimary"].(string); ok && v != "" {
-			loaderColor = v
-		}
-		if v, ok := link.Customization["loader"].(string); ok && v != "" {
-			loaderType = v
-		}
-		if v, ok := link.Customization["heading"].(string); ok {
-			heading = v
-		}
-		if v, ok := link.Customization["subheading"].(string); ok {
-			subheading = v
-		}
-		if v, ok := link.Customization["pageTitle"].(string); ok && v != "" {
-			pageTitle = v
-		}
+	// Generate HTML using the customizer package
+	return customizer.GenerateHTML(customizer.GenerateOptions{
+		Customization: c,
+		RedirectURL:   destURL,
+		Delay:         duration,
+	})
+}
+
+// jsonMapToCustomization converts the stored JSONMap to a Customization struct
+func jsonMapToCustomization(m models.JSONMap) customizer.Customization {
+	// Start with defaults
+	c := customizer.GetDefaultCustomization()
+
+	if m == nil {
+		return c
 	}
 
-	// Build background style
-	bgStyle := bgColor
-	if gradientEnabled {
-		bgStyle = fmt.Sprintf("linear-gradient(135deg, %s 0%%, %s 100%%)", bgColor, bgColorSecondary)
+	// Background
+	if v, ok := m["bgColor"].(string); ok && v != "" {
+		c.BgColor = v
+	}
+	if v, ok := m["bgColorSecondary"].(string); ok && v != "" {
+		c.BgColorSecondary = v
+	}
+	if v, ok := m["gradientEnabled"].(bool); ok {
+		c.GradientEnabled = v
+	}
+	if v, ok := m["pattern"].(string); ok && v != "" {
+		c.Pattern = v
+	}
+	if v, ok := m["patternColor"].(string); ok && v != "" {
+		c.PatternColor = v
+	}
+	if v, ok := m["patternOpacity"].(float64); ok {
+		c.PatternOpacity = int(v)
 	}
 
-	// Build loader HTML based on type
-	loaderHTML := ""
-	loaderCSS := ""
-	switch loaderType {
-	case "dots-bounce":
-		loaderHTML = `<div class="loader-dots"><span></span><span></span><span></span></div>`
-		loaderCSS = fmt.Sprintf(`
-        .loader-dots span {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            margin: 0 4px;
-            background: %s;
-            border-radius: 50%%;
-            animation: bounce 1.4s ease-in-out infinite both;
-        }
-        .loader-dots span:nth-child(1) { animation-delay: -0.32s; }
-        .loader-dots span:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce { 0%%, 80%%, 100%% { transform: scale(0); } 40%% { transform: scale(1); } }`, loaderColor)
-	case "pulse":
-		loaderHTML = `<div class="loader-pulse"></div>`
-		loaderCSS = fmt.Sprintf(`
-        .loader-pulse {
-            width: 48px;
-            height: 48px;
-            background: %s;
-            border-radius: 50%%;
-            margin: 0 auto;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-        @keyframes pulse { 0%%, 100%% { transform: scale(0.8); opacity: 0.5; } 50%% { transform: scale(1); opacity: 1; } }`, loaderColor)
-	case "bars":
-		loaderHTML = `<div class="loader-bars"><span></span><span></span><span></span><span></span></div>`
-		loaderCSS = fmt.Sprintf(`
-        .loader-bars span {
-            display: inline-block;
-            width: 6px;
-            height: 32px;
-            margin: 0 3px;
-            background: %s;
-            animation: bars 1.2s ease-in-out infinite;
-        }
-        .loader-bars span:nth-child(1) { animation-delay: 0s; }
-        .loader-bars span:nth-child(2) { animation-delay: 0.1s; }
-        .loader-bars span:nth-child(3) { animation-delay: 0.2s; }
-        .loader-bars span:nth-child(4) { animation-delay: 0.3s; }
-        @keyframes bars { 0%%, 40%%, 100%% { transform: scaleY(0.4); } 20%% { transform: scaleY(1); } }`, loaderColor)
-	default: // spinner
-		loaderHTML = `<div class="loader-spinner"></div>`
-		loaderCSS = fmt.Sprintf(`
-        .loader-spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid rgba(255,255,255,0.2);
-            border-top-color: %s;
-            border-radius: 50%%;
-            margin: 0 auto;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }`, loaderColor)
+	// Loader
+	if v, ok := m["loader"].(string); ok && v != "" {
+		c.Loader = v
+	}
+	if v, ok := m["loaderColorPrimary"].(string); ok && v != "" {
+		c.LoaderColorPrimary = v
+	}
+	if v, ok := m["loaderColorSecondary"].(string); ok && v != "" {
+		c.LoaderColorSecondary = v
 	}
 
-	return fmt.Sprintf(`<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>%s</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: %s;
-            color: %s;
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-        .container { text-align: center; padding: 2rem; }
-        h1 { font-size: %dpx; margin-bottom: 1rem; font-weight: 600; }
-        p { opacity: 0.7; font-size: 1rem; margin-top: 1rem; }
-        .loader { margin: 1.5rem 0; }
-        %s
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>%s</h1>
-        <div class="loader">%s</div>
-        <p>%s</p>
-    </div>
-    <script>
-        setTimeout(function() {
-            var dest = %q;
-            %s
-            window.location.href = dest;
-        }, %d000);
-    </script>
-</body>
-</html>`, pageTitle, bgStyle, textColor, textSize, loaderCSS, heading, loaderHTML, subheading, destURL, getPassParamsJS(link.PassParams), duration)
+	// Text
+	if v, ok := m["heading"].(string); ok {
+		c.Heading = v
+	}
+	if v, ok := m["headingVisible"].(bool); ok {
+		c.HeadingVisible = v
+	}
+	if v, ok := m["subheading"].(string); ok {
+		c.Subheading = v
+	}
+	if v, ok := m["subheadingVisible"].(bool); ok {
+		c.SubheadingVisible = v
+	}
+	if v, ok := m["font"].(string); ok && v != "" {
+		c.Font = v
+	}
+	if v, ok := m["fontWeight"].(float64); ok && v > 0 {
+		c.FontWeight = int(v)
+	}
+	if v, ok := m["textColor"].(string); ok && v != "" {
+		c.TextColor = v
+	}
+	if v, ok := m["textSize"].(float64); ok && v > 0 {
+		c.TextSize = int(v)
+	}
+	if v, ok := m["textShadow"].(bool); ok {
+		c.TextShadow = v
+	}
+
+	// Image
+	if v, ok := m["imageMode"].(string); ok {
+		c.ImageMode = v
+	}
+	if v, ok := m["imageDataUrl"].(string); ok {
+		c.ImageDataURL = v
+	}
+	if v, ok := m["imageSize"].(float64); ok && v > 0 {
+		c.ImageSize = int(v)
+	}
+	if v, ok := m["imageOverlay"].(float64); ok {
+		c.ImageOverlay = int(v)
+	}
+
+	// Layout
+	if v, ok := m["contentOrder"].(string); ok && v != "" {
+		c.ContentOrder = v
+	}
+	if v, ok := m["textAlign"].(string); ok && v != "" {
+		c.TextAlign = v
+	}
+	if v, ok := m["vPos"].(float64); ok {
+		c.VPos = int(v)
+	}
+	if v, ok := m["gap"].(float64); ok && v > 0 {
+		c.Gap = int(v)
+	}
+	if v, ok := m["pageTitle"].(string); ok && v != "" {
+		c.PageTitle = v
+	}
+
+	return c
 }
 
 // getPassParamsJS returns JavaScript to append query params to destination if enabled
@@ -683,6 +647,21 @@ func getPassParamsJS(enabled bool) string {
                 var sep = dest.indexOf('?') >= 0 ? '&' : '?';
                 dest = dest + sep + window.location.search.substring(1);
             }`
+}
+
+// APICustomizerPreview generates a preview of the customized page
+func (h *Handler) APICustomizerPreview(w http.ResponseWriter, r *http.Request) {
+	var c customizer.Customization
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Generate preview HTML (no redirect)
+	html := customizer.GeneratePreviewHTML(c)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
 }
 
 // Helpers
