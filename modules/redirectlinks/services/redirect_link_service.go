@@ -223,7 +223,7 @@ func (s *RedirectLinkService) UpdateDestinationAndDelay(id string, url string, d
 		delay = 30
 	}
 	_, err := s.db.Exec(`
-		UPDATE redirect_links SET destination_urls = $2, delay = $3, updated_at = NOW() WHERE id = $1
+		UPDATE redirect_links SET destination_urls = $2, animation_duration = $3, updated_at = NOW() WHERE id = $1
 	`, id, models.JSONArray([]string{url}), delay)
 	return err
 }
