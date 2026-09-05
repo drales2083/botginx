@@ -172,26 +172,21 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 		h.jsonError(w, "Domain is required", http.StatusBadRequest)
 		return
 	}
-	if input.Subdomain == "" {
-		h.jsonError(w, "Subdomain is required", http.StatusBadRequest)
-		return
-	}
 	if input.Path == "" {
 		h.jsonError(w, "Path is required", http.StatusBadRequest)
 		return
+	}
+
+	// Auto-generate subdomain if not provided
+	if input.Subdomain == "" {
+		input.Subdomain = h.service.GenerateSubdomain()
 	}
 	if len(input.Destinations) == 0 {
 		h.jsonError(w, "At least one destination URL is required", http.StatusBadRequest)
 		return
 	}
 
-	// Check path availability
-	available, _ := h.service.CheckPathAvailable(input.DomainID, input.Subdomain, input.Path)
-	if !available {
-		h.jsonError(w, "Path already in use", http.StatusConflict)
-		return
-	}
-
+	// ensureUniqueSubdomain in Create() handles collisions
 	link, err := h.service.Create(userID, input)
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)

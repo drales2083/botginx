@@ -18,24 +18,13 @@
                     <select class="form-select" id="domainId" required>
                         <option value="">Select domain...</option>
                         {{range .Domains}}
-                        <option value="{{.ID}}" data-wildcard="{{if hasPrefix .Name "*."}}true{{else}}false{{end}}">{{.Name}}</option>
+                        <option value="{{.ID}}">{{.Name}}</option>
                         {{end}}
                     </select>
                 </div>
 
-                <!-- Subdomain (shown for wildcard domains) -->
-                <div class="col-md-3" id="subdomain-group" style="display: none;">
-                    <label class="form-label">Subdomain</label>
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="subdomain" pattern="[a-z0-9\-]+" placeholder="go">
-                        <button type="button" class="btn btn-outline-secondary" onclick="randomizeSubdomain()" title="Generate random">
-                            <i class="bi bi-shuffle"></i>
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Path -->
-                <div class="col-md-4" id="path-col">
+                <div class="col-md-6">
                     <label class="form-label">Path</label>
                     <div class="input-group">
                         <span class="input-group-text">/</span>
@@ -47,10 +36,11 @@
                 </div>
 
                 <!-- QR -->
-                <div class="col-md-1" id="qr-col">
-                    <label class="form-label">QR</label>
+                <div class="col-md-2">
+                    <label class="form-label">QR Code</label>
                     <div class="form-check form-switch mt-2">
                         <input class="form-check-input" type="checkbox" id="qrEnabled">
+                        <label class="form-check-label" for="qrEnabled">Enable</label>
                     </div>
                 </div>
             </div>
@@ -114,41 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('protection-collapse').addEventListener('hide.bs.collapse', () => {
         document.getElementById('protection-chevron').classList.replace('bi-chevron-up', 'bi-chevron-down');
     });
-
-    // Domain change handler
-    document.getElementById('domainId').addEventListener('change', handleDomainChange);
 });
-
-function handleDomainChange() {
-    const select = document.getElementById('domainId');
-    const option = select.selectedOptions[0];
-    const isWildcard = option && option.dataset.wildcard === 'true';
-    const subdomainGroup = document.getElementById('subdomain-group');
-    const subdomainInput = document.getElementById('subdomain');
-
-    if (isWildcard) {
-        subdomainGroup.style.display = '';
-        subdomainInput.required = true;
-        if (!subdomainInput.value) {
-            randomizeSubdomain();
-        }
-    } else {
-        subdomainGroup.style.display = 'none';
-        subdomainInput.required = false;
-        subdomainInput.value = '';
-    }
-}
 
 async function randomizePath() {
     const res = await fetch('/user/shortener/api/random-path');
     const data = await res.json();
     document.getElementById('path').value = data.path;
-}
-
-async function randomizeSubdomain() {
-    const res = await fetch('/user/shortener/api/random-subdomain');
-    const data = await res.json();
-    document.getElementById('subdomain').value = data.subdomain;
 }
 
 function addDestination() {
@@ -186,7 +147,6 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
 
         const data = {
             domainId: document.getElementById('domainId').value,
-            subdomain: document.getElementById('subdomain').value,
             path: document.getElementById('path').value,
             destinations: destinations,
             rotationMode: 'random',
