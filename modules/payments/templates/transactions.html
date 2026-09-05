@@ -1,12 +1,12 @@
 {{define "content"}}
 <div class="row mb-4">
     <div class="col">
-        <h4><i class="bi bi-clock-history me-2"></i>Transaction History</h4>
-        <p class="text-secondary mb-0">All your crypto deposits and withdrawals</p>
+        <h4><i class="bi bi-clock-history me-2"></i>{{t "payments.transaction_history"}}</h4>
+        <p class="text-secondary mb-0">{{t "payments.transaction_desc"}}</p>
     </div>
     <div class="col-auto">
-        <a href="/user/payments" class="btn btn-primary">
-            <i class="bi bi-wallet2 me-1"></i>Deposit
+        <a href="/user/payments/deposit" class="btn btn-primary">
+            <i class="bi bi-wallet2 me-1"></i>{{t "payments.deposit"}}
         </a>
     </div>
 </div>
@@ -18,13 +18,13 @@
             <table class="table table-hover mb-0" data-datatable>
                 <thead>
                     <tr>
-                        <th>Type</th>
-                        <th>Amount</th>
-                        <th>USD Value</th>
-                        <th>Status</th>
-                        <th>Confirmations</th>
-                        <th>Transaction ID</th>
-                        <th>Date</th>
+                        <th>{{t "type"}}</th>
+                        <th>{{t "payments.amount"}}</th>
+                        <th>{{t "payments.usd_value"}}</th>
+                        <th>{{t "status"}}</th>
+                        <th>{{t "payments.confirmations"}}</th>
+                        <th>{{t "payments.transaction_id"}}</th>
+                        <th>{{t "payments.date"}}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -32,9 +32,9 @@
                     <tr>
                         <td>
                             {{if eq .Type "deposit"}}
-                            <span class="badge bg-success"><i class="bi bi-arrow-down me-1"></i>Deposit</span>
+                            <span class="badge bg-success"><i class="bi bi-arrow-down me-1"></i>{{t "payments.deposit"}}</span>
                             {{else}}
-                            <span class="badge bg-warning"><i class="bi bi-arrow-up me-1"></i>Withdrawal</span>
+                            <span class="badge bg-warning"><i class="bi bi-arrow-up me-1"></i>{{t "payments.withdrawal"}}</span>
                             {{end}}
                         </td>
                         <td>
@@ -45,9 +45,9 @@
                         </td>
                         <td>
                             {{if eq .Status "confirmed"}}
-                            <span class="badge bg-success">Confirmed</span>
+                            <span class="badge bg-success">{{t "payments.confirmed"}}</span>
                             {{else if eq .Status "pending"}}
-                            <span class="badge bg-warning text-dark">Pending</span>
+                            <span class="badge bg-warning text-dark">{{t "payments.pending_conf"}}</span>
                             {{else}}
                             <span class="badge bg-danger">{{.Status}}</span>
                             {{end}}
@@ -55,7 +55,7 @@
                         <td>{{.Confirmations}}</td>
                         <td>
                             <a href="https://mempool.space/tx/{{.TxID}}" target="_blank"
-                               class="text-decoration-none" title="View on blockchain">
+                               class="text-decoration-none" title="{{t "payments.view_blockchain"}}">
                                 <code>{{slice .TxID 0 16}}...</code>
                                 <i class="bi bi-box-arrow-up-right ms-1"></i>
                             </a>
@@ -69,10 +69,10 @@
         {{else}}
         <div class="text-center py-5">
             <i class="bi bi-inbox display-1 text-muted mb-3"></i>
-            <h5>No Transactions</h5>
-            <p class="text-muted mb-3">You haven't made any deposits or withdrawals yet.</p>
-            <a href="/user/payments" class="btn btn-primary">
-                <i class="bi bi-wallet2 me-1"></i>Make a Deposit
+            <h5>{{t "payments.no_transactions"}}</h5>
+            <p class="text-muted mb-3">{{t "payments.no_transactions_desc"}}</p>
+            <a href="/user/payments/deposit" class="btn btn-primary">
+                <i class="bi bi-wallet2 me-1"></i>{{t "payments.make_deposit"}}
             </a>
         </div>
         {{end}}
