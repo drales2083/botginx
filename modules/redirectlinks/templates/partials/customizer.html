@@ -33,11 +33,23 @@
     }
   }
 
-  /* Controls header */
-  .cust-controls-header {
-    padding: 0.75rem 1rem;
+  /* Preview header */
+  .cust-preview-header {
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--bs-border-color);
-    background: rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bs-dark-bg-subtle);
+  }
+  .cust-preview-header .bi-eye {
+    font-size: 1rem;
+    color: var(--bs-primary);
+  }
+  .cust-preview-header span.title {
+    flex: 1;
+    font-weight: 500;
+    font-size: 0.9rem;
   }
 
   /* Controls body - scrollable */
@@ -186,37 +198,6 @@
     min-width: 0;
   }
 
-  /* Preview header */
-  .cust-preview-header {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--bs-border-color);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    background: var(--bs-dark-bg-subtle);
-  }
-  .cust-preview-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 0.9rem;
-  }
-  .cust-preview-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .cust-preview-info p {
-    margin: 0;
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
-  .cust-preview-info small {
-    font-size: 0.8rem;
-  }
 
   /* Preview iframe container */
   .cust-preview-frame {
@@ -235,15 +216,6 @@
 <div class="cust-app" id="customizer-root">
   <!-- Left: Controls -->
   <aside class="cust-controls">
-    <div class="cust-controls-header">
-      <div class="input-group input-group-sm">
-        <span class="input-group-text bg-body">
-          <i class="bi bi-sliders" aria-hidden="true"></i>
-        </span>
-        <input type="text" class="form-control" id="cust-search" placeholder="Search settings…" aria-label="Search settings">
-      </div>
-    </div>
-
     <div class="cust-controls-body">
       <!-- Background Section -->
       <div class="cust-section" data-section="background">
@@ -524,24 +496,14 @@
   <!-- Right: Preview -->
   <section class="cust-preview">
     <header class="cust-preview-header">
-      <span class="cust-preview-avatar bg-primary-subtle text-primary">
-        <i class="bi bi-eye"></i>
-      </span>
-      <div class="cust-preview-info">
-        <p>Live Preview</p>
-        <small class="text-success">
-          <i class="bi bi-circle-fill" style="font-size: 0.4rem" aria-hidden="true"></i>
-          Auto-updating
-        </small>
-      </div>
-      <div class="btn-group btn-group-sm">
-        <button class="btn btn-outline-secondary" type="button" title="Refresh" onclick="refreshPreview()">
-          <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
-        </button>
-        <button class="btn btn-outline-secondary" type="button" title="Fullscreen" onclick="toggleFullscreen()">
-          <i class="bi bi-fullscreen" aria-hidden="true"></i>
-        </button>
-      </div>
+      <i class="bi bi-eye"></i>
+      <span class="title">Live Preview</span>
+      <button class="btn btn-outline-secondary btn-sm" type="button" title="Refresh" onclick="refreshPreview()">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" type="button" title="Fullscreen" onclick="toggleFullscreen()">
+        <i class="bi bi-arrows-fullscreen"></i>
+      </button>
     </header>
     <div class="cust-preview-frame">
       <iframe id="cust-preview-iframe" srcdoc="<html><body style='background:#0a0a0a;color:#666;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui'>Loading preview...</body></html>"></iframe>
@@ -978,20 +940,6 @@
         input.files = dt.files;
         input.dispatchEvent(new Event('change'));
       }
-    });
-
-    // Search filter
-    const searchInput = document.getElementById('cust-search');
-    searchInput.addEventListener('input', () => {
-      const q = searchInput.value.toLowerCase().trim();
-      document.querySelectorAll('.cust-section').forEach(section => {
-        if (!q) {
-          section.style.display = '';
-          return;
-        }
-        const text = section.textContent.toLowerCase();
-        section.style.display = text.includes(q) ? '' : 'none';
-      });
     });
 
     if (existing) {
