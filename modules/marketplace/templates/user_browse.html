@@ -4,14 +4,6 @@
         <h4><i class="bi bi-bag me-2"></i>{{t "marketplace.buy_domain"}}</h4>
         <p class="text-secondary mb-0">{{t "marketplace.buy_domain_desc"}}</p>
     </div>
-    <div class="col-auto">
-        <div class="card bg-dark">
-            <div class="card-body py-2 px-3">
-                <small class="text-muted">{{t "payments.your_balance"}}:</small>
-                <strong class="text-success ms-2">${{printf "%.2f" .Balance}}</strong>
-            </div>
-        </div>
-    </div>
 </div>
 
 {{if .Domains}}
