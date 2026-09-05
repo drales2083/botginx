@@ -78,6 +78,13 @@
   "redirectlinks.type_redirect": "Redirect",
   "redirectlinks.type_html": "HTML",
 
+  "shortener.title": "Link Shortener",
+  "shortener.create": "Create Short Link",
+  "shortener.no_links": "No short links yet.",
+  "shortener.destinations": "Destinations",
+  "shortener.rotation": "URL Rotation",
+  "shortener.qr_code": "QR Code",
+
   "domains.title": "Domains",
   "domains.add": "Add Domain",
   "domains.verify": "Verify DNS",

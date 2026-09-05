@@ -30,6 +30,7 @@ import (
 	"github.com/botginx/botginx/modules/payments"
 	"github.com/botginx/botginx/modules/redirectlinks"
 	"github.com/botginx/botginx/modules/servers"
+	"github.com/botginx/botginx/modules/shortener"
 	"github.com/botginx/botginx/modules/users"
 	"github.com/botginx/botginx/pkg/buildinfo"
 	"github.com/botginx/botginx/pkg/ctx"
@@ -238,6 +239,7 @@ func main() {
 	iplistsModule := iplists.New()
 
 	hostingModule := hosting.New()
+	shortenerModule := shortener.New(domainsModule)
 	marketplaceModule := marketplace.New()
 	paymentsModule := payments.New()
 
@@ -248,6 +250,7 @@ func main() {
 	registry.Register(redirectLinksModule)
 	registry.Register(analyticsModule)           // Analytics module
 	registry.Register(iplistsModule)             // IP Lists module
+	registry.Register(shortenerModule)           // Link Shortener module
 	registry.Register(hostingModule)             // Bullet Proof Hosting module
 	registry.Register(marketplaceModule)         // Domain marketplace
 	registry.Register(paymentsModule)            // Crypto payments

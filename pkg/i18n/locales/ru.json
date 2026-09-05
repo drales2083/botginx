@@ -78,6 +78,13 @@
   "redirectlinks.type_redirect": "Редирект",
   "redirectlinks.type_html": "HTML",
 
+  "shortener.title": "Сокращатель ссылок",
+  "shortener.create": "Создать короткую ссылку",
+  "shortener.no_links": "Коротких ссылок пока нет.",
+  "shortener.destinations": "Назначения",
+  "shortener.rotation": "Ротация URL",
+  "shortener.qr_code": "QR-код",
+
   "domains.title": "Домены",
   "domains.add": "Добавить домен",
   "domains.verify": "Проверить DNS",

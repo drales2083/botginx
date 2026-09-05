@@ -1,0 +1,188 @@
+{{define "content"}}
+<div class="mb-3">
+    <a href="/user/shortener" class="text-muted text-decoration-none">
+        <i class="bi bi-arrow-left me-1"></i>Back to Short Links
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Create Short Link</h5>
+    </div>
+    <div class="card-body">
+        <form id="create-form">
+            <div class="row g-3">
+                <!-- Domain -->
+                <div class="col-md-4">
+                    <label class="form-label">Domain</label>
+                    <select class="form-select" id="domainId" required>
+                        <option value="">Select domain...</option>
+                        {{range .Domains}}
+                        <option value="{{.ID}}">{{.Name}}</option>
+                        {{end}}
+                    </select>
+                </div>
+
+                <!-- Path -->
+                <div class="col-md-3">
+                    <label class="form-label">Path</label>
+                    <div class="input-group">
+                        <span class="input-group-text">/</span>
+                        <input type="text" class="form-control" id="path" pattern="[a-zA-Z0-9\-_]+" required>
+                        <button type="button" class="btn btn-outline-secondary" onclick="randomizePath()" title="Generate random">
+                            <i class="bi bi-shuffle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bot Error -->
+                <div class="col-md-3">
+                    <label class="form-label">Bot Response</label>
+                    <select class="form-select" id="botError">
+                        {{range .BotErrors}}
+                        <option value="{{.code}}" {{if eq .code 403}}selected{{end}}>{{.code}} - {{.name}}</option>
+                        {{end}}
+                    </select>
+                </div>
+
+                <!-- QR -->
+                <div class="col-md-2">
+                    <label class="form-label">QR Code</label>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="qrEnabled">
+                        <label class="form-check-label" for="qrEnabled">Enable</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Destinations -->
+            <div class="mt-4">
+                <label class="form-label">Destination URL(s)</label>
+                <div id="destinations-container">
+                    <div class="input-group mb-2">
+                        <input type="url" class="form-control destination-input" placeholder="https://example.com" required>
+                        <button type="button" class="btn btn-outline-success" onclick="addDestination()">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <small class="text-muted">Add multiple URLs for random rotation</small>
+            </div>
+
+            <!-- Protection Settings (collapsible) -->
+            <div class="mt-4">
+                <div class="card border">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center"
+                         style="cursor: pointer;"
+                         data-bs-toggle="collapse"
+                         data-bs-target="#protection-collapse">
+                        <span><i class="bi bi-shield-check me-2"></i>Protection Settings</span>
+                        <i class="bi bi-chevron-down" id="protection-chevron"></i>
+                    </div>
+                    <div class="collapse" id="protection-collapse">
+                        <div class="card-body">
+                            {{template "protection-settings" .}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary" id="submit-btn">
+                    <i class="bi bi-check-lg me-1"></i>Create Short Link
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Generate random path on load
+document.addEventListener('DOMContentLoaded', () => {
+    randomizePath();
+
+    // Initialize protection with defaults
+    const defaults = {{json .DefaultProtection}};
+    if (window.protectionSettings) {
+        window.protectionSettings.init(defaults);
+    }
+
+    // Toggle chevron
+    document.getElementById('protection-collapse').addEventListener('show.bs.collapse', () => {
+        document.getElementById('protection-chevron').classList.replace('bi-chevron-down', 'bi-chevron-up');
+    });
+    document.getElementById('protection-collapse').addEventListener('hide.bs.collapse', () => {
+        document.getElementById('protection-chevron').classList.replace('bi-chevron-up', 'bi-chevron-down');
+    });
+});
+
+async function randomizePath() {
+    const res = await fetch('/user/shortener/api/random-path');
+    const data = await res.json();
+    document.getElementById('path').value = data.path;
+}
+
+function addDestination() {
+    const container = document.getElementById('destinations-container');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <input type="url" class="form-control destination-input" placeholder="https://example.com">
+        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">
+            <i class="bi bi-trash"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+document.getElementById('create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = document.getElementById('submit-btn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+
+    try {
+        const destinations = Array.from(document.querySelectorAll('.destination-input'))
+            .map(i => i.value.trim())
+            .filter(v => v);
+
+        if (destinations.length === 0) {
+            showToast('At least one destination URL is required', 'warning');
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            return;
+        }
+
+        const data = {
+            domainId: document.getElementById('domainId').value,
+            path: document.getElementById('path').value,
+            destinations: destinations,
+            rotationMode: 'random',
+            botError: parseInt(document.getElementById('botError').value),
+            qrEnabled: document.getElementById('qrEnabled').checked,
+            protectionSettings: window.protectionSettings ? window.protectionSettings.getSettings() : {}
+        };
+
+        const res = await fetch('/user/shortener/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            const link = await res.json();
+            showToast('Short link created!', 'success');
+            window.location.href = '/user/shortener/' + link.id;
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Failed to create', 'danger');
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+});
+</script>
+{{end}}
