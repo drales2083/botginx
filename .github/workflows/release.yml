@@ -43,13 +43,23 @@ jobs:
         run: |
           echo "🧹 Cleaning old releases (keeping last $KEEP_RELEASES)..."
 
-          # Get all releases sorted by date, skip the latest ones
-          gh api repos/${{ github.repository }}/releases --paginate -q '.[].tag_name' | \
-            tail -n +$((KEEP_RELEASES + 1)) | \
-            while read tag; do
-              echo "Deleting release: $tag"
-              gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
-            done
+          # Get total count
+          total=$(gh release list --limit 1000 | wc -l)
+          echo "Total releases: $total"
+
+          if [ "$total" -gt "$KEEP_RELEASES" ]; then
+            to_delete=$((total - KEEP_RELEASES))
+            echo "Deleting $to_delete old releases..."
+
+            # Delete oldest releases (gh release list returns newest first)
+            gh release list --limit 1000 | tail -n "$to_delete" | cut -f1 | \
+              while read tag; do
+                echo "  Deleting: $tag"
+                gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+              done
+          else
+            echo "Nothing to delete (have $total, keep $KEEP_RELEASES)"
+          fi
 
           echo "✅ Old releases cleaned"
 

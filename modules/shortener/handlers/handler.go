@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/protection"
+	"github.com/botginx/botginx/pkg/settingspush"
 	"github.com/botginx/botginx/pkg/sshexec"
 	"github.com/go-chi/chi/v5"
 	"github.com/skip2/go-qrcode"
@@ -32,6 +34,7 @@ type Handler struct {
 	templates *module.TemplateEngine
 	domains   DomainProvider
 	servers   ServerPool
+	pusher    *settingspush.Pusher
 }
 
 func NewHandler(service *services.ShortenerService, templates *module.TemplateEngine, domains DomainProvider, servers ServerPool) *Handler {
@@ -40,6 +43,7 @@ func NewHandler(service *services.ShortenerService, templates *module.TemplateEn
 		templates: templates,
 		domains:   domains,
 		servers:   servers,
+		pusher:    settingspush.New(),
 	}
 }
 
@@ -345,7 +349,58 @@ func (h *Handler) autoDeploy(linkID string) {
 		return
 	}
 
+	// Push protection settings to botection
+	h.pushSettings(link, server, domainName)
+
 	h.service.SetDeployStatus(linkID, "deployed", &deployedURL, nil)
+}
+
+// pushSettings sends protection settings to the deploy VPS
+func (h *Handler) pushSettings(link *models.ShortLink, server *servermodels.Server, host string) {
+	settings := link.ProtectionSettings
+
+	// Get first destination as redirect on block
+	redirectOnBlock := ""
+	if len(link.Destinations) > 0 {
+		redirectOnBlock = link.Destinations[0]
+	}
+
+	pushSettings := settingspush.LinkSettings{
+		LinkID:           link.ID,
+		UserID:           link.UserID,
+		Host:             host + "/" + link.Path,
+		BlockBots:        settings.BlockBots,
+		BlockTor:         settings.BlockTor,
+		BlockProxy:       settings.BlockProxy,
+		BlockDatacenter:  settings.BlockDatacenter,
+		BlockHeadless:    settings.BlockHeadless,
+		CountryMode:      settings.CountryMode,
+		CountryList:      settings.CountryList,
+		ASNMode:          settings.ASNMode,
+		ASNList:          settings.ASNList,
+		DeviceMode:       settings.DeviceMode,
+		DeviceList:       settings.DeviceList,
+		MinBehaviorScore: settings.MinBehaviorScore,
+		RedirectOnBlock:  redirectOnBlock,
+	}
+
+	port := server.Port
+	if port == 0 {
+		port = 22
+	}
+
+	serverInfo := settingspush.ServerInfo{
+		IP:       server.IP,
+		Port:     port,
+		User:     server.SSHUser,
+		Password: server.SSHPassword,
+	}
+
+	if err := h.pusher.Push(serverInfo, link.ID, pushSettings); err != nil {
+		log.Printf("Settings push failed for short link %s: %v", link.ID, err)
+	} else {
+		log.Printf("Settings pushed for short link %s to %s", link.ID, server.IP)
+	}
 }
 
 // generateShortLinkHTML creates instant redirect HTML for a short link
