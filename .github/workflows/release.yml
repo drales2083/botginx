@@ -10,41 +10,25 @@ permissions:
   actions: write
 
 jobs:
-  cleanup-first:
+  release:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete old caches before build
+      - name: Delete old caches
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Cleaning up old caches before build..."
           gh api repos/${{ github.repository }}/actions/caches \
             --paginate -q '.actions_caches[].id' | \
             xargs -I{} gh api -X DELETE repos/${{ github.repository }}/actions/caches/{} 2>/dev/null || true
-          echo "Cache cleanup complete"
 
       - name: Delete old artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Cleaning up old artifacts..."
           gh api repos/${{ github.repository }}/actions/artifacts \
             --paginate -q '.artifacts[].id' | \
             xargs -I{} gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/{} 2>/dev/null || true
-          echo "Artifact cleanup complete"
 
-  build:
-    needs: cleanup-first
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
-
-    steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
@@ -52,38 +36,22 @@ jobs:
           go-version: '1.23'
           cache: false
 
-      - name: Build binary
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
+      - name: Build binaries
         run: |
           VERSION="${{ github.ref_name }}"
           PKG="github.com/botginx/botginx/pkg/buildinfo"
-          go build -ldflags="-s -w -X ${PKG}.version=${VERSION}" \
-            -o botginx-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/server
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: botginx-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: botginx-${{ matrix.goos }}-${{ matrix.goarch }}
-          retention-days: 1
+          # Build amd64
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+            -ldflags="-s -w -X ${PKG}.version=${VERSION}" \
+            -o release/botginx-linux-amd64 ./cmd/server
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
+          # Build arm64
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build \
+            -ldflags="-s -w -X ${PKG}.version=${VERSION}" \
+            -o release/botginx-linux-arm64 ./cmd/server
 
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Prepare release files
-        run: |
-          mkdir -p release
-          mv artifacts/botginx-linux-amd64/botginx-linux-amd64 release/
-          mv artifacts/botginx-linux-arm64/botginx-linux-arm64 release/
+          # Checksums
           cd release
           sha256sum botginx-* > SHA256SUMS
           cat SHA256SUMS
@@ -96,16 +64,3 @@ jobs:
             release/botginx-linux-arm64
             release/SHA256SUMS
           generate_release_notes: true
-
-  cleanup-after:
-    needs: release
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Delete build artifacts
-        uses: geekyeggo/delete-artifact@v5
-        with:
-          name: |
-            botginx-linux-amd64
-            botginx-linux-arm64
-          failOnError: false
