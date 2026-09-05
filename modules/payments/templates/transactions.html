@@ -18,7 +18,6 @@
             <table class="table table-hover mb-0" data-datatable>
                 <thead>
                     <tr>
-                        <th>{{t "type"}}</th>
                         <th>{{t "payments.amount"}}</th>
                         <th>{{t "payments.usd_value"}}</th>
                         <th>{{t "status"}}</th>
@@ -30,13 +29,6 @@
                 <tbody>
                     {{range .Transactions}}
                     <tr>
-                        <td>
-                            {{if eq .Type "deposit"}}
-                            <span class="badge bg-success"><i class="bi bi-arrow-down me-1"></i>{{t "payments.deposit"}}</span>
-                            {{else}}
-                            <span class="badge bg-warning"><i class="bi bi-arrow-up me-1"></i>{{t "payments.withdrawal"}}</span>
-                            {{end}}
-                        </td>
                         <td>
                             <code>{{printf "%.8f" .Amount}}</code>
                         </td>
