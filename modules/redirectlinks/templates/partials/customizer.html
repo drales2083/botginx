@@ -1,11 +1,53 @@
 {{define "customizer"}}
 <style>
-  /* Customizer Panel Styles */
-  .cust-panel {
-    background: var(--bs-dark-bg-subtle);
-    border-radius: var(--bs-border-radius);
+  /* Customizer App Layout - mirrors AdminLTE chat-app */
+  .cust-app {
+    display: flex;
+    height: calc(100vh - 200px);
+    min-height: 500px;
+    background: var(--bs-body-bg);
     border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius-lg);
+    overflow: hidden;
   }
+
+  /* Controls sidebar (left) */
+  .cust-controls {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--bs-border-color);
+    background: var(--bs-dark-bg-subtle);
+  }
+  @media (max-width: 991.98px) {
+    .cust-app {
+      flex-direction: column;
+      height: auto;
+    }
+    .cust-controls {
+      width: 100%;
+      border-right: none;
+      border-bottom: 1px solid var(--bs-border-color);
+      max-height: 50vh;
+    }
+  }
+
+  /* Controls header */
+  .cust-controls-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: rgba(0,0,0,0.15);
+  }
+
+  /* Controls body - scrollable */
+  .cust-controls-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Section styling */
   .cust-section {
     border-bottom: 1px solid var(--bs-border-color);
   }
@@ -13,66 +55,62 @@
     border-bottom: none;
   }
   .cust-section-header {
-    padding: 0.75rem 1rem;
-    background: rgba(0,0,0,0.2);
+    padding: 0.65rem 1rem;
+    background: rgba(0,0,0,0.1);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     user-select: none;
+    transition: background 0.15s;
   }
   .cust-section-header:hover {
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.2);
   }
   .cust-section-header i.bi-chevron-down {
     transition: transform 0.2s;
+    font-size: 0.75rem;
   }
   .cust-section.collapsed .cust-section-header i.bi-chevron-down {
     transform: rotate(-90deg);
   }
   .cust-section-body {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(0,0,0,0.05);
   }
   .cust-section.collapsed .cust-section-body {
     display: none;
   }
+
+  /* Form rows */
   .cust-row {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.65rem;
   }
   .cust-row:last-child {
     margin-bottom: 0;
   }
-  .cust-row label {
+  .cust-row > label {
     display: block;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--bs-secondary-color);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
-  .cust-row-inline {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-  .cust-row-inline label {
-    margin-bottom: 0;
-    flex-shrink: 0;
-  }
-  .cust-row-inline .form-control,
-  .cust-row-inline .form-select {
-    flex: 1;
-  }
+
+  /* Color picker */
   .cust-color-picker {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     align-items: center;
   }
   .cust-color-picker input[type="color"] {
-    width: 40px;
-    height: 38px;
+    width: 36px;
+    height: 32px;
     padding: 2px;
     border-radius: var(--bs-border-radius);
     border: 1px solid var(--bs-border-color);
@@ -83,43 +121,10 @@
     flex: 1;
     font-family: monospace;
     text-transform: uppercase;
+    font-size: 0.85rem;
   }
-  .cust-preview-frame {
-    position: sticky;
-    top: 1rem;
-  }
-  .cust-preview-container {
-    background: #0a0a0a;
-    border-radius: var(--bs-border-radius);
-    border: 1px solid var(--bs-border-color);
-    overflow: hidden;
-    aspect-ratio: 16/10;
-  }
-  .cust-preview-container iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    display: block;
-  }
-  .cust-preview-loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.7);
-    color: var(--bs-secondary-color);
-    font-size: 0.9rem;
-  }
-  .cust-actions {
-    padding: 1rem;
-    background: rgba(0,0,0,0.2);
-    border-top: 1px solid var(--bs-border-color);
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-  }
-  /* Range slider styling */
+
+  /* Range slider */
   .cust-range-row {
     display: flex;
     align-items: center;
@@ -129,17 +134,18 @@
     flex: 1;
   }
   .cust-range-row .cust-range-value {
-    min-width: 3rem;
+    min-width: 2.5rem;
     text-align: right;
     font-family: monospace;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--bs-secondary-color);
   }
-  /* Image upload area */
+
+  /* Upload area */
   .cust-upload-area {
     border: 2px dashed var(--bs-border-color);
     border-radius: var(--bs-border-radius);
-    padding: 1rem;
+    padding: 0.75rem;
     text-align: center;
     cursor: pointer;
     transition: border-color 0.2s;
@@ -153,18 +159,92 @@
   }
   .cust-upload-preview {
     max-width: 100%;
-    max-height: 80px;
+    max-height: 60px;
     border-radius: var(--bs-border-radius);
   }
   .cust-upload-actions {
-    margin-top: 0.5rem;
+    margin-top: 0.4rem;
+  }
+
+  /* Actions footer */
+  .cust-actions {
+    padding: 0.75rem 1rem;
+    background: rgba(0,0,0,0.15);
+    border-top: 1px solid var(--bs-border-color);
+    display: flex;
+    gap: 0.5rem;
+  }
+  .cust-actions .btn {
+    flex: 1;
+  }
+
+  /* Preview section (right) */
+  .cust-preview {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* Preview header */
+  .cust-preview-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--bs-dark-bg-subtle);
+  }
+  .cust-preview-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .cust-preview-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .cust-preview-info p {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .cust-preview-info small {
+    font-size: 0.8rem;
+  }
+
+  /* Preview iframe container */
+  .cust-preview-frame {
+    flex: 1;
+    background: #0a0a0a;
+    position: relative;
+  }
+  .cust-preview-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
   }
 </style>
 
-<div class="row" id="customizer-root">
-  <!-- Left Panel: Controls -->
-  <div class="col-lg-4 mb-4 mb-lg-0">
-    <div class="cust-panel">
+<div class="cust-app" id="customizer-root">
+  <!-- Left: Controls -->
+  <aside class="cust-controls">
+    <div class="cust-controls-header">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-body">
+          <i class="bi bi-sliders" aria-hidden="true"></i>
+        </span>
+        <input type="text" class="form-control" id="cust-search" placeholder="Search settings…" aria-label="Search settings">
+      </div>
+    </div>
+
+    <div class="cust-controls-body">
       <!-- Background Section -->
       <div class="cust-section" data-section="background">
         <div class="cust-section-header" onclick="toggleSection(this)">
@@ -354,13 +434,13 @@
             <label>Image</label>
             <div class="cust-upload-area" id="cust-uploadArea" onclick="document.getElementById('cust-imageFile').click()">
               <div id="cust-uploadPlaceholder">
-                <i class="bi bi-cloud-upload fs-4 d-block mb-2"></i>
-                <span class="text-muted">Click to upload or drag image</span>
+                <i class="bi bi-cloud-upload fs-5 d-block mb-1"></i>
+                <span class="text-muted small">Click or drag image</span>
               </div>
               <img id="cust-uploadPreview" class="cust-upload-preview" style="display:none;">
               <div class="cust-upload-actions" id="cust-uploadActions" style="display:none;">
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearImage(event)">
-                  <i class="bi bi-trash"></i> Remove
+                  <i class="bi bi-trash"></i>
                 </button>
               </div>
             </div>
@@ -428,38 +508,49 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Actions -->
-      <div class="cust-actions">
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetCustomization()">
-          <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+    <!-- Actions footer -->
+    <div class="cust-actions">
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetCustomization()">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+      </button>
+      <button type="button" class="btn btn-primary btn-sm" id="cust-save-btn" onclick="saveCustomization()">
+        <i class="bi bi-check-lg me-1"></i>Save
+      </button>
+    </div>
+  </aside>
+
+  <!-- Right: Preview -->
+  <section class="cust-preview">
+    <header class="cust-preview-header">
+      <span class="cust-preview-avatar bg-primary-subtle text-primary">
+        <i class="bi bi-eye"></i>
+      </span>
+      <div class="cust-preview-info">
+        <p>Live Preview</p>
+        <small class="text-success">
+          <i class="bi bi-circle-fill" style="font-size: 0.4rem" aria-hidden="true"></i>
+          Auto-updating
+        </small>
+      </div>
+      <div class="btn-group btn-group-sm">
+        <button class="btn btn-outline-secondary" type="button" title="Refresh" onclick="refreshPreview()">
+          <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
         </button>
-        <button type="button" class="btn btn-primary btn-sm" id="cust-save-btn" onclick="saveCustomization()">
-          <i class="bi bi-check-lg me-1"></i>Save
+        <button class="btn btn-outline-secondary" type="button" title="Fullscreen" onclick="toggleFullscreen()">
+          <i class="bi bi-fullscreen" aria-hidden="true"></i>
         </button>
       </div>
-    </div>
-  </div>
-
-  <!-- Right Panel: Preview -->
-  <div class="col-lg-8">
+    </header>
     <div class="cust-preview-frame">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="text-muted small">Preview</span>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="refreshPreview()">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
-      </div>
-      <div class="cust-preview-container position-relative">
-        <iframe id="cust-preview-iframe" srcdoc="<html><body style='background:#0a0a0a;color:#666;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui'>Loading preview...</body></html>"></iframe>
-      </div>
+      <iframe id="cust-preview-iframe" srcdoc="<html><body style='background:#0a0a0a;color:#666;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui'>Loading preview...</body></html>"></iframe>
     </div>
-  </div>
+  </section>
 </div>
 
 <script>
 (function() {
-  // Customizer state
   let custState = {
     previewUrl: '',
     saveUrl: '',
@@ -467,13 +558,20 @@
     imageDataUrl: ''
   };
 
-  // Toggle section collapse
   window.toggleSection = function(header) {
     const section = header.closest('.cust-section');
     section.classList.toggle('collapsed');
   };
 
-  // Sync color picker with text input
+  window.toggleFullscreen = function() {
+    const frame = document.querySelector('.cust-preview-frame');
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      frame.requestFullscreen();
+    }
+  };
+
   function syncColorInputs(colorId) {
     const colorInput = document.getElementById(colorId);
     const textInput = document.getElementById(colorId + '-text');
@@ -498,7 +596,6 @@
     });
   }
 
-  // Update range value display
   function syncRangeDisplay(rangeId, suffix) {
     const range = document.getElementById(rangeId);
     const display = document.getElementById(rangeId + '-value');
@@ -510,13 +607,11 @@
     });
   }
 
-  // Schedule debounced preview update
   function schedulePreviewUpdate() {
     clearTimeout(custState.debounceTimer);
     custState.debounceTimer = setTimeout(refreshPreview, 300);
   }
 
-  // Get current customization values
   function getCustomizationData() {
     return {
       bgColor: document.getElementById('cust-bgColor').value,
@@ -549,11 +644,9 @@
     };
   }
 
-  // Set form values from data
   function setCustomizationData(data) {
     if (!data) return;
 
-    // Background
     if (data.bgColor) {
       document.getElementById('cust-bgColor').value = data.bgColor;
       document.getElementById('cust-bgColor-text').value = data.bgColor.toUpperCase();
@@ -576,8 +669,6 @@
       document.getElementById('cust-patternOpacity').value = data.patternOpacity;
       document.getElementById('cust-patternOpacity-value').textContent = data.patternOpacity + '%';
     }
-
-    // Animation
     if (data.loader) {
       document.getElementById('cust-loader').value = data.loader;
     }
@@ -589,8 +680,6 @@
       document.getElementById('cust-loaderColorSecondary').value = data.loaderColorSecondary;
       document.getElementById('cust-loaderColorSecondary-text').value = data.loaderColorSecondary.toUpperCase();
     }
-
-    // Text
     if (data.heading !== undefined) {
       document.getElementById('cust-heading').value = data.heading;
     }
@@ -620,8 +709,6 @@
     if (data.textShadow !== undefined) {
       document.getElementById('cust-textShadow').checked = data.textShadow;
     }
-
-    // Image
     if (data.imageMode) {
       document.getElementById('cust-imageMode').value = data.imageMode;
     }
@@ -637,8 +724,6 @@
       document.getElementById('cust-imageOverlay').value = data.imageOverlay;
       document.getElementById('cust-imageOverlay-value').textContent = data.imageOverlay + '%';
     }
-
-    // Layout
     if (data.contentOrder) {
       document.getElementById('cust-contentOrder').value = data.contentOrder;
     }
@@ -658,11 +743,9 @@
       document.getElementById('cust-pageTitle').value = data.pageTitle;
     }
 
-    // Update conditional visibility
     updateConditionalVisibility();
   }
 
-  // Show/hide conditional fields
   function updateConditionalVisibility() {
     const gradientEnabled = document.getElementById('cust-gradientEnabled').checked;
     document.getElementById('cust-bgColorSecondary-row').style.display = gradientEnabled ? 'block' : 'none';
@@ -685,7 +768,6 @@
     document.getElementById('cust-imageOverlay-row').style.display = imageMode === 'background' ? 'block' : 'none';
   }
 
-  // Show image preview
   function showImagePreview(dataUrl) {
     const preview = document.getElementById('cust-uploadPreview');
     const placeholder = document.getElementById('cust-uploadPlaceholder');
@@ -699,7 +781,6 @@
     area.classList.add('has-image');
   }
 
-  // Clear image
   window.clearImage = function(e) {
     e.stopPropagation();
     custState.imageDataUrl = '';
@@ -718,7 +799,6 @@
     schedulePreviewUpdate();
   };
 
-  // Refresh preview
   window.refreshPreview = function() {
     if (!custState.previewUrl) return;
 
@@ -739,7 +819,6 @@
     });
   };
 
-  // Reset to defaults
   window.resetCustomization = function() {
     if (!confirm('Reset all customization to defaults?')) return;
 
@@ -779,7 +858,6 @@
     refreshPreview();
   };
 
-  // Save customization
   window.saveCustomization = function() {
     if (!custState.saveUrl) return;
 
@@ -811,12 +889,10 @@
     });
   };
 
-  // Initialize customizer
   window.initCustomizer = function(existing, previewUrl, saveUrl) {
     custState.previewUrl = previewUrl;
     custState.saveUrl = saveUrl;
 
-    // Setup color pickers
     syncColorInputs('cust-bgColor');
     syncColorInputs('cust-bgColorSecondary');
     syncColorInputs('cust-patternColor');
@@ -824,7 +900,6 @@
     syncColorInputs('cust-loaderColorSecondary');
     syncColorInputs('cust-textColor');
 
-    // Setup range displays
     syncRangeDisplay('cust-patternOpacity', '%');
     syncRangeDisplay('cust-textSize', 'px');
     syncRangeDisplay('cust-imageSize', 'px');
@@ -832,7 +907,6 @@
     syncRangeDisplay('cust-vPos', '%');
     syncRangeDisplay('cust-gap', 'px');
 
-    // Setup conditional visibility toggles
     document.getElementById('cust-gradientEnabled').addEventListener('change', () => {
       updateConditionalVisibility();
       schedulePreviewUpdate();
@@ -854,7 +928,6 @@
       schedulePreviewUpdate();
     });
 
-    // Setup other change listeners
     const inputs = document.querySelectorAll('#customizer-root input:not([type="color"]):not([type="range"]):not([type="file"]), #customizer-root select');
     inputs.forEach(input => {
       input.addEventListener('change', schedulePreviewUpdate);
@@ -863,12 +936,10 @@
       }
     });
 
-    // Radio buttons
     document.querySelectorAll('input[name="cust-textAlign"]').forEach(radio => {
       radio.addEventListener('change', schedulePreviewUpdate);
     });
 
-    // Image file upload
     const fileInput = document.getElementById('cust-imageFile');
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -888,7 +959,6 @@
       reader.readAsDataURL(file);
     });
 
-    // Drag and drop support
     const uploadArea = document.getElementById('cust-uploadArea');
     uploadArea.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -902,18 +972,33 @@
       uploadArea.style.borderColor = '';
       const file = e.dataTransfer.files[0];
       if (file && file.type.startsWith('image/')) {
-        fileInput.files = e.dataTransfer.files;
-        fileInput.dispatchEvent(new Event('change'));
+        const input = document.getElementById('cust-imageFile');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change'));
       }
     });
 
-    // Load existing data
-    if (existing && typeof existing === 'object') {
+    // Search filter
+    const searchInput = document.getElementById('cust-search');
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      document.querySelectorAll('.cust-section').forEach(section => {
+        if (!q) {
+          section.style.display = '';
+          return;
+        }
+        const text = section.textContent.toLowerCase();
+        section.style.display = text.includes(q) ? '' : 'none';
+      });
+    });
+
+    if (existing) {
       setCustomizationData(existing);
     }
-
-    // Initial preview
-    setTimeout(refreshPreview, 100);
+    updateConditionalVisibility();
+    refreshPreview();
   };
 })();
 </script>
