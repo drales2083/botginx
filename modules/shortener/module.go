@@ -131,6 +131,6 @@ func (m *Module) OwnerOf(linkID string) (string, error) {
 }
 
 // RecordClick records a click on a short link
-func (m *Module) RecordClick(linkID string, isBot bool, country, device, ip, userAgent string) error {
-	return m.service.RecordClick(linkID, isBot, country, device, ip, userAgent)
+func (m *Module) RecordClick(linkID, userID string, isBot bool, country, device, ip, userAgent string) error {
+	return m.service.RecordClick(linkID, userID, isBot, country, device, ip, userAgent)
 }

@@ -38,7 +38,7 @@ type ShortLinkResolver interface {
 	ResolveByHostPath(host, path string) (linkID, userID string, destinations []string, err error)
 	GetLinkHost(linkID string) (host, path, domainID string, err error)
 	OwnerOf(linkID string) (userID string, err error)
-	RecordClick(linkID string, isBot bool, country, device, ip, userAgent string) error
+	RecordClick(linkID, userID string, isBot bool, country, device, ip, userAgent string) error
 }
 
 // ServerProvider provides server SSH details for settings push
@@ -1074,7 +1074,7 @@ func (h *Handler) tryRecordShortLinkVisit(eventData map[string]interface{}, host
 		return false
 	}
 
-	linkID, _, _, err := h.shortLinks.ResolveByHostPath(host, path)
+	linkID, userID, _, err := h.shortLinks.ResolveByHostPath(host, path)
 	if err != nil || linkID == "" {
 		return false
 	}
@@ -1086,7 +1086,7 @@ func (h *Handler) tryRecordShortLinkVisit(eventData map[string]interface{}, host
 	ip := getString(eventData, "ip")
 	userAgent := getString(eventData, "user_agent")
 
-	if err := h.shortLinks.RecordClick(linkID, isBot, country, device, ip, userAgent); err != nil {
+	if err := h.shortLinks.RecordClick(linkID, userID, isBot, country, device, ip, userAgent); err != nil {
 		log.Printf("Short link click record failed for %s: %v", linkID, err)
 	}
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/botginx/botginx/modules/shortener/models"
+	"github.com/botginx/botginx/pkg/geoip"
 	"github.com/botginx/botginx/pkg/namegen"
 	"github.com/jmoiron/sqlx"
 )
@@ -251,7 +252,7 @@ func (s *ShortenerService) CheckPathAvailable(domainID, subdomain, path string) 
 }
 
 // RecordClick increments click counts for a short link
-func (s *ShortenerService) RecordClick(linkID string, isBot bool, country, device, ip, userAgent string) error {
+func (s *ShortenerService) RecordClick(linkID, userID string, isBot bool, country, device, ip, userAgent string) error {
 	// Increment counters on the link
 	if isBot {
 		_, err := s.db.Exec(`
@@ -271,11 +272,23 @@ func (s *ShortenerService) RecordClick(linkID string, isBot bool, country, devic
 		}
 	}
 
+	// GeoIP lookup for coordinates
+	var lat, lng float64
+	if ip != "" {
+		if ipInfo, err := geoip.Lookup(ip); err == nil && ipInfo != nil {
+			lat = ipInfo.Latitude
+			lng = ipInfo.Longitude
+			if country == "" {
+				country = ipInfo.CountryCode
+			}
+		}
+	}
+
 	// Also record in clicks table for detailed analytics
 	_, err := s.db.Exec(`
-		INSERT INTO short_link_clicks (id, link_id, visitor_ip_hash, country, device, user_agent, is_bot, created_at)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NOW())
-	`, linkID, ip, country, device, userAgent, isBot)
+		INSERT INTO short_link_clicks (id, link_id, user_id, visitor_ip_hash, country, device, user_agent, is_bot, blocked, latitude, longitude, created_at)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+	`, linkID, userID, ip, country, device, userAgent, isBot, isBot, lat, lng)
 	return err
 }
 

@@ -230,47 +230,83 @@ func (m *Module) apiTimeline(w http.ResponseWriter, r *http.Request) {
 	switch period {
 	case "hourly":
 		query = `
-			SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
-				COUNT(*) as total,
-				COUNT(*) FILTER (WHERE blocked = true) as blocked,
-				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
-			FROM visits
-			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
-			GROUP BY time_bucket
-			ORDER BY time_bucket
+			SELECT time_bucket, SUM(total) as total, SUM(blocked) as blocked, SUM(unique_count) as unique_count FROM (
+				SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
+					COUNT(*) as total,
+					COUNT(*) FILTER (WHERE blocked = true) as blocked,
+					COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+				FROM visits
+				WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+				GROUP BY time_bucket
+				UNION ALL
+				SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
+					COUNT(*) as total,
+					COUNT(*) FILTER (WHERE blocked = true) as blocked,
+					0 as unique_count
+				FROM short_link_clicks
+				WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+				GROUP BY time_bucket
+			) combined GROUP BY time_bucket ORDER BY time_bucket
 		`
 	case "daily":
 		query = `
-			SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as time_bucket,
-				COUNT(*) as total,
-				COUNT(*) FILTER (WHERE blocked = true) as blocked,
-				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
-			FROM visits
-			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '7 days'
-			GROUP BY time_bucket
-			ORDER BY time_bucket
+			SELECT time_bucket, SUM(total) as total, SUM(blocked) as blocked, SUM(unique_count) as unique_count FROM (
+				SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as time_bucket,
+					COUNT(*) as total,
+					COUNT(*) FILTER (WHERE blocked = true) as blocked,
+					COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+				FROM visits
+				WHERE user_id = $1 AND created_at > NOW() - INTERVAL '7 days'
+				GROUP BY time_bucket
+				UNION ALL
+				SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as time_bucket,
+					COUNT(*) as total,
+					COUNT(*) FILTER (WHERE blocked = true) as blocked,
+					0 as unique_count
+				FROM short_link_clicks
+				WHERE user_id = $1 AND created_at > NOW() - INTERVAL '7 days'
+				GROUP BY time_bucket
+			) combined GROUP BY time_bucket ORDER BY time_bucket
 		`
 	case "monthly":
 		query = `
-			SELECT TO_CHAR(created_at, 'YYYY-MM') as time_bucket,
-				COUNT(*) as total,
-				COUNT(*) FILTER (WHERE blocked = true) as blocked,
-				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
-			FROM visits
-			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '12 months'
-			GROUP BY time_bucket
-			ORDER BY time_bucket
+			SELECT time_bucket, SUM(total) as total, SUM(blocked) as blocked, SUM(unique_count) as unique_count FROM (
+				SELECT TO_CHAR(created_at, 'YYYY-MM') as time_bucket,
+					COUNT(*) as total,
+					COUNT(*) FILTER (WHERE blocked = true) as blocked,
+					COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+				FROM visits
+				WHERE user_id = $1 AND created_at > NOW() - INTERVAL '12 months'
+				GROUP BY time_bucket
+				UNION ALL
+				SELECT TO_CHAR(created_at, 'YYYY-MM') as time_bucket,
+					COUNT(*) as total,
+					COUNT(*) FILTER (WHERE blocked = true) as blocked,
+					0 as unique_count
+				FROM short_link_clicks
+				WHERE user_id = $1 AND created_at > NOW() - INTERVAL '12 months'
+				GROUP BY time_bucket
+			) combined GROUP BY time_bucket ORDER BY time_bucket
 		`
 	default:
 		query = `
-			SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
-				COUNT(*) as total,
-				COUNT(*) FILTER (WHERE blocked = true) as blocked,
-				COUNT(*) FILTER (WHERE is_unique = true) as unique_count
-			FROM visits
-			WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
-			GROUP BY time_bucket
-			ORDER BY time_bucket
+			SELECT time_bucket, SUM(total) as total, SUM(blocked) as blocked, SUM(unique_count) as unique_count FROM (
+				SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
+					COUNT(*) as total,
+					COUNT(*) FILTER (WHERE blocked = true) as blocked,
+					COUNT(*) FILTER (WHERE is_unique = true) as unique_count
+				FROM visits
+				WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+				GROUP BY time_bucket
+				UNION ALL
+				SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:00') as time_bucket,
+					COUNT(*) as total,
+					COUNT(*) FILTER (WHERE blocked = true) as blocked,
+					0 as unique_count
+				FROM short_link_clicks
+				WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+				GROUP BY time_bucket
+			) combined GROUP BY time_bucket ORDER BY time_bucket
 		`
 	}
 
@@ -291,9 +327,17 @@ func (m *Module) apiCountries(w http.ResponseWriter, r *http.Request) {
 
 	var countries []countryStats
 	m.DB().Select(&countries, `
-		SELECT country, COUNT(*) as count
-		FROM visits
-		WHERE user_id = $1 AND country != ''
+		SELECT country, SUM(count) as count FROM (
+			SELECT country, COUNT(*) as count
+			FROM visits
+			WHERE user_id = $1 AND country != ''
+			GROUP BY country
+			UNION ALL
+			SELECT country, COUNT(*) as count
+			FROM short_link_clicks
+			WHERE user_id = $1 AND country != '' AND country IS NOT NULL
+			GROUP BY country
+		) combined
 		GROUP BY country
 		ORDER BY count DESC
 		LIMIT 20
@@ -316,9 +360,15 @@ func (m *Module) apiVisitors(w http.ResponseWriter, r *http.Request) {
 
 	var points []visitorPoint
 	m.DB().Select(&points, `
-		SELECT latitude, longitude, country, city, blocked
-		FROM visits
-		WHERE user_id = $1 AND latitude != 0 AND longitude != 0
+		SELECT latitude, longitude, country, city, blocked FROM (
+			SELECT latitude, longitude, country, city, blocked, created_at
+			FROM visits
+			WHERE user_id = $1 AND latitude != 0 AND longitude != 0
+			UNION ALL
+			SELECT latitude, longitude, COALESCE(country, '') as country, COALESCE(city, '') as city, blocked, created_at
+			FROM short_link_clicks
+			WHERE user_id = $1 AND latitude != 0 AND longitude != 0
+		) combined
 		ORDER BY created_at DESC
 		LIMIT 500
 	`, userID)
