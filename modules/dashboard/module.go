@@ -325,13 +325,48 @@ type countryStats struct {
 func (m *Module) apiCountries(w http.ResponseWriter, r *http.Request) {
 	userID := ctx.GetUserID(r)
 
+	// Normalize country names to codes for consistent grouping
 	var countries []countryStats
 	m.DB().Select(&countries, `
 		SELECT country, SUM(count) as count FROM (
-			SELECT country, COUNT(*) as count
+			SELECT CASE
+				WHEN country = 'United States' THEN 'US'
+				WHEN country = 'Nigeria' THEN 'NG'
+				WHEN country = 'United Kingdom' THEN 'GB'
+				WHEN country = 'South Africa' THEN 'ZA'
+				WHEN country = 'Australia' THEN 'AU'
+				WHEN country = 'Germany' THEN 'DE'
+				WHEN country = 'France' THEN 'FR'
+				WHEN country = 'Canada' THEN 'CA'
+				WHEN country = 'Brazil' THEN 'BR'
+				WHEN country = 'India' THEN 'IN'
+				WHEN country = 'China' THEN 'CN'
+				WHEN country = 'Japan' THEN 'JP'
+				WHEN country = 'Mexico' THEN 'MX'
+				WHEN country = 'Russia' THEN 'RU'
+				WHEN country = 'Spain' THEN 'ES'
+				WHEN country = 'Italy' THEN 'IT'
+				WHEN country = 'Netherlands' THEN 'NL'
+				WHEN country = 'Ukraine' THEN 'UA'
+				WHEN country = 'Poland' THEN 'PL'
+				WHEN country = 'Indonesia' THEN 'ID'
+				WHEN country = 'Turkey' THEN 'TR'
+				WHEN country = 'Philippines' THEN 'PH'
+				WHEN country = 'Vietnam' THEN 'VN'
+				WHEN country = 'Thailand' THEN 'TH'
+				WHEN country = 'Egypt' THEN 'EG'
+				WHEN country = 'Pakistan' THEN 'PK'
+				WHEN country = 'Bangladesh' THEN 'BD'
+				WHEN country = 'Argentina' THEN 'AR'
+				WHEN country = 'Colombia' THEN 'CO'
+				WHEN country = 'Kenya' THEN 'KE'
+				WHEN country = 'Ghana' THEN 'GH'
+				WHEN country = 'Costa Rica' THEN 'CR'
+				ELSE country
+			END as country, COUNT(*) as count
 			FROM visits
 			WHERE user_id = $1 AND country != ''
-			GROUP BY country
+			GROUP BY 1
 			UNION ALL
 			SELECT country, COUNT(*) as count
 			FROM short_link_clicks
