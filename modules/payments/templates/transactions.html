@@ -155,4 +155,28 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    const STORAGE_KEY = 'payments_transactions_tab';
+    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+
+    // Restore saved tab on load
+    const savedTab = localStorage.getItem(STORAGE_KEY);
+    if (savedTab) {
+        const btn = document.querySelector(`[data-bs-target="${savedTab}"]`);
+        if (btn) {
+            const tab = new bootstrap.Tab(btn);
+            tab.show();
+        }
+    }
+
+    // Save tab on change
+    tabButtons.forEach(btn => {
+        btn.addEventListener('shown.bs.tab', function(e) {
+            localStorage.setItem(STORAGE_KEY, e.target.dataset.bsTarget);
+        });
+    });
+})();
+</script>
 {{end}}
