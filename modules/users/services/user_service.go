@@ -38,7 +38,7 @@ func (s *UserService) List() ([]models.User, error) {
 
 func (s *UserService) Get(id string) (*models.User, error) {
 	var user models.User
-	err := s.db.Get(&user, `SELECT * FROM users WHERE id = $1`, id)
+	err := s.db.Get(&user, `SELECT id, email, password_hash, name, role, is_active, COALESCE(balance, 0) as balance, created_at, updated_at FROM users WHERE id = $1`, id)
 	if err != nil {
 		return nil, ErrUserNotFound
 	}
