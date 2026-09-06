@@ -39,6 +39,11 @@ func (s *PaymentService) generateID() string {
 	return hex.EncodeToString(b)
 }
 
+// DB returns the database connection
+func (s *PaymentService) DB() *sqlx.DB {
+	return s.db
+}
+
 // GetOrCreateWallet gets existing wallet or creates new one for user
 func (s *PaymentService) GetOrCreateWallet(userID, coin string) (*models.CryptoWallet, error) {
 	// Check for existing wallet
@@ -223,6 +228,29 @@ func (s *PaymentService) GetAllTransactions(limit int) ([]models.CryptoTransacti
 		ORDER BY created_at DESC
 		LIMIT $1
 	`, limit)
+	return txs, err
+}
+
+// BalanceTransaction represents a balance change record
+type BalanceTransaction struct {
+	ID          string    `db:"id" json:"id"`
+	UserID      string    `db:"user_id" json:"userId"`
+	Amount      float64   `db:"amount" json:"amount"`
+	Type        string    `db:"type" json:"type"`
+	Description string    `db:"description" json:"description"`
+	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
+}
+
+// GetBalanceHistory returns all balance transactions for a user
+func (s *PaymentService) GetBalanceHistory(userID string, limit int) ([]BalanceTransaction, error) {
+	var txs []BalanceTransaction
+	err := s.db.Select(&txs, `
+		SELECT id, user_id, amount, type, description, created_at
+		FROM balance_transactions
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2
+	`, userID, limit)
 	return txs, err
 }
 

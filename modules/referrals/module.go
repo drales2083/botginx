@@ -320,6 +320,17 @@ func (m *Module) ProcessPayment(db *sqlx.DB, userID string, amount float64, paym
 		if err != nil {
 			return err
 		}
+
+		// Record balance transaction
+		txID := make([]byte, 12)
+		rand.Read(txID)
+		_, err = db.Exec(`
+			INSERT INTO balance_transactions (id, user_id, amount, type, description, created_at)
+			VALUES ($1, $2, $3, 'commission', $4, NOW())
+		`, hex.EncodeToString(txID), referrerID, commission, "Referral commission (Level "+strconv.Itoa(i+1)+")")
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

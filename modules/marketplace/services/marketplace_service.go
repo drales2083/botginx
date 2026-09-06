@@ -145,6 +145,7 @@ func (s *MarketplaceService) Purchase(domainID, buyerUserID string) error {
 	// Get domain with lock
 	var domain struct {
 		ID               string   `db:"id"`
+		Name             string   `db:"name"`
 		UserID           string   `db:"user_id"`
 		IsMarketplace    bool     `db:"is_marketplace"`
 		MarketplacePrice *float64 `db:"marketplace_price"`
@@ -152,7 +153,7 @@ func (s *MarketplaceService) Purchase(domainID, buyerUserID string) error {
 		SSLEnabled       bool     `db:"ssl_enabled"`
 	}
 	err = tx.Get(&domain, `
-		SELECT id, user_id, is_marketplace, marketplace_price, dns_verified, ssl_enabled
+		SELECT id, name, user_id, is_marketplace, marketplace_price, dns_verified, ssl_enabled
 		FROM domains WHERE id = $1 FOR UPDATE
 	`, domainID)
 	if err != nil {
@@ -207,6 +208,15 @@ func (s *MarketplaceService) Purchase(domainID, buyerUserID string) error {
 		INSERT INTO marketplace_sales (id, domain_id, seller_user_id, buyer_user_id, price, purchased_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, s.generateID(), domainID, sellerUserID, buyerUserID, price, time.Now())
+	if err != nil {
+		return err
+	}
+
+	// Record balance transaction for buyer
+	_, err = tx.Exec(`
+		INSERT INTO balance_transactions (id, user_id, amount, type, description, created_at)
+		VALUES ($1, $2, $3, 'purchase', $4, $5)
+	`, s.generateID(), buyerUserID, -price, "Domain purchase: "+domain.Name, time.Now())
 	if err != nil {
 		return err
 	}

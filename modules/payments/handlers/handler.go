@@ -66,6 +66,23 @@ func (h *Handler) Transactions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// BalanceHistory shows all balance changes (deposits, purchases, commissions)
+func (h *Handler) BalanceHistory(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+
+	txs, _ := h.service.GetBalanceHistory(userID, 100)
+
+	// Get current balance
+	var balance float64
+	h.service.DB().Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
+
+	module.RenderUserSection(w, r, h.templates, "payments:history.html", map[string]interface{}{
+		"Title":        "Balance History",
+		"Transactions": txs,
+		"Balance":      balance,
+	})
+}
+
 // ============ User API ============
 
 // APIGenerateAddress generates or returns wallet address for a coin

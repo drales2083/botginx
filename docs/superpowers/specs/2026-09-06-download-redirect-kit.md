@@ -546,33 +546,20 @@ UNION ALL
 SELECT ... FROM download_clicks WHERE user_id = $1
 ```
 
-## Open Questions
+## Decisions (Finalized)
 
-1. **Token expiration?** Should tokens expire after X days, or stay active until revoked?
-   - Recommendation: Never expire, user can revoke manually
-
-2. **Max downloads per user?** Limit to prevent abuse?
-   - Recommendation: 10 active downloads (can delete old ones)
-
-3. **Domain selection?** User picks which wildcard domain to use, or auto-select?
-   - Recommendation: Auto-select from available pool, user can see which domain used
-
-4. **API fallback behavior?** If API endpoint is down, what should PHP do?
-   - Recommendation: Pass-through to human URL (fail-open, better UX)
-
-5. **Analytics sync?** How does Deploy VPS endpoint send analytics back to main panel?
-   - Option A: Direct DB insert (Deploy VPS has DB access)
-   - Option B: HTTP callback to main panel
-   - Recommendation: Option A (simpler, faster)
-
-6. **Re-download behavior?** Can user update settings and re-download?
-   - Recommendation: Yes, same token/endpoint, just regenerate PHP file
-
-7. **Menu location?** 
-   - Recommendation: New "Download Kit" item under Tools section
-
-8. **Subdomain pool?** Same words as short links, or separate pool?
-   - Recommendation: Same `pkg/namegen` pool, different namespace (no collision)
+| Question | Decision |
+|----------|----------|
+| Token expiration | Never expire, user can revoke manually |
+| Max downloads per user | 10 active downloads (can delete old ones) |
+| Domain selection | Same wildcard domains as redirect links |
+| API fallback | Pass-through to human URL (fail-open) |
+| Analytics sync | Direct DB insert (Deploy VPS has PostgreSQL access) |
+| Re-download | Yes, same token/endpoint, regenerate PHP file |
+| Menu location | New "Download Kit" item under Tools section |
+| Subdomain pool | Same `pkg/namegen` pool as short links |
+| Bot detection | Full checks (UA, IP reputation, headers, rate limiting) |
+| GeoIP | MaxMind DB on Deploy VPS for country/coordinates |
 
 ## Implementation Order
 

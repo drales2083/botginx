@@ -60,6 +60,7 @@ func (m *Module) Routes() chi.Router {
 	// Pages
 	r.Get("/", m.handler.Deposit)
 	r.Get("/transactions", m.handler.Transactions)
+	r.Get("/history", m.handler.BalanceHistory)
 
 	// API
 	r.Route("/api", func(r chi.Router) {
