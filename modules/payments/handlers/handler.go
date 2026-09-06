@@ -54,32 +54,25 @@ func (h *Handler) Deposit(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Transactions shows transaction history
+// Transactions shows all transaction history (crypto deposits + balance changes)
 func (h *Handler) Transactions(w http.ResponseWriter, r *http.Request) {
 	userID := ctx.GetUserID(r)
 
-	txs, _ := h.service.GetUserTransactions(userID, 50)
+	// Get crypto transactions
+	cryptoTxs, _ := h.service.GetUserTransactions(userID, 50)
 
-	module.RenderUserSection(w, r, h.templates, "payments:transactions.html", map[string]interface{}{
-		"Title":        "Transaction History",
-		"Transactions": txs,
-	})
-}
-
-// BalanceHistory shows all balance changes (deposits, purchases, commissions)
-func (h *Handler) BalanceHistory(w http.ResponseWriter, r *http.Request) {
-	userID := ctx.GetUserID(r)
-
-	txs, _ := h.service.GetBalanceHistory(userID, 100)
+	// Get balance transactions (topups, purchases, commissions, etc.)
+	balanceTxs, _ := h.service.GetBalanceHistory(userID, 100)
 
 	// Get current balance
 	var balance float64
 	h.service.DB().Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
 
-	module.RenderUserSection(w, r, h.templates, "payments:history.html", map[string]interface{}{
-		"Title":        "Balance History",
-		"Transactions": txs,
-		"Balance":      balance,
+	module.RenderUserSection(w, r, h.templates, "payments:transactions.html", map[string]interface{}{
+		"Title":            "Transaction History",
+		"CryptoTxs":        cryptoTxs,
+		"BalanceTxs":       balanceTxs,
+		"Balance":          balance,
 	})
 }
 

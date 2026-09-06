@@ -1,73 +1,158 @@
 {{define "content"}}
 <div class="row mb-4">
     <div class="col">
-        <h4><i class="bi bi-clock-history me-2"></i>{{t "payments.transaction_history"}}</h4>
-        <p class="text-secondary mb-0">{{t "payments.transaction_desc"}}</p>
+        <h4><i class="bi bi-clock-history me-2"></i>Transaction History</h4>
+        <p class="text-secondary mb-0">All deposits, purchases, and earnings</p>
     </div>
-    <div class="col-auto">
+    <div class="col-auto d-flex align-items-center gap-3">
+        <span class="badge bg-success fs-5 px-3 py-2">
+            <i class="bi bi-wallet me-1"></i>Balance: ${{printf "%.2f" .Balance}}
+        </span>
         <a href="/user/payments" class="btn btn-primary">
-            <i class="bi bi-wallet2 me-1"></i>{{t "payments.deposit"}}
+            <i class="bi bi-wallet2 me-1"></i>Deposit
         </a>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        {{if .Transactions}}
-        <div class="table-responsive">
-            <table class="table table-hover mb-0" data-datatable>
-                <thead>
-                    <tr>
-                        <th>{{t "payments.amount"}}</th>
-                        <th>{{t "payments.usd_value"}}</th>
-                        <th>{{t "status"}}</th>
-                        <th>{{t "payments.confirmations"}}</th>
-                        <th>{{t "payments.transaction_id"}}</th>
-                        <th>{{t "payments.date"}}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{range .Transactions}}
-                    <tr>
-                        <td>
-                            <code>{{printf "%.8f" .Amount}}</code>
-                        </td>
-                        <td>
-                            <strong class="text-success">${{printf "%.2f" .AmountUSD}}</strong>
-                        </td>
-                        <td>
-                            {{if eq .Status "confirmed"}}
-                            <span class="badge bg-success">{{t "payments.confirmed"}}</span>
-                            {{else if eq .Status "pending"}}
-                            <span class="badge bg-warning text-dark">{{t "payments.pending_conf"}}</span>
-                            {{else}}
-                            <span class="badge bg-danger">{{.Status}}</span>
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#balanceTab" type="button">
+            <i class="bi bi-wallet2 me-1"></i>Balance History
+            {{if .BalanceTxs}}<span class="badge bg-secondary ms-1">{{len .BalanceTxs}}</span>{{end}}
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#cryptoTab" type="button">
+            <i class="bi bi-currency-bitcoin me-1"></i>Crypto Deposits
+            {{if .CryptoTxs}}<span class="badge bg-secondary ms-1">{{len .CryptoTxs}}</span>{{end}}
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- Balance History Tab -->
+    <div class="tab-pane fade show active" id="balanceTab">
+        <div class="card">
+            <div class="card-body p-0">
+                {{if .BalanceTxs}}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" data-datatable>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .BalanceTxs}}
+                            <tr>
+                                <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                                <td>
+                                    {{if eq .Type "topup"}}
+                                    <span class="badge bg-success"><i class="bi bi-plus-circle me-1"></i>Top Up</span>
+                                    {{else if eq .Type "credit"}}
+                                    <span class="badge bg-success"><i class="bi bi-currency-bitcoin me-1"></i>Deposit</span>
+                                    {{else if eq .Type "deduct"}}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-dash-circle me-1"></i>Deduction</span>
+                                    {{else if eq .Type "purchase"}}
+                                    <span class="badge bg-info"><i class="bi bi-cart me-1"></i>Purchase</span>
+                                    {{else if eq .Type "commission"}}
+                                    <span class="badge bg-primary"><i class="bi bi-people me-1"></i>Commission</span>
+                                    {{else}}
+                                    <span class="badge bg-secondary">{{.Type}}</span>
+                                    {{end}}
+                                </td>
+                                <td>{{.Description}}</td>
+                                <td class="text-end">
+                                    {{if gt .Amount 0.0}}
+                                    <span class="text-success fw-bold">+${{printf "%.2f" .Amount}}</span>
+                                    {{else}}
+                                    <span class="text-danger fw-bold">${{printf "%.2f" .Amount}}</span>
+                                    {{end}}
+                                </td>
+                            </tr>
                             {{end}}
-                        </td>
-                        <td>{{.Confirmations}}</td>
-                        <td>
-                            <a href="https://mempool.space/tx/{{.TxID}}" target="_blank"
-                               class="text-decoration-none" title="{{t "payments.view_blockchain"}}">
-                                <code>{{slice .TxID 0 16}}...</code>
-                                <i class="bi bi-box-arrow-up-right ms-1"></i>
-                            </a>
-                        </td>
-                        <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
-                    </tr>
-                    {{end}}
-                </tbody>
-            </table>
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+                    <h5>No balance transactions yet</h5>
+                    <p class="text-muted mb-3">Your balance history will appear here</p>
+                    <a href="/user/payments" class="btn btn-primary">
+                        <i class="bi bi-wallet2 me-1"></i>Make a Deposit
+                    </a>
+                </div>
+                {{end}}
+            </div>
         </div>
-        {{else}}
-        <div class="text-center py-5">
-            <i class="bi bi-inbox display-1 text-muted mb-3"></i>
-            <h5>{{t "payments.no_transactions"}}</h5>
-            <p class="text-muted mb-3">{{t "payments.no_transactions_desc"}}</p>
-            <a href="/user/payments" class="btn btn-primary">
-                <i class="bi bi-wallet2 me-1"></i>{{t "payments.make_deposit"}}
-            </a>
+    </div>
+
+    <!-- Crypto Deposits Tab -->
+    <div class="tab-pane fade" id="cryptoTab">
+        <div class="card">
+            <div class="card-body p-0">
+                {{if .CryptoTxs}}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" data-datatable>
+                        <thead>
+                            <tr>
+                                <th>Amount</th>
+                                <th>USD Value</th>
+                                <th>Status</th>
+                                <th>Confirmations</th>
+                                <th>Transaction ID</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .CryptoTxs}}
+                            <tr>
+                                <td>
+                                    <code>{{printf "%.8f" .Amount}}</code>
+                                </td>
+                                <td>
+                                    <strong class="text-success">${{printf "%.2f" .AmountUSD}}</strong>
+                                </td>
+                                <td>
+                                    {{if eq .Status "confirmed"}}
+                                    <span class="badge bg-success">Confirmed</span>
+                                    {{else if eq .Status "pending"}}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                    {{else}}
+                                    <span class="badge bg-danger">{{.Status}}</span>
+                                    {{end}}
+                                </td>
+                                <td>{{.Confirmations}}</td>
+                                <td>
+                                    <a href="https://mempool.space/tx/{{.TxID}}" target="_blank"
+                                       class="text-decoration-none" title="View on blockchain">
+                                        <code>{{slice .TxID 0 16}}...</code>
+                                        <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                    </a>
+                                </td>
+                                <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="text-center py-5">
+                    <i class="bi bi-currency-bitcoin display-1 text-muted mb-3"></i>
+                    <h5>No crypto deposits yet</h5>
+                    <p class="text-muted mb-3">Your crypto deposits will appear here</p>
+                    <a href="/user/payments" class="btn btn-primary">
+                        <i class="bi bi-wallet2 me-1"></i>Make a Deposit
+                    </a>
+                </div>
+                {{end}}
+            </div>
         </div>
-        {{end}}
     </div>
 </div>
 {{end}}
