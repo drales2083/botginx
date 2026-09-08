@@ -26,49 +26,57 @@ var loaders = map[string]loaderData{
 		name:     "Spinner Thick",
 		category: "Spinners & Rings",
 		html:     `<div class="loader spinner-thick"></div>`,
-		css: `.spinner-thick{width:48px;height:48px;border:6px solid var(--secondary);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}`,
+		css: `.spinner-thick{width:48px;height:48px;border:6px solid var(--secondary);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"spinner-thin": {
 		name:     "Spinner Thin",
 		category: "Spinners & Rings",
 		html:     `<div class="loader spinner-thin"></div>`,
-		css: `.spinner-thin{width:48px;height:48px;border:2px solid var(--secondary);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}`,
+		css: `.spinner-thin{width:48px;height:48px;border:2px solid var(--secondary);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"spinner-dual": {
 		name:     "Spinner Dual",
 		category: "Spinners & Rings",
 		html:     `<div class="loader spinner-dual"></div>`,
-		css: `.spinner-dual{width:48px;height:48px;border:4px solid transparent;border-top-color:var(--primary);border-bottom-color:var(--secondary);border-radius:50%;animation:spin 1s linear infinite}`,
+		css: `.spinner-dual{width:48px;height:48px;border:4px solid transparent;border-top-color:var(--primary);border-bottom-color:var(--secondary);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"spinner-triple": {
 		name:     "Spinner Triple",
 		category: "Spinners & Rings",
 		html:     `<div class="loader spinner-triple"></div>`,
-		css: `.spinner-triple{width:48px;height:48px;border:4px solid var(--secondary);border-top-color:var(--primary);border-left-color:var(--primary);border-right-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}`,
+		css: `.spinner-triple{width:48px;height:48px;border:4px solid var(--secondary);border-top-color:var(--primary);border-left-color:var(--primary);border-right-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"spinner-dotted": {
 		name:     "Spinner Dotted",
 		category: "Spinners & Rings",
 		html:     `<div class="loader spinner-dotted"></div>`,
-		css: `.spinner-dotted{width:48px;height:48px;border:4px dotted var(--primary);border-radius:50%;animation:spin 1.5s linear infinite}`,
+		css: `.spinner-dotted{width:48px;height:48px;border:4px dotted var(--primary);border-radius:50%;animation:spin 1.5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"spinner-dashed": {
 		name:     "Spinner Dashed",
 		category: "Spinners & Rings",
 		html:     `<div class="loader spinner-dashed"></div>`,
-		css: `.spinner-dashed{width:48px;height:48px;border:4px dashed var(--primary);border-radius:50%;animation:spin 2s linear infinite}`,
+		css: `.spinner-dashed{width:48px;height:48px;border:4px dashed var(--primary);border-radius:50%;animation:spin 2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"spinner-gradient": {
 		name:     "Spinner Gradient",
 		category: "Spinners & Rings",
 		html:     `<div class="loader spinner-gradient"></div>`,
-		css: `.spinner-gradient{width:48px;height:48px;border-radius:50%;background:conic-gradient(var(--primary),transparent);animation:spin 1s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 4px))}`,
+		css: `.spinner-gradient{width:48px;height:48px;border-radius:50%;background:conic-gradient(var(--primary),transparent);animation:spin 1s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 4px))}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"spinner-glow": {
 		name:     "Spinner Glow",
 		category: "Spinners & Rings",
 		html:     `<div class="loader spinner-glow"></div>`,
-		css: `.spinner-glow{width:48px;height:48px;border:4px solid var(--secondary);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;box-shadow:0 0 15px var(--primary)}`,
+		css: `.spinner-glow{width:48px;height:48px;border:4px solid var(--secondary);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;box-shadow:0 0 15px var(--primary)}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"ring-pulse": {
 		name:     "Ring Pulse",
@@ -102,7 +110,8 @@ var loaders = map[string]loaderData{
 .ring-chase span{position:absolute;width:8px;height:8px;background:var(--primary);border-radius:50%}
 .ring-chase span:nth-child(1){top:0;left:50%;margin-left:-4px}
 .ring-chase span:nth-child(2){bottom:0;left:50%;margin-left:-4px}
-.ring-chase span:nth-child(3){top:50%;left:0;margin-top:-4px}`,
+.ring-chase span:nth-child(3){top:50%;left:0;margin-top:-4px}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"ring-double": {
 		name:     "Ring Double",
@@ -111,7 +120,8 @@ var loaders = map[string]loaderData{
 		css: `.ring-double{position:relative;width:48px;height:48px}
 .ring-double span{position:absolute;inset:0;border:3px solid transparent;border-radius:50%}
 .ring-double span:nth-child(1){border-top-color:var(--primary);animation:spin 1s linear infinite}
-.ring-double span:nth-child(2){inset:6px;border-bottom-color:var(--secondary);animation:spin 1s linear infinite reverse}`,
+.ring-double span:nth-child(2){inset:6px;border-bottom-color:var(--secondary);animation:spin 1s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"ring-zoom": {
 		name:     "Ring Zoom",
@@ -125,6 +135,7 @@ var loaders = map[string]loaderData{
 		category: "Spinners & Rings",
 		html:     `<div class="loader ring-neon"></div>`,
 		css: `.ring-neon{width:48px;height:48px;border:3px solid var(--primary);border-radius:50%;animation:spin 1s linear infinite,ring-neon-glow 1s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes ring-neon-glow{0%,100%{box-shadow:0 0 5px var(--primary),0 0 10px var(--primary)}50%{box-shadow:0 0 20px var(--primary),0 0 30px var(--primary)}}`,
 	},
 	"ring-loading": {
@@ -148,7 +159,8 @@ var loaders = map[string]loaderData{
 .ring-spinner-dots span:nth-child(5){transform:rotate(180deg) translateX(20px);opacity:.5}
 .ring-spinner-dots span:nth-child(6){transform:rotate(225deg) translateX(20px);opacity:.375}
 .ring-spinner-dots span:nth-child(7){transform:rotate(270deg) translateX(20px);opacity:.25}
-.ring-spinner-dots span:nth-child(8){transform:rotate(315deg) translateX(20px);opacity:.125}`,
+.ring-spinner-dots span:nth-child(8){transform:rotate(315deg) translateX(20px);opacity:.125}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"ring-moon": {
 		name:     "Ring Moon",
@@ -166,7 +178,8 @@ var loaders = map[string]loaderData{
 .ring-atom::before{content:'';position:absolute;width:8px;height:8px;background:var(--primary);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
 .ring-atom span{position:absolute;inset:0;border:2px solid var(--secondary);border-radius:50%;animation:spin 1.5s linear infinite}
 .ring-atom span:nth-child(2){transform:rotate(60deg);animation-duration:1.8s}
-.ring-atom span:nth-child(3){transform:rotate(120deg);animation-duration:2.1s}`,
+.ring-atom span:nth-child(3){transform:rotate(120deg);animation-duration:2.1s}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"ring-saturn": {
 		name:     "Ring Saturn",
@@ -174,7 +187,8 @@ var loaders = map[string]loaderData{
 		html:     `<div class="loader ring-saturn"><span></span></div>`,
 		css: `.ring-saturn{position:relative;width:48px;height:48px}
 .ring-saturn::before{content:'';position:absolute;width:20px;height:20px;background:var(--primary);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
-.ring-saturn span{position:absolute;inset:0;border:3px solid var(--secondary);border-radius:50%;transform:rotateX(65deg);animation:spin 2s linear infinite}`,
+.ring-saturn span{position:absolute;inset:0;border:3px solid var(--secondary);border-radius:50%;transform:rotateX(65deg);animation:spin 2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"ring-quantum": {
 		name:     "Ring Quantum",
@@ -182,7 +196,8 @@ var loaders = map[string]loaderData{
 		html:     `<div class="loader ring-quantum"><span></span><span></span></div>`,
 		css: `.ring-quantum{position:relative;width:48px;height:48px}
 .ring-quantum span{position:absolute;inset:0;border:3px solid transparent;border-top-color:var(--primary);border-bottom-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}
-.ring-quantum span:nth-child(2){inset:8px;border-top-color:var(--secondary);border-bottom-color:var(--secondary);animation-direction:reverse;animation-duration:.8s}`,
+.ring-quantum span:nth-child(2){inset:8px;border-top-color:var(--secondary);border-bottom-color:var(--secondary);animation-direction:reverse;animation-duration:.8s}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"ring-vortex": {
 		name:     "Ring Vortex",
@@ -192,7 +207,8 @@ var loaders = map[string]loaderData{
 .ring-vortex span{position:absolute;border:3px solid var(--primary);border-radius:50%;animation:spin 1.5s linear infinite}
 .ring-vortex span:nth-child(1){inset:0}
 .ring-vortex span:nth-child(2){inset:8px;animation-direction:reverse;animation-duration:1.2s}
-.ring-vortex span:nth-child(3){inset:16px;animation-duration:.9s}`,
+.ring-vortex span:nth-child(3){inset:16px;animation-duration:.9s}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 
 	// =============================================================================
@@ -310,7 +326,8 @@ var loaders = map[string]loaderData{
 .dots-spin span:nth-child(1){top:0;left:50%;margin-left:-5px}
 .dots-spin span:nth-child(2){bottom:0;left:50%;margin-left:-5px}
 .dots-spin span:nth-child(3){top:50%;left:0;margin-top:-5px}
-.dots-spin span:nth-child(4){top:50%;right:0;margin-top:-5px}`,
+.dots-spin span:nth-child(4){top:50%;right:0;margin-top:-5px}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"dots-orbit": {
 		name:     "Dots Orbit",
@@ -330,7 +347,8 @@ var loaders = map[string]loaderData{
 .dots-windmill span:nth-child(1){top:0;left:50%;margin-left:-4px}
 .dots-windmill span:nth-child(2){top:50%;right:0;margin-top:-4px}
 .dots-windmill span:nth-child(3){bottom:0;left:50%;margin-left:-4px}
-.dots-windmill span:nth-child(4){top:50%;left:0;margin-top:-4px}`,
+.dots-windmill span:nth-child(4){top:50%;left:0;margin-top:-4px}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"dots-shuffle": {
 		name:     "Dots Shuffle",
@@ -579,7 +597,8 @@ var loaders = map[string]loaderData{
 		name:     "Square Spin",
 		category: "Shapes & Morphing",
 		html:     `<div class="loader square-spin"></div>`,
-		css: `.square-spin{width:40px;height:40px;background:var(--primary);animation:spin 1s linear infinite}`,
+		css: `.square-spin{width:40px;height:40px;background:var(--primary);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"square-flip": {
 		name:     "Square Flip",
@@ -644,13 +663,15 @@ var loaders = map[string]loaderData{
 		name:     "Triangle Spin",
 		category: "Shapes & Morphing",
 		html:     `<div class="loader triangle-spin"></div>`,
-		css: `.triangle-spin{width:0;height:0;border-left:25px solid transparent;border-right:25px solid transparent;border-bottom:43px solid var(--primary);animation:spin 1.2s linear infinite}`,
+		css: `.triangle-spin{width:0;height:0;border-left:25px solid transparent;border-right:25px solid transparent;border-bottom:43px solid var(--primary);animation:spin 1.2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"hexagon-spin": {
 		name:     "Hexagon Spin",
 		category: "Shapes & Morphing",
 		html:     `<div class="loader hexagon-spin"></div>`,
-		css: `.hexagon-spin{width:40px;height:46px;background:var(--primary);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);animation:spin 1.5s linear infinite}`,
+		css: `.hexagon-spin{width:40px;height:46px;background:var(--primary);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);animation:spin 1.5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"hexagon-pulse": {
 		name:     "Hexagon Pulse",
@@ -663,13 +684,15 @@ var loaders = map[string]loaderData{
 		name:     "Diamond Spin",
 		category: "Shapes & Morphing",
 		html:     `<div class="loader diamond-spin"></div>`,
-		css: `.diamond-spin{width:30px;height:30px;background:var(--primary);transform:rotate(45deg);animation:spin 1s linear infinite}`,
+		css: `.diamond-spin{width:30px;height:30px;background:var(--primary);transform:rotate(45deg);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"star-spin": {
 		name:     "Star Spin",
 		category: "Shapes & Morphing",
 		html:     `<div class="loader star-spin"></div>`,
-		css: `.star-spin{width:40px;height:40px;background:var(--primary);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);animation:spin 1.5s linear infinite}`,
+		css: `.star-spin{width:40px;height:40px;background:var(--primary);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);animation:spin 1.5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"blob-morph": {
 		name:     "Blob Morph",
@@ -781,7 +804,8 @@ var loaders = map[string]loaderData{
 		html:     `<div class="loader radar"><span></span></div>`,
 		css: `.radar{position:relative;width:48px;height:48px;border:2px solid var(--secondary);border-radius:50%}
 .radar::before{content:'';position:absolute;width:4px;height:4px;background:var(--primary);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
-.radar span{position:absolute;inset:0;border-radius:50%;background:conic-gradient(transparent 0deg,var(--primary) 90deg,transparent 90deg);animation:spin 1.5s linear infinite}`,
+.radar span{position:absolute;inset:0;border-radius:50%;background:conic-gradient(transparent 0deg,var(--primary) 90deg,transparent 90deg);animation:spin 1.5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"sonar": {
 		name:     "Sonar",
@@ -862,7 +886,8 @@ var loaders = map[string]loaderData{
 		css: `.clock{position:relative;width:48px;height:48px;border:3px solid var(--primary);border-radius:50%}
 .clock span{position:absolute;background:var(--primary);transform-origin:bottom center;left:50%;bottom:50%}
 .clock span:nth-child(1){width:3px;height:14px;margin-left:-1.5px;animation:spin 2s linear infinite}
-.clock span:nth-child(2){width:2px;height:18px;margin-left:-1px;animation:spin 8s linear infinite}`,
+.clock span:nth-child(2){width:2px;height:18px;margin-left:-1px;animation:spin 8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"fill-circle": {
 		name:     "Fill Circle",
@@ -918,6 +943,7 @@ var loaders = map[string]loaderData{
 .galaxy span:nth-child(1){animation:galaxy-orbit 1s linear infinite;transform:translateX(16px)}
 .galaxy span:nth-child(2){animation:galaxy-orbit 1.5s linear infinite;transform:translateX(20px);width:6px;height:6px}
 .galaxy span:nth-child(3){animation:galaxy-orbit 2s linear infinite;transform:translateX(24px);width:4px;height:4px;background:var(--secondary)}
+@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes galaxy-orbit{to{transform:rotate(360deg) translateX(20px)}}`,
 	},
 	"dna-helix": {
@@ -1040,7 +1066,8 @@ var loaders = map[string]loaderData{
 .slack-colors span:nth-child(1){background:var(--primary);top:0;left:50%;margin-left:-6px}
 .slack-colors span:nth-child(2){background:var(--secondary);bottom:0;left:50%;margin-left:-6px}
 .slack-colors span:nth-child(3){background:var(--primary);width:24px;height:12px;border-radius:6px;top:50%;left:0;margin-top:-6px}
-.slack-colors span:nth-child(4){background:var(--secondary);width:24px;height:12px;border-radius:6px;top:50%;right:0;margin-top:-6px}`,
+.slack-colors span:nth-child(4){background:var(--secondary);width:24px;height:12px;border-radius:6px;top:50%;right:0;margin-top:-6px}
+@keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 }
 
