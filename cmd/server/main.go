@@ -307,9 +307,9 @@ func main() {
 	r.Use(middleware.Compress(5))
 	r.Use(translator.Middleware) // i18n middleware
 
-	// Static files
+	// Static files (no directory listing)
 	staticSub, _ := fs.Sub(web.StaticFS, "static")
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
+	r.Handle("/static/*", http.StripPrefix("/static/", noDirectoryListing(http.FileServer(http.FS(staticSub)))))
 
 	// Health check
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -500,4 +500,15 @@ func getAppName() string {
 		return name
 	}
 	return "GuardBot"
+}
+
+// noDirectoryListing wraps a file server to return 404 for directory requests
+func noDirectoryListing(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
