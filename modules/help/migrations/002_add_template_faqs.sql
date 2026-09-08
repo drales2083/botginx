@@ -9,7 +9,8 @@ INSERT INTO faq_items (id, category_id, question, answer, sort_order) VALUES
    <li><strong>Cloudflare Style:</strong> Familiar verification page that looks like Cloudflare''s browser check</li>
    <li><strong>Human Check:</strong> Simple checkbox verification with a loading animation</li>
    <li><strong>Human Security:</strong> Press and hold button challenge - the most interactive option</li>
-   <li><strong>Slide Puzzle:</strong> Slide puzzle with random shapes - strongest bot protection</li>
+   <li><strong>Slide Puzzle:</strong> Slide puzzle with random shapes - strong bot protection</li>
+   <li><strong>Smart Puzzle:</strong> Interactive puzzle challenge - strongest bot protection</li>
  </ul>',
  6),
 
@@ -18,7 +19,8 @@ INSERT INTO faq_items (id, category_id, question, answer, sort_order) VALUES
    <li><strong>Cloudflare Style:</strong> Best for general use - visitors are familiar with it and it feels legitimate</li>
    <li><strong>Human Check:</strong> Best for simple, quick verification with minimal friction</li>
    <li><strong>Human Security:</strong> Best when you need stronger bot protection - the press-and-hold action is harder for bots to automate</li>
-   <li><strong>Slide Puzzle:</strong> Best for maximum security - requires solving a visual puzzle that''s very hard for bots</li>
+   <li><strong>Slide Puzzle:</strong> Best for strong security - requires solving a slide puzzle</li>
+   <li><strong>Smart Puzzle:</strong> Best for maximum security - interactive puzzle that''s very hard for bots</li>
    <li><strong>Use Global Default:</strong> Uses your server''s default template - good if you want a consistent experience across all links</li>
  </ul>',
  7),
