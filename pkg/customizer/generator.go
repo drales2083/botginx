@@ -519,7 +519,6 @@ $encoder = new URLEncoder($r);
 
 	// Body with PHP class substitution
 	b.WriteString("<body>\n")
-	b.WriteString("<?php echo $r->randomComment(); ?>\n")
 	b.WriteString(buildPHPBody(c))
 
 	// Redirect script
