@@ -45,12 +45,21 @@ func (m *Module) Init(deps *module.Dependencies) error {
 }
 
 func (m *Module) Migrate() error {
-	sql, err := fs.ReadFile(migrationsFS, "migrations/001_create_tables.sql")
-	if err != nil {
-		return err
+	// Run all migration files in order
+	files := []string{
+		"migrations/001_create_tables.sql",
+		"migrations/002_add_template_faqs.sql",
 	}
-	_, err = m.DB().Exec(string(sql))
-	return err
+	for _, file := range files {
+		sql, err := fs.ReadFile(migrationsFS, file)
+		if err != nil {
+			return err
+		}
+		if _, err = m.DB().Exec(string(sql)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *Module) Routes() chi.Router {
