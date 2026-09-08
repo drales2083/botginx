@@ -933,9 +933,42 @@
     });
   };
 
+  // Default customization values - MUST match Go defaults in pkg/customizer/defaults.go
+  const defaultCustomization = {
+    bgColor: '#0a0a0a',
+    bgColorSecondary: '#1a1a1a',
+    gradientEnabled: false,
+    pattern: 'none',
+    patternColor: '#333333',
+    patternOpacity: 100,
+    loader: 'dots-bounce',
+    loaderColorPrimary: '#4f46e5',
+    loaderColorSecondary: '#e5e7eb',
+    heading: 'Please Wait',
+    headingVisible: true,
+    subheading: "We're redirecting you...",
+    subheadingVisible: true,
+    font: 'montserrat',
+    fontWeight: 700,
+    textColor: '#ffffff',
+    textSize: 36,
+    textShadow: false,
+    imageMode: 'none',
+    imageSize: 150,
+    imageOverlay: 90,
+    contentOrder: 'loader-text',
+    textAlign: 'center',
+    vPos: 0,
+    gap: 30,
+    pageTitle: 'Loading...'
+  };
+
   window.initCustomizer = function(existing, previewUrl, saveUrl) {
     custState.previewUrl = previewUrl;
     custState.saveUrl = saveUrl;
+
+    // Merge existing with defaults so all fields have values
+    const merged = {...defaultCustomization, ...(existing || {})};
 
     syncColorInputs('cust-bgColor');
     syncColorInputs('cust-bgColorSecondary');
@@ -1025,9 +1058,8 @@
       }
     });
 
-    if (existing) {
-      setCustomizationData(existing);
-    }
+    // Always set customization data with merged defaults
+    setCustomizationData(merged);
     updateConditionalVisibility();
     refreshPreview();
   };
