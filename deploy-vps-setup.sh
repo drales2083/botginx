@@ -153,6 +153,9 @@ server {
     port_in_redirect off;
     absolute_redirect off;
 
+    # Prevent caching of redirects
+    add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+
     # Dynamic root based on Host header
     set $site_domain "";
     set $site_subdomain "";
