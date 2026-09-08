@@ -13,6 +13,7 @@ type LinkSettings struct {
 	LinkID           string   `json:"link_id"`
 	UserID           string   `json:"user_id"`
 	Host             string   `json:"host"`
+	Template         string   `json:"template,omitempty"` // Challenge template: cloudflare, humancheck, humansecurity
 	BlockBots        bool     `json:"block_bots"`
 	BlockTor         bool     `json:"block_tor"`
 	BlockProxy       bool     `json:"block_proxy"`

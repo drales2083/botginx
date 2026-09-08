@@ -355,6 +355,17 @@
         <!-- Detection Tab -->
         <div class="tab-pane prot-section" id="prot-tab-detection" role="tabpanel">
             <div class="mb-4">
+                <label class="form-label text-muted small text-uppercase mb-2">Challenge Template</label>
+                <select class="form-select" id="prot-template" style="max-width: 300px;">
+                    <option value="">Use Global Default</option>
+                    <option value="cloudflare">Cloudflare Style</option>
+                    <option value="humancheck">Human Check</option>
+                    <option value="humansecurity">Human Security (Press & Hold)</option>
+                </select>
+                <small class="text-muted">Challenge page style shown to suspicious visitors</small>
+            </div>
+
+            <div class="mb-4">
                 <label class="form-label text-muted small text-uppercase mb-3">Block Traffic Types</label>
 
                 <div class="prot-toggle-row">
@@ -621,6 +632,7 @@
             else if (asnMode === 'whitelist') asnList = Array.from(protState.asns.allow);
 
             return {
+                template: document.getElementById('prot-template')?.value || '',
                 countryMode: countryMode,
                 countryList: countryList,
                 asnMode: asnMode,
@@ -678,6 +690,12 @@
                     const cb = document.getElementById('prot-device-' + d);
                     if (cb) cb.checked = true;
                 });
+            }
+
+            // Template
+            if (data.template !== undefined) {
+                const el = document.getElementById('prot-template');
+                if (el) el.value = data.template;
             }
 
             // Detection toggles

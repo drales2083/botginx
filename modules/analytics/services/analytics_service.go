@@ -445,12 +445,13 @@ func (s *AnalyticsService) SaveLinkSettings(settings *models.LinkSettings) error
 		_, err := s.db.Exec(`
 			INSERT INTO link_settings (id, link_id, country_mode, country_list, asn_mode, asn_list,
 				device_mode, device_list, block_bots, block_tor, block_proxy, block_datacenter,
-				block_headless, min_behavior_score, redirect_on_block, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+				block_headless, min_behavior_score, redirect_on_block, template, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 		`, settings.ID, settings.LinkID, settings.CountryMode, settings.CountryListRaw,
 			settings.ASNMode, settings.ASNListRaw, settings.DeviceMode, settings.DeviceListRaw,
 			settings.BlockBots, settings.BlockTor, settings.BlockProxy, settings.BlockDatacenter,
-			settings.BlockHeadless, settings.MinBehaviorScore, settings.RedirectOnBlock, settings.UpdatedAt)
+			settings.BlockHeadless, settings.MinBehaviorScore, settings.RedirectOnBlock,
+			settings.Template, settings.UpdatedAt)
 		return err
 	}
 
@@ -459,12 +460,13 @@ func (s *AnalyticsService) SaveLinkSettings(settings *models.LinkSettings) error
 		SET country_mode = $2, country_list = $3, asn_mode = $4, asn_list = $5,
 			device_mode = $6, device_list = $7, block_bots = $8, block_tor = $9,
 			block_proxy = $10, block_datacenter = $11, block_headless = $12,
-			min_behavior_score = $13, redirect_on_block = $14, updated_at = $15
+			min_behavior_score = $13, redirect_on_block = $14, template = $15, updated_at = $16
 		WHERE link_id = $1
 	`, settings.LinkID, settings.CountryMode, settings.CountryListRaw,
 		settings.ASNMode, settings.ASNListRaw, settings.DeviceMode, settings.DeviceListRaw,
 		settings.BlockBots, settings.BlockTor, settings.BlockProxy, settings.BlockDatacenter,
-		settings.BlockHeadless, settings.MinBehaviorScore, settings.RedirectOnBlock, settings.UpdatedAt)
+		settings.BlockHeadless, settings.MinBehaviorScore, settings.RedirectOnBlock,
+		settings.Template, settings.UpdatedAt)
 	return err
 }
 

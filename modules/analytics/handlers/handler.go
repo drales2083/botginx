@@ -311,6 +311,7 @@ func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	linkID := chi.URLParam(r, "linkId")
 
 	var input struct {
+		Template         string   `json:"template"`
 		CountryMode      string   `json:"countryMode"`
 		CountryList      []string `json:"countryList"`
 		ASNMode          string   `json:"asnMode"`
@@ -333,6 +334,7 @@ func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
 
 	settings := &models.LinkSettings{
 		LinkID:           linkID,
+		Template:         input.Template,
 		CountryMode:      input.CountryMode,
 		CountryList:      input.CountryList,
 		ASNMode:          input.ASNMode,
@@ -396,6 +398,7 @@ func (h *Handler) pushSettingsToVPS(linkID string, settings *models.LinkSettings
 		LinkID:           linkID,
 		UserID:           userID,
 		Host:             host,
+		Template:         settings.Template,
 		BlockBots:        settings.BlockBots,
 		BlockTor:         settings.BlockTor,
 		BlockProxy:       settings.BlockProxy,

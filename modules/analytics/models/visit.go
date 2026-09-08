@@ -118,6 +118,7 @@ type LinkSettings struct {
 	BlockHeadless      bool     `db:"block_headless" json:"blockHeadless"`
 	MinBehaviorScore   int      `db:"min_behavior_score" json:"minBehaviorScore"`
 	RedirectOnBlock    string   `db:"redirect_on_block" json:"redirectOnBlock"`
+	Template           string   `db:"template" json:"template"` // Challenge template: cloudflare, humancheck, humansecurity
 	UpdatedAt          time.Time `db:"updated_at" json:"updatedAt"`
 }
 
