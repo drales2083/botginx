@@ -9,7 +9,7 @@ INSERT INTO faq_items (id, category_id, question, answer, sort_order) VALUES
    <li><strong>Cloudflare Style:</strong> Familiar verification page that looks like Cloudflare''s browser check</li>
    <li><strong>Human Check:</strong> Simple checkbox verification with a loading animation</li>
    <li><strong>Human Security:</strong> Press and hold button challenge - the most interactive option</li>
-   <li><strong>Slide Puzzle:</strong> GeeTest-style slide puzzle with random shapes - strongest bot protection</li>
+   <li><strong>Slide Puzzle:</strong> Slide puzzle with random shapes - strongest bot protection</li>
  </ul>',
  6),
 
