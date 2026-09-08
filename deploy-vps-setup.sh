@@ -149,6 +149,10 @@ server {
     listen 80 default_server;
     server_name _;
 
+    # Prevent nginx from adding internal port to redirects
+    port_in_redirect off;
+    absolute_redirect off;
+
     # Dynamic root based on Host header
     set $site_domain "";
     set $site_subdomain "";
