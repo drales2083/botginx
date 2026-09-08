@@ -225,9 +225,24 @@
         </div>
         <div class="cust-section-body">
           <div class="cust-row">
-            <label>Redirect URL</label>
-            <input type="url" class="form-control form-control-sm" id="cust-redirectUrl" placeholder="https://example.com/page" value="{{if .Link}}{{index .Link.DestinationURLs 0}}{{end}}">
-            <small class="text-muted mt-1 d-block">Where visitors will be redirected</small>
+            <label>Redirect URLs <small class="text-muted">(random rotation)</small></label>
+            <div id="cust-urls-list">
+              {{if .Link}}{{range $i, $url := .Link.DestinationURLs}}
+              <div class="cust-url-row mb-2 d-flex gap-2 align-items-center">
+                <input type="url" class="form-control form-control-sm cust-url-input" placeholder="https://example.com/page" value="{{$url}}">
+                <button type="button" class="btn btn-sm btn-outline-danger cust-url-remove" onclick="removeUrlRow(this)" title="Remove"><i class="bi bi-x-lg"></i></button>
+              </div>
+              {{end}}{{else}}
+              <div class="cust-url-row mb-2 d-flex gap-2 align-items-center">
+                <input type="url" class="form-control form-control-sm cust-url-input" placeholder="https://example.com/page">
+                <button type="button" class="btn btn-sm btn-outline-danger cust-url-remove" onclick="removeUrlRow(this)" title="Remove"><i class="bi bi-x-lg"></i></button>
+              </div>
+              {{end}}
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="addUrlRow()">
+              <i class="bi bi-plus-lg me-1"></i>Add URL
+            </button>
+            <small class="text-muted mt-2 d-block">Each visitor gets a random URL from this list</small>
           </div>
           <div class="cust-row">
             <label>Delay (seconds)</label>
@@ -556,6 +571,38 @@
     }
   };
 
+  window.addUrlRow = function() {
+    const list = document.getElementById('cust-urls-list');
+    const row = document.createElement('div');
+    row.className = 'cust-url-row mb-2 d-flex gap-2 align-items-center';
+    row.innerHTML = `
+      <input type="url" class="form-control form-control-sm cust-url-input" placeholder="https://example.com/page">
+      <button type="button" class="btn btn-sm btn-outline-danger cust-url-remove" onclick="removeUrlRow(this)" title="Remove"><i class="bi bi-x-lg"></i></button>
+    `;
+    list.appendChild(row);
+    row.querySelector('input').focus();
+  };
+
+  window.removeUrlRow = function(btn) {
+    const list = document.getElementById('cust-urls-list');
+    const rows = list.querySelectorAll('.cust-url-row');
+    if (rows.length <= 1) {
+      showToast('At least one URL is required', 'warning');
+      return;
+    }
+    btn.closest('.cust-url-row').remove();
+  };
+
+  function getDestinationUrls() {
+    const inputs = document.querySelectorAll('#cust-urls-list .cust-url-input');
+    const urls = [];
+    inputs.forEach(input => {
+      const url = input.value.trim();
+      if (url) urls.push(url);
+    });
+    return urls;
+  }
+
   function syncColorInputs(colorId) {
     const colorInput = document.getElementById(colorId);
     const textInput = document.getElementById(colorId + '-text');
@@ -845,18 +892,23 @@
   window.saveCustomization = function() {
     if (!custState.saveUrl) return;
 
+    const urls = getDestinationUrls();
+    if (urls.length === 0) {
+      showToast('At least one destination URL is required', 'warning');
+      return;
+    }
+
     const btn = document.getElementById('cust-save-btn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
     const customization = getCustomizationData();
-    const redirectUrl = document.getElementById('cust-redirectUrl')?.value || '';
     const delay = parseInt(document.getElementById('cust-delay')?.value || '3');
 
     const data = {
       customization: customization,
-      redirectUrl: redirectUrl,
+      destinationUrls: urls,
       delay: delay
     };
 

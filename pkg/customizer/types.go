@@ -59,8 +59,10 @@ type FontDef struct {
 }
 
 type GenerateOptions struct {
-	Customization Customization
-	RedirectURL   string
-	Delay         int
-	Mode          string
+	Customization   Customization
+	RedirectURL     string   // single URL (legacy)
+	RedirectURLs    []string // multiple URLs (random rotation)
+	Delay           int
+	Mode            string
+	RandomizeSource bool // generate PHP with per-request randomization
 }

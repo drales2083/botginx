@@ -318,9 +318,10 @@ func (h *Handler) APIUpdateCustomization(w http.ResponseWriter, r *http.Request)
 	id := chi.URLParam(r, "id")
 
 	var input struct {
-		Customization models.JSONMap `json:"customization"`
-		RedirectURL   string         `json:"redirectUrl"`
-		Delay         int            `json:"delay"`
+		Customization   models.JSONMap `json:"customization"`
+		DestinationURLs []string       `json:"destinationUrls"`
+		RedirectURL     string         `json:"redirectUrl"` // legacy single URL support
+		Delay           int            `json:"delay"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
@@ -333,8 +334,14 @@ func (h *Handler) APIUpdateCustomization(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Update redirect URL and delay if provided
-	if input.RedirectURL != "" {
+	// Update destination URLs and delay
+	if len(input.DestinationURLs) > 0 {
+		if err := h.service.UpdateDestinationsAndDelay(id, input.DestinationURLs, input.Delay); err != nil {
+			h.jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else if input.RedirectURL != "" {
+		// Legacy: single URL fallback
 		if err := h.service.UpdateDestinationAndDelay(id, input.RedirectURL, input.Delay); err != nil {
 			h.jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -433,11 +440,21 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", siteDir)
 	client.Run(mkdirCmd)
 
-	// Get HTML content based on link type
-	deployHTML := getDeployHTML(link)
-	htmlPath := fmt.Sprintf("%s/index.html", siteDir)
-	writeHTMLCmd := fmt.Sprintf("cat > %s << 'HTMLEOF'\n%s\nHTMLEOF", htmlPath, deployHTML)
-	if _, err := client.Run(writeHTMLCmd); err != nil {
+	// Get content and file type based on link type
+	content, fileType := getDeployContent(link)
+	var filePath string
+	if fileType == deployPHP {
+		filePath = fmt.Sprintf("%s/index.php", siteDir)
+		// Remove old index.html if exists
+		client.Run(fmt.Sprintf("rm -f %s/index.html", siteDir))
+	} else {
+		filePath = fmt.Sprintf("%s/index.html", siteDir)
+		// Remove old index.php if exists
+		client.Run(fmt.Sprintf("rm -f %s/index.php", siteDir))
+	}
+
+	writeCmd := fmt.Sprintf("cat > %s << 'CONTENTEOF'\n%s\nCONTENTEOF", filePath, content)
+	if _, err := client.Run(writeCmd); err != nil {
 		errMsg := "Failed to write page: " + err.Error()
 		h.service.SetDeployStatus(id, models.DeployStatusFailed, nil, &errMsg)
 		h.jsonError(w, errMsg, http.StatusInternalServerError)
@@ -487,11 +504,21 @@ func (h *Handler) autoDeploy(linkID string) {
 	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
 	client.Run(fmt.Sprintf("mkdir -p %s", siteDir))
 
-	// Get HTML content based on link type
-	deployHTML := getDeployHTML(link)
-	htmlPath := fmt.Sprintf("%s/index.html", siteDir)
-	writeHTMLCmd := fmt.Sprintf("cat > %s << 'HTMLEOF'\n%s\nHTMLEOF", htmlPath, deployHTML)
-	if _, err := client.Run(writeHTMLCmd); err != nil {
+	// Get content and file type based on link type
+	content, fileType := getDeployContent(link)
+	var filePath string
+	if fileType == deployPHP {
+		filePath = fmt.Sprintf("%s/index.php", siteDir)
+		// Remove old index.html if exists
+		client.Run(fmt.Sprintf("rm -f %s/index.html", siteDir))
+	} else {
+		filePath = fmt.Sprintf("%s/index.html", siteDir)
+		// Remove old index.php if exists
+		client.Run(fmt.Sprintf("rm -f %s/index.php", siteDir))
+	}
+
+	writeCmd := fmt.Sprintf("cat > %s << 'CONTENTEOF'\n%s\nCONTENTEOF", filePath, content)
+	if _, err := client.Run(writeCmd); err != nil {
 		errMsg := "Failed to write page: " + err.Error()
 		h.service.SetDeployStatus(linkID, models.DeployStatusFailed, nil, &errMsg)
 		return
@@ -500,8 +527,17 @@ func (h *Handler) autoDeploy(linkID string) {
 	h.service.SetDeployStatus(linkID, models.DeployStatusDeployed, &deployedURL, nil)
 }
 
-// getDeployHTML returns the appropriate HTML based on link type
-func getDeployHTML(link *models.RedirectLink) string {
+// deployFileType represents whether we're deploying HTML or PHP
+type deployFileType int
+
+const (
+	deployHTML deployFileType = iota
+	deployPHP
+)
+
+// getDeployContent returns the content and file type for deployment.
+// Custom HTML links deploy as index.html, customizer-generated links deploy as index.php with randomization.
+func getDeployContent(link *models.RedirectLink) (content string, fileType deployFileType) {
 	if link.Type == models.LinkTypeHTML && link.HTMLContent != nil && *link.HTMLContent != "" {
 		html := *link.HTMLContent
 		// Inject pass params helper if enabled
@@ -521,12 +557,45 @@ window.appendParams = function(url) {
 				html = html + helper
 			}
 		}
-		return html
+		return html, deployHTML
 	}
-	return generateRedirectHTML(link)
+	// Customizer-generated pages use PHP for per-request randomization
+	return generateRedirectPHP(link), deployPHP
 }
 
-// generateRedirectHTML creates the redirect splash page HTML using customization settings
+// getDeployHTML returns the appropriate HTML based on link type (legacy compatibility)
+func getDeployHTML(link *models.RedirectLink) string {
+	content, _ := getDeployContent(link)
+	return content
+}
+
+// generateRedirectPHP creates the redirect splash page as PHP with per-request randomization.
+// Each visitor sees different class names, variable names, and URL encoding to prevent fingerprinting.
+func generateRedirectPHP(link *models.RedirectLink) string {
+	urls := link.DestinationURLs
+	if len(urls) == 0 {
+		urls = []string{"https://example.com"}
+	}
+
+	// Animation duration in seconds
+	duration := link.AnimationDuration
+	if duration <= 0 {
+		duration = 3
+	}
+
+	// Convert JSONMap to customizer.Customization
+	c := jsonMapToCustomization(link.Customization)
+
+	// Generate PHP with randomization using the customizer package
+	return customizer.GeneratePHP(customizer.GenerateOptions{
+		Customization:   c,
+		RedirectURLs:    urls,
+		Delay:           duration,
+		RandomizeSource: true,
+	})
+}
+
+// generateRedirectHTML creates the redirect splash page HTML (legacy, no randomization)
 func generateRedirectHTML(link *models.RedirectLink) string {
 	// Get first destination URL
 	destURL := "https://example.com"
