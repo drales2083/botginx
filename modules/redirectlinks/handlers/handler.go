@@ -247,13 +247,15 @@ func (h *Handler) cleanupVPS(link *models.RedirectLink) {
 		log.Printf("[cleanup] deleted botection settings: %s", settingsPath)
 	}
 
-	// Delete site directory for this link
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", baseDomain, subdomain)
+	// Delete site directory for this link (includes path)
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s/%s", baseDomain, subdomain, link.Path)
 	if _, err := client.Run(fmt.Sprintf("rm -rf %s", siteDir)); err == nil {
 		log.Printf("[cleanup] deleted site directory: %s", siteDir)
 	}
 
-	// Clean up empty parent directory if no other subdomains exist
+	// Clean up empty parent directories if no other links exist
+	subdomainDir := fmt.Sprintf("/var/www/sites/%s/%s", baseDomain, subdomain)
+	client.Run(fmt.Sprintf("rmdir %s 2>/dev/null || true", subdomainDir))
 	parentDir := fmt.Sprintf("/var/www/sites/%s", baseDomain)
 	client.Run(fmt.Sprintf("rmdir %s 2>/dev/null || true", parentDir))
 }
@@ -434,9 +436,10 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer client.Close()
 
-	// Create site directory: /var/www/sites/{domain}/{subdomain}/
+	// Create site directory: /var/www/sites/{domain}/{subdomain}/{path}/
 	// This matches the nginx upstream config which parses host as subdomain.domain
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
+	// The path is included because URL is subdomain.domain/path
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s/%s", link.BaseDomain(), link.Subdomain, link.Path)
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", siteDir)
 	client.Run(mkdirCmd)
 
@@ -501,7 +504,7 @@ func (h *Handler) autoDeploy(linkID string) {
 	}
 	defer client.Close()
 
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s/%s", link.BaseDomain(), link.Subdomain, link.Path)
 	client.Run(fmt.Sprintf("mkdir -p %s", siteDir))
 
 	// Get content and file type based on link type
