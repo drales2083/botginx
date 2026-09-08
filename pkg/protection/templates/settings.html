@@ -1,4 +1,7 @@
 {{define "protection-settings"}}
+<!-- Fancybox for image lightbox -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css"/>
+<script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
 <style>
 /* Protection Component Styles - all prefixed with prot- */
 .prot-tabs {
@@ -367,10 +370,15 @@
                         <small class="text-muted d-block mt-1">Challenge page shown to suspicious visitors</small>
                     </div>
                     <div class="col" id="prot-template-preview-col" style="display:none;">
-                        <div class="border rounded p-2 bg-dark" style="max-width: 280px;">
-                            <img id="prot-template-preview" src="" alt="Template Preview"
-                                 style="width: 100%; border-radius: 4px; display: block;">
-                        </div>
+                        <a id="prot-template-link" href="" data-fancybox="template" data-caption="Challenge Template Preview">
+                            <div class="border rounded p-2 bg-dark position-relative" style="max-width: 280px; cursor: zoom-in;">
+                                <img id="prot-template-preview" src="" alt="Template Preview"
+                                     style="width: 100%; border-radius: 4px; display: block;">
+                                <div class="position-absolute bottom-0 start-0 end-0 text-center pb-1">
+                                    <small class="text-white-50"><i class="bi bi-zoom-in me-1"></i>Click to enlarge</small>
+                                </div>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -536,17 +544,30 @@
         const select = document.getElementById('prot-template');
         const previewCol = document.getElementById('prot-template-preview-col');
         const previewImg = document.getElementById('prot-template-preview');
+        const previewLink = document.getElementById('prot-template-link');
         if (!select || !previewCol || !previewImg) return;
 
         const value = select.value;
         if (value && ['cloudflare', 'humancheck', 'humansecurity'].includes(value)) {
-            previewImg.src = '/static/img/templates/' + value + '.gif';
+            const imgUrl = '/static/img/templates/' + value + '.gif';
+            previewImg.src = imgUrl;
+            if (previewLink) previewLink.href = imgUrl;
             previewCol.style.display = '';
         } else {
             previewCol.style.display = 'none';
             previewImg.src = '';
+            if (previewLink) previewLink.href = '';
         }
     };
+
+    // Initialize Fancybox
+    if (typeof Fancybox !== 'undefined') {
+        Fancybox.bind('[data-fancybox="template"]', {
+            animated: true,
+            showClass: "fancybox-fadeIn",
+            hideClass: "fancybox-fadeOut",
+        });
+    }
 
     // Render countries
     function protRenderCountries(containerId, type) {
