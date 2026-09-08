@@ -71,7 +71,7 @@ func (s *Service) EnforceAll(next http.Handler) http.Handler {
 }
 
 func denyAll(w http.ResponseWriter, r *http.Request) {
-	const message = "An active subscription is required to access this feature. Contact an administrator."
+	const message = "An active subscription is required to access this feature. Please subscribe at /user/subscription"
 
 	// API callers get JSON; browser requests get redirected to subscription page.
 	if strings.Contains(r.URL.Path, "/api/") ||
@@ -101,7 +101,7 @@ func isRead(method string) bool {
 }
 
 func deny(w http.ResponseWriter, r *http.Request) {
-	const message = "An active subscription is required for this action. Contact an administrator."
+	const message = "An active subscription is required for this action. Please subscribe at /user/subscription"
 
 	// API callers get JSON; a form post gets a page it can actually read.
 	if strings.Contains(r.URL.Path, "/api/") ||

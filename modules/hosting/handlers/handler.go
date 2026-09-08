@@ -973,8 +973,25 @@ func (h *Handler) APITopUpBalance(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
-// RunBilling runs the billing cron job
+// RunBilling runs the billing cron job (localhost only)
 func (h *Handler) RunBilling(w http.ResponseWriter, r *http.Request) {
+	// Only allow requests from localhost
+	remoteIP := r.RemoteAddr
+	// Strip port if present
+	if idx := strings.LastIndex(remoteIP, ":"); idx != -1 {
+		remoteIP = remoteIP[:idx]
+	}
+	// Also check X-Real-IP header for proxied requests
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		remoteIP = realIP
+	}
+
+	// Allow 127.0.0.1, ::1 (IPv6 localhost), and localhost
+	if remoteIP != "127.0.0.1" && remoteIP != "::1" && remoteIP != "[::1]" && remoteIP != "localhost" {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	h.billing.ProcessMonthlyBilling()
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }

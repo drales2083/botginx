@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/botginx/botginx/modules/auth/models"
 	"github.com/botginx/botginx/modules/auth/services"
@@ -11,12 +14,15 @@ import (
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/subscription"
 	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
 )
 
 type Handler struct {
 	service          *services.AuthService
 	templates        *module.TemplateEngine
 	globalWhitelist  *services.GlobalWhitelistService
+	db               *sqlx.DB
+	subscriptions    *subscription.Service
 }
 
 func NewHandler(service *services.AuthService, templates *module.TemplateEngine) *Handler {
@@ -28,6 +34,14 @@ func NewHandler(service *services.AuthService, templates *module.TemplateEngine)
 
 func (h *Handler) SetGlobalWhitelistService(s *services.GlobalWhitelistService) {
 	h.globalWhitelist = s
+}
+
+func (h *Handler) SetDB(db *sqlx.DB) {
+	h.db = db
+}
+
+func (h *Handler) SetSubscriptionService(s *subscription.Service) {
+	h.subscriptions = s
 }
 
 // Pages
@@ -79,8 +93,17 @@ func (h *Handler) SubscriptionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get user balance
+	var balance float64
+	if h.db != nil {
+		h.db.Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, user.ID)
+	}
+
 	module.RenderUserSection(w, r, h.templates, "auth:subscription.html", map[string]interface{}{
-		"Title": "Subscription",
+		"Title":             "Subscription",
+		"Balance":           balance,
+		"SubscriptionPrice": subscription.GetMonthlyPrice(),
+		"SubscriptionDays":  subscription.GetRenewalDays(),
 	})
 }
 
@@ -464,6 +487,69 @@ func (h *Handler) OptionalAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+// APISubscribe handles self-service subscription purchase
+func (h *Handler) APISubscribe(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	if h.db == nil || h.subscriptions == nil {
+		h.jsonError(w, "Service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	price := subscription.GetMonthlyPrice()
+	days := subscription.GetRenewalDays()
+
+	// Check balance
+	var balance float64
+	h.db.Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
+
+	if balance < price {
+		h.jsonError(w, "Insufficient balance. Please deposit funds first.", http.StatusPaymentRequired)
+		return
+	}
+
+	// Deduct balance
+	result, err := h.db.Exec(`
+		UPDATE users SET balance = balance - $1, updated_at = NOW()
+		WHERE id = $2 AND balance >= $1
+	`, price, userID)
+	if err != nil {
+		h.jsonError(w, "Failed to process payment", http.StatusInternalServerError)
+		return
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		h.jsonError(w, "Insufficient balance", http.StatusPaymentRequired)
+		return
+	}
+
+	// Record balance transaction
+	txID := make([]byte, 12)
+	rand.Read(txID)
+	h.db.Exec(`
+		INSERT INTO balance_transactions (id, user_id, amount, type, description, created_at)
+		VALUES ($1, $2, $3, 'deduct', 'Subscription purchase', $4)
+	`, hex.EncodeToString(txID), userID, -price, time.Now())
+
+	// Extend subscription
+	if err := h.subscriptions.Extend(userID, days, "self"); err != nil {
+		// Refund on failure
+		h.db.Exec(`UPDATE users SET balance = balance + $1 WHERE id = $2`, price, userID)
+		h.jsonError(w, "Failed to activate subscription", http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Subscription activated",
+		"days":    days,
 	})
 }
 

@@ -282,7 +282,8 @@ func main() {
 	analyticsModule.SetShortLinkResolver(shortenerModule)
 	redirectLinksModule.SetServerProvider(serversModule)
 	iplistsModule.SetServerProvider(&iplistServerAdapter{servers: serversModule})
-	hostingModule.SetPaymentProcessor(referralsModule) // Referral commissions on hosting payments
+	hostingModule.SetPaymentProcessor(referralsModule)  // Referral commissions on hosting payments
+	authModule.SetSubscriptionService(subscriptions)    // Self-service subscription purchase
 
 	// Run migrations
 	if err := registry.MigrateAll(); err != nil {
@@ -376,11 +377,15 @@ func main() {
 		r.Mount("/settings", authModule.SettingsRoutes())
 		r.Mount("/subscription", authModule.SubscriptionRoutes())
 
+		// Payments routes: users must be able to deposit even without subscription.
+		// They need money to buy a subscription in the first place.
+		r.Mount("/payments", paymentsModule.Routes())
+
 		// Product routes: writes require an active subscription.
 		// Unsubscribed users can browse but cannot create, edit, or delete.
 		r.Group(func(r chi.Router) {
 			r.Use(subscriptions.Enforce)
-			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth")
+			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth", "payments")
 		})
 
 		// Registered on the section rather than inside the group above: chi

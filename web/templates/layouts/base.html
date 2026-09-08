@@ -102,6 +102,24 @@
       box-shadow: none;
       border-color: var(--bs-accordion-border-color);
     }
+
+    /* Alert with left border accent */
+    .alert-border-left {
+      border-left: 4px solid;
+      border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
+    }
+    .alert-danger.alert-border-left {
+      border-left-color: var(--bs-danger);
+    }
+    .alert-warning.alert-border-left {
+      border-left-color: var(--bs-warning);
+    }
+    .alert-success.alert-border-left {
+      border-left-color: var(--bs-success);
+    }
+    .alert-info.alert-border-left {
+      border-left-color: var(--bs-info);
+    }
   </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
@@ -290,16 +308,16 @@
           {{if not .IsAdminSection}}
           {{if not .Subscription.Active}}
             {{if eq .Subscription.Status "expired"}}
-            <div class="alert alert-danger" role="alert">
-              <i class="bi bi-lock me-2"></i>
-              <strong>View-only mode.</strong> Your subscription has expired.
-              <a href="/user/subscription" class="alert-link">Renew subscription</a> to create, edit, or delete.
+            <div class="alert alert-warning alert-border-left alert-dismissible fade show" role="alert">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <strong>Sorry!</strong> Your subscription has expired. Please <a href="/user/subscription" class="alert-link">renew your subscription</a> to continue using our services.
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             {{else}}
-            <div class="alert alert-warning" role="alert">
-              <i class="bi bi-lock me-2"></i>
-              <strong>View-only mode.</strong> You need a subscription to use this service.
-              <a href="/user/subscription" class="alert-link">View subscription options</a>
+            <div class="alert alert-warning alert-border-left alert-dismissible fade show" role="alert">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <strong>Notice:</strong> You don't have an active subscription. <a href="/user/subscription" class="alert-link">Get a subscription</a> to access all features.
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             {{end}}
           {{else if eq .Subscription.Status "expiring"}}

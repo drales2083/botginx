@@ -1,7 +1,11 @@
 package handlers
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -123,10 +127,27 @@ func (h *Handler) APIGetTransactions(w http.ResponseWriter, r *http.Request) {
 
 // BitGoWebhook handles incoming BitGo webhook callbacks
 func (h *Handler) BitGoWebhook(w http.ResponseWriter, r *http.Request) {
-	// TODO: Verify webhook signature if BITGO_WEBHOOK_SECRET is set
+	// Read body for signature verification
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("[payments] Failed to read webhook body: %v", err)
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Verify webhook signature if secret is configured
+	secret := os.Getenv("BITGO_WEBHOOK_SECRET")
+	if secret != "" {
+		signature := r.Header.Get("X-Signature")
+		if !h.verifyBitGoSignature(body, signature, secret) {
+			log.Printf("[payments] Invalid webhook signature")
+			http.Error(w, "Invalid signature", http.StatusUnauthorized)
+			return
+		}
+	}
 
 	var payload models.BitGoWebhookPayload
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
 		log.Printf("[payments] Invalid webhook payload: %v", err)
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
@@ -304,4 +325,17 @@ func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {
 
 func (h *Handler) jsonError(w http.ResponseWriter, message string, status int) {
 	h.json(w, status, map[string]interface{}{"error": message})
+}
+
+// verifyBitGoSignature verifies BitGo webhook signature using HMAC-SHA256
+func (h *Handler) verifyBitGoSignature(body []byte, signature, secret string) bool {
+	if signature == "" {
+		return false
+	}
+
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(body)
+	expected := hex.EncodeToString(mac.Sum(nil))
+
+	return hmac.Equal([]byte(signature), []byte(expected))
 }

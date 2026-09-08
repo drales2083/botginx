@@ -8,6 +8,7 @@ import (
 	"github.com/botginx/botginx/modules/auth/handlers"
 	"github.com/botginx/botginx/modules/auth/services"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/botginx/botginx/pkg/subscription"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -41,11 +42,17 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.globalWhitelist = services.NewGlobalWhitelistService(deps.DB)
 	m.Handler = handlers.NewHandler(m.service, deps.Templates)
 	m.Handler.SetGlobalWhitelistService(m.globalWhitelist)
+	m.Handler.SetDB(deps.DB)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
 
 	return nil
+}
+
+// SetSubscriptionService wires up the subscription service for self-service subscription purchase
+func (m *Module) SetSubscriptionService(s *subscription.Service) {
+	m.Handler.SetSubscriptionService(s)
 }
 
 func (m *Module) Migrate() error {
@@ -90,6 +97,7 @@ func (m *Module) SettingsRoutes() chi.Router {
 func (m *Module) SubscriptionRoutes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", m.Handler.SubscriptionPage)
+	r.Post("/api/subscribe", m.Handler.APISubscribe)
 	return r
 }
 

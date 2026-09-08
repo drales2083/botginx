@@ -45,10 +45,10 @@
         <button class="btn btn-danger btn-sm d-none" id="bulk-delete-btn">
             <i class="bi bi-trash me-1"></i><span id="selected-count">0</span> Selected — Delete
         </button>
+        {{end}}
         <a href="/user/redirectlinks/new" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-lg me-1"></i> {{t "create"}}
         </a>
-        {{end}}
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -149,9 +149,7 @@
                     <tr>
                         <td colspan="{{if $canWrite}}8{{else}}7{{end}}" class="text-center text-muted py-4">
                             No redirect links yet.
-                            {{if $canWrite}}
                             <a href="/user/redirectlinks/new">Create your first link</a>.
-                            {{end}}
                         </td>
                     </tr>
                     {{end}}

@@ -72,10 +72,110 @@
             </div>
         </div>
 
-        <div class="alert alert-info mt-4">
-            <i class="bi bi-telegram me-2"></i>
-            To subscribe, contact admin on Telegram.
+        {{if not .Subscription.Active}}
+        <div class="card mt-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0"><i class="bi bi-star me-2"></i>Subscribe Now</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <span class="h2 text-primary">${{printf "%.2f" .SubscriptionPrice}}</span>
+                            <span class="text-muted">/ {{.SubscriptionDays}} days</span>
+                        </div>
+                        <p class="text-muted mb-0">Get full access to all features</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <small class="text-muted">Your Balance</small>
+                            <div class="h4 {{if ge .Balance .SubscriptionPrice}}text-success{{else}}text-danger{{end}}">
+                                ${{printf "%.2f" .Balance}}
+                            </div>
+                        </div>
+                        {{if ge .Balance .SubscriptionPrice}}
+                        <button class="btn btn-success btn-lg w-100" id="subscribeBtn">
+                            <i class="bi bi-check-circle me-2"></i>Subscribe Now
+                        </button>
+                        {{else}}
+                        <div class="alert alert-warning mb-2 py-2">
+                            <small><i class="bi bi-exclamation-triangle me-1"></i>Insufficient balance</small>
+                        </div>
+                        <a href="/user/payments" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-wallet2 me-2"></i>Deposit Funds
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
         </div>
+        {{else if eq .Subscription.Status "expiring"}}
+        <div class="card mt-4">
+            <div class="card-header bg-warning">
+                <h5 class="card-title mb-0"><i class="bi bi-arrow-repeat me-2"></i>Renew Subscription</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <span class="h2 text-primary">${{printf "%.2f" .SubscriptionPrice}}</span>
+                            <span class="text-muted">/ {{.SubscriptionDays}} days</span>
+                        </div>
+                        <p class="text-muted mb-0">Extend your subscription before it expires</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <small class="text-muted">Your Balance</small>
+                            <div class="h4 {{if ge .Balance .SubscriptionPrice}}text-success{{else}}text-danger{{end}}">
+                                ${{printf "%.2f" .Balance}}
+                            </div>
+                        </div>
+                        {{if ge .Balance .SubscriptionPrice}}
+                        <button class="btn btn-warning btn-lg w-100" id="subscribeBtn">
+                            <i class="bi bi-arrow-repeat me-2"></i>Renew Now
+                        </button>
+                        {{else}}
+                        <div class="alert alert-warning mb-2 py-2">
+                            <small><i class="bi bi-exclamation-triangle me-1"></i>Insufficient balance</small>
+                        </div>
+                        <a href="/user/payments" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-wallet2 me-2"></i>Deposit Funds
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        <script>
+        document.getElementById('subscribeBtn')?.addEventListener('click', async function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+
+            try {
+                const res = await fetch('/user/subscription/api/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showToast('Subscription activated! Redirecting...', 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showToast(data.error || 'Failed to subscribe', 'danger');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Subscribe Now';
+                }
+            } catch (e) {
+                showToast('Network error', 'danger');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Subscribe Now';
+            }
+        });
+        </script>
 
         <div class="card mt-4">
             <div class="card-header">
@@ -84,11 +184,19 @@
             <div class="card-body">
                 <ul class="list-unstyled mb-0">
                     <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Unlimited redirect links</li>
-                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Custom domains</li>
-                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Advanced bot protection</li>
-                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Detailed analytics</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Advanced antibot engine</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>AI Bot Detection</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Advanced anti-fingerprint protection</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Auto-randomizing source code (prevents red screen)</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>150+ loading animations</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>50+ background patterns</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Premium Google Fonts</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>QR code generator with custom branding</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Country & device targeting</li>
                     <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>IP whitelists & blocklists</li>
-                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Country & device filtering</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Real-time analytics dashboard</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>Unlimited custom domains</li>
+                    <li class="mb-2"><i class="bi bi-check-lg text-success me-2"></i>SSL certificates included</li>
                 </ul>
             </div>
         </div>
