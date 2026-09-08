@@ -309,7 +309,10 @@ func main() {
 
 	// Static files (no directory listing)
 	staticSub, _ := fs.Sub(web.StaticFS, "static")
-	r.Handle("/static/*", http.StripPrefix("/static/", noDirectoryListing(http.FileServer(http.FS(staticSub)))))
+	staticHandler := http.StripPrefix("/static/", noDirectoryListing(http.FileServer(http.FS(staticSub))))
+	r.Handle("/static", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
+	r.Handle("/static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
+	r.Handle("/static/*", staticHandler)
 
 	// Health check
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -505,7 +508,8 @@ func getAppName() string {
 // noDirectoryListing wraps a file server to return 404 for directory requests
 func noDirectoryListing(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/") {
+		// Block empty path (root directory) and paths ending with /
+		if r.URL.Path == "" || r.URL.Path == "/" || strings.HasSuffix(r.URL.Path, "/") {
 			http.NotFound(w, r)
 			return
 		}
