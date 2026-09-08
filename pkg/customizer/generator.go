@@ -397,6 +397,10 @@ class URLEncoder {
     }
 
     public function encode($url) {
+        if (empty($url)) {
+            $urlVar = $this->r->varName('url');
+            return "var $urlVar='';";
+        }
         $method = rand(1, 6);
         $b64 = base64_encode($url);
 
@@ -407,6 +411,7 @@ class URLEncoder {
             case 4: return $this->reversed($b64);
             case 5: return $this->hexEncode($b64);
             case 6: return $this->doubleEncode($url);
+            default: return $this->doubleEncode($url);
         }
     }
 
@@ -474,7 +479,10 @@ $r = new SourceRandomizer();
 $encoder = new URLEncoder($r);
 `)
 
-	// URLs array
+	// URLs array - ensure at least one URL
+	if len(urls) == 0 {
+		urls = []string{"#"}
+	}
 	b.WriteString("$urls = [")
 	for i, u := range urls {
 		if i > 0 {
