@@ -369,21 +369,38 @@ func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
 
 // pushSettingsToVPS pushes the settings file to the VPS where the link is deployed
 func (h *Handler) pushSettingsToVPS(linkID string, settings *models.LinkSettings) {
-	if h.linkInfo == nil || h.servers == nil {
+	if h.servers == nil {
 		return // Dependencies not set
 	}
 
-	// Get link host and domain
-	host, domainID, err := h.linkInfo.GetLinkHost(linkID)
+	var host, domainID, userID string
+	var err error
+
+	// Try redirect links first
+	if h.linkInfo != nil {
+		host, domainID, err = h.linkInfo.GetLinkHost(linkID)
+		if err == nil && domainID != "" {
+			if h.links != nil {
+				userID, _ = h.links.OwnerOf(linkID)
+			}
+		}
+	}
+
+	// Fallback to short links if not found in redirect links
+	if (domainID == "" || err != nil) && h.shortLinks != nil {
+		var path string
+		host, path, domainID, err = h.shortLinks.GetLinkHost(linkID)
+		if err == nil && domainID != "" {
+			if path != "" {
+				host = host + "/" + path
+			}
+			userID, _ = h.shortLinks.OwnerOf(linkID)
+		}
+	}
+
 	if err != nil || domainID == "" {
 		log.Printf("Settings push: link %s not found or not deployed", linkID)
 		return
-	}
-
-	// Get user ID for IP list lookups
-	userID := ""
-	if h.links != nil {
-		userID, _ = h.links.OwnerOf(linkID)
 	}
 
 	// Get server SSH details
