@@ -9,7 +9,7 @@ type loaderData struct {
 	css      string
 }
 
-// loaders contains all 106 loader definitions
+// loaders contains all 110 loader definitions
 var loaders = map[string]loaderData{
 	// =============================================================================
 	// SPINNERS & RINGS (23)
@@ -46,8 +46,12 @@ var loaders = map[string]loaderData{
 	"spinner-triple": {
 		name:     "Spinner Triple",
 		category: "Spinners & Rings",
-		html:     `<div class="loader spinner-triple"></div>`,
-		css: `.spinner-triple{width:48px;height:48px;border:4px solid var(--secondary);border-top-color:var(--primary);border-left-color:var(--primary);border-right-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+		html:     `<div class="loader spinner-triple"><span></span><span></span><span></span></div>`,
+		css: `.spinner-triple{width:48px;height:48px;position:relative}
+.spinner-triple span{position:absolute;inset:0;border:3px solid transparent;border-radius:50%}
+.spinner-triple span:nth-child(1){border-top-color:var(--primary);animation:spin 1s linear infinite}
+.spinner-triple span:nth-child(2){border-right-color:var(--secondary);animation:spin 1.5s linear infinite reverse}
+.spinner-triple span:nth-child(3){border-bottom-color:var(--primary);animation:spin 2s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 	"spinner-dotted": {
@@ -208,6 +212,37 @@ var loaders = map[string]loaderData{
 .ring-vortex span:nth-child(1){inset:0}
 .ring-vortex span:nth-child(2){inset:8px;animation-direction:reverse;animation-duration:1.2s}
 .ring-vortex span:nth-child(3){inset:16px;animation-duration:.9s}
+@keyframes spin{to{transform:rotate(360deg)}}`,
+	},
+	"ring-segment": {
+		name:     "Ring Segment",
+		category: "Spinners & Rings",
+		html:     `<div class="loader ring-segment"></div>`,
+		css: `.ring-segment{width:48px;height:48px;border:4px solid transparent;border-top-color:var(--primary);border-right-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
+	},
+	"ring-arc": {
+		name:     "Ring Arc",
+		category: "Spinners & Rings",
+		html:     `<div class="loader ring-arc"></div>`,
+		css: `.ring-arc{width:48px;height:48px;border:4px solid transparent;border-radius:50%;border-top-color:var(--primary);animation:spin 1s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}`,
+	},
+	"ring-breathe": {
+		name:     "Ring Breathe",
+		category: "Spinners & Rings",
+		html:     `<div class="loader ring-breathe"></div>`,
+		css: `.ring-breathe{width:48px;height:48px;border:3px solid var(--primary);border-radius:50%;animation:ring-breathe 2s ease-in-out infinite}
+@keyframes ring-breathe{0%,100%{transform:scale(.8);opacity:.5}50%{transform:scale(1.1);opacity:1}}`,
+	},
+	"ring-svg": {
+		name:     "Ring SVG",
+		category: "Spinners & Rings",
+		html:     `<div class="loader ring-svg"><svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="20"></circle></svg></div>`,
+		css: `.ring-svg{width:48px;height:48px}
+.ring-svg svg{width:100%;height:100%;animation:spin 2s linear infinite}
+.ring-svg circle{fill:none;stroke:var(--primary);stroke-width:4;stroke-linecap:round;stroke-dasharray:90 150;stroke-dashoffset:0;animation:ring-dash 1.5s ease-in-out infinite}
+@keyframes ring-dash{0%{stroke-dasharray:1 150;stroke-dashoffset:0}50%{stroke-dasharray:90 150;stroke-dashoffset:-35}100%{stroke-dasharray:90 150;stroke-dashoffset:-124}}
 @keyframes spin{to{transform:rotate(360deg)}}`,
 	},
 
@@ -597,8 +632,8 @@ var loaders = map[string]loaderData{
 		name:     "Square Spin",
 		category: "Shapes & Morphing",
 		html:     `<div class="loader square-spin"></div>`,
-		css: `.square-spin{width:40px;height:40px;background:var(--primary);animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}`,
+		css: `.square-spin{width:40px;height:40px;background:var(--primary);animation:sq-spin 1.2s ease-in-out infinite}
+@keyframes sq-spin{25%{transform:perspective(100px) rotateX(180deg)}50%{transform:perspective(100px) rotateX(180deg) rotateY(180deg)}75%{transform:perspective(100px) rotateY(180deg)}100%{transform:perspective(100px) rotateX(360deg) rotateY(360deg)}}`,
 	},
 	"square-flip": {
 		name:     "Square Flip",
@@ -742,7 +777,6 @@ var loaders = map[string]loaderData{
 .infinity span{position:absolute;width:12px;height:12px;background:var(--primary);border-radius:50%;animation:infinity 2s linear infinite}
 @keyframes infinity{0%{left:4px;top:10px}25%{left:calc(50% - 6px);top:0}50%{left:calc(100% - 16px);top:10px}75%{left:calc(50% - 6px);top:20px}100%{left:4px;top:10px}}`,
 	},
-
 	// =============================================================================
 	// PULSE & GLOW (13)
 	// =============================================================================
@@ -971,39 +1005,38 @@ var loaders = map[string]loaderData{
 		name:     "Google Dots",
 		category: "Brand Inspired",
 		html:     `<div class="loader google-dots"><span></span><span></span><span></span><span></span></div>`,
-		css: `.google-dots{display:flex;gap:6px}
-.google-dots span{width:12px;height:12px;border-radius:50%;animation:google-bounce 1.4s ease-in-out infinite}
-.google-dots span:nth-child(1){background:var(--primary);animation-delay:0s}
-.google-dots span:nth-child(2){background:var(--secondary);animation-delay:.2s}
-.google-dots span:nth-child(3){background:var(--primary);animation-delay:.4s}
-.google-dots span:nth-child(4){background:var(--secondary);animation-delay:.6s}
-@keyframes google-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}`,
+		css: `.google-dots{display:flex;gap:8px}
+.google-dots span{width:12px;height:12px;border-radius:50%;animation:g-dots 1.4s ease-in-out infinite both}
+.google-dots span:nth-child(1){background:#4285f4;animation-delay:-.32s}
+.google-dots span:nth-child(2){background:#ea4335;animation-delay:-.16s}
+.google-dots span:nth-child(3){background:#fbbc04}
+.google-dots span:nth-child(4){background:#34a853;animation-delay:.16s}
+@keyframes g-dots{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}`,
 	},
 	"spotify-bars": {
 		name:     "Spotify Bars",
 		category: "Brand Inspired",
 		html:     `<div class="loader spotify-bars"><span></span><span></span><span></span><span></span><span></span></div>`,
-		css: `.spotify-bars{display:flex;gap:3px;align-items:flex-end;height:40px}
-.spotify-bars span{width:5px;background:var(--primary);border-radius:2px;animation:spotify-bar .8s ease-in-out infinite}
+		css: `.spotify-bars{display:flex;gap:4px;height:40px;align-items:flex-end}
+.spotify-bars span{width:6px;background:#1db954;border-radius:2px;animation:s-bars 1.2s ease-in-out infinite}
 .spotify-bars span:nth-child(1){animation-delay:0s}
 .spotify-bars span:nth-child(2){animation-delay:.1s}
 .spotify-bars span:nth-child(3){animation-delay:.2s}
 .spotify-bars span:nth-child(4){animation-delay:.3s}
 .spotify-bars span:nth-child(5){animation-delay:.4s}
-@keyframes spotify-bar{0%,100%{height:10px}50%{height:40px}}`,
+@keyframes s-bars{0%,100%{height:10px}50%{height:40px}}`,
 	},
 	"microsoft-squares": {
 		name:     "Microsoft Squares",
 		category: "Brand Inspired",
 		html:     `<div class="loader microsoft-squares"><span></span><span></span><span></span><span></span></div>`,
-		css: `.microsoft-squares{display:grid;grid-template-columns:20px 20px;gap:4px;animation:ms-rotate 3s linear infinite}
-.microsoft-squares span{width:20px;height:20px;animation:ms-fade 1.5s ease-in-out infinite}
-.microsoft-squares span:nth-child(1){background:var(--primary);animation-delay:0s}
-.microsoft-squares span:nth-child(2){background:var(--secondary);animation-delay:.2s}
-.microsoft-squares span:nth-child(3){background:var(--secondary);animation-delay:.6s}
-.microsoft-squares span:nth-child(4){background:var(--primary);animation-delay:.4s}
-@keyframes ms-rotate{to{transform:rotate(360deg)}}
-@keyframes ms-fade{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.9)}}`,
+		css: `.microsoft-squares{width:48px;height:48px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.microsoft-squares span{animation:ms-sq 2s ease-in-out infinite}
+.microsoft-squares span:nth-child(1){background:#f25022}
+.microsoft-squares span:nth-child(2){background:#7fba00;animation-delay:.2s}
+.microsoft-squares span:nth-child(3){background:#00a4ef;animation-delay:.4s}
+.microsoft-squares span:nth-child(4){background:#ffb900;animation-delay:.6s}
+@keyframes ms-sq{0%,100%{transform:scale(1)}50%{transform:scale(.8)}}`,
 	},
 	"apple-spinner": {
 		name:     "Apple Spinner",
