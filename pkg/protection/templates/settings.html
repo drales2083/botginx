@@ -356,13 +356,23 @@
         <div class="tab-pane prot-section" id="prot-tab-detection" role="tabpanel">
             <div class="mb-4">
                 <label class="form-label text-muted small text-uppercase mb-2">Challenge Template</label>
-                <select class="form-select" id="prot-template" style="max-width: 300px;">
-                    <option value="">Use Global Default</option>
-                    <option value="cloudflare">Cloudflare Style</option>
-                    <option value="humancheck">Human Check</option>
-                    <option value="humansecurity">Human Security (Press & Hold)</option>
-                </select>
-                <small class="text-muted">Challenge page style shown to suspicious visitors</small>
+                <div class="row g-3">
+                    <div class="col-auto">
+                        <select class="form-select" id="prot-template" style="min-width: 250px;" onchange="protUpdateTemplatePreview()">
+                            <option value="">Use Global Default</option>
+                            <option value="cloudflare">Cloudflare Style</option>
+                            <option value="humancheck">Human Check</option>
+                            <option value="humansecurity">Human Security (Press & Hold)</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">Challenge page shown to suspicious visitors</small>
+                    </div>
+                    <div class="col" id="prot-template-preview-col" style="display:none;">
+                        <div class="border rounded p-2 bg-dark" style="max-width: 280px;">
+                            <img id="prot-template-preview" src="" alt="Template Preview"
+                                 style="width: 100%; border-radius: 4px; display: block;">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="mb-4">
@@ -520,6 +530,23 @@
             }
         });
     }
+
+    // Template preview
+    window.protUpdateTemplatePreview = function() {
+        const select = document.getElementById('prot-template');
+        const previewCol = document.getElementById('prot-template-preview-col');
+        const previewImg = document.getElementById('prot-template-preview');
+        if (!select || !previewCol || !previewImg) return;
+
+        const value = select.value;
+        if (value && ['cloudflare', 'humancheck', 'humansecurity'].includes(value)) {
+            previewImg.src = '/static/img/templates/' + value + '.gif';
+            previewCol.style.display = '';
+        } else {
+            previewCol.style.display = 'none';
+            previewImg.src = '';
+        }
+    };
 
     // Render countries
     function protRenderCountries(containerId, type) {
@@ -695,7 +722,10 @@
             // Template
             if (data.template !== undefined) {
                 const el = document.getElementById('prot-template');
-                if (el) el.value = data.template;
+                if (el) {
+                    el.value = data.template;
+                    protUpdateTemplatePreview();
+                }
             }
 
             // Detection toggles
