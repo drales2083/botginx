@@ -190,8 +190,8 @@
 <div class="prot-container" id="prot-container">
     <ul class="nav prot-tabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <a class="nav-link active" data-bs-toggle="tab" href="#prot-tab-networks" role="tab">
-                <i class="bi bi-diagram-3 me-1"></i>IP & Networks
+            <a class="nav-link active" data-bs-toggle="tab" href="#prot-tab-detection" role="tab">
+                <i class="bi bi-sliders me-1"></i>Detection
             </a>
         </li>
         <li class="nav-item" role="presentation">
@@ -205,15 +205,15 @@
             </a>
         </li>
         <li class="nav-item" role="presentation">
-            <a class="nav-link" data-bs-toggle="tab" href="#prot-tab-detection" role="tab">
-                <i class="bi bi-sliders me-1"></i>Detection
+            <a class="nav-link" data-bs-toggle="tab" href="#prot-tab-networks" role="tab">
+                <i class="bi bi-diagram-3 me-1"></i>IP & Networks
             </a>
         </li>
     </ul>
 
     <div class="tab-content">
         <!-- IP & Networks Tab -->
-        <div class="tab-pane active show prot-section" id="prot-tab-networks" role="tabpanel">
+        <div class="tab-pane prot-section" id="prot-tab-networks" role="tabpanel">
             <div class="row g-3">
                 <div class="col-lg-6">
                     <div class="prot-card">
@@ -356,7 +356,7 @@
         </div>
 
         <!-- Detection Tab -->
-        <div class="tab-pane prot-section" id="prot-tab-detection" role="tabpanel">
+        <div class="tab-pane active show prot-section" id="prot-tab-detection" role="tabpanel">
             <div class="mb-4">
                 <label class="form-label text-muted small text-uppercase mb-2">Challenge Template</label>
                 <div class="row g-3">
