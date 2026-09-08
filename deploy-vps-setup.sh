@@ -37,10 +37,10 @@ echo "VPS IP: $VPS_IP"
 echo ""
 echo "[1/5] Installing system packages..."
 apt-get update -qq
-apt-get install -y -qq nginx redis-server jq curl certbot python3-certbot-nginx ufw cron git
+apt-get install -y -qq nginx redis-server jq curl certbot python3-certbot-nginx ufw cron git php-fpm
 
-systemctl enable nginx redis-server cron
-systemctl start nginx redis-server cron
+systemctl enable nginx redis-server cron php8.3-fpm
+systemctl start nginx redis-server cron php8.3-fpm
 
 # Install lego (for wildcard SSL via DNS-01 challenge)
 echo "Installing lego ACME client..."
@@ -166,7 +166,7 @@ server {
     }
 
     root /var/www/sites/$site_domain/$site_subdomain;
-    index index.html;
+    index index.php index.html;
 
     # ACME challenge for SSL
     location /.well-known/acme-challenge/ {
@@ -180,8 +180,21 @@ server {
         return 200 '{"verified":true}';
     }
 
+    # PHP processing for randomized redirect pages
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
     location / {
-        try_files $uri $uri/ /index.html =404;
+        # Try exact file, directory, then PHP index, then HTML index
+        try_files $uri $uri/ @php;
+    }
+
+    location @php {
+        # Rewrite to index.php for PHP processing
+        rewrite ^ /index.php last;
     }
 }
 NGINXEOF
@@ -280,6 +293,7 @@ echo "[5/5] Verifying installation..."
 echo ""
 echo "Services:"
 echo "  Nginx:     $(systemctl is-active nginx)"
+echo "  PHP-FPM:   $(systemctl is-active php8.3-fpm)"
 echo "  Redis:     $(systemctl is-active redis-server)"
 echo "  acme-dns:  $(systemctl is-active acme-dns)"
 
