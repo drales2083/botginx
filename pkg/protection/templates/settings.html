@@ -366,6 +366,7 @@
                             <option value="cloudflare">Cloudflare Style</option>
                             <option value="humancheck">Human Check</option>
                             <option value="humansecurity">Human Security (Press & Hold)</option>
+                            <option value="slidepuzzle">Slide Puzzle (GeeTest Style)</option>
                         </select>
                         <small class="text-muted d-block mt-1">Challenge page shown to suspicious visitors</small>
                     </div>
@@ -548,7 +549,7 @@
         if (!select || !previewCol || !previewImg) return;
 
         const value = select.value;
-        if (value && ['cloudflare', 'humancheck', 'humansecurity'].includes(value)) {
+        if (value && ['cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle'].includes(value)) {
             const imgUrl = '/static/img/templates/' + value + '.gif';
             previewImg.src = imgUrl;
             if (previewLink) previewLink.href = imgUrl;
