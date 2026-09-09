@@ -239,6 +239,13 @@ ufw allow 443/tcp >/dev/null
 ufw --force enable >/dev/null
 echo "  Firewall enabled (SSH + DNS + HTTP/HTTPS)"
 
+# Add cron job to ensure port 53 stays open for acme-dns
+cat > /etc/cron.d/check-acmedns-firewall << 'CRONEOF'
+# Check every hour that port 53 is open for acme-dns
+0 * * * * root ufw status | grep -q '53/udp.*ALLOW' || (ufw allow 53/udp && ufw allow 53/tcp && logger 'Fixed missing port 53 firewall rule')
+CRONEOF
+chmod 644 /etc/cron.d/check-acmedns-firewall
+
 # =============================================================================
 # 4. Add-site helper script
 # =============================================================================
