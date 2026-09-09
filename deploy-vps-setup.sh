@@ -215,6 +215,35 @@ echo "<h1>Redirect Server</h1><p>Site not configured</p>" > "$SITES_DIR/default/
 # Remove default nginx site
 rm -f /etc/nginx/sites-enabled/default
 
+# Create self-signed cert for default SSL (rejects unknown domains)
+mkdir -p /etc/nginx/ssl
+if [ ! -f /etc/nginx/ssl/default.pem ]; then
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout /etc/nginx/ssl/default.key \
+        -out /etc/nginx/ssl/default.pem \
+        -subj '/CN=invalid.local' 2>/dev/null
+    echo "  Created default SSL certificate"
+fi
+
+# Default SSL server - prevents serving wrong cert for unconfigured domains
+cat > /etc/nginx/sites-available/default-ssl.conf << 'NGINXEOF'
+# Default SSL handler - rejects requests for unconfigured domains
+# Without this, nginx serves the first SSL cert it finds (wrong!)
+server {
+    listen 443 ssl default_server;
+    server_name _;
+
+    ssl_certificate /etc/nginx/ssl/default.pem;
+    ssl_certificate_key /etc/nginx/ssl/default.key;
+
+    # Return 444 (close connection) for unknown domains
+    # This prevents leaking other domains' certificates
+    return 444;
+}
+NGINXEOF
+
+ln -sf /etc/nginx/sites-available/default-ssl.conf /etc/nginx/sites-enabled/
+
 # Create botection link settings directory (for when botection is installed)
 mkdir -p /etc/botection/links
 

@@ -18,7 +18,13 @@
                     <select class="form-select" id="domainId" required>
                         <option value="">Select domain...</option>
                         {{range .Domains}}
+                        {{if and .DNSVerified .SSLEnabled}}
                         <option value="{{.ID}}">{{.Name}}</option>
+                        {{else if not .DNSVerified}}
+                        <option value="" disabled class="text-muted">{{.Name}} (DNS pending)</option>
+                        {{else}}
+                        <option value="" disabled class="text-muted">{{.Name}} (no SSL)</option>
+                        {{end}}
                         {{end}}
                     </select>
                 </div>
