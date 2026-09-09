@@ -280,7 +280,7 @@ func (h *Handler) APIBulkDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Context().Value("userID").(string)
+	userID := ctx.GetUserID(r)
 	deleted := 0
 	failed := 0
 
