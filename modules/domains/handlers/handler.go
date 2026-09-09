@@ -377,25 +377,38 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Detect if this domain needs external setup wizard
-	// Wildcard domains always need DNS-01 challenge (external setup)
+	// Wildcard domains need DNS-01 challenge via acme-dns
+	// Auto-register with acme-dns to simplify setup
 	needsSetupWizard := false
+	var cnameTarget string
 	if domain.IsWildcard {
 		needsSetupWizard = true
 		// Update domain to mark as external setup pending
-		// User must click "Get SSL Token" to start lego challenge
 		setupType := models.SetupTypeExternal
 		setupStep := models.SetupStepDNSWaiting
 		h.service.Update(domain.ID, models.UpdateDomainInput{
 			SetupType: &setupType,
 			SetupStep: &setupStep,
 		})
+
+		// Auto-register with acme-dns
+		reg, err := h.service.RegisterWithAcmeDNS(domain.ID)
+		if err != nil {
+			log.Printf("[domains] auto acme-dns registration failed for %s: %v", domain.Name, err)
+		} else {
+			cnameTarget = reg.Fulldomain
+			log.Printf("[domains] auto-registered %s with acme-dns: %s", domain.Name, cnameTarget)
+		}
 	}
 
-	h.json(w, http.StatusCreated, map[string]interface{}{
-		"domain":            domain,
+	resp := map[string]interface{}{
+		"domain":           domain,
 		"needsSetupWizard": needsSetupWizard,
-	})
+	}
+	if cnameTarget != "" {
+		resp["cnameTarget"] = cnameTarget
+	}
+	h.json(w, http.StatusCreated, resp)
 }
 
 func (h *Handler) APIGet(w http.ResponseWriter, r *http.Request) {
