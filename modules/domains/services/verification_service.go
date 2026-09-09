@@ -408,6 +408,13 @@ func (s *VerificationService) GenerateWildcardSSLWithAcmeDNS(domain, acmeSubdoma
 		return nil // Already have cert
 	}
 
+	// Verify acme-dns is running before attempting SSL generation
+	acmeCheck, _ := client.Run("curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8053/health 2>/dev/null || echo '000'")
+	acmeCheck = strings.TrimSpace(acmeCheck)
+	if acmeCheck == "000" {
+		return fmt.Errorf("acme-dns service is not running on this server. Please contact support")
+	}
+
 	// Create auth hook that updates acme-dns TXT record
 	// X-Api-User must be the username from acme-dns registration
 	authHookScript := fmt.Sprintf(`cat > /tmp/acmedns-auth-hook.sh << 'HOOKEOF'
