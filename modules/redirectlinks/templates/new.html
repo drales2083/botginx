@@ -40,9 +40,9 @@
                                 <option value="{{.ID}}">{{.Name}}{{if .IsShared}} (shared){{end}}</option>
                                 {{end}}
                                 {{end}}
-                                {{/* Inactive domains below */}}
+                                {{/* Inactive own domains below (shared domains hidden if not ready) */}}
                                 {{range .Domains}}
-                                {{if not (and .DNSVerified .SSLEnabled)}}
+                                {{if and (not (and .DNSVerified .SSLEnabled)) (not .IsShared)}}
                                 {{if not .DNSVerified}}
                                 <option value="" disabled class="text-muted">{{.Name}} (DNS pending)</option>
                                 {{else}}
