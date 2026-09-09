@@ -350,8 +350,13 @@ func GeneratePHP(opts GenerateOptions) string {
 
 	var b strings.Builder
 
-	// PHP header with randomizer classes
+	// PHP header with cache prevention and randomizer classes
 	b.WriteString(`<?php
+// Prevent browser caching of dynamically-generated content
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 class SourceRandomizer {
     private $seed;
     private $classMap = [];
