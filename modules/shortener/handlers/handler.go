@@ -28,12 +28,18 @@ type ServerPool interface {
 	PickRandom() (*servermodels.Server, error)
 }
 
+// ServerProvider returns SSH credentials for a domain's server (for cleanup)
+type ServerProvider interface {
+	GetServerForDomain(domainID string) (ip string, port int, user, password string, err error)
+}
+
 type Handler struct {
-	service   *services.ShortenerService
-	templates *module.TemplateEngine
-	domains   DomainProvider
-	servers   ServerPool
-	pusher    *settingspush.Pusher
+	service        *services.ShortenerService
+	templates      *module.TemplateEngine
+	domains        DomainProvider
+	servers        ServerPool
+	serverProvider ServerProvider
+	pusher         *settingspush.Pusher
 }
 
 func NewHandler(service *services.ShortenerService, templates *module.TemplateEngine, domains DomainProvider, servers ServerPool) *Handler {
@@ -44,6 +50,11 @@ func NewHandler(service *services.ShortenerService, templates *module.TemplateEn
 		servers:   servers,
 		pusher:    settingspush.New(),
 	}
+}
+
+// SetServerProvider sets the server provider for VPS cleanup (called after init)
+func (h *Handler) SetServerProvider(sp ServerProvider) {
+	h.serverProvider = sp
 }
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {
@@ -247,12 +258,105 @@ func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Cleanup VPS files (async, don't block response)
+	go h.cleanupVPS(link)
+
 	if err := h.service.Delete(id); err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	h.json(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// cleanupVPS removes deployed files from the Deploy VPS
+func (h *Handler) cleanupVPS(link *models.ShortLink) {
+	if h.serverProvider == nil {
+		return
+	}
+
+	// Get server SSH details
+	ip, port, user, password, err := h.serverProvider.GetServerForDomain(link.DomainID)
+	if err != nil || ip == "" {
+		log.Printf("[cleanup] no server found for domain %s", link.DomainID)
+		return
+	}
+
+	// Connect to server
+	portStr := fmt.Sprintf("%d", port)
+	if port == 0 {
+		portStr = "22"
+	}
+
+	client, err := sshexec.NewClient(ip, portStr, user, password)
+	if err != nil {
+		log.Printf("[cleanup] failed to connect to %s: %v", ip, err)
+		return
+	}
+	defer client.Close()
+
+	baseDomain := link.BaseDomain()
+	subdomain := link.Subdomain
+
+	// Delete botection settings file
+	settingsPath := fmt.Sprintf("/etc/botection/links/%s.json", link.ID)
+	if _, err := client.Run(fmt.Sprintf("rm -f %s", settingsPath)); err == nil {
+		log.Printf("[cleanup] deleted botection settings: %s", settingsPath)
+	}
+
+	// Delete site directory for this link
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", baseDomain, subdomain)
+	if _, err := client.Run(fmt.Sprintf("rm -rf %s", siteDir)); err == nil {
+		log.Printf("[cleanup] deleted site directory: %s", siteDir)
+	}
+
+	// Clean up empty parent directory if no other links exist
+	parentDir := fmt.Sprintf("/var/www/sites/%s", baseDomain)
+	client.Run(fmt.Sprintf("rmdir %s 2>/dev/null || true", parentDir))
+}
+
+// APIBulkDelete deletes multiple short links at once
+func (h *Handler) APIBulkDelete(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(input.IDs) == 0 {
+		h.jsonError(w, "No IDs provided", http.StatusBadRequest)
+		return
+	}
+
+	userID := ctx.GetUserID(r)
+	deleted := 0
+
+	for _, id := range input.IDs {
+		// Get link and verify ownership
+		link, err := h.service.Get(id)
+		if err != nil {
+			continue // Skip if not found
+		}
+		if link.UserID != userID {
+			continue // Skip if not owner
+		}
+
+		// Cleanup VPS files (async per link)
+		go h.cleanupVPS(link)
+
+		// Delete from database
+		if err := h.service.Delete(id); err != nil {
+			continue
+		}
+		deleted++
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"deleted": deleted,
+		"total":   len(input.IDs),
+	})
 }
 
 func (h *Handler) APIRandomPath(w http.ResponseWriter, r *http.Request) {

@@ -281,6 +281,7 @@ func main() {
 	analyticsModule.SetHostingVisitRecorder(&hostingVisitRecorderAdapter{hosting: hostingModule})
 	analyticsModule.SetShortLinkResolver(shortenerModule)
 	redirectLinksModule.SetServerProvider(serversModule)
+	shortenerModule.SetServerProvider(serversModule)
 	iplistsModule.SetServerProvider(&iplistServerAdapter{servers: serversModule})
 	hostingModule.SetPaymentProcessor(referralsModule)  // Referral commissions on hosting payments
 	authModule.SetSubscriptionService(subscriptions)    // Self-service subscription purchase

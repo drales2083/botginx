@@ -92,6 +92,7 @@ func (m *Module) Routes() chi.Router {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/", m.handler.APIList)
 		r.Post("/", m.handler.APICreate)
+		r.Post("/bulk-delete", m.handler.APIBulkDelete)
 		r.Get("/random-path", m.handler.APIRandomPath)
 		r.Get("/random-subdomain", m.handler.APIRandomSubdomain)
 		r.Get("/check-path", m.handler.APICheckPath)
@@ -123,6 +124,11 @@ func (m *Module) MenuItems() []module.MenuItem {
 
 func (m *Module) Widgets() []module.Widget {
 	return nil
+}
+
+// SetServerProvider sets the server provider for VPS cleanup (called after init)
+func (m *Module) SetServerProvider(sp handlers.ServerProvider) {
+	m.handler.SetServerProvider(sp)
 }
 
 // ShortLinkResolver interface implementation for analytics integration

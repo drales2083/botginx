@@ -1,9 +1,14 @@
 {{define "content"}}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Short Links</h4>
-    <a href="/user/shortener/new" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i>Create Short Link
-    </a>
+    <div class="d-flex gap-2">
+        <button class="btn btn-danger btn-sm d-none" id="bulk-delete-btn">
+            <i class="bi bi-trash me-1"></i><span id="selected-count">0</span> Selected — Delete
+        </button>
+        <a href="/user/shortener/new" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Create Short Link
+        </a>
+    </div>
 </div>
 
 <div class="card">
@@ -11,6 +16,9 @@
         <table class="table table-hover" id="links-table">
             <thead>
                 <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" class="form-check-input" id="select-all" title="Select all">
+                    </th>
                     <th>Short Link</th>
                     <th>Destination(s)</th>
                     <th>Clicks</th>
@@ -24,6 +32,9 @@
             <tbody>
                 {{range .Links}}
                 <tr>
+                    <td>
+                        <input type="checkbox" class="form-check-input row-checkbox" data-id="{{.ID}}">
+                    </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             <a href="{{.FullURL}}" target="_blank" class="text-primary text-decoration-none">
@@ -85,7 +96,7 @@
                 </tr>
                 {{else}}
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-5">
+                    <td colspan="9" class="text-center text-muted py-5">
                         <i class="bi bi-link-45deg" style="font-size: 3rem; opacity: 0.3;"></i>
                         <div class="mt-2">No short links yet</div>
                         <a href="/user/shortener/new" class="btn btn-primary btn-sm mt-3">
@@ -121,6 +132,28 @@
     </div>
 </div>
 
+<!-- Bulk Delete Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Multiple Links</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="bulk-count">0</strong> short links?</p>
+                <p class="text-muted small mb-0">This action cannot be undone. All files will be removed from servers.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">
+                    <i class="bi bi-trash me-1"></i>Delete All Selected
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
@@ -146,6 +179,85 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', async () =
         showToast(data.error || 'Failed to delete', 'danger');
     }
     bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+});
+
+// Bulk selection
+let selectedIds = new Set();
+
+const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+const selectAllCheckbox = document.getElementById('select-all');
+
+function updateBulkUI() {
+    const count = selectedIds.size;
+    document.getElementById('selected-count').textContent = count;
+    bulkDeleteBtn.classList.toggle('d-none', count === 0);
+}
+
+function updateSelectAllState() {
+    const allCheckboxes = document.querySelectorAll('.row-checkbox');
+    const checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = checkedCount > 0 && checkedCount === allCheckboxes.length;
+        selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
+    }
+}
+
+document.querySelectorAll('.row-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => {
+        const id = cb.dataset.id;
+        if (cb.checked) {
+            selectedIds.add(id);
+        } else {
+            selectedIds.delete(id);
+        }
+        updateBulkUI();
+        updateSelectAllState();
+    });
+});
+
+if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', () => {
+        const allCheckboxes = document.querySelectorAll('.row-checkbox');
+        allCheckboxes.forEach(cb => {
+            cb.checked = selectAllCheckbox.checked;
+            if (selectAllCheckbox.checked) {
+                selectedIds.add(cb.dataset.id);
+            } else {
+                selectedIds.delete(cb.dataset.id);
+            }
+        });
+        updateBulkUI();
+    });
+}
+
+bulkDeleteBtn.addEventListener('click', () => {
+    document.getElementById('bulk-count').textContent = selectedIds.size;
+    new bootstrap.Modal(document.getElementById('bulkDeleteModal')).show();
+});
+
+document.getElementById('confirmBulkDeleteBtn').addEventListener('click', async () => {
+    if (selectedIds.size === 0) return;
+
+    const btn = document.getElementById('confirmBulkDeleteBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+
+    const res = await fetch('/user/shortener/api/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) })
+    });
+
+    if (res.ok) {
+        const data = await res.json();
+        showToast(`Deleted ${data.deleted} links`, 'success');
+        location.reload();
+    } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to delete', 'danger');
+    }
+    bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal')).hide();
 });
 
 // Initialize DataTable
