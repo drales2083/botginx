@@ -34,13 +34,20 @@
                             <label for="domainId" class="form-label">{{t "domains.title"}}</label>
                             <select class="form-select" id="domainId" name="domainId" required>
                                 <option value="">Select domain...</option>
+                                {{/* Active domains first */}}
                                 {{range .Domains}}
                                 {{if and .DNSVerified .SSLEnabled}}
                                 <option value="{{.ID}}">{{.Name}}{{if .IsShared}} (shared){{end}}</option>
-                                {{else if not .DNSVerified}}
+                                {{end}}
+                                {{end}}
+                                {{/* Inactive domains below */}}
+                                {{range .Domains}}
+                                {{if not (and .DNSVerified .SSLEnabled)}}
+                                {{if not .DNSVerified}}
                                 <option value="" disabled class="text-muted">{{.Name}} (DNS pending)</option>
                                 {{else}}
                                 <option value="" disabled class="text-muted">{{.Name}} (no SSL)</option>
+                                {{end}}
                                 {{end}}
                                 {{end}}
                             </select>
