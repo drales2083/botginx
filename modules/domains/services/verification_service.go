@@ -409,15 +409,23 @@ func (s *VerificationService) GenerateWildcardSSLWithAcmeDNS(domain, acmeSubdoma
 	}
 
 	// Create auth hook that updates acme-dns TXT record
-	// X-Api-User must be the username (not subdomain) from acme-dns registration
+	// X-Api-User must be the username from acme-dns registration
 	authHookScript := fmt.Sprintf(`cat > /tmp/acmedns-auth-hook.sh << 'HOOKEOF'
 #!/bin/bash
 # Update acme-dns TXT record via API
-curl -s -X POST http://127.0.0.1:8053/update \
+RESPONSE=$(curl -s -w "\n%%{http_code}" -X POST http://127.0.0.1:8053/update \
     -H "X-Api-User: %s" \
     -H "X-Api-Key: %s" \
     -H "Content-Type: application/json" \
-    -d "{\"subdomain\":\"%s\",\"txt\":\"$CERTBOT_VALIDATION\"}"
+    -d "{\"subdomain\":\"%s\",\"txt\":\"$CERTBOT_VALIDATION\"}")
+
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+BODY=$(echo "$RESPONSE" | head -n -1)
+
+if [ "$HTTP_CODE" != "200" ]; then
+    echo "acme-dns update failed: HTTP $HTTP_CODE - $BODY" >&2
+    exit 1
+fi
 
 # Wait for DNS propagation (acme-dns is instant, but give it a moment)
 sleep 5
