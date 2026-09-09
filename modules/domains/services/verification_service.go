@@ -1065,8 +1065,9 @@ func parseCertbotError(output string) string {
 	case strings.Contains(output, "Timeout during connect"):
 		return "Connection timeout. The server could not reach the certificate authority."
 
-	case strings.Contains(output, "too many certificates") || strings.Contains(output, "rate limit"):
-		return "Rate limit reached. Too many certificate requests for this domain. Please wait 1 hour and try again."
+	case strings.Contains(output, "too many certificates") || strings.Contains(output, "rate limit") ||
+		strings.Contains(output, "rateLimited") || strings.Contains(output, "too many failed authorizations"):
+		return "Rate limit reached. Too many failed attempts for this domain. Please wait 1 hour and try again."
 
 	case strings.Contains(output, "propagation timeout") || strings.Contains(output, "timeout after"):
 		return "DNS propagation timeout. The TXT record was not detected within 10 minutes. Please verify the record is correct and try again."
