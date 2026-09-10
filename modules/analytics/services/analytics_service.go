@@ -406,21 +406,24 @@ func (s *AnalyticsService) GetLinkSettings(linkID string) (*models.LinkSettings,
 	var settings models.LinkSettings
 	err := s.db.Get(&settings, `SELECT * FROM link_settings WHERE link_id = $1`, linkID)
 	if err != nil {
-		// Default settings: bot protection enabled, redirect to Google
+		// Default settings: challenge over block (Tor/VPN/Datacenter see challenge, not block)
 		return &models.LinkSettings{
-			LinkID:          linkID,
-			CountryMode:     "allow",
-			CountryList:     []string{},
-			ASNMode:         "allow",
-			ASNList:         []string{},
-			DeviceMode:      "allow",
-			DeviceList:      []string{},
-			BlockBots:       true,
-			BlockTor:        true,
-			BlockProxy:      true,
-			BlockDatacenter: true,
-			BlockHeadless:   true,
-			RedirectOnBlock: "https://www.google.com",
+			LinkID:           linkID,
+			Template:         "cloudflare",
+			ThemeMode:        "auto",
+			CountryMode:      "",
+			CountryList:      []string{},
+			ASNMode:          "",
+			ASNList:          []string{},
+			DeviceMode:       "",
+			DeviceList:       []string{},
+			BlockBots:        true,
+			BlockTor:         false,
+			BlockProxy:       false,
+			BlockDatacenter:  false,
+			BlockHeadless:    true,
+			MinBehaviorScore: 0,
+			RedirectOnBlock:  "",
 		}, nil
 	}
 
