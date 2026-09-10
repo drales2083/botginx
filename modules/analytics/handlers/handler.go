@@ -235,9 +235,26 @@ func (h *Handler) LinkSettings(w http.ResponseWriter, r *http.Request) {
 	linkID := chi.URLParam(r, "linkId")
 	settings, _ := h.service.GetLinkSettings(linkID)
 
+	// Get link URL for copy/open buttons
+	var linkURL string
+	if h.linkInfo != nil {
+		if host, _, err := h.linkInfo.GetLinkHost(linkID); err == nil && host != "" {
+			linkURL = "https://" + host
+		}
+	}
+	if linkURL == "" && h.shortLinks != nil {
+		if host, path, _, err := h.shortLinks.GetLinkHost(linkID); err == nil && host != "" {
+			linkURL = "https://" + host
+			if path != "" {
+				linkURL += "/" + path
+			}
+		}
+	}
+
 	module.RenderUserSection(w, r, h.templates, "analytics:settings.html", map[string]interface{}{
 		"Title":    "Link Settings",
 		"LinkID":   linkID,
+		"LinkURL":  linkURL,
 		"Settings": settings,
 	})
 }

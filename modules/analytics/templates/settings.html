@@ -1,14 +1,26 @@
 {{define "content"}}
 <div class="row mb-3">
-    <div class="col-12">
+    <div class="col">
         <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
+            <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="/user/redirectlinks">Links</a></li>
                 <li class="breadcrumb-item"><a href="/user/analytics/link/{{.LinkID}}">Analytics</a></li>
                 <li class="breadcrumb-item active">Traffic Settings</li>
             </ol>
         </nav>
     </div>
+    {{if .LinkURL}}
+    <div class="col-auto">
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" onclick="copyLinkURL()" title="Copy link URL">
+                <i class="bi bi-clipboard me-1"></i>Copy URL
+            </button>
+            <a href="{{.LinkURL}}" target="_blank" class="btn btn-outline-secondary" title="Open in new tab">
+                <i class="bi bi-box-arrow-up-right me-1"></i>Open
+            </a>
+        </div>
+    </div>
+    {{end}}
 </div>
 
 <div class="card">
@@ -26,6 +38,16 @@
 </div>
 
 <script>
+// Copy link URL
+function copyLinkURL() {
+    const url = '{{.LinkURL}}';
+    navigator.clipboard.writeText(url).then(() => {
+        showToast('URL copied to clipboard', 'success');
+    }).catch(() => {
+        showToast('Failed to copy URL', 'danger');
+    });
+}
+
 // Initialize protection settings with existing data
 document.addEventListener('DOMContentLoaded', () => {
     const settings = {{json .Settings}};
