@@ -102,7 +102,7 @@ type Conversion struct {
 type LinkSettings struct {
 	ID                 string    `db:"id" json:"id"`
 	LinkID             string    `db:"link_id" json:"linkId"`
-	Template           string    `db:"template" json:"template"`     // Challenge template: cloudflare, humancheck, humansecurity, slidepuzzle, smartpuzzle
+	Template           string    `db:"template" json:"template"`     // Challenge template: cloudflare, humancheck, humansecurity, slidepuzzle, smartpuzzle, simple
 	ThemeMode          string    `db:"theme_mode" json:"themeMode"`  // Theme: auto, light, dark
 	CountryMode        string    `db:"country_mode" json:"countryMode"`
 	CountryList        []string  `json:"countryList"`
