@@ -28,11 +28,16 @@
         {{template "protection-settings" .}}
 
         <hr class="my-4">
-        <div class="d-flex gap-2">
-            <button type="button" class="btn btn-primary" id="save-btn">
-                <i class="bi bi-check-lg me-1"></i>Save Settings
+        <div class="d-flex justify-content-between">
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary" id="save-btn">
+                    <i class="bi bi-check-lg me-1"></i>Save Settings
+                </button>
+                <a href="/user/analytics/link/{{.LinkID}}" class="btn btn-secondary">Cancel</a>
+            </div>
+            <button type="button" class="btn btn-outline-danger" id="delete-btn" onclick="deleteLink()">
+                <i class="bi bi-trash me-1"></i>Delete Link
             </button>
-            <a href="/user/analytics/link/{{.LinkID}}" class="btn btn-secondary">Cancel</a>
         </div>
     </div>
 </div>
@@ -46,6 +51,47 @@ function copyLinkURL() {
     }).catch(() => {
         showToast('Failed to copy URL', 'danger');
     });
+}
+
+// Delete link
+async function deleteLink() {
+    if (!confirm('Are you sure you want to delete this link? This will remove all deployed files and cannot be undone.')) {
+        return;
+    }
+
+    const btn = document.getElementById('delete-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+
+    try {
+        // Determine API endpoint based on link type
+        const linkType = '{{.LinkType}}';
+        let apiUrl;
+        let redirectUrl;
+        if (linkType === 'shortener') {
+            apiUrl = '/user/shortener/api/{{.LinkID}}';
+            redirectUrl = '/user/shortener';
+        } else {
+            apiUrl = '/user/redirectlinks/api/{{.LinkID}}';
+            redirectUrl = '/user/redirectlinks';
+        }
+
+        const res = await fetch(apiUrl, { method: 'DELETE' });
+
+        if (res.ok) {
+            showToast('Link deleted successfully', 'success');
+            setTimeout(() => window.location.href = redirectUrl, 500);
+        } else {
+            const d = await res.json().catch(() => ({}));
+            showToast(d.error || 'Failed to delete link', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Link';
+        }
+    } catch (err) {
+        showToast('Error deleting link', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Link';
+    }
 }
 
 // Initialize protection settings with existing data

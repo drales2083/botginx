@@ -235,11 +235,13 @@ func (h *Handler) LinkSettings(w http.ResponseWriter, r *http.Request) {
 	linkID := chi.URLParam(r, "linkId")
 	settings, _ := h.service.GetLinkSettings(linkID)
 
-	// Get link URL for copy/open buttons
+	// Get link URL and type for copy/open/delete buttons
 	var linkURL string
+	var linkType string // "redirect" or "shortener"
 	if h.linkInfo != nil {
 		if host, _, err := h.linkInfo.GetLinkHost(linkID); err == nil && host != "" {
 			linkURL = "https://" + host
+			linkType = "redirect"
 		}
 	}
 	if linkURL == "" && h.shortLinks != nil {
@@ -248,6 +250,7 @@ func (h *Handler) LinkSettings(w http.ResponseWriter, r *http.Request) {
 			if path != "" {
 				linkURL += "/" + path
 			}
+			linkType = "shortener"
 		}
 	}
 
@@ -255,6 +258,7 @@ func (h *Handler) LinkSettings(w http.ResponseWriter, r *http.Request) {
 		"Title":    "Link Settings",
 		"LinkID":   linkID,
 		"LinkURL":  linkURL,
+		"LinkType": linkType,
 		"Settings": settings,
 	})
 }
