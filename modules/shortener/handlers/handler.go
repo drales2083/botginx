@@ -479,6 +479,8 @@ func (h *Handler) pushSettings(link *models.ShortLink, server *servermodels.Serv
 		LinkID:           link.ID,
 		UserID:           link.UserID,
 		Host:             host + "/" + link.Path,
+		Template:         settings.Template,
+		ThemeMode:        settings.ThemeMode,
 		BlockBots:        settings.BlockBots,
 		BlockTor:         settings.BlockTor,
 		BlockProxy:       settings.BlockProxy,

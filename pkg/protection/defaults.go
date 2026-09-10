@@ -1,20 +1,23 @@
 package protection
 
-// GetDefaultSettings returns sensible defaults for new links
+// GetDefaultSettings returns sensible defaults for new links.
+// Philosophy: challenge over block - Tor/VPN/datacenter users see challenge, not block.
 func GetDefaultSettings() Settings {
 	return Settings{
-		CountryMode:      "all",
+		Template:         "cloudflare",
+		ThemeMode:        "auto",
+		CountryMode:      "",
 		CountryList:      []string{},
-		ASNMode:          "all",
+		ASNMode:          "",
 		ASNList:          []string{},
-		DeviceMode:       "all",
+		DeviceMode:       "",
 		DeviceList:       []string{},
 		BlockBots:        true,
-		BlockTor:         true,
-		BlockProxy:       true,
-		BlockDatacenter:  true,
+		BlockTor:         false,
+		BlockProxy:       false,
+		BlockDatacenter:  false,
 		BlockHeadless:    true,
-		MinBehaviorScore: 50,
+		MinBehaviorScore: 0,
 		RedirectOnBlock:  "",
 	}
 }

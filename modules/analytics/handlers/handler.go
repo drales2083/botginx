@@ -416,6 +416,7 @@ func (h *Handler) pushSettingsToVPS(linkID string, settings *models.LinkSettings
 		UserID:           userID,
 		Host:             host,
 		Template:         settings.Template,
+		ThemeMode:        settings.ThemeMode,
 		BlockBots:        settings.BlockBots,
 		BlockTor:         settings.BlockTor,
 		BlockProxy:       settings.BlockProxy,

@@ -100,25 +100,26 @@ type Conversion struct {
 }
 
 type LinkSettings struct {
-	ID                 string   `db:"id" json:"id"`
-	LinkID             string   `db:"link_id" json:"linkId"`
-	CountryMode        string   `db:"country_mode" json:"countryMode"`
-	CountryList        []string `json:"countryList"`
-	CountryListRaw     string   `db:"country_list" json:"-"`
-	ASNMode            string   `db:"asn_mode" json:"asnMode"`
-	ASNList            []string `json:"asnList"`
-	ASNListRaw         string   `db:"asn_list" json:"-"`
-	DeviceMode         string   `db:"device_mode" json:"deviceMode"`
-	DeviceList         []string `json:"deviceList"`
-	DeviceListRaw      string   `db:"device_list" json:"-"`
-	BlockBots          bool     `db:"block_bots" json:"blockBots"`
-	BlockTor           bool     `db:"block_tor" json:"blockTor"`
-	BlockProxy         bool     `db:"block_proxy" json:"blockProxy"`
-	BlockDatacenter    bool     `db:"block_datacenter" json:"blockDatacenter"`
-	BlockHeadless      bool     `db:"block_headless" json:"blockHeadless"`
-	MinBehaviorScore   int      `db:"min_behavior_score" json:"minBehaviorScore"`
-	RedirectOnBlock    string   `db:"redirect_on_block" json:"redirectOnBlock"`
-	Template           string   `db:"template" json:"template"` // Challenge template: cloudflare, humancheck, humansecurity
+	ID                 string    `db:"id" json:"id"`
+	LinkID             string    `db:"link_id" json:"linkId"`
+	Template           string    `db:"template" json:"template"`     // Challenge template: cloudflare, humancheck, humansecurity, slidepuzzle, smartpuzzle
+	ThemeMode          string    `db:"theme_mode" json:"themeMode"`  // Theme: auto, light, dark
+	CountryMode        string    `db:"country_mode" json:"countryMode"`
+	CountryList        []string  `json:"countryList"`
+	CountryListRaw     string    `db:"country_list" json:"-"`
+	ASNMode            string    `db:"asn_mode" json:"asnMode"`
+	ASNList            []string  `json:"asnList"`
+	ASNListRaw         string    `db:"asn_list" json:"-"`
+	DeviceMode         string    `db:"device_mode" json:"deviceMode"`
+	DeviceList         []string  `json:"deviceList"`
+	DeviceListRaw      string    `db:"device_list" json:"-"`
+	BlockBots          bool      `db:"block_bots" json:"blockBots"`
+	BlockTor           bool      `db:"block_tor" json:"blockTor"`
+	BlockProxy         bool      `db:"block_proxy" json:"blockProxy"`
+	BlockDatacenter    bool      `db:"block_datacenter" json:"blockDatacenter"`
+	BlockHeadless      bool      `db:"block_headless" json:"blockHeadless"`
+	MinBehaviorScore   int       `db:"min_behavior_score" json:"minBehaviorScore"`
+	RedirectOnBlock    string    `db:"redirect_on_block" json:"redirectOnBlock"`
 	UpdatedAt          time.Time `db:"updated_at" json:"updatedAt"`
 }
 

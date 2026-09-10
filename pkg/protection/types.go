@@ -10,16 +10,20 @@ import (
 
 // Settings holds all protection/filtering configuration
 type Settings struct {
+	// Challenge page appearance
+	Template  string `json:"template"`  // "cloudflare", "humancheck", "humansecurity", "slidepuzzle", "smartpuzzle"
+	ThemeMode string `json:"themeMode"` // "auto", "light", "dark"
+
 	// Geographic filtering
-	CountryMode string   `json:"countryMode"` // "all", "whitelist", "blacklist"
+	CountryMode string   `json:"countryMode"` // "", "whitelist", "blacklist" (empty = disabled)
 	CountryList []string `json:"countryList"` // ISO 3166-1 alpha-2 codes
 
 	// ASN filtering
-	ASNMode string   `json:"asnMode"` // "all", "whitelist", "blacklist"
+	ASNMode string   `json:"asnMode"` // "", "whitelist", "blacklist" (empty = disabled)
 	ASNList []string `json:"asnList"` // ASN numbers as strings (e.g., "AS12345")
 
 	// Device filtering
-	DeviceMode string   `json:"deviceMode"` // "all", "whitelist", "blacklist"
+	DeviceMode string   `json:"deviceMode"` // "", "whitelist", "blacklist" (empty = disabled)
 	DeviceList []string `json:"deviceList"` // "desktop", "mobile", "tablet"
 
 	// Bot detection toggles
@@ -30,10 +34,10 @@ type Settings struct {
 	BlockHeadless   bool `json:"blockHeadless"`
 
 	// Behavior scoring
-	MinBehaviorScore int `json:"minBehaviorScore"` // 0-100
+	MinBehaviorScore int `json:"minBehaviorScore"` // 0-100, 0 = disabled
 
 	// Block action
-	RedirectOnBlock string `json:"redirectOnBlock"` // URL to redirect blocked visitors, empty for error
+	RedirectOnBlock string `json:"redirectOnBlock"` // URL to redirect blocked visitors, empty = show block page
 }
 
 // Validate checks settings are valid

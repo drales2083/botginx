@@ -145,3 +145,6 @@ ALTER TABLE link_settings ADD COLUMN IF NOT EXISTS asn_list TEXT DEFAULT '[]';
 
 -- Add challenge template column (v1.9.0+)
 ALTER TABLE link_settings ADD COLUMN IF NOT EXISTS template TEXT DEFAULT '';
+
+-- Add theme mode column (v1.9.69+)
+ALTER TABLE link_settings ADD COLUMN IF NOT EXISTS theme_mode TEXT DEFAULT 'auto';
