@@ -363,7 +363,8 @@ class SourceRandomizer {
     private $varMap = [];
 
     public function __construct() {
-        $this->seed = bin2hex(random_bytes(4));
+        // Use file hash as seed - consistent per deploy, changes on redeploy
+        $this->seed = substr(md5_file(__FILE__), 0, 8);
     }
 
     public function className($key) {
