@@ -226,12 +226,35 @@
     </div>
 </div>
 
+<!-- Remove Confirmation Modal -->
+<div class="modal fade" id="removeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Remove from Sale</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="removeModalBody">
+                <p>Are you sure you want to remove this domain from the marketplace?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmRemove">
+                    <i class="bi bi-trash me-1"></i>Remove
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-let addModal, editModal;
+let addModal, editModal, removeModal;
+let removeCallback = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     addModal = new bootstrap.Modal(document.getElementById('addModal'));
     editModal = new bootstrap.Modal(document.getElementById('editModal'));
+    removeModal = new bootstrap.Modal(document.getElementById('removeModal'));
 
     // Add domain to marketplace
     document.getElementById('confirmAdd').addEventListener('click', async () => {
@@ -302,20 +325,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Remove from sale
     document.querySelectorAll('.btn-remove').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            if (!confirm(`Remove ${btn.dataset.name} from sale?`)) return;
-
-            const res = await fetch(`/admin/marketplace/api/domains/${btn.dataset.id}`, {
-                method: 'DELETE'
-            });
-
-            if (res.ok) {
-                reloadWithToast('Removed from sale', 'success');
-            } else {
-                const data = await res.json().catch(() => ({}));
-                showToast(data.error || 'Failed to remove', 'danger');
-            }
+        btn.addEventListener('click', () => {
+            const domainId = btn.dataset.id;
+            const domainName = btn.dataset.name;
+            document.getElementById('removeModalBody').innerHTML = `<p>Remove <strong>${domainName}</strong> from sale?</p>`;
+            removeCallback = async () => {
+                const confirmBtn = document.getElementById('confirmRemove');
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Removing...';
+                try {
+                    const res = await fetch(`/admin/marketplace/api/domains/${domainId}`, {
+                        method: 'DELETE'
+                    });
+                    if (res.ok) {
+                        reloadWithToast('Removed from sale', 'success');
+                    } else {
+                        const data = await res.json().catch(() => ({}));
+                        showToast(data.error || 'Failed to remove', 'danger');
+                        removeModal.hide();
+                    }
+                } catch (e) {
+                    showToast('Network error', 'danger');
+                    removeModal.hide();
+                }
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Remove';
+            };
+            removeModal.show();
         });
+    });
+
+    // Remove modal confirm handler
+    document.getElementById('confirmRemove').addEventListener('click', () => {
+        if (removeCallback) removeCallback();
     });
 });
 </script>

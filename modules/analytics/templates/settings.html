@@ -35,9 +35,31 @@
                 </button>
                 <a href="/user/analytics/link/{{.LinkID}}" class="btn btn-secondary">Cancel</a>
             </div>
-            <button type="button" class="btn btn-outline-danger" id="delete-btn" onclick="deleteLink()">
+            <button type="button" class="btn btn-outline-danger" id="delete-btn">
                 <i class="bi bi-trash me-1"></i>Delete Link
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Link</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this link?</p>
+                <p class="text-muted small mb-0">This will remove all deployed files and cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash me-1"></i>Delete Permanently
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -53,13 +75,20 @@ function copyLinkURL() {
     });
 }
 
-// Delete link
-async function deleteLink() {
-    if (!confirm('Are you sure you want to delete this link? This will remove all deployed files and cannot be undone.')) {
-        return;
-    }
+// Delete modal
+let deleteModal = null;
+document.addEventListener('DOMContentLoaded', () => {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+});
 
-    const btn = document.getElementById('delete-btn');
+// Show delete modal
+document.getElementById('delete-btn').addEventListener('click', () => {
+    deleteModal.show();
+});
+
+// Confirm delete
+document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('confirmDeleteBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
 
@@ -84,15 +113,17 @@ async function deleteLink() {
         } else {
             const d = await res.json().catch(() => ({}));
             showToast(d.error || 'Failed to delete link', 'danger');
+            deleteModal.hide();
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Link';
+            btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Permanently';
         }
     } catch (err) {
         showToast('Error deleting link', 'danger');
+        deleteModal.hide();
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Link';
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Permanently';
     }
-}
+});
 
 // Initialize protection settings with existing data
 document.addEventListener('DOMContentLoaded', () => {

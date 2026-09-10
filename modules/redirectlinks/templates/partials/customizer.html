@@ -548,6 +548,28 @@
   </section>
 </div>
 
+<!-- Reset Confirmation Modal -->
+<div class="modal fade" id="resetCustModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-warning">
+                <h5 class="modal-title"><i class="bi bi-arrow-counterclockwise text-warning me-2"></i>Reset Customization</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Reset all customization to defaults?</p>
+                <p class="text-muted small mb-0">This will clear all your custom settings.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmResetCust">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 (function() {
   let custState = {
@@ -556,6 +578,7 @@
     debounceTimer: null,
     imageDataUrl: ''
   };
+  let resetCustModal = null;
 
   window.toggleSection = function(header) {
     const section = header.closest('.cust-section');
@@ -850,9 +873,7 @@
     });
   };
 
-  window.resetCustomization = function() {
-    if (!confirm('Reset all customization to defaults?')) return;
-
+  function doResetCustomization() {
     const defaults = {
       bgColor: '#0a0a0a',
       bgColorSecondary: '#1a1a1a',
@@ -887,7 +908,20 @@
     setCustomizationData(defaults);
     clearImage({ stopPropagation: function(){} });
     refreshPreview();
+  }
+
+  window.resetCustomization = function() {
+    if (!resetCustModal) {
+      resetCustModal = new bootstrap.Modal(document.getElementById('resetCustModal'));
+    }
+    resetCustModal.show();
   };
+
+  // Reset confirmation handler
+  document.getElementById('confirmResetCust').addEventListener('click', function() {
+    doResetCustomization();
+    resetCustModal.hide();
+  });
 
   window.saveCustomization = function() {
     if (!custState.saveUrl) return;
