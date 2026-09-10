@@ -333,6 +333,7 @@ func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
 
 	var input struct {
 		Template         string   `json:"template"`
+		ThemeMode        string   `json:"themeMode"`
 		CountryMode      string   `json:"countryMode"`
 		CountryList      []string `json:"countryList"`
 		ASNMode          string   `json:"asnMode"`
@@ -356,6 +357,7 @@ func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	settings := &models.LinkSettings{
 		LinkID:           linkID,
 		Template:         input.Template,
+		ThemeMode:        input.ThemeMode,
 		CountryMode:      input.CountryMode,
 		CountryList:      input.CountryList,
 		ASNMode:          input.ASNMode,
