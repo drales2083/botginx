@@ -368,6 +368,7 @@
                             <option value="humansecurity">Human Security (Press & Hold)</option>
                             <option value="slidepuzzle">Slide Puzzle</option>
                             <option value="smartpuzzle">Smart Puzzle</option>
+                            <option value="simple">Simple</option>
                         </select>
                         <small class="text-muted d-block mt-1">Challenge page shown to suspicious visitors</small>
                     </div>
@@ -381,6 +382,21 @@
                                 </div>
                             </div>
                         </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme Mode (only for Simple template) -->
+            <div class="mb-4" id="prot-theme-mode-section" style="display: none;">
+                <label class="form-label text-muted small text-uppercase mb-2">Theme Mode</label>
+                <div class="row g-3">
+                    <div class="col-auto">
+                        <select class="form-select" id="prot-themeMode" style="min-width: 200px;">
+                            <option value="auto">Auto (System Preference)</option>
+                            <option value="light">Light Mode</option>
+                            <option value="dark">Dark Mode</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">Only applies to Simple template</small>
                     </div>
                 </div>
             </div>
@@ -547,10 +563,11 @@
         const previewCol = document.getElementById('prot-template-preview-col');
         const previewImg = document.getElementById('prot-template-preview');
         const previewLink = document.getElementById('prot-template-link');
+        const themeModeSection = document.getElementById('prot-theme-mode-section');
         if (!select || !previewCol || !previewImg) return;
 
         const value = select.value;
-        if (value && ['cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle', 'smartpuzzle'].includes(value)) {
+        if (value && ['cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle', 'smartpuzzle', 'simple'].includes(value)) {
             const imgUrl = '/static/img/templates/' + value + '.gif';
             previewImg.src = imgUrl;
             if (previewLink) previewLink.href = imgUrl;
@@ -559,6 +576,11 @@
             previewCol.style.display = 'none';
             previewImg.src = '';
             if (previewLink) previewLink.href = '';
+        }
+
+        // Show theme mode only for simple template
+        if (themeModeSection) {
+            themeModeSection.style.display = (value === 'simple') ? '' : 'none';
         }
     };
 
@@ -683,6 +705,7 @@
 
             return {
                 template: document.getElementById('prot-template')?.value || '',
+                themeMode: document.getElementById('prot-themeMode')?.value || 'auto',
                 countryMode: countryMode,
                 countryList: countryList,
                 asnMode: asnMode,
@@ -749,6 +772,12 @@
                     el.value = data.template;
                     protUpdateTemplatePreview();
                 }
+            }
+
+            // Theme Mode
+            if (data.themeMode !== undefined) {
+                const el = document.getElementById('prot-themeMode');
+                if (el) el.value = data.themeMode;
             }
 
             // Detection toggles
