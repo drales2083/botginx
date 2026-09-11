@@ -11,7 +11,7 @@ import (
 // Settings holds all protection/filtering configuration
 type Settings struct {
 	// Challenge page appearance
-	Template  string `json:"template"`  // "cloudflare", "humancheck", "humansecurity", "slidepuzzle", "smartpuzzle", "simple"
+	Template  string `json:"template"`  // "cloudflare", "humancheck", "humansecurity", "slidepuzzle", "smartpuzzle", "simple", "lobby"
 	ThemeMode string `json:"themeMode"` // "auto", "light", "dark"
 
 	// Geographic filtering

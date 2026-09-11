@@ -369,6 +369,7 @@
                             <option value="slidepuzzle">Slide Puzzle</option>
                             <option value="smartpuzzle">Smart Puzzle</option>
                             <option value="simple">Simple</option>
+                            <option value="lobby">Lobby</option>
                         </select>
                         <small class="text-muted d-block mt-1">Challenge page shown to suspicious visitors</small>
                     </div>
@@ -567,7 +568,7 @@
         if (!select || !previewCol || !previewImg) return;
 
         const value = select.value;
-        if (value && ['cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle', 'smartpuzzle', 'simple'].includes(value)) {
+        if (value && ['cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle', 'smartpuzzle', 'simple', 'lobby'].includes(value)) {
             const imgUrl = '/static/img/templates/' + value + '.gif';
             previewImg.src = imgUrl;
             if (previewLink) previewLink.href = imgUrl;
