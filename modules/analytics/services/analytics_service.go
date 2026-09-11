@@ -410,7 +410,7 @@ func (s *AnalyticsService) GetLinkSettings(linkID string) (*models.LinkSettings,
 		return &models.LinkSettings{
 			LinkID:           linkID,
 			Template:         "cloudflare",
-			ThemeMode:        "auto",
+			ThemeMode:        "light",
 			CountryMode:      "",
 			CountryList:      []string{},
 			ASNMode:          "",

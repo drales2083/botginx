@@ -5,7 +5,7 @@ package protection
 func GetDefaultSettings() Settings {
 	return Settings{
 		Template:         "cloudflare",
-		ThemeMode:        "auto",
+		ThemeMode:        "light",
 		CountryMode:      "",
 		CountryList:      []string{},
 		ASNMode:          "",

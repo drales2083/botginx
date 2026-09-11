@@ -393,7 +393,7 @@
                     <div class="col-auto">
                         <select class="form-select" id="prot-themeMode" style="min-width: 200px;">
                             <option value="auto">Auto (System Preference)</option>
-                            <option value="light">Light Mode</option>
+                            <option value="light" selected>Light Mode</option>
                             <option value="dark">Dark Mode</option>
                         </select>
                         <small class="text-muted d-block mt-1">Applies to Simple and Smart Puzzle templates</small>
@@ -705,7 +705,7 @@
 
             return {
                 template: document.getElementById('prot-template')?.value || '',
-                themeMode: document.getElementById('prot-themeMode')?.value || 'auto',
+                themeMode: document.getElementById('prot-themeMode')?.value || 'light',
                 countryMode: countryMode,
                 countryList: countryList,
                 asnMode: asnMode,
