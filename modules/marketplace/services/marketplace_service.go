@@ -66,9 +66,39 @@ func (s *MarketplaceService) GetDomain(domainID string) (*models.MarketplaceDoma
 }
 
 // MarkForSale marks a domain as for sale in marketplace
+// For wildcard domains, requires acme_cname_verified=TRUE (CNAME delegation to our acme-dns)
+// This ensures SSL renewals will work automatically for the buyer
 func (s *MarketplaceService) MarkForSale(domainID string, price float64, description string) error {
 	if price <= 0 {
 		return errors.New("price must be greater than 0")
+	}
+
+	// First check if it's a wildcard domain that needs CNAME verification
+	var domain struct {
+		IsWildcard        bool  `db:"is_wildcard"`
+		AcmeCnameVerified bool  `db:"acme_cname_verified"`
+		DNSVerified       bool  `db:"dns_verified"`
+		SSLEnabled        bool  `db:"ssl_enabled"`
+		ServerID          *string `db:"server_id"`
+	}
+	err := s.db.Get(&domain, `SELECT is_wildcard, acme_cname_verified, dns_verified, ssl_enabled, server_id FROM domains WHERE id = $1`, domainID)
+	if err != nil {
+		return errors.New("domain not found")
+	}
+
+	if !domain.DNSVerified {
+		return errors.New("domain DNS not verified")
+	}
+	if !domain.SSLEnabled {
+		return errors.New("domain SSL not enabled")
+	}
+	if domain.ServerID == nil || *domain.ServerID == "" {
+		return errors.New("domain not assigned to a server")
+	}
+
+	// Wildcard domains MUST have CNAME delegation to our acme-dns for automatic SSL renewals
+	if domain.IsWildcard && !domain.AcmeCnameVerified {
+		return errors.New("wildcard domain requires CNAME delegation to acme-dns for SSL renewals - complete setup first")
 	}
 
 	result, err := s.db.Exec(`
@@ -77,7 +107,7 @@ func (s *MarketplaceService) MarkForSale(domainID string, price float64, descrip
 			marketplace_price = $2,
 			marketplace_description = $3,
 			marketplace_listed_at = $4
-		WHERE id = $1 AND dns_verified = TRUE AND ssl_enabled = TRUE
+		WHERE id = $1
 	`, domainID, price, description, time.Now())
 	if err != nil {
 		return err
@@ -85,7 +115,7 @@ func (s *MarketplaceService) MarkForSale(domainID string, price float64, descrip
 
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return errors.New("domain not found or not fully configured")
+		return errors.New("failed to update domain")
 	}
 	return nil
 }
@@ -244,7 +274,9 @@ func (s *MarketplaceService) GetUserBalance(userID string) float64 {
 	return balance
 }
 
-// ListSellable returns domains that can be listed for sale (verified, SSL enabled, not shared, not already in marketplace)
+// ListSellable returns domains that can be listed for sale
+// Requirements: verified, SSL enabled, not shared, not already in marketplace, has server assigned
+// For wildcard domains: also requires acme_cname_verified (CNAME to our acme-dns for SSL renewals)
 func (s *MarketplaceService) ListSellable() ([]models.MarketplaceDomain, error) {
 	var domains []models.MarketplaceDomain
 	err := s.db.Select(&domains, `
@@ -252,8 +284,13 @@ func (s *MarketplaceService) ListSellable() ([]models.MarketplaceDomain, error) 
 		FROM domains
 		WHERE dns_verified = TRUE
 		  AND ssl_enabled = TRUE
+		  AND server_id IS NOT NULL
 		  AND COALESCE(is_shared, FALSE) = FALSE
 		  AND COALESCE(is_marketplace, FALSE) = FALSE
+		  AND (
+		      COALESCE(is_wildcard, FALSE) = FALSE
+		      OR acme_cname_verified = TRUE
+		  )
 		ORDER BY created_at DESC
 	`)
 	return domains, err

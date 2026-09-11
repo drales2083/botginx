@@ -1109,10 +1109,31 @@ func (h *Handler) completeExternalSetup(domain *models.Domain) {
 
 	var sslErr error
 	if domain.IsWildcard {
-		// Wildcard domains need DNS-01 challenge with manual TXT record
-		// User has 10 minutes to add TXT record while certbot polls
-		log.Printf("[domains] using manual DNS-01 for wildcard %s (10 min timeout)", domain.Name)
-		sslErr = h.verification.CompleteWildcardSSL(domain.Name, "")
+		// Wildcard domains: prefer acme-dns CNAME delegation (automatic renewals)
+		// Fall back to manual DNS-01 only if acme-dns not configured
+		if domain.AcmeSubdomain != nil && *domain.AcmeSubdomain != "" &&
+			domain.AcmeUsername != nil && *domain.AcmeUsername != "" &&
+			domain.AcmePassword != nil && *domain.AcmePassword != "" &&
+			domain.AcmeCnameVerified {
+			// Use acme-dns - automatic SSL renewals will work
+			log.Printf("[domains] using acme-dns for wildcard %s", domain.Name)
+			sslErr = h.verification.GenerateWildcardSSLWithAcmeDNS(
+				domain.Name,
+				*domain.AcmeSubdomain,
+				*domain.AcmeUsername,
+				*domain.AcmePassword,
+			)
+		} else if domain.AcmeSubdomain != nil && *domain.AcmeSubdomain != "" && !domain.AcmeCnameVerified {
+			// acme-dns registered but CNAME not verified - cannot proceed
+			log.Printf("[domains] wildcard %s has acme-dns but CNAME not verified, cannot generate SSL", domain.Name)
+			errMsg := "CNAME delegation to acme-dns not verified. Add CNAME record and verify first."
+			h.service.Update(domain.ID, models.UpdateDomainInput{SSLError: &errMsg})
+			return
+		} else {
+			// No acme-dns - use manual DNS-01 (user must update TXT record for renewals)
+			log.Printf("[domains] using manual DNS-01 for wildcard %s (10 min timeout)", domain.Name)
+			sslErr = h.verification.CompleteWildcardSSL(domain.Name, "")
+		}
 	} else {
 		// Non-wildcard domains use HTTP-01 challenge (simpler, no ACME TXT needed)
 		sslErr = h.verification.GenerateHTTPSSL(domain.Name)
@@ -1125,9 +1146,20 @@ func (h *Handler) completeExternalSetup(domain *models.Domain) {
 		return
 	}
 
+	// Verify SSL certificate actually exists on VPS before marking enabled
+	sslStatus, err := h.verification.CheckSSL(domain.Name)
+	if err != nil || !sslStatus.Exists {
+		log.Printf("[domains] SSL verification failed for %s: cert not found on VPS", domain.Name)
+		errMsg := "SSL certificate not found on server after generation"
+		h.service.Update(domain.ID, models.UpdateDomainInput{SSLError: &errMsg})
+		return
+	}
+
 	// Setup nginx
 	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
 		log.Printf("[domains] nginx setup failed for %s: %v", domain.Name, err)
+		errMsg := "nginx configuration failed: " + err.Error()
+		h.service.Update(domain.ID, models.UpdateDomainInput{SSLError: &errMsg})
 		return
 	}
 
