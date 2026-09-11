@@ -359,7 +359,7 @@
         <div class="tab-pane active show prot-section" id="prot-tab-detection" role="tabpanel">
             <div class="mb-4">
                 <label class="form-label text-muted small text-uppercase mb-2">Challenge Template</label>
-                <div class="row g-3">
+                <div class="row g-3 align-items-start">
                     <div class="col-auto">
                         <select class="form-select" id="prot-template" style="min-width: 250px;" onchange="protUpdateTemplatePreview()">
                             <option value="">Use Global Default</option>
@@ -373,6 +373,14 @@
                         </select>
                         <small class="text-muted d-block mt-1">Challenge page shown to suspicious visitors</small>
                     </div>
+                    <div class="col-auto" id="prot-theme-mode-section" style="display: none;">
+                        <select class="form-select" id="prot-themeMode" style="min-width: 180px;">
+                            <option value="auto">Auto (System)</option>
+                            <option value="light" selected>Light Mode</option>
+                            <option value="dark">Dark Mode</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">Theme mode</small>
+                    </div>
                     <div class="col" id="prot-template-preview-col" style="display:none;">
                         <a id="prot-template-link" href="" data-fancybox="template" data-caption="Challenge Template Preview">
                             <div class="border rounded p-2 bg-dark position-relative" style="max-width: 280px; cursor: zoom-in;">
@@ -383,21 +391,6 @@
                                 </div>
                             </div>
                         </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Theme Mode (only for Simple template) -->
-            <div class="mb-4" id="prot-theme-mode-section" style="display: none;">
-                <label class="form-label text-muted small text-uppercase mb-2">Theme Mode</label>
-                <div class="row g-3">
-                    <div class="col-auto">
-                        <select class="form-select" id="prot-themeMode" style="min-width: 200px;">
-                            <option value="auto">Auto (System Preference)</option>
-                            <option value="light" selected>Light Mode</option>
-                            <option value="dark">Dark Mode</option>
-                        </select>
-                        <small class="text-muted d-block mt-1">Applies to Simple and Smart Puzzle templates</small>
                     </div>
                 </div>
             </div>
