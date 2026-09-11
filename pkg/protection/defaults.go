@@ -16,7 +16,7 @@ func GetDefaultSettings() Settings {
 		BlockTor:         false,
 		BlockProxy:       false,
 		BlockDatacenter:  false,
-		BlockHeadless:    true,
+		BlockHeadless:    false,
 		MinBehaviorScore: 0,
 		RedirectOnBlock:  "",
 	}

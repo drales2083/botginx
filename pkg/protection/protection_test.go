@@ -94,14 +94,14 @@ func TestGetCountries(t *testing.T) {
 
 func TestGetDefaultSettings(t *testing.T) {
 	s := GetDefaultSettings()
-	if s.CountryMode != "all" {
-		t.Errorf("default CountryMode should be 'all', got %s", s.CountryMode)
+	if s.CountryMode != "" {
+		t.Errorf("default CountryMode should be empty (disabled), got %s", s.CountryMode)
 	}
 	if !s.BlockBots {
 		t.Error("default BlockBots should be true")
 	}
-	if !s.BlockHeadless {
-		t.Error("default BlockHeadless should be true")
+	if s.BlockHeadless {
+		t.Error("default BlockHeadless should be false")
 	}
 	if s.BlockTor {
 		t.Error("default BlockTor should be false")

@@ -421,7 +421,7 @@ func (s *AnalyticsService) GetLinkSettings(linkID string) (*models.LinkSettings,
 			BlockTor:         false,
 			BlockProxy:       false,
 			BlockDatacenter:  false,
-			BlockHeadless:    true,
+			BlockHeadless:    false,
 			MinBehaviorScore: 0,
 			RedirectOnBlock:  "",
 		}, nil

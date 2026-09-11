@@ -788,7 +788,7 @@ func (s *HostingService) AddDomain(accountID, domain string) (*models.HostingDom
 		BlockTor:        false,
 		BlockProxy:      false,
 		BlockDatacenter: false,
-		BlockHeadless:   true,
+		BlockHeadless:   false,
 		RedirectOnBlock: "",
 		UpdatedAt:       time.Now(),
 	}
@@ -889,7 +889,7 @@ func (s *HostingService) ProvisionDomain(accountID, domain string) (*models.Host
 		BlockTor:        false,
 		BlockProxy:      false,
 		BlockDatacenter: false,
-		BlockHeadless:   true,
+		BlockHeadless:   false,
 		RedirectOnBlock: "",
 		UpdatedAt:       time.Now(),
 	}
