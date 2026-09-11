@@ -199,3 +199,33 @@ func (s *AuthService) GetUser(id string) (*models.User, error) {
 	}
 	return &user, nil
 }
+
+// CreateImpersonationSession creates a session for the target user (admin impersonation)
+// Returns the new session token for the target user
+func (s *AuthService) CreateImpersonationSession(targetUserID string) (string, error) {
+	// Verify target user exists
+	var user models.User
+	err := s.db.Get(&user, "SELECT * FROM users WHERE id = $1", targetUserID)
+	if err != nil {
+		return "", ErrUserNotFound
+	}
+
+	// Create session for target user
+	session := &models.Session{
+		ID:        s.generateID(),
+		UserID:    user.ID,
+		Token:     s.generateToken(),
+		ExpiresAt: time.Now().Add(4 * time.Hour), // Shorter expiry for impersonation
+		CreatedAt: time.Now(),
+	}
+
+	_, err = s.db.NamedExec(`
+		INSERT INTO sessions (id, user_id, token, expires_at, created_at)
+		VALUES (:id, :user_id, :token, :expires_at, :created_at)
+	`, session)
+	if err != nil {
+		return "", err
+	}
+
+	return session.Token, nil
+}

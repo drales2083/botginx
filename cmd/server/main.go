@@ -256,7 +256,8 @@ func main() {
 	registry.Register(marketplaceModule)         // Domain marketplace
 	registry.Register(paymentsModule)            // Crypto payments
 	registry.Register(help.New())                // Help/FAQ module
-	registry.Register(users.New())               // Admin module
+	usersModule := users.New()
+	registry.Register(usersModule)               // Admin module
 	referralsModule := referrals.New()
 
 	registry.Register(admindash.New())           // Admin dashboard (stats)
@@ -285,6 +286,7 @@ func main() {
 	iplistsModule.SetServerProvider(&iplistServerAdapter{servers: serversModule})
 	hostingModule.SetPaymentProcessor(referralsModule)  // Referral commissions on hosting payments
 	authModule.SetSubscriptionService(subscriptions)    // Self-service subscription purchase
+	usersModule.SetAuthService(authModule.AuthService()) // Admin impersonation
 
 	// Run migrations
 	if err := registry.MigrateAll(); err != nil {

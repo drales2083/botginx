@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"sort"
 
+	authservices "github.com/botginx/botginx/modules/auth/services"
 	"github.com/botginx/botginx/modules/users/handlers"
 	"github.com/botginx/botginx/modules/users/services"
 	"github.com/botginx/botginx/pkg/module"
@@ -68,6 +69,11 @@ func (m *Module) Migrate() error {
 	return nil
 }
 
+// SetAuthService sets the auth service for impersonation feature
+func (m *Module) SetAuthService(s *authservices.AuthService) {
+	m.handler.SetAuthService(s)
+}
+
 func (m *Module) Routes() chi.Router {
 	r := chi.NewRouter()
 
@@ -90,6 +96,10 @@ func (m *Module) Routes() chi.Router {
 
 		// Balance
 		r.Post("/{id}/topup", m.handler.APITopUpBalance)
+
+		// Impersonation
+		r.Post("/{id}/impersonate", m.handler.APIImpersonate)
+		r.Post("/impersonate/exit", m.handler.APIExitImpersonation)
 	})
 
 	return r

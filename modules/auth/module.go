@@ -55,6 +55,11 @@ func (m *Module) SetSubscriptionService(s *subscription.Service) {
 	m.Handler.SetSubscriptionService(s)
 }
 
+// AuthService returns the auth service for use by other modules (e.g., impersonation)
+func (m *Module) AuthService() *services.AuthService {
+	return m.service
+}
+
 func (m *Module) Migrate() error {
 	migrations := []string{
 		"migrations/001_create_tables.sql",

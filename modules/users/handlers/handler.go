@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	authservices "github.com/botginx/botginx/modules/auth/services"
 	"github.com/botginx/botginx/modules/users/models"
 	"github.com/botginx/botginx/modules/users/services"
 	"github.com/botginx/botginx/pkg/ctx"
@@ -17,6 +18,7 @@ type Handler struct {
 	service       *services.UserService
 	subscriptions *subscription.Service
 	templates     *module.TemplateEngine
+	authService   *authservices.AuthService
 }
 
 func NewHandler(
@@ -29,6 +31,11 @@ func NewHandler(
 		subscriptions: subscriptions,
 		templates:     templates,
 	}
+}
+
+// SetAuthService sets the auth service for impersonation
+func (h *Handler) SetAuthService(s *authservices.AuthService) {
+	h.authService = s
 }
 
 // Page handlers
@@ -252,6 +259,130 @@ func (h *Handler) APITopUpBalance(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"balance": balance,
+	})
+}
+
+// APIImpersonate starts impersonation - admin logs in as another user
+func (h *Handler) APIImpersonate(w http.ResponseWriter, r *http.Request) {
+	// Verify current user is admin
+	currentUser := ctx.GetUser(r)
+	if currentUser == nil || !currentUser.IsAdmin() {
+		h.jsonError(w, "Admin access required", http.StatusForbidden)
+		return
+	}
+
+	if h.authService == nil {
+		h.jsonError(w, "Auth service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	targetUserID := chi.URLParam(r, "id")
+
+	// Don't allow impersonating yourself
+	if targetUserID == currentUser.ID {
+		h.jsonError(w, "Cannot impersonate yourself", http.StatusBadRequest)
+		return
+	}
+
+	// Get target user info
+	targetUser, err := h.service.Get(targetUserID)
+	if err != nil {
+		h.jsonError(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// Create a new session for the target user
+	newToken, err := h.authService.CreateImpersonationSession(targetUserID)
+	if err != nil {
+		h.jsonError(w, "Failed to create session: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Store admin's current session in a separate cookie so we can restore it
+	adminCookie, err := r.Cookie("session")
+	if err != nil {
+		h.jsonError(w, "Admin session not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Set the admin session cookie for later restoration
+	http.SetCookie(w, &http.Cookie{
+		Name:     "admin_session",
+		Value:    adminCookie.Value,
+		Path:     "/",
+		MaxAge:   4 * 60 * 60, // 4 hours
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// Set the new session cookie (impersonating target user)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    newToken,
+		Path:     "/",
+		MaxAge:   4 * 60 * 60, // 4 hours
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// Set impersonation marker cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "impersonating",
+		Value:    targetUser.Email,
+		Path:     "/",
+		MaxAge:   4 * 60 * 60,
+		HttpOnly: false, // Allow JS to read for banner
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success":     true,
+		"message":     "Now impersonating " + targetUser.Email,
+		"redirectUrl": "/user/dashboard",
+	})
+}
+
+// APIExitImpersonation ends impersonation and returns to admin session
+func (h *Handler) APIExitImpersonation(w http.ResponseWriter, r *http.Request) {
+	// Get the stored admin session
+	adminCookie, err := r.Cookie("admin_session")
+	if err != nil || adminCookie.Value == "" {
+		h.jsonError(w, "No admin session found", http.StatusBadRequest)
+		return
+	}
+
+	// Restore admin session
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    adminCookie.Value,
+		Path:     "/",
+		MaxAge:   7 * 24 * 60 * 60,
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// Clear impersonation cookies
+	http.SetCookie(w, &http.Cookie{
+		Name:   "admin_session",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:   "impersonating",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success":     true,
+		"message":     "Returned to admin session",
+		"redirectUrl": "/admin/users",
 	})
 }
 

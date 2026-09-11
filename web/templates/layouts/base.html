@@ -303,6 +303,19 @@
       </div>
       <div class="app-content">
         <div class="container-fluid">
+          <!-- Impersonation banner - shown when admin is viewing as another user -->
+          <div id="impersonation-banner" class="alert alert-info alert-border-left d-none mb-3" role="alert">
+            <div class="d-flex align-items-center justify-content-between">
+              <span>
+                <i class="bi bi-person-badge me-2"></i>
+                <strong>Impersonating:</strong> <span id="impersonating-email"></span>
+              </span>
+              <button type="button" class="btn btn-sm btn-outline-light" id="exit-impersonation-btn">
+                <i class="bi bi-box-arrow-left me-1"></i> Exit
+              </button>
+            </div>
+          </div>
+
           <!-- Subscription notice. Actions are blocked by middleware; this is presentation.
                Admins have Active=true regardless of status, so check Active first. -->
           {{if not .IsAdminSection}}
@@ -441,6 +454,52 @@
       await fetch('/auth/api/logout', { method: 'POST' });
       window.location.href = '/auth/login';
     }
+
+    // Impersonation banner
+    document.addEventListener('DOMContentLoaded', () => {
+      const impersonating = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('impersonating='));
+
+      if (impersonating) {
+        const email = decodeURIComponent(impersonating.split('=')[1]);
+        const banner = document.getElementById('impersonation-banner');
+        const emailSpan = document.getElementById('impersonating-email');
+
+        if (banner && emailSpan) {
+          emailSpan.textContent = email;
+          banner.classList.remove('d-none');
+        }
+      }
+
+      const exitBtn = document.getElementById('exit-impersonation-btn');
+      if (exitBtn) {
+        exitBtn.addEventListener('click', async () => {
+          exitBtn.disabled = true;
+          exitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Exiting...';
+
+          try {
+            const res = await fetch('/admin/users/api/impersonate/exit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+              window.location.href = data.redirectUrl || '/admin/users';
+            } else {
+              showToast(data.error || 'Failed to exit impersonation', 'danger');
+              exitBtn.disabled = false;
+              exitBtn.innerHTML = '<i class="bi bi-box-arrow-left me-1"></i> Exit';
+            }
+          } catch (err) {
+            showToast('Network error', 'danger');
+            exitBtn.disabled = false;
+            exitBtn.innerHTML = '<i class="bi bi-box-arrow-left me-1"></i> Exit';
+          }
+        });
+      }
+    });
 
     // Any table marked data-datatable gets search, sort and paging.
     //   data-per-page   rows per page (default 25)

@@ -46,6 +46,9 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-lg me-1"></i> {{t "save"}}
                         </button>
+                        <button type="button" class="btn btn-info" id="impersonateBtn">
+                            <i class="bi bi-person-badge me-1"></i> Login As
+                        </button>
                         <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                             <i class="bi bi-trash me-1"></i> {{t "delete"}}
                         </button>
@@ -179,6 +182,38 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
     } else {
         const err = await res.json();
         showToast(err.error || 'Failed to update user', 'danger');
+    }
+});
+
+// Impersonation
+document.getElementById('impersonateBtn').addEventListener('click', async () => {
+    if (!confirm('Login as {{.TargetUser.Email}}? You will be redirected to the user dashboard.')) {
+        return;
+    }
+
+    const btn = document.getElementById('impersonateBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Switching...';
+
+    try {
+        const res = await fetch('/admin/users/api/{{.TargetUser.ID}}/impersonate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            window.location.href = data.redirectUrl || '/user/dashboard';
+        } else {
+            showToast(data.error || 'Failed to impersonate user', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-person-badge me-1"></i> Login As';
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-person-badge me-1"></i> Login As';
     }
 });
 
