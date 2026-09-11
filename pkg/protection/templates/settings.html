@@ -396,7 +396,7 @@
                             <option value="light">Light Mode</option>
                             <option value="dark">Dark Mode</option>
                         </select>
-                        <small class="text-muted d-block mt-1">Only applies to Simple template</small>
+                        <small class="text-muted d-block mt-1">Applies to Simple and Smart Puzzle templates</small>
                     </div>
                 </div>
             </div>
@@ -578,9 +578,9 @@
             if (previewLink) previewLink.href = '';
         }
 
-        // Show theme mode only for simple template
+        // Show theme mode for templates that support theming (simple, smartpuzzle)
         if (themeModeSection) {
-            themeModeSection.style.display = (value === 'simple') ? '' : 'none';
+            themeModeSection.style.display = (value === 'simple' || value === 'smartpuzzle') ? '' : 'none';
         }
     };
 
