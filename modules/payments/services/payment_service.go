@@ -3,15 +3,27 @@ package services
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/botginx/botginx/modules/payments/models"
 	"github.com/jmoiron/sqlx"
+)
+
+// Price cache to avoid hitting API on every conversion
+var (
+	priceCache     = make(map[string]float64)
+	priceCacheMu   sync.RWMutex
+	priceCacheTime time.Time
+	priceCacheTTL  = 5 * time.Minute
 )
 
 type PaymentService struct {
@@ -296,22 +308,103 @@ func (s *PaymentService) getGatewayWalletID(gateway PaymentGateway) string {
 }
 
 func (s *PaymentService) convertToUSD(coin string, amount float64) float64 {
-	// TODO: Integrate with price API (CoinGecko, etc.)
-	// For now, use rough estimates or env var
-	switch coin {
-	case "btc", "tbtc":
-		priceStr := os.Getenv("BTC_USD_PRICE")
+	// Stablecoins are 1:1
+	if coin == "usdt" || coin == "usdc" {
+		return amount
+	}
+
+	// Check env override first
+	envKey := fmt.Sprintf("%s_USD_PRICE", strings.ToUpper(coin))
+	if priceStr := os.Getenv(envKey); priceStr != "" {
 		if price, err := strconv.ParseFloat(priceStr, 64); err == nil {
 			return amount * price
 		}
-		return amount * 60000 // fallback
-	case "usdt":
-		return amount // 1:1
-	case "ltc":
-		return amount * 80 // rough estimate
-	default:
-		return amount
 	}
+
+	// Fetch live price from CoinGecko (cached)
+	price := fetchCryptoPrice(coin)
+	return amount * price
+}
+
+// fetchCryptoPrice gets the USD price for a coin from CoinGecko (no API key needed)
+func fetchCryptoPrice(coin string) float64 {
+	// Map coin symbols to CoinGecko IDs
+	coinIDs := map[string]string{
+		"btc":  "bitcoin",
+		"tbtc": "bitcoin", // testnet uses mainnet price
+		"ltc":  "litecoin",
+		"eth":  "ethereum",
+		"doge": "dogecoin",
+		"trx":  "tron",
+	}
+
+	cgID, ok := coinIDs[strings.ToLower(coin)]
+	if !ok {
+		log.Printf("[payments] Unknown coin for price lookup: %s", coin)
+		return 1.0
+	}
+
+	// Check cache
+	priceCacheMu.RLock()
+	if time.Since(priceCacheTime) < priceCacheTTL {
+		if price, exists := priceCache[cgID]; exists {
+			priceCacheMu.RUnlock()
+			return price
+		}
+	}
+	priceCacheMu.RUnlock()
+
+	// Fetch from CoinGecko
+	url := fmt.Sprintf("https://api.coingecko.com/api/v3/simple/price?ids=%s&vs_currencies=usd", cgID)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		log.Printf("[payments] CoinGecko API error: %v", err)
+		return getFallbackPrice(coin)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		log.Printf("[payments] CoinGecko API status: %d", resp.StatusCode)
+		return getFallbackPrice(coin)
+	}
+
+	var result map[string]map[string]float64
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("[payments] CoinGecko parse error: %v", err)
+		return getFallbackPrice(coin)
+	}
+
+	price, ok := result[cgID]["usd"]
+	if !ok || price <= 0 {
+		log.Printf("[payments] CoinGecko no price for: %s", cgID)
+		return getFallbackPrice(coin)
+	}
+
+	// Update cache
+	priceCacheMu.Lock()
+	priceCache[cgID] = price
+	priceCacheTime = time.Now()
+	priceCacheMu.Unlock()
+
+	log.Printf("[payments] Fetched %s price: $%.2f", coin, price)
+	return price
+}
+
+// getFallbackPrice returns a conservative fallback if API fails
+func getFallbackPrice(coin string) float64 {
+	fallbacks := map[string]float64{
+		"btc":  60000,
+		"tbtc": 60000,
+		"ltc":  80,
+		"eth":  3000,
+		"doge": 0.10,
+		"trx":  0.10,
+	}
+	if price, ok := fallbacks[strings.ToLower(coin)]; ok {
+		return price
+	}
+	return 1.0
 }
 
 func (s *PaymentService) getConfirmationThreshold() int {
