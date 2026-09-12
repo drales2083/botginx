@@ -203,6 +203,11 @@ func (s *MarketplaceService) Purchase(domainID, buyerUserID string) error {
 	price := *domain.MarketplacePrice
 	sellerUserID := domain.UserID
 
+	// Prevent buying your own domain
+	if buyerUserID == sellerUserID {
+		return errors.New("cannot purchase your own domain")
+	}
+
 	// Check buyer balance
 	var balance float64
 	err = tx.Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1 FOR UPDATE`, buyerUserID)
