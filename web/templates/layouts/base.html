@@ -479,7 +479,7 @@
           exitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Exiting...';
 
           try {
-            const res = await fetch('/admin/users/api/impersonate/exit', {
+            const res = await fetch('/user/impersonate/exit', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
             });

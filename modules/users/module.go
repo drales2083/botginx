@@ -74,6 +74,11 @@ func (m *Module) SetAuthService(s *authservices.AuthService) {
 	m.handler.SetAuthService(s)
 }
 
+// Handler returns the handler for direct route mounting (e.g., impersonation exit)
+func (m *Module) Handler() *handlers.Handler {
+	return m.handler
+}
+
 func (m *Module) Routes() chi.Router {
 	r := chi.NewRouter()
 

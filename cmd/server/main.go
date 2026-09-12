@@ -387,6 +387,9 @@ func main() {
 		// They need money to buy a subscription in the first place.
 		r.Mount("/payments", paymentsModule.Routes())
 
+		// Impersonation exit: must be accessible by impersonated user (not admin-only)
+		r.Post("/impersonate/exit", usersModule.Handler().APIExitImpersonation)
+
 		// Product routes: writes require an active subscription.
 		// Unsubscribed users can browse but cannot create, edit, or delete.
 		r.Group(func(r chi.Router) {
