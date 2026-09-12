@@ -144,6 +144,11 @@ func (s *PaymentService) ProcessDeposit(address, txid string, amountCrypto float
 	// Convert to USD
 	amountUSD := s.convertToUSD(wallet.Coin, amountCrypto)
 
+	// Don't create transaction if price lookup failed (would credit $0)
+	if err != nil && amountUSD <= 0 {
+		return nil, fmt.Errorf("price lookup failed for %s, cannot process deposit", wallet.Coin)
+	}
+
 	if err != nil {
 		// Create new transaction
 		tx = models.CryptoTransaction{
@@ -181,7 +186,9 @@ func (s *PaymentService) ProcessDeposit(address, txid string, amountCrypto float
 	// Check if ready to credit
 	threshold := s.getConfirmationThreshold()
 	if tx.Status == models.TxStatusPending && confirmations >= threshold {
-		if err := s.creditUser(wallet.UserID, amountUSD); err != nil {
+		// Use tx.AmountUSD (stored value) not amountUSD (recalculated) to ensure
+		// user is credited the amount from when deposit was first recorded
+		if err := s.creditUser(wallet.UserID, tx.AmountUSD); err != nil {
 			log.Printf("[payments] Failed to credit user %s: %v", wallet.UserID, err)
 			return &tx, err
 		}
@@ -190,7 +197,7 @@ func (s *PaymentService) ProcessDeposit(address, txid string, amountCrypto float
 		s.db.Exec(`UPDATE crypto_transactions SET status = $1, updated_at = $2 WHERE id = $3`,
 			models.TxStatusConfirmed, time.Now(), tx.ID)
 
-		log.Printf("[payments] Deposit confirmed: txid=%s user=%s credited=$%.2f", txid, wallet.UserID, amountUSD)
+		log.Printf("[payments] Deposit confirmed: txid=%s user=%s credited=$%.2f", txid, wallet.UserID, tx.AmountUSD)
 	}
 
 	return &tx, nil
