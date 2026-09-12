@@ -326,7 +326,7 @@ func (s *PaymentService) convertToUSD(coin string, amount float64) float64 {
 	return amount * price
 }
 
-// fetchCryptoPrice gets the USD price for a coin from CoinGecko (no API key needed)
+// fetchCryptoPrice gets the USD price for a coin, trying multiple providers
 func fetchCryptoPrice(coin string) float64 {
 	// Map coin symbols to CoinGecko IDs
 	coinIDs := map[string]string{
@@ -338,73 +338,145 @@ func fetchCryptoPrice(coin string) float64 {
 		"trx":  "tron",
 	}
 
-	cgID, ok := coinIDs[strings.ToLower(coin)]
+	coinLower := strings.ToLower(coin)
+	cgID, ok := coinIDs[coinLower]
 	if !ok {
 		log.Printf("[payments] Unknown coin for price lookup: %s", coin)
-		return 1.0
+		return 0
 	}
 
 	// Check cache
 	priceCacheMu.RLock()
 	if time.Since(priceCacheTime) < priceCacheTTL {
-		if price, exists := priceCache[cgID]; exists {
+		if price, exists := priceCache[coinLower]; exists {
 			priceCacheMu.RUnlock()
 			return price
 		}
 	}
 	priceCacheMu.RUnlock()
 
-	// Fetch from CoinGecko
-	url := fmt.Sprintf("https://api.coingecko.com/api/v3/simple/price?ids=%s&vs_currencies=usd", cgID)
 	client := &http.Client{Timeout: 10 * time.Second}
+
+	// Try CoinGecko first (supports all coins)
+	if price := fetchFromCoinGecko(client, cgID); price > 0 {
+		cachePrice(coinLower, price, "CoinGecko")
+		return price
+	}
+
+	// Fallback to BitPay (BTC only)
+	if coinLower == "btc" || coinLower == "tbtc" {
+		if price := fetchFromBitPay(client); price > 0 {
+			cachePrice(coinLower, price, "BitPay")
+			return price
+		}
+	}
+
+	// Fallback to CoinDesk (BTC only)
+	if coinLower == "btc" || coinLower == "tbtc" {
+		if price := fetchFromCoinDesk(client); price > 0 {
+			cachePrice(coinLower, price, "CoinDesk")
+			return price
+		}
+	}
+
+	log.Printf("[payments] All price providers failed for: %s", coin)
+	return 0
+}
+
+// cachePrice stores price and logs the source
+func cachePrice(coin string, price float64, source string) {
+	priceCacheMu.Lock()
+	priceCache[coin] = price
+	priceCacheTime = time.Now()
+	priceCacheMu.Unlock()
+	log.Printf("[payments] Fetched %s price: $%.2f (from %s)", coin, price, source)
+}
+
+// fetchFromCoinGecko fetches price from CoinGecko API (no key required)
+func fetchFromCoinGecko(client *http.Client, cgID string) float64 {
+	url := fmt.Sprintf("https://api.coingecko.com/api/v3/simple/price?ids=%s&vs_currencies=usd", cgID)
 	resp, err := client.Get(url)
 	if err != nil {
-		log.Printf("[payments] CoinGecko API error: %v", err)
-		return getFallbackPrice(coin)
+		log.Printf("[payments] CoinGecko error: %v", err)
+		return 0
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		log.Printf("[payments] CoinGecko API status: %d", resp.StatusCode)
-		return getFallbackPrice(coin)
+		log.Printf("[payments] CoinGecko status: %d", resp.StatusCode)
+		return 0
 	}
 
 	var result map[string]map[string]float64
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		log.Printf("[payments] CoinGecko parse error: %v", err)
-		return getFallbackPrice(coin)
+		return 0
 	}
 
-	price, ok := result[cgID]["usd"]
-	if !ok || price <= 0 {
-		log.Printf("[payments] CoinGecko no price for: %s", cgID)
-		return getFallbackPrice(coin)
-	}
-
-	// Update cache
-	priceCacheMu.Lock()
-	priceCache[cgID] = price
-	priceCacheTime = time.Now()
-	priceCacheMu.Unlock()
-
-	log.Printf("[payments] Fetched %s price: $%.2f", coin, price)
-	return price
-}
-
-// getFallbackPrice returns a conservative fallback if API fails
-func getFallbackPrice(coin string) float64 {
-	fallbacks := map[string]float64{
-		"btc":  60000,
-		"tbtc": 60000,
-		"ltc":  80,
-		"eth":  3000,
-		"doge": 0.10,
-		"trx":  0.10,
-	}
-	if price, ok := fallbacks[strings.ToLower(coin)]; ok {
+	if price, ok := result[cgID]["usd"]; ok && price > 0 {
 		return price
 	}
-	return 1.0
+	return 0
+}
+
+// fetchFromBitPay fetches BTC price from BitPay API (no key required)
+func fetchFromBitPay(client *http.Client) float64 {
+	resp, err := client.Get("https://bitpay.com/api/rates")
+	if err != nil {
+		log.Printf("[payments] BitPay error: %v", err)
+		return 0
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		log.Printf("[payments] BitPay status: %d", resp.StatusCode)
+		return 0
+	}
+
+	var rates []struct {
+		Code string  `json:"code"`
+		Rate float64 `json:"rate"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&rates); err != nil {
+		log.Printf("[payments] BitPay parse error: %v", err)
+		return 0
+	}
+
+	for _, r := range rates {
+		if r.Code == "USD" {
+			return r.Rate
+		}
+	}
+	return 0
+}
+
+// fetchFromCoinDesk fetches BTC price from CoinDesk API (no key required)
+func fetchFromCoinDesk(client *http.Client) float64 {
+	resp, err := client.Get("https://api.coindesk.com/v1/bpi/currentprice/USD.json")
+	if err != nil {
+		log.Printf("[payments] CoinDesk error: %v", err)
+		return 0
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		log.Printf("[payments] CoinDesk status: %d", resp.StatusCode)
+		return 0
+	}
+
+	var result struct {
+		BPI struct {
+			USD struct {
+				RateFloat float64 `json:"rate_float"`
+			} `json:"USD"`
+		} `json:"bpi"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("[payments] CoinDesk parse error: %v", err)
+		return 0
+	}
+
+	return result.BPI.USD.RateFloat
 }
 
 func (s *PaymentService) getConfirmationThreshold() int {
