@@ -383,6 +383,20 @@
                             </select>
                             <small class="text-muted d-block mt-1">Theme mode</small>
                         </div>
+                        <div id="prot-puzzle-mode-section" class="mt-2" style="display: none;">
+                            <select class="form-select" id="prot-puzzleMode" style="min-width: 250px;">
+                                <option value="auto" selected>Auto (System picks)</option>
+                                <option value="slider">Slider</option>
+                                <option value="drag">Drag</option>
+                                <option value="rotate">Rotate</option>
+                                <option value="icon">Icon Order</option>
+                                <option value="text">Text</option>
+                                <option value="strip">Strip</option>
+                                <option value="gobang">Gobang</option>
+                                <option value="match3">Match 3</option>
+                            </select>
+                            <small class="text-muted d-block mt-1">Puzzle type override</small>
+                        </div>
                     </div>
                     <div class="col" id="prot-template-preview-col" style="display:none;">
                         <a id="prot-template-link" href="" data-fancybox="template" data-caption="Challenge Template Preview">
@@ -579,6 +593,12 @@
         if (themeModeSection) {
             themeModeSection.style.display = (value === 'simple' || value === 'smartpuzzle' || value === 'interstitial') ? '' : 'none';
         }
+
+        // Show puzzle mode for templates that support it (wave, latch)
+        const puzzleModeSection = document.getElementById('prot-puzzle-mode-section');
+        if (puzzleModeSection) {
+            puzzleModeSection.style.display = (value === 'wave' || value === 'latch') ? '' : 'none';
+        }
     };
 
     // Initialize Fancybox
@@ -702,6 +722,7 @@
 
             return {
                 template: document.getElementById('prot-template')?.value || '',
+                puzzleMode: document.getElementById('prot-puzzleMode')?.value || 'auto',
                 themeMode: document.getElementById('prot-themeMode')?.value || 'light',
                 countryMode: countryMode,
                 countryList: countryList,
@@ -775,6 +796,12 @@
             if (data.themeMode !== undefined) {
                 const el = document.getElementById('prot-themeMode');
                 if (el) el.value = data.themeMode;
+            }
+
+            // Puzzle Mode
+            if (data.puzzleMode !== undefined) {
+                const el = document.getElementById('prot-puzzleMode');
+                if (el) el.value = data.puzzleMode;
             }
 
             // Detection toggles
