@@ -370,6 +370,7 @@
                             <option value="smartpuzzle">Smart Puzzle</option>
                             <option value="simple">Simple</option>
                             <option value="lobby">Lobby</option>
+                            <option value="interstitial">Interstitial (Terminal)</option>
                         </select>
                         <small class="text-muted d-block mt-1">Challenge page shown to suspicious visitors</small>
                         <div id="prot-theme-mode-section" class="mt-2" style="display: none;">
@@ -561,7 +562,7 @@
         if (!select || !previewCol || !previewImg) return;
 
         const value = select.value;
-        if (value && ['cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle', 'smartpuzzle', 'simple', 'lobby'].includes(value)) {
+        if (value && ['cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle', 'smartpuzzle', 'simple', 'lobby', 'interstitial'].includes(value)) {
             const imgUrl = '/static/img/templates/' + value + '.gif';
             previewImg.src = imgUrl;
             if (previewLink) previewLink.href = imgUrl;
@@ -572,9 +573,9 @@
             if (previewLink) previewLink.href = '';
         }
 
-        // Show theme mode for templates that support theming (simple, smartpuzzle)
+        // Show theme mode for templates that support theming (simple, smartpuzzle, interstitial)
         if (themeModeSection) {
-            themeModeSection.style.display = (value === 'simple' || value === 'smartpuzzle') ? '' : 'none';
+            themeModeSection.style.display = (value === 'simple' || value === 'smartpuzzle' || value === 'interstitial') ? '' : 'none';
         }
     };
 
