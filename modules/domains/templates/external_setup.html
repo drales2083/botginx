@@ -53,9 +53,11 @@
                         </tr>
                     </thead>
                     <tbody>
+                        {{if .SetupInfo.IsWildcard}}
+                        <!-- cPanel user: only * record needed -->
                         <tr>
                             <td><span class="badge bg-primary">A</span></td>
-                            <td><code>{{if .SetupInfo.IsWildcard}}*{{else}}@{{end}}</code></td>
+                            <td><code>*</code></td>
                             <td>
                                 <div class="input-group input-group-sm" style="max-width:300px">
                                     <input type="text" class="form-control form-control-sm" value="{{.SetupInfo.ServerIP}}" readonly id="copy-ip">
@@ -66,6 +68,35 @@
                             </td>
                             <td></td>
                         </tr>
+                        {{else}}
+                        <!-- External DNS user: both @ and * records needed for subdomain support -->
+                        <tr>
+                            <td><span class="badge bg-primary">A</span></td>
+                            <td><code>@</code></td>
+                            <td>
+                                <div class="input-group input-group-sm" style="max-width:300px">
+                                    <input type="text" class="form-control form-control-sm" value="{{.SetupInfo.ServerIP}}" readonly id="copy-ip-base">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('copy-ip-base')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td><span id="badge-a-base" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-primary">A</span></td>
+                            <td><code>*</code></td>
+                            <td>
+                                <div class="input-group input-group-sm" style="max-width:300px">
+                                    <input type="text" class="form-control form-control-sm" value="{{.SetupInfo.ServerIP}}" readonly id="copy-ip">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('copy-ip')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td><span id="badge-a-wild" class="badge bg-secondary"><i class="bi bi-hourglass-split"></i></span></td>
+                        </tr>
+                        {{end}}
                     </tbody>
                 </table>
                 <div class="px-3 py-2 border-top" id="detail-a"></div>
@@ -113,10 +144,9 @@
             </div>
         </div>
 
-        <!-- Step 3: SSL Certificate -->
-        {{if .SetupInfo.IsWildcard}}
+        <!-- Step 3: SSL Certificate (CNAME delegation for automatic wildcard SSL) -->
         {{if .SetupInfo.UseAcmeDns}}
-        <!-- Wildcard with CNAME delegation (recommended - one-time setup) -->
+        <!-- CNAME delegation for wildcard SSL (one-time setup) -->
         <div class="card mb-3" id="card-step3">
             <div class="card-header">
                 <h5 class="card-title mb-0">
@@ -261,26 +291,6 @@
                         <div class="spinner-border spinner-border-sm text-primary me-2"></div>
                         <span>Generating SSL certificate...</span>
                     </div>
-                </div>
-            </div>
-        </div>
-        {{end}}
-        {{else}}
-        <!-- Non-wildcard domains use HTTP-01 (automatic, no ACME TXT needed) -->
-        <div class="card mb-3" id="card-step3">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <span class="badge bg-secondary me-2">3</span>
-                    SSL Certificate — Automatic
-                </h5>
-                <div class="card-tools">
-                    <span id="badge-ssl" class="badge bg-info"><i class="bi bi-lightning"></i> Auto</span>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="d-flex align-items-center text-success">
-                    <i class="bi bi-check-circle-fill me-2"></i>
-                    <span>SSL certificate will be generated automatically once DNS records are verified. No additional TXT record needed.</span>
                 </div>
             </div>
         </div>

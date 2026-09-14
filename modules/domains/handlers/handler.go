@@ -222,7 +222,7 @@ func (h *Handler) SharedSetup(w http.ResponseWriter, r *http.Request) {
 		AcmeTXTName:   "_acme-challenge." + baseDomain,
 	}
 
-	// Check for acme-dns registration (for wildcard)
+	// Check for acme-dns registration (all domains use wildcard SSL)
 	if domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
 		setupInfo.AcmeCnameTarget = *domain.AcmeFulldomain
 		setupInfo.AcmeCnameVerified = domain.AcmeCnameVerified
@@ -235,7 +235,8 @@ func (h *Handler) SharedSetup(w http.ResponseWriter, r *http.Request) {
 				setupInfo.AcmeCnameVerified = true
 			}
 		}
-	} else if isWildcard {
+	} else {
+		// All domains need acme-dns for wildcard SSL support
 		go h.registerAcmeDnsBackground(domain.ID)
 	}
 
@@ -377,28 +378,26 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Wildcard domains need DNS-01 challenge via acme-dns
-	// Auto-register with acme-dns to simplify setup
-	needsSetupWizard := false
+	// All domains use DNS-01 challenge via acme-dns for wildcard SSL
+	// This ensures subdomains work for all domain types (cPanel-style)
+	needsSetupWizard := true
 	var cnameTarget string
-	if domain.IsWildcard {
-		needsSetupWizard = true
-		// Update domain to mark as external setup pending
-		setupType := models.SetupTypeExternal
-		setupStep := models.SetupStepDNSWaiting
-		h.service.Update(domain.ID, models.UpdateDomainInput{
-			SetupType: &setupType,
-			SetupStep: &setupStep,
-		})
 
-		// Auto-register with acme-dns
-		reg, err := h.service.RegisterWithAcmeDNS(domain.ID)
-		if err != nil {
-			log.Printf("[domains] auto acme-dns registration failed for %s: %v", domain.Name, err)
-		} else {
-			cnameTarget = reg.Fulldomain
-			log.Printf("[domains] auto-registered %s with acme-dns: %s", domain.Name, cnameTarget)
-		}
+	// Update domain to mark as external setup pending
+	setupType := models.SetupTypeExternal
+	setupStep := models.SetupStepDNSWaiting
+	h.service.Update(domain.ID, models.UpdateDomainInput{
+		SetupType: &setupType,
+		SetupStep: &setupStep,
+	})
+
+	// Auto-register with acme-dns for wildcard SSL support
+	reg, err := h.service.RegisterWithAcmeDNS(domain.ID)
+	if err != nil {
+		log.Printf("[domains] auto acme-dns registration failed for %s: %v", domain.Name, err)
+	} else {
+		cnameTarget = reg.Fulldomain
+		log.Printf("[domains] auto-registered %s with acme-dns: %s", domain.Name, cnameTarget)
 	}
 
 	resp := map[string]interface{}{
@@ -726,7 +725,7 @@ func (h *Handler) ExternalSetup(w http.ResponseWriter, r *http.Request) {
 		AcmeTXTName:   "_acme-challenge." + baseDomain,
 	}
 
-	// Check for acme-dns registration (preferred method for wildcard)
+	// Check for acme-dns registration (all domains use wildcard SSL)
 	if domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
 		setupInfo.AcmeCnameTarget = *domain.AcmeFulldomain
 		setupInfo.AcmeCnameVerified = domain.AcmeCnameVerified
@@ -741,8 +740,8 @@ func (h *Handler) ExternalSetup(w http.ResponseWriter, r *http.Request) {
 				setupInfo.AcmeCnameVerified = true
 			}
 		}
-	} else if isWildcard {
-		// Register with acme-dns if not yet registered
+	} else {
+		// All domains need acme-dns for wildcard SSL support
 		go h.registerAcmeDnsBackground(domain.ID)
 	}
 
@@ -980,73 +979,64 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 		status.VerifyTXT.Message = "Waiting for TXT record"
 	}
 
-	// Check SSL readiness for wildcard domains
-	if domain.IsWildcard {
-		// Prefer acme-dns CNAME delegation (100% reliable)
-		if domain.AcmeSubdomain != nil && domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
-			// Using acme-dns - check CNAME instead of ACME TXT
-			status.AcmeTXTFound = domain.AcmeCnameVerified
-			status.CnameOrTXT = models.RecordStatus{
-				Expected: *domain.AcmeFulldomain,
-			}
-			if !domain.AcmeCnameVerified {
-				// Check if CNAME is now configured
-				if h.verification.CheckAcmeCnameRecord(domain.Name, *domain.AcmeFulldomain) {
-					status.AcmeTXTFound = true
-					verified := true
-					h.service.Update(id, models.UpdateDomainInput{AcmeCnameVerified: &verified})
-					status.CnameOrTXT.Status = "verified"
-					status.CnameOrTXT.Found = *domain.AcmeFulldomain
-					status.CnameOrTXT.Message = "CNAME verified - SSL renewals will be automatic"
-				} else {
-					status.CnameOrTXT.Status = "not_found"
-					status.CnameOrTXT.Message = fmt.Sprintf("Add CNAME: _acme-challenge.%s → %s", baseDomain, *domain.AcmeFulldomain)
-				}
-			} else {
+	// Check SSL readiness - all domains use DNS-01 via acme-dns for wildcard SSL
+	// Prefer acme-dns CNAME delegation (100% reliable)
+	if domain.AcmeSubdomain != nil && domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
+		// Using acme-dns - check CNAME instead of ACME TXT
+		status.AcmeTXTFound = domain.AcmeCnameVerified
+		status.CnameOrTXT = models.RecordStatus{
+			Expected: *domain.AcmeFulldomain,
+		}
+		if !domain.AcmeCnameVerified {
+			// Check if CNAME is now configured
+			if h.verification.CheckAcmeCnameRecord(domain.Name, *domain.AcmeFulldomain) {
+				status.AcmeTXTFound = true
+				verified := true
+				h.service.Update(id, models.UpdateDomainInput{AcmeCnameVerified: &verified})
 				status.CnameOrTXT.Status = "verified"
 				status.CnameOrTXT.Found = *domain.AcmeFulldomain
 				status.CnameOrTXT.Message = "CNAME verified - SSL renewals will be automatic"
-			}
-			// Clear old ACME token from response (not needed with acme-dns)
-			status.AcmeToken = ""
-		} else if domain.AcmeToken != nil && *domain.AcmeToken != "" {
-			// Legacy: using ACME TXT (fallback)
-			status.AcmeToken = *domain.AcmeToken
-			status.AcmeTXTFound = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
-			status.CnameOrTXT = models.RecordStatus{
-				Expected: *domain.AcmeToken,
-			}
-			if status.AcmeTXTFound {
-				status.CnameOrTXT.Status = "verified"
-				status.CnameOrTXT.Found = *domain.AcmeToken
-				status.CnameOrTXT.Message = "TXT record verified"
 			} else {
-				// Check for stale ACME record that needs to be deleted
-				existingValue := h.verification.GetAcmeTXTValue(domain.Name)
-				if existingValue != "" && existingValue != *domain.AcmeToken {
-					status.AcmeTXTStale = true
-					status.AcmeTXTStaleValue = existingValue
-					status.CnameOrTXT.Status = "mismatch"
-					status.CnameOrTXT.Found = existingValue
-					status.CnameOrTXT.Message = fmt.Sprintf("Wrong value found - delete old TXT and add: %s", *domain.AcmeToken)
-				} else {
-					status.CnameOrTXT.Status = "not_found"
-					status.CnameOrTXT.Message = "Waiting for TXT record"
-				}
+				status.CnameOrTXT.Status = "not_found"
+				status.CnameOrTXT.Message = fmt.Sprintf("Add CNAME: _acme-challenge.%s → %s", baseDomain, *domain.AcmeFulldomain)
 			}
 		} else {
-			// No acme-dns registration yet
-			status.CnameOrTXT = models.RecordStatus{
-				Status:  "not_found",
-				Message: "Registering with acme-dns...",
+			status.CnameOrTXT.Status = "verified"
+			status.CnameOrTXT.Found = *domain.AcmeFulldomain
+			status.CnameOrTXT.Message = "CNAME verified - SSL renewals will be automatic"
+		}
+		// Clear old ACME token from response (not needed with acme-dns)
+		status.AcmeToken = ""
+	} else if domain.AcmeToken != nil && *domain.AcmeToken != "" {
+		// Legacy: using ACME TXT (fallback)
+		status.AcmeToken = *domain.AcmeToken
+		status.AcmeTXTFound = h.verification.CheckAcmeTXT(domain.Name, *domain.AcmeToken)
+		status.CnameOrTXT = models.RecordStatus{
+			Expected: *domain.AcmeToken,
+		}
+		if status.AcmeTXTFound {
+			status.CnameOrTXT.Status = "verified"
+			status.CnameOrTXT.Found = *domain.AcmeToken
+			status.CnameOrTXT.Message = "TXT record verified"
+		} else {
+			// Check for stale ACME record that needs to be deleted
+			existingValue := h.verification.GetAcmeTXTValue(domain.Name)
+			if existingValue != "" && existingValue != *domain.AcmeToken {
+				status.AcmeTXTStale = true
+				status.AcmeTXTStaleValue = existingValue
+				status.CnameOrTXT.Status = "mismatch"
+				status.CnameOrTXT.Found = existingValue
+				status.CnameOrTXT.Message = fmt.Sprintf("Wrong value found - delete old TXT and add: %s", *domain.AcmeToken)
+			} else {
+				status.CnameOrTXT.Status = "not_found"
+				status.CnameOrTXT.Message = "Waiting for TXT record"
 			}
 		}
 	} else {
-		// Non-wildcard: ACME TXT not needed (HTTP-01 challenge)
-		status.AcmeTXTFound = true
+		// No acme-dns registration yet
 		status.CnameOrTXT = models.RecordStatus{
-			Status:  "verified",
-			Message: "Not required - using HTTP-01 challenge",
+			Status:  "not_found",
+			Message: "Registering with acme-dns...",
 		}
 	}
 
@@ -1060,17 +1050,16 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 	// For wildcard: A + verify TXT + ACME TXT
 	status.AllRecordsFound = status.ARecordFound && status.VerifyTXTFound && status.AcmeTXTFound
 
-	// If all records found and not yet complete, trigger SSL generation
-	// Skip auto-trigger for wildcard domains - they use two-phase lego flow
-	// (user must click "Get SSL Token" then "Complete SSL")
+	// All domains use DNS-01 challenge via acme-dns for wildcard SSL
+	// Auto-trigger SSL generation once ACME CNAME is verified
 	// Also retry if stuck at ssl_generating (previous attempt may have failed)
 	// Add cooldown: only retry every 5 minutes to avoid rate limiting
 	sslCooldown := 5 * time.Minute
 	canRetrySSL := time.Since(domain.UpdatedAt) > sslCooldown
 
-	if !domain.IsWildcard && status.AllRecordsFound && !domain.SSLEnabled &&
+	if status.AllRecordsFound && domain.AcmeCnameVerified && !domain.SSLEnabled &&
 		(domain.SetupStep == models.SetupStepDNSWaiting || (domain.SetupStep == models.SetupStepSSLGenerating && canRetrySSL)) {
-		// Non-wildcard: auto-generate SSL with HTTP-01
+		// All domains: auto-generate wildcard SSL with DNS-01 via acme-dns
 		freshDomain, _ := h.service.Get(id)
 		if freshDomain != nil {
 			go h.completeExternalSetup(freshDomain)
@@ -1112,36 +1101,32 @@ func (h *Handler) completeExternalSetup(domain *models.Domain) {
 	emptyErr := ""
 	h.service.Update(domain.ID, models.UpdateDomainInput{SSLError: &emptyErr})
 
+	// All domains use wildcard SSL via acme-dns for subdomain support (cPanel-style)
 	var sslErr error
-	if domain.IsWildcard {
-		// Wildcard domains: prefer acme-dns CNAME delegation (automatic renewals)
-		// Fall back to manual DNS-01 only if acme-dns not configured
-		if domain.AcmeSubdomain != nil && *domain.AcmeSubdomain != "" &&
-			domain.AcmeUsername != nil && *domain.AcmeUsername != "" &&
-			domain.AcmePassword != nil && *domain.AcmePassword != "" &&
-			domain.AcmeCnameVerified {
-			// Use acme-dns - automatic SSL renewals will work
-			log.Printf("[domains] using acme-dns for wildcard %s", domain.Name)
-			sslErr = h.verification.GenerateWildcardSSLWithAcmeDNS(
-				domain.Name,
-				*domain.AcmeSubdomain,
-				*domain.AcmeUsername,
-				*domain.AcmePassword,
-			)
-		} else if domain.AcmeSubdomain != nil && *domain.AcmeSubdomain != "" && !domain.AcmeCnameVerified {
-			// acme-dns registered but CNAME not verified - cannot proceed
-			log.Printf("[domains] wildcard %s has acme-dns but CNAME not verified, cannot generate SSL", domain.Name)
-			errMsg := "CNAME delegation to acme-dns not verified. Add CNAME record and verify first."
-			h.service.Update(domain.ID, models.UpdateDomainInput{SSLError: &errMsg})
-			return
-		} else {
-			// No acme-dns - use manual DNS-01 (user must update TXT record for renewals)
-			log.Printf("[domains] using manual DNS-01 for wildcard %s (10 min timeout)", domain.Name)
-			sslErr = h.verification.CompleteWildcardSSL(domain.Name, "")
-		}
+	if domain.AcmeSubdomain != nil && *domain.AcmeSubdomain != "" &&
+		domain.AcmeUsername != nil && *domain.AcmeUsername != "" &&
+		domain.AcmePassword != nil && *domain.AcmePassword != "" &&
+		domain.AcmeCnameVerified {
+		// Use acme-dns - automatic SSL renewals will work
+		log.Printf("[domains] using acme-dns for %s", domain.Name)
+		sslErr = h.verification.GenerateWildcardSSLWithAcmeDNS(
+			domain.Name,
+			*domain.AcmeSubdomain,
+			*domain.AcmeUsername,
+			*domain.AcmePassword,
+		)
+	} else if domain.AcmeSubdomain != nil && *domain.AcmeSubdomain != "" && !domain.AcmeCnameVerified {
+		// acme-dns registered but CNAME not verified - cannot proceed
+		log.Printf("[domains] %s has acme-dns but CNAME not verified, cannot generate SSL", domain.Name)
+		errMsg := "CNAME delegation to acme-dns not verified. Add CNAME record and verify first."
+		h.service.Update(domain.ID, models.UpdateDomainInput{SSLError: &errMsg})
+		return
 	} else {
-		// Non-wildcard domains use HTTP-01 challenge (simpler, no ACME TXT needed)
-		sslErr = h.verification.GenerateHTTPSSL(domain.Name)
+		// No acme-dns registration - this shouldn't happen for new domains
+		log.Printf("[domains] %s missing acme-dns registration, cannot generate wildcard SSL", domain.Name)
+		errMsg := "Domain not registered with acme-dns. Please re-add the domain."
+		h.service.Update(domain.ID, models.UpdateDomainInput{SSLError: &errMsg})
+		return
 	}
 
 	if sslErr != nil {
@@ -1239,56 +1224,21 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// For wildcard domains, use two-phase lego flow
-	if domain.IsWildcard {
-		// Cancel any existing lego challenge
-		h.verification.LegoCancelChallenge(domain.Name)
+	// All domains use DNS-01 via acme-dns
+	// Cancel any existing lego challenge
+	h.verification.LegoCancelChallenge(domain.Name)
 
-		// Clear old token and reset step
-		emptyToken := ""
-		step := models.SetupStepDNSWaiting
-		h.service.Update(id, models.UpdateDomainInput{
-			AcmeToken: &emptyToken,
-			SetupStep: &step,
-		})
-
-		h.json(w, http.StatusOK, map[string]interface{}{
-			"success": true,
-			"message": "Challenge reset. Click 'Get SSL Token' to start fresh.",
-		})
-		return
-	}
-
-	// Non-wildcard: use HTTP-01 challenge
-	deployIP := h.service.GetDeployIP()
-	baseDomain := services.GetBaseDomain(domain.Name)
-
-	aRecordFound, _ := h.verification.CheckARecord(domain.Name, deployIP)
-	verifyFound, _ := h.verification.VerifyDNS(baseDomain, domain.VerifyToken)
-
-	missing := []string{}
-	if !aRecordFound {
-		missing = append(missing, "A record")
-	}
-	if !verifyFound {
-		missing = append(missing, "verify TXT")
-	}
-
-	if len(missing) > 0 {
-		h.jsonError(w, "Missing DNS records: "+strings.Join(missing, ", "), http.StatusBadRequest)
-		return
-	}
-
-	// Update step to ssl_generating (this also updates updated_at)
-	step := models.SetupStepSSLGenerating
-	h.service.Update(id, models.UpdateDomainInput{SetupStep: &step})
-
-	// Trigger SSL generation in background (HTTP-01 for non-wildcards)
-	go h.completeExternalSetup(domain)
+	// Clear old token and reset step
+	emptyToken := ""
+	step := models.SetupStepDNSWaiting
+	h.service.Update(id, models.UpdateDomainInput{
+		AcmeToken: &emptyToken,
+		SetupStep: &step,
+	})
 
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"success": true,
-		"message": "SSL generation started - this may take up to 60 seconds",
+		"message": "Challenge reset. Verify CNAME record and SSL will generate automatically.",
 	})
 }
 
@@ -1305,12 +1255,6 @@ func (h *Handler) APIStartSSLChallenge(w http.ResponseWriter, r *http.Request) {
 	// Check ownership
 	if !h.canAccessDomain(r, domain) {
 		h.jsonError(w, "Not authorized", http.StatusForbidden)
-		return
-	}
-
-	// Only for wildcard domains
-	if !domain.IsWildcard {
-		h.jsonError(w, "This endpoint is for wildcard domains only", http.StatusBadRequest)
 		return
 	}
 
