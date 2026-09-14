@@ -202,7 +202,7 @@
   /* Preview iframe container */
   .cust-preview-frame {
     flex: 1;
-    background: #0a0a0a;
+    background: #f5f5f5;
     position: relative;
   }
   .cust-preview-frame iframe {
@@ -264,8 +264,8 @@
           <div class="cust-row">
             <label>Primary Color</label>
             <div class="cust-color-picker">
-              <input type="color" id="cust-bgColor" value="#0a0a0a">
-              <input type="text" class="form-control form-control-sm" id="cust-bgColor-text" value="#0a0a0a" maxlength="7">
+              <input type="color" id="cust-bgColor" value="#ffffff">
+              <input type="text" class="form-control form-control-sm" id="cust-bgColor-text" value="#ffffff" maxlength="7">
             </div>
           </div>
           <div class="cust-row">
@@ -277,8 +277,8 @@
           <div class="cust-row" id="cust-bgColorSecondary-row" style="display:none;">
             <label>Secondary Color</label>
             <div class="cust-color-picker">
-              <input type="color" id="cust-bgColorSecondary" value="#1a1a1a">
-              <input type="text" class="form-control form-control-sm" id="cust-bgColorSecondary-text" value="#1a1a1a" maxlength="7">
+              <input type="color" id="cust-bgColorSecondary" value="#f5f5f5">
+              <input type="text" class="form-control form-control-sm" id="cust-bgColorSecondary-text" value="#f5f5f5" maxlength="7">
             </div>
           </div>
           <div class="cust-row">
@@ -293,8 +293,8 @@
           <div class="cust-row" id="cust-patternColor-row" style="display:none;">
             <label>Pattern Color</label>
             <div class="cust-color-picker">
-              <input type="color" id="cust-patternColor" value="#333333">
-              <input type="text" class="form-control form-control-sm" id="cust-patternColor-text" value="#333333" maxlength="7">
+              <input type="color" id="cust-patternColor" value="#e0e0e0">
+              <input type="text" class="form-control form-control-sm" id="cust-patternColor-text" value="#e0e0e0" maxlength="7">
             </div>
           </div>
           <div class="cust-row" id="cust-patternOpacity-row" style="display:none;">
@@ -341,8 +341,8 @@
           <div class="cust-row">
             <label>Secondary Color</label>
             <div class="cust-color-picker">
-              <input type="color" id="cust-loaderColorSecondary" value="#e5e7eb">
-              <input type="text" class="form-control form-control-sm" id="cust-loaderColorSecondary-text" value="#e5e7eb" maxlength="7">
+              <input type="color" id="cust-loaderColorSecondary" value="#c7d2fe">
+              <input type="text" class="form-control form-control-sm" id="cust-loaderColorSecondary-text" value="#c7d2fe" maxlength="7">
             </div>
           </div>
         </div>
@@ -411,8 +411,8 @@
           <div class="cust-row">
             <label>Text Color</label>
             <div class="cust-color-picker">
-              <input type="color" id="cust-textColor" value="#ffffff">
-              <input type="text" class="form-control form-control-sm" id="cust-textColor-text" value="#ffffff" maxlength="7">
+              <input type="color" id="cust-textColor" value="#1a1a1a">
+              <input type="text" class="form-control form-control-sm" id="cust-textColor-text" value="#1a1a1a" maxlength="7">
             </div>
           </div>
           <div class="cust-row">
@@ -543,7 +543,7 @@
       </button>
     </header>
     <div class="cust-preview-frame">
-      <iframe id="cust-preview-iframe" srcdoc="<html><body style='background:#0a0a0a;color:#666;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui'>Loading preview...</body></html>"></iframe>
+      <iframe id="cust-preview-iframe" srcdoc="<html><body style='background:#f5f5f5;color:#666;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui'>Loading preview...</body></html>"></iframe>
     </div>
   </section>
 </div>
@@ -875,22 +875,22 @@
 
   function doResetCustomization() {
     const defaults = {
-      bgColor: '#0a0a0a',
-      bgColorSecondary: '#1a1a1a',
+      bgColor: '#ffffff',
+      bgColorSecondary: '#f5f5f5',
       gradientEnabled: false,
       pattern: 'none',
-      patternColor: '#333333',
+      patternColor: '#e0e0e0',
       patternOpacity: 100,
       loader: 'dots-bounce',
       loaderColorPrimary: '#4f46e5',
-      loaderColorSecondary: '#e5e7eb',
+      loaderColorSecondary: '#c7d2fe',
       heading: 'Please Wait',
       headingVisible: true,
       subheading: "We're redirecting you...",
       subheadingVisible: true,
       font: 'montserrat',
       fontWeight: 700,
-      textColor: '#ffffff',
+      textColor: '#1a1a1a',
       textSize: 36,
       textShadow: false,
       imageMode: 'none',
@@ -969,22 +969,22 @@
 
   // Default customization values - MUST match Go defaults in pkg/customizer/defaults.go
   const defaultCustomization = {
-    bgColor: '#0a0a0a',
-    bgColorSecondary: '#1a1a1a',
+    bgColor: '#ffffff',
+    bgColorSecondary: '#f5f5f5',
     gradientEnabled: false,
     pattern: 'none',
-    patternColor: '#333333',
+    patternColor: '#e0e0e0',
     patternOpacity: 100,
     loader: 'dots-bounce',
     loaderColorPrimary: '#4f46e5',
-    loaderColorSecondary: '#e5e7eb',
+    loaderColorSecondary: '#c7d2fe',
     heading: 'Please Wait',
     headingVisible: true,
     subheading: "We're redirecting you...",
     subheadingVisible: true,
     font: 'montserrat',
     fontWeight: 700,
-    textColor: '#ffffff',
+    textColor: '#1a1a1a',
     textSize: 36,
     textShadow: false,
     imageMode: 'none',
