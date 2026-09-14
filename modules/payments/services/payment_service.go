@@ -317,6 +317,7 @@ func (s *PaymentService) getGatewayWalletID(gateway PaymentGateway) string {
 func (s *PaymentService) convertToUSD(coin string, amount float64) float64 {
 	// Stablecoins are 1:1
 	if coin == "usdt" || coin == "usdc" {
+		log.Printf("[payments] Converting %s: %.8f (stablecoin 1:1) = $%.2f", coin, amount, amount)
 		return amount
 	}
 
@@ -324,13 +325,17 @@ func (s *PaymentService) convertToUSD(coin string, amount float64) float64 {
 	envKey := fmt.Sprintf("%s_USD_PRICE", strings.ToUpper(coin))
 	if priceStr := os.Getenv(envKey); priceStr != "" {
 		if price, err := strconv.ParseFloat(priceStr, 64); err == nil {
-			return amount * price
+			result := amount * price
+			log.Printf("[payments] Converting %s: %.8f * $%.2f (env override) = $%.2f", coin, amount, price, result)
+			return result
 		}
 	}
 
 	// Fetch live price from CoinGecko (cached)
 	price := fetchCryptoPrice(coin)
-	return amount * price
+	result := amount * price
+	log.Printf("[payments] Converting %s: %.8f * $%.2f (live) = $%.2f", coin, amount, price, result)
+	return result
 }
 
 // fetchCryptoPrice gets the USD price for a coin, trying multiple providers

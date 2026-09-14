@@ -89,6 +89,7 @@ func (m *Module) AdminRoutes() chi.Router {
 	// API
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/resync/{txid}", m.handler.APIAdminResync)
+		r.Get("/diagnostic/{txid}", m.handler.APIAdminDiagnostic)
 		r.Post("/webhook", m.handler.APIAdminAddWebhook)
 		r.Get("/webhooks", m.handler.APIAdminListWebhooks)
 	})

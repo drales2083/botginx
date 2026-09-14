@@ -268,6 +268,68 @@ func (h *Handler) APIAdminResync(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// APIAdminDiagnostic shows stored transaction details for debugging
+func (h *Handler) APIAdminDiagnostic(w http.ResponseWriter, r *http.Request) {
+	txid := chi.URLParam(r, "txid")
+
+	// Get stored transaction from database
+	storedTx, err := h.service.GetTransaction(txid)
+	if err != nil {
+		h.jsonError(w, "Transaction not found in database: "+err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// Also fetch current data from BitGo for comparison
+	var bitgoData map[string]interface{}
+	bitgoGateway := h.service.GetBitGoGateway()
+	if bitgoGateway != nil {
+		if tx, err := bitgoGateway.GetTransaction(txid); err == nil {
+			bitgoData = map[string]interface{}{
+				"confirmations": tx.Confirmations,
+				"outputs":       tx.Outputs,
+			}
+		}
+	}
+
+	// Get current BTC price for comparison
+	currentPrice := float64(0)
+	if resp, err := http.Get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"); err == nil {
+		defer resp.Body.Close()
+		var priceData map[string]map[string]float64
+		if json.NewDecoder(resp.Body).Decode(&priceData) == nil {
+			currentPrice = priceData["bitcoin"]["usd"]
+		}
+	}
+
+	// Calculate implied price used
+	impliedPrice := float64(0)
+	if storedTx.Amount > 0 {
+		impliedPrice = storedTx.AmountUSD / storedTx.Amount
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"stored": map[string]interface{}{
+			"id":            storedTx.ID,
+			"user_id":       storedTx.UserID,
+			"txid":          storedTx.TxID,
+			"amount_btc":    storedTx.Amount,
+			"amount_usd":    storedTx.AmountUSD,
+			"status":        storedTx.Status,
+			"confirmations": storedTx.Confirmations,
+			"created_at":    storedTx.CreatedAt,
+		},
+		"analysis": map[string]interface{}{
+			"implied_price_used":   impliedPrice,
+			"current_btc_price":    currentPrice,
+			"expected_usd":         storedTx.Amount * currentPrice,
+			"actual_usd":           storedTx.AmountUSD,
+			"difference_usd":       (storedTx.Amount * currentPrice) - storedTx.AmountUSD,
+			"percentage_of_expected": (storedTx.AmountUSD / (storedTx.Amount * currentPrice)) * 100,
+		},
+		"bitgo_current": bitgoData,
+	})
+}
+
 // APIAdminAddWebhook registers webhook with BitGo
 func (h *Handler) APIAdminAddWebhook(w http.ResponseWriter, r *http.Request) {
 	var input struct {

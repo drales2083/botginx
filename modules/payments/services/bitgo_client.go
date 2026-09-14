@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -134,9 +135,19 @@ func (c *BitGoClient) GetTransaction(txid string) (*models.BitGoTxDetails, error
 		return nil, err
 	}
 
+	// Log raw response for debugging deposit issues
+	log.Printf("[bitgo] Raw tx response for %s: %s", txid, string(respBody))
+
 	var result models.BitGoTxDetails
 	if err := json.Unmarshal(respBody, &result); err != nil {
+		log.Printf("[bitgo] Failed to parse tx %s: %v", txid, err)
 		return nil, err
+	}
+
+	// Log parsed outputs
+	for i, out := range result.Outputs {
+		log.Printf("[bitgo] tx=%s output[%d]: addr=%s value=%d wallet=%s",
+			txid, i, out.Address, out.Value, out.Wallet)
 	}
 
 	return &result, nil
