@@ -583,7 +583,7 @@ func generateRedirectPHP(link *models.RedirectLink) string {
 	// Animation duration in seconds
 	duration := link.AnimationDuration
 	if duration <= 0 {
-		duration = 3
+		duration = 2
 	}
 
 	// Convert JSONMap to customizer.Customization
@@ -609,7 +609,7 @@ func generateRedirectHTML(link *models.RedirectLink) string {
 	// Animation duration in seconds
 	duration := link.AnimationDuration
 	if duration <= 0 {
-		duration = 3
+		duration = 2
 	}
 
 	// Convert JSONMap to customizer.Customization

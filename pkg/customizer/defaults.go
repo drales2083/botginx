@@ -9,7 +9,7 @@ func GetDefaultCustomization() Customization {
 		Pattern:              "none",
 		PatternColor:         "#e0e0e0",
 		PatternOpacity:       100,
-		Loader:               "dots-bounce",
+		Loader:               "none",
 		LoaderColorPrimary:   "#4f46e5",
 		LoaderColorSecondary: "#c7d2fe",
 		Heading:              "Please Wait",
