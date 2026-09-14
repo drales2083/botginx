@@ -576,9 +576,10 @@ func (h *Handler) APIVerifyDNS(w http.ResponseWriter, r *http.Request) {
 			if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
 				return
 			}
-			// Mark SSL enabled
+			// Mark SSL enabled and assign server
 			t := true
-			h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t})
+			serverID := h.service.GetDeployServerID()
+			h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t, ServerID: &serverID})
 		}()
 		result["setup_started"] = true
 	}
@@ -608,11 +609,13 @@ func (h *Handler) APICheckSSL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update SSL status in database
+	// Update SSL status in database and assign server
 	if status.Exists && status.IsWildcard {
 		sslEnabled := true
+		serverID := h.service.GetDeployServerID()
 		h.service.Update(id, models.UpdateDomainInput{
 			SSLEnabled: &sslEnabled,
+			ServerID:   &serverID,
 		})
 	}
 
@@ -650,9 +653,10 @@ func (h *Handler) APISetupDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Mark SSL enabled
+	// Mark SSL enabled and assign server
 	t := true
-	h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t})
+	serverID := h.service.GetDeployServerID()
+	h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t, ServerID: &serverID})
 
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"success": true,
@@ -906,9 +910,10 @@ func (h *Handler) APIGenerateSSLAcmeDNS(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Update database
+	// Update database and assign server
 	t := true
-	h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t})
+	serverID := h.service.GetDeployServerID()
+	h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t, ServerID: &serverID})
 
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"success": true,

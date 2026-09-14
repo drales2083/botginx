@@ -280,23 +280,25 @@ func (s *MarketplaceService) GetUserBalance(userID string) float64 {
 }
 
 // ListSellable returns domains that can be listed for sale
-// Requirements: verified, SSL enabled, not shared, not already in marketplace, has server assigned
+// Requirements: owned by admin, verified, SSL enabled, not shared, not already in marketplace, has server assigned
 // For wildcard domains: also requires acme_cname_verified (CNAME to our acme-dns for SSL renewals)
 func (s *MarketplaceService) ListSellable() ([]models.MarketplaceDomain, error) {
 	var domains []models.MarketplaceDomain
 	err := s.db.Select(&domains, `
-		SELECT id, name, user_id, dns_verified, ssl_enabled, is_marketplace, created_at
-		FROM domains
-		WHERE dns_verified = TRUE
-		  AND ssl_enabled = TRUE
-		  AND server_id IS NOT NULL
-		  AND COALESCE(is_shared, FALSE) = FALSE
-		  AND COALESCE(is_marketplace, FALSE) = FALSE
+		SELECT d.id, d.name, d.user_id, d.dns_verified, d.ssl_enabled, d.is_marketplace, d.created_at
+		FROM domains d
+		JOIN users u ON u.id = d.user_id
+		WHERE u.role = 'admin'
+		  AND d.dns_verified = TRUE
+		  AND d.ssl_enabled = TRUE
+		  AND d.server_id IS NOT NULL
+		  AND COALESCE(d.is_shared, FALSE) = FALSE
+		  AND COALESCE(d.is_marketplace, FALSE) = FALSE
 		  AND (
-		      COALESCE(is_wildcard, FALSE) = FALSE
-		      OR acme_cname_verified = TRUE
+		      COALESCE(d.is_wildcard, FALSE) = FALSE
+		      OR d.acme_cname_verified = TRUE
 		  )
-		ORDER BY created_at DESC
+		ORDER BY d.created_at DESC
 	`)
 	return domains, err
 }
