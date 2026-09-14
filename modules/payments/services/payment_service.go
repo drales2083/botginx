@@ -19,11 +19,16 @@ import (
 )
 
 // Price cache to avoid hitting API on every conversion
+// Each coin has its own timestamp to prevent stale prices
+type cachedPrice struct {
+	price     float64
+	fetchedAt time.Time
+}
+
 var (
-	priceCache     = make(map[string]float64)
-	priceCacheMu   sync.RWMutex
-	priceCacheTime time.Time
-	priceCacheTTL  = 5 * time.Minute
+	priceCache   = make(map[string]cachedPrice)
+	priceCacheMu sync.RWMutex
+	priceCacheTTL = 5 * time.Minute
 )
 
 type PaymentService struct {
@@ -357,12 +362,12 @@ func fetchCryptoPrice(coin string) float64 {
 		return 0
 	}
 
-	// Check cache
+	// Check cache - each coin has its own timestamp
 	priceCacheMu.RLock()
-	if time.Since(priceCacheTime) < priceCacheTTL {
-		if price, exists := priceCache[coinLower]; exists {
+	if cached, exists := priceCache[coinLower]; exists {
+		if time.Since(cached.fetchedAt) < priceCacheTTL {
 			priceCacheMu.RUnlock()
-			return price
+			return cached.price
 		}
 	}
 	priceCacheMu.RUnlock()
@@ -398,8 +403,10 @@ func fetchCryptoPrice(coin string) float64 {
 // cachePrice stores price and logs the source
 func cachePrice(coin string, price float64, source string) {
 	priceCacheMu.Lock()
-	priceCache[coin] = price
-	priceCacheTime = time.Now()
+	priceCache[coin] = cachedPrice{
+		price:     price,
+		fetchedAt: time.Now(),
+	}
 	priceCacheMu.Unlock()
 	log.Printf("[payments] Fetched %s price: $%.2f (from %s)", coin, price, source)
 }
