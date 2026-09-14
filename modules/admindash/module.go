@@ -65,7 +65,7 @@ func (m *Module) stats() map[string]interface{} {
 
 	// Users
 	m.DB().Get(&totalUsers, `SELECT COUNT(*) FROM users`)
-	m.DB().Get(&activeUsers, `SELECT COUNT(*) FROM users WHERE subscription_expires_at > NOW()`)
+	m.DB().Get(&activeUsers, `SELECT COUNT(*) FROM subscriptions WHERE expires_at > NOW()`)
 
 	// Domains
 	m.DB().Get(&totalDomains, `SELECT COUNT(*) FROM domains`)
