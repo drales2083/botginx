@@ -38,6 +38,7 @@ import (
 	"github.com/botginx/botginx/pkg/i18n"
 	"github.com/botginx/botginx/pkg/lifecycle"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/botginx/botginx/pkg/domainstats"
 	"github.com/botginx/botginx/pkg/subscription"
 	"github.com/botginx/botginx/web"
 	"github.com/go-chi/chi/v5"
@@ -376,6 +377,8 @@ func main() {
 		// Attached to the whole section so every page can render an accurate
 		// subscription banner, including the ones that stay writable below.
 		r.Use(subscriptions.Attach)
+		// Domain stats for promotional banners
+		r.Use(domainstats.Middleware(db.DB))
 
 		// Account settings and subscription pages live in the auth module.
 		// Deliberately outside EnforceAll: users must be able to view their

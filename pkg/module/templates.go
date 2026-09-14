@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/botginx/botginx/pkg/ctx"
+	"github.com/botginx/botginx/pkg/domainstats"
 	"github.com/botginx/botginx/pkg/protection"
 	"github.com/botginx/botginx/pkg/subscription"
 )
@@ -58,9 +59,10 @@ func toFloat(v any) float64 {
 
 func defaultFuncs() template.FuncMap {
 	return template.FuncMap{
-		"safeHTML": func(s string) template.HTML { return template.HTML(s) },
-		"safeJS":   func(s string) template.JS { return template.JS(s) },
-		"safeURL":  func(s string) template.URL { return template.URL(s) },
+		"safeHTML":  func(s string) template.HTML { return template.HTML(s) },
+		"safeJS":    func(s string) template.JS { return template.JS(s) },
+		"safeURL":   func(s string) template.URL { return template.URL(s) },
+		"hasPrefix": strings.HasPrefix,
 		"json": func(v interface{}) template.JS {
 			b, err := json.Marshal(v)
 			if err != nil {
@@ -310,6 +312,12 @@ func (te *TemplateEngine) renderWithLayout(w io.Writer, r *http.Request, name, l
 	// middleware regardless of what the page shows.
 	if _, set := data["Subscription"]; !set && r != nil {
 		data["Subscription"] = subscription.FromRequest(r)
+	}
+
+	// Domain stats, so the layout can show promotional banners to users
+	// who have not added any domains yet.
+	if _, set := data["DomainStats"]; !set && r != nil {
+		data["DomainStats"] = domainstats.FromRequest(r)
 	}
 
 	var buf bytes.Buffer
