@@ -365,6 +365,8 @@ class SourceRandomizer {
     public function __construct() {
         // Use file hash as seed - consistent per deploy, changes on redeploy
         $this->seed = substr(md5_file(__FILE__), 0, 8);
+        // Seed PHP's random generator so rand()/array_rand() are also per-deploy
+        mt_srand(crc32($this->seed));
     }
 
     public function className($key) {
@@ -386,10 +388,11 @@ class SourceRandomizer {
     }
 
     public function randomComment() {
+        // All comments use seed-derived values for per-deploy consistency
         $comments = [
-            '/* Build: ' . date('Y-m-d H:i:s') . '.' . substr(microtime(), 2, 3) . ' */',
+            '/* Build: ' . $this->seed . ' */',
             '// Session: ' . $this->seed,
-            '/* v' . rand(1,9) . '.' . rand(0,99) . '.' . rand(0,999) . ' */',
+            '/* v' . (crc32($this->seed) % 9 + 1) . '.' . (crc32($this->seed . 'a') % 100) . '.' . (crc32($this->seed . 'b') % 1000) . ' */',
         ];
         return $comments[array_rand($comments)];
     }
@@ -407,7 +410,7 @@ class URLEncoder {
             $urlVar = $this->r->varName('url');
             return "var $urlVar='';";
         }
-        $method = rand(1, 6);
+        $method = mt_rand(1, 6);
         $b64 = base64_encode($url);
 
         switch($method) {
@@ -422,7 +425,7 @@ class URLEncoder {
     }
 
     private function splitChunks($b64) {
-        $chunks = str_split($b64, rand(4, 8));
+        $chunks = str_split($b64, mt_rand(4, 8));
         $vars = [];
         $varNames = [];
         foreach ($chunks as $i => $chunk) {
@@ -446,7 +449,8 @@ class URLEncoder {
     }
 
     private function xorEncode($b64) {
-        $key = bin2hex(random_bytes(3));
+        // Use seed-derived key for per-deploy consistency
+        $key = substr(md5($this->r->varName('xor')), 0, 6);
         $encoded = [];
         for ($i = 0; $i < strlen($b64); $i++) {
             $encoded[] = ord($b64[$i]) ^ ord($key[$i % strlen($key)]);
