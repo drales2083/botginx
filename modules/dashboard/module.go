@@ -77,14 +77,14 @@ func (m *Module) stats(userID string) map[string]interface{} {
 	var redirectLinks, domains, live int
 
 	m.DB().Get(&redirectLinks,
-		`SELECT COUNT(*) FROM redirect_links WHERE user_id = $1`, userID)
+		`SELECT COUNT(*) FROM redirect_links WHERE user_id = $1 AND is_active = true`, userID)
 
 	// Shared platform domains belong to the admin pool, not to this user.
 	m.DB().Get(&domains,
 		`SELECT COUNT(*) FROM domains WHERE user_id = $1 AND is_shared = FALSE`, userID)
 
 	m.DB().Get(&live,
-		`SELECT COUNT(*) FROM redirect_links WHERE user_id = $1 AND deploy_status = 'deployed'`, userID)
+		`SELECT COUNT(*) FROM redirect_links WHERE user_id = $1 AND deploy_status = 'deployed' AND is_active = true`, userID)
 
 	return map[string]interface{}{
 		"redirectLinks": redirectLinks,
@@ -125,7 +125,7 @@ func (m *Module) recentLinks(userID string) []recentLink {
 		SELECT r.id, r.subdomain, REGEXP_REPLACE(d.name, '^\*\.', '') as domain_name, r.path, r.deploy_status
 		FROM redirect_links r
 		JOIN domains d ON d.id = r.domain_id
-		WHERE r.user_id = $1
+		WHERE r.user_id = $1 AND r.is_active = true
 		ORDER BY r.created_at DESC
 		LIMIT 5
 	`, userID)
