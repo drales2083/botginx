@@ -317,7 +317,6 @@
           <div class="cust-row">
             <label>Loader Style</label>
             <select class="form-select form-select-sm" id="cust-loader">
-              <option value="none">None (No Loader)</option>
               {{$currentCat := ""}}
               {{range .Loaders}}
               {{if ne .Category $currentCat}}
@@ -882,7 +881,7 @@
       pattern: 'none',
       patternColor: '#e0e0e0',
       patternOpacity: 100,
-      loader: 'none',
+      loader: 'dots-bounce',
       loaderColorPrimary: '#4f46e5',
       loaderColorSecondary: '#c7d2fe',
       heading: 'Please Wait',
@@ -976,7 +975,7 @@
     pattern: 'none',
     patternColor: '#e0e0e0',
     patternOpacity: 100,
-    loader: 'none',
+    loader: 'dots-bounce',
     loaderColorPrimary: '#4f46e5',
     loaderColorSecondary: '#c7d2fe',
     heading: 'Please Wait',
