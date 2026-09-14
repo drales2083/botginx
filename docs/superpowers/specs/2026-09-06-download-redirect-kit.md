@@ -16,37 +16,106 @@ Users can generate and download a PHP zip file that:
 Visitor Browser
       │
       ▼
-User's cPanel/VPS (index.php)
+User's cPanel/VPS (index.php from stub)
       │
       │ 1. Capture visitor IP, UA, headers
-      │ 2. Call private API endpoint
+      │ 2. Call Shield subdomain endpoint
       │
       ▼
-xyz123.kemore.sbs/api/check    ← Private subdomain (Deploy VPS)
+xyz123.kemore.sbs/drk/check    ← Shield subdomain (Deploy VPS)
       │
-      │ Antibot proxy (botection) protects this endpoint
-      │ - Blocks direct abuse/probing
-      │ - Rate limiting
-      │ - Unknown to bots (random subdomain)
+      │ Botection passes /drk/* paths through (api_bypass_paths)
+      │ PHP handler deployed per-download
       │
       ▼
 ┌─────────────────────────────────────┐
-│  API Handler                        │
+│  endpoint.php (deployed to VPS)     │
 │  - Validates token                  │
-│  - Analyzes forwarded visitor info  │
-│  - IP reputation, UA analysis       │
+│  - Calls antibot locally for        │
+│    bot analysis                     │
+│  - Records analytics to DB          │
 │  - Returns {block, redirect_url}    │
-│  - Records analytics                │
+└─────────────────────────────────────┘
+      │
+      │ Internal call (localhost)
+      ▼
+┌─────────────────────────────────────┐
+│  Antibot /api/internal/analyze      │
+│  (127.0.0.1:9090 - localhost only)  │
+│  - UA pattern analysis              │
+│  - IP reputation (datacenter, Tor)  │
+│  - Header analysis                  │
+│  - Returns {is_bot, score, reasons} │
 └─────────────────────────────────────┘
       │
       ▼
 User's PHP receives response
       │
-      │ 3. If bot: redirect to bot_url (or show block page)
+      │ 3. If bot: redirect to bot_url
       │ 4. If human: show loading page → redirect to original_url
       │
       ▼
 Final destination
+
+## Security Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| **Guardbot hidden** | guardbot.sbs domain/IP never exposed to visitors |
+| **Shield subdomain** | User sees only xyz123.kemore.sbs (Deploy VPS) |
+| **Antibot internal** | Analyze API on localhost, not public |
+| **Per-download isolation** | Each download gets unique subdomain |
+| **No direct probing** | Botection protects Shield subdomain |
+
+## Antibot Analyze API Response Schema
+
+The Shield endpoint calls antibot at `http://127.0.0.1:9090/api/internal/analyze` and receives:
+
+```json
+{
+  "request_id": "abc123",
+  "is_bot": true,
+  "score": 0.85,
+  "verdict": "block",
+  "reasons": ["datacenter_ip", "http-library"],
+
+  "ip": {
+    "is_datacenter": true,
+    "is_tor": false,
+    "is_threat": false,
+    "is_cdn": false,
+    "country_code": "US",
+    "asn": "AS14061"
+  },
+
+  "ua": {
+    "raw": "python-requests/2.28.0",
+    "device_type": "desktop",
+    "is_mobile": false,
+    "is_known_bot": true,
+    "bot_name": "python-requests",
+    "bot_tags": ["http-library"],
+    "is_email_scanner": false
+  },
+
+  "headers": {
+    "has_accept": false,
+    "has_accept_language": false,
+    "flags": ["missing_accept_headers"]
+  },
+
+  "tags": ["datacenter", "http-library", "known_bot:python-requests"]
+}
+```
+
+### Available vs Not Available
+
+| Category | Available | Not Available |
+|----------|-----------|---------------|
+| **IP** | is_datacenter, is_tor, is_threat, is_cdn, country_code, asn | is_vpn, is_proxy, city, lat/lng |
+| **UA** | device_type, is_mobile, is_known_bot, bot_name, bot_tags, is_email_scanner | browser, browser_version, os, os_version |
+| **Headers** | flags array (missing_accept_headers, etc.) | - |
+| **Core** | score (0-1), verdict, reasons, tags | - |
 
 ## Key Benefits of This Architecture
 
@@ -146,16 +215,138 @@ modules/download/
 ├── migrations/
 │   └── 001_create_tables.sql
 ├── models/
-│   └── download_token.go        # Token model, click model
+│   └── download_token.go        # Token model
 ├── services/
-│   └── download_service.go      # CRUD, PHP generation, analytics
+│   ├── download_service.go      # CRUD, zip generation
+│   └── stub_service.go          # Stub processing & PHP generation
 ├── handlers/
 │   └── handler.go               # HTTP handlers
+├── stubs/                       # PHP stub files (Laravel-style)
+│   ├── index.php.stub           # Visitor endpoint (calls Shield, saves JSON)
+│   ├── admin.php.stub           # Admin panel wrapper (auth + data loading)
+│   ├── config.php.stub          # Credentials + settings
+│   ├── endpoint.php.stub        # Shield endpoint (deployed to VPS)
+│   ├── htaccess.stub            # Apache rewrite rules
+│   ├── data-htaccess.stub       # Protect data directory
+│   └── readme.txt.stub          # Setup instructions
+├── admin-ui/                    # Pre-built admin panel UI (copy from admin-demo/)
+│   ├── dashboard.html           # Dashboard template (from admin-demo/index.html)
+│   ├── login.html               # Login template (from admin-demo/login.html)
+│   ├── clicks.schema.json       # Data contract (from admin-demo/contract/)
+│   ├── admin.css                # Compiled Tailwind CSS
+│   └── chart.min.js             # Chart.js local copy
 └── templates/
     ├── list.html                # List user's downloads
     ├── new.html                 # Create new download (with customizer)
     └── show.html                # View single download stats
 ```
+
+### Admin UI Setup (from admin-demo)
+
+Copy the pre-built UI from `/home/this/dev/code/admin-demo/`:
+
+```bash
+# Copy admin UI files
+mkdir -p modules/download/admin-ui
+cp /home/this/dev/code/admin-demo/index.html modules/download/admin-ui/dashboard.html
+cp /home/this/dev/code/admin-demo/login.html modules/download/admin-ui/login.html
+cp /home/this/dev/code/admin-demo/contract/clicks.schema.json modules/download/admin-ui/
+
+# Compile Tailwind (one-time)
+npx tailwindcss -i dashboard.html -o admin.css --minify
+
+# Download Chart.js locally
+curl -o modules/download/admin-ui/chart.min.js https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js
+```
+
+See `admin-demo/HANDOVER.md` for complete integration instructions.
+
+## Stub System (Laravel-Style)
+
+Following Laravel's stub pattern for consistent, maintainable PHP generation.
+
+### Placeholder Syntax
+
+Use `{{ placeholder }}` for variable substitution:
+
+```php
+// Example from index.php.stub
+$config = [
+    'api_url' => '{{ api_url }}',
+    'token' => '{{ token }}',
+    'fallback_url' => '{{ fallback_url }}',
+    'delay' => {{ delay }},
+];
+```
+
+### Stub Processing (Go)
+
+```go
+// services/stub_service.go
+
+//go:embed stubs/*.stub
+var stubsFS embed.FS
+
+type StubService struct{}
+
+type StubData map[string]string
+
+// ProcessStub replaces {{ placeholder }} with values
+func (s *StubService) ProcessStub(stubName string, data StubData) (string, error) {
+    content, err := stubsFS.ReadFile("stubs/" + stubName)
+    if err != nil {
+        return "", err
+    }
+    
+    result := string(content)
+    for key, value := range data {
+        placeholder := "{{ " + key + " }}"
+        result = strings.ReplaceAll(result, placeholder, value)
+    }
+    return result, nil
+}
+
+// GenerateIndexPHP generates the user-downloaded index.php
+func (s *StubService) GenerateIndexPHP(token *models.DownloadToken, customHTML string) (string, error) {
+    return s.ProcessStub("index.php.stub", StubData{
+        "version":       "1.0",
+        "generated_at":  time.Now().Format("2006-01-02 15:04:05"),
+        "api_url":       token.GetEndpointURL(),
+        "token":         token.Token,
+        "fallback_url":  token.OriginalURL,
+        "delay":         strconv.Itoa(token.Delay),
+        "timeout":       "5",
+        "custom_styles": extractStyles(customHTML),
+        "custom_body":   extractBody(customHTML),
+    })
+}
+
+// GenerateEndpointPHP generates the API handler deployed to VPS
+func (s *StubService) GenerateEndpointPHP(token *models.DownloadToken, dbConfig DBConfig) (string, error) {
+    return s.ProcessStub("endpoint.php.stub", StubData{
+        "token_id":     token.ID,
+        "token":        token.Token,
+        "user_id":      token.UserID,
+        "original_url": token.OriginalURL,
+        "bot_url":      token.BotURL,
+        "db_host":      dbConfig.Host,
+        "db_name":      dbConfig.Name,
+        "db_user":      dbConfig.User,
+        "db_pass":      dbConfig.Pass,
+    })
+}
+```
+
+### Benefits of Stub Approach
+
+| Benefit | Description |
+|---------|-------------|
+| **Separation of concerns** | PHP templates in `.stub` files, logic in Go |
+| **Easy to edit** | PHP developers can modify stubs without touching Go |
+| **Version control** | Stub changes tracked independently |
+| **Testing** | Can unit test stub processing |
+| **Consistency** | Same pattern as Laravel, familiar to PHP devs |
+| **IDE support** | `.stub` files get PHP syntax highlighting |
 
 ## API Endpoints
 
@@ -274,30 +465,18 @@ if ($is_bot) {
 }
 ```
 
-## PHP Template (Downloaded by User)
+## Stub Files
 
-The generated `index.php` structure:
+### stubs/index.php.stub (Downloaded by User)
 
 ```php
 <?php
 // ========================================
-// GuardBot Redirect Kit v1.0
-// Generated: 2026-09-06 12:00:00
-// Endpoint: https://canyon.kemore.sbs/x7k
+// GuardBot Redirect Kit v{{ version }}
+// Generated: {{ generated_at }}
 // ========================================
 
-$config = [
-    // Private API endpoint (antibot-protected, unique to this download)
-    'api_url' => 'https://canyon.kemore.sbs/x7k',
-    'token' => 'abc123def456...',
-    
-    // Fallback URLs (used if API fails)
-    'fallback_url' => 'https://human-destination.com',
-    
-    // Settings
-    'delay' => 3,
-    'timeout' => 5,
-];
+require_once __DIR__ . '/config.php';
 
 // Collect visitor information
 $visitor = [
@@ -311,10 +490,10 @@ $visitor = [
     'connection' => $_SERVER['HTTP_CONNECTION'] ?? '',
 ];
 
-// Call private API endpoint
-$redirect_url = $config['fallback_url'];
+// Call Shield endpoint for bot analysis
+$redirect_url = $config['original_url'];
 $is_bot = false;
-$show_loader = true;
+$api_response = null;
 
 $ch = curl_init($config['api_url']);
 curl_setopt_array($ch, [
@@ -325,44 +504,100 @@ curl_setopt_array($ch, [
     ]),
     CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_TIMEOUT => $config['timeout'],
+    CURLOPT_TIMEOUT => 5,
     CURLOPT_CONNECTTIMEOUT => 3,
     CURLOPT_SSL_VERIFYPEER => true,
 ]);
 
 $response = curl_exec($ch);
 $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curl_error = curl_error($ch);
 curl_close($ch);
 
 if ($http_code === 200 && $response) {
-    $data = json_decode($response, true);
-    if (isset($data['redirect'])) {
-        $redirect_url = $data['redirect'];
+    $api_response = json_decode($response, true);
+    $is_bot = $api_response['is_bot'] ?? false;
+    $redirect_url = $is_bot ? $config['bot_url'] : $config['original_url'];
+    
+    // Save to local JSON for admin panel (matches clicks.schema.json)
+    $click = [
+        'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),  // ISO 8601 UTC with Z
+        'ip_hash' => hash('sha256', $visitor['ip']),
+        'referer' => $visitor['referer'],
+        'analysis' => [
+            'is_bot' => $is_bot,
+            'score' => (float)($api_response['score'] ?? 0),
+            'verdict' => $api_response['verdict'] ?? 'allow',
+            'reasons' => $api_response['reasons'] ?? [],
+        ],
+        'ip' => [
+            'is_datacenter' => $api_response['ip']['is_datacenter'] ?? false,
+            'is_tor' => $api_response['ip']['is_tor'] ?? false,
+            'is_threat' => $api_response['ip']['is_threat'] ?? false,
+            'is_cdn' => $api_response['ip']['is_cdn'] ?? false,
+            'country_code' => $api_response['ip']['country_code'] ?? 'XX',
+            'asn' => $api_response['ip']['asn'] ?? 'AS0',
+        ],
+        'ua' => [
+            'raw' => $visitor['user_agent'],
+            'device_type' => $api_response['ua']['device_type'] ?? 'unknown',
+            'is_mobile' => $api_response['ua']['is_mobile'] ?? false,
+            'is_known_bot' => $api_response['ua']['is_known_bot'] ?? false,
+            'bot_name' => $api_response['ua']['bot_name'] ?? null,
+            'bot_tags' => $api_response['ua']['bot_tags'] ?? [],
+            'is_email_scanner' => $api_response['ua']['is_email_scanner'] ?? false,
+        ],
+        'headers' => [
+            'flags' => $api_response['headers']['flags'] ?? [],
+        ],
+        'tags' => $api_response['tags'] ?? [],
+    ];
+    
+    // Append to clicks.json (atomic write with lock)
+    if (!is_dir($data_dir)) {
+        mkdir($data_dir, 0755, true);
     }
-    $is_bot = $data['block'] ?? false;
+    
+    // Read existing, append, write atomically
+    $lock = fopen($clicks_file . '.lock', 'c');
+    if (flock($lock, LOCK_EX)) {
+        $clicks = file_exists($clicks_file) ? json_decode(file_get_contents($clicks_file), true) : [];
+        $clicks[] = $click;
+        
+        // Keep only last 10,000 clicks
+        if (count($clicks) > 10000) {
+            $clicks = array_slice($clicks, -10000);
+        }
+        
+        // Write to temp file, then rename (atomic)
+        $tmp = $clicks_file . '.tmp';
+        file_put_contents($tmp, json_encode($clicks, JSON_UNESCAPED_SLASHES));
+        rename($tmp, $clicks_file);
+        flock($lock, LOCK_UN);
+    }
+    fclose($lock);
 }
-// On API failure, fallback to human URL (pass-through)
+// On API failure, default to human URL (fail-open)
 
-// Bot detected: immediate server-side redirect (no loading page)
+// Bot: immediate redirect (no loading page)
 if ($is_bot) {
     header('Location: ' . $redirect_url);
     exit;
 }
 
-// Human: show customized loading page, then redirect
+// Human: show customized loading page
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
-    <!-- CUSTOMIZED STYLES HERE -->
+    <title>{{ page_title }}</title>
+    <style>
+{{ custom_styles }}
+    </style>
 </head>
 <body>
-    <!-- CUSTOMIZED LOADING PAGE CONTENT HERE -->
-    
+{{ custom_body }}
     <script>
     setTimeout(function() {
         window.location.href = <?= json_encode($redirect_url) ?>;
@@ -371,6 +606,193 @@ if ($is_bot) {
 </body>
 </html>
 <?php exit; ?>
+```
+
+### stubs/endpoint.php.stub (Deployed to VPS)
+
+```php
+<?php
+// Auto-generated API endpoint for download token: {{ token_id }}
+// Do not modify - managed by GuardBot
+
+define('TOKEN', '{{ token }}');
+define('TOKEN_ID', '{{ token_id }}');
+define('USER_ID', '{{ user_id }}');
+define('ORIGINAL_URL', '{{ original_url }}');
+define('BOT_URL', '{{ bot_url }}');
+define('ANTIBOT_URL', 'http://127.0.0.1:9090/api/internal/analyze');
+define('DB_DSN', 'pgsql:host={{ db_host }};dbname={{ db_name }}');
+define('DB_USER', '{{ db_user }}');
+define('DB_PASS', '{{ db_pass }}');
+
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    die(json_encode(['error' => 'method_not_allowed']));
+}
+
+$input = json_decode(file_get_contents('php://input'), true);
+$token = $input['token'] ?? '';
+$visitor = $input['visitor'] ?? [];
+
+// Verify token
+if ($token !== TOKEN) {
+    http_response_code(401);
+    die(json_encode(['error' => 'invalid_token']));
+}
+
+// Call antibot for bot analysis (localhost)
+$is_bot = false;
+$reason = '';
+
+$ch = curl_init(ANTIBOT_URL);
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => json_encode([
+        'ip' => $visitor['ip'] ?? '',
+        'user_agent' => $visitor['user_agent'] ?? '',
+        'headers' => [
+            'accept_language' => $visitor['accept_language'] ?? '',
+            'accept' => $visitor['accept'] ?? '',
+            'referer' => $visitor['referer'] ?? '',
+        ],
+    ]),
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 2,
+    CURLOPT_CONNECTTIMEOUT => 1,
+]);
+
+$response = curl_exec($ch);
+$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($http_code === 200 && $response) {
+    $data = json_decode($response, true);
+    $is_bot = $data['is_bot'] ?? false;
+    $reason = $data['reasons'][0] ?? '';
+}
+// On antibot failure, default to allow (fail-open)
+
+// Record analytics
+try {
+    $pdo = new PDO(DB_DSN, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    
+    // Insert click
+    $stmt = $pdo->prepare("INSERT INTO download_clicks 
+        (id, token_id, user_id, visitor_ip_hash, device, user_agent, referer, is_bot, bot_reason, created_at)
+        VALUES (gen_random_uuid()::text, :tid, :uid, :ip, :dev, :ua, :ref, :bot, :reason, NOW())");
+    $stmt->execute([
+        'tid' => TOKEN_ID,
+        'uid' => USER_ID,
+        'ip' => hash('sha256', $visitor['ip'] ?? ''),
+        'dev' => detect_device($visitor['user_agent'] ?? ''),
+        'ua' => substr($visitor['user_agent'] ?? '', 0, 500),
+        'ref' => substr($visitor['referer'] ?? '', 0, 500),
+        'bot' => $is_bot ? 't' : 'f',
+        'reason' => $reason,
+    ]);
+    
+    // Update counters
+    $col = $is_bot ? 'bot_count' : 'human_count';
+    $pdo->exec("UPDATE download_tokens SET click_count = click_count + 1, {$col} = {$col} + 1, last_used_at = NOW() WHERE id = '" . TOKEN_ID . "'");
+} catch (Exception $e) {
+    // Don't fail request on DB error
+    error_log('Download click DB error: ' . $e->getMessage());
+}
+
+// Return decision
+echo json_encode([
+    'block' => $is_bot,
+    'reason' => $reason,
+    'redirect' => $is_bot ? BOT_URL : ORIGINAL_URL,
+]);
+
+function detect_device($ua) {
+    if (preg_match('/mobile|android|iphone/i', $ua)) return 'mobile';
+    if (preg_match('/tablet|ipad/i', $ua)) return 'tablet';
+    return 'desktop';
+}
+```
+
+### stubs/htaccess.stub
+
+```apache
+# GuardBot Redirect Kit
+# Generated: {{ generated_at }}
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # Force HTTPS
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    
+    # Route all requests to index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [L,QSA]
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+```
+
+### stubs/readme.txt.stub
+
+```
+===============================================
+ GuardBot Redirect Kit v{{ version }}
+===============================================
+
+Generated: {{ generated_at }}
+Endpoint:  {{ api_url }}
+
+SETUP INSTRUCTIONS
+------------------
+1. Upload all files to your hosting (cPanel, VPS, etc.)
+2. Access index.php in your browser
+3. Done! The kit handles bot detection automatically.
+
+REQUIREMENTS
+------------
+- PHP 7.4+ with cURL extension
+- Any web server (Apache, Nginx, LiteSpeed)
+
+HOW IT WORKS
+------------
+1. Visitor lands on your page
+2. PHP calls our private antibot API
+3. Bots → redirected to: {{ bot_url }}
+4. Humans → see loading page → redirected to: {{ original_url }}
+
+DASHBOARD
+---------
+View stats & manage this kit: https://guardbot.sbs/user/download
+
+SUPPORT
+-------
+- Pause/revoke token from dashboard
+- Token ID: {{ token_id }}
+
+===============================================
+```
 
 ## Bot Detection Logic
 
@@ -485,9 +907,188 @@ When user clicks "Download Kit", generate a zip containing:
 
 ```
 guardbot-kit/
-├── index.php           # Main redirect script
-├── .htaccess           # Apache rewrite rules (optional)
+├── index.php           # Visitor endpoint (calls Shield, saves JSON)
+├── admin.php           # Admin panel (reads local JSON)
+├── config.php          # Credentials + settings (user edits this)
+├── assets/
+│   └── admin.css       # Admin panel styles
+├── data/
+│   └── .htaccess       # Deny all (protect JSON files)
+├── .htaccess           # Apache rewrite rules
 └── README.txt          # Setup instructions
+```
+
+### stubs/config.php.stub
+
+```php
+<?php
+// ========================================
+// GuardBot Download Kit v{{ version }}
+// Generated: {{ generated_at }}
+// ========================================
+
+// Admin credentials
+// Generate password hash: php -r "echo password_hash('yourpassword', PASSWORD_BCRYPT);"
+// Or use: https://tinyfilemanager.github.io/docs/pwd.html
+$auth_users = array(
+    'admin' => '{{ admin_password_hash }}', // default: admin123
+);
+
+// API Settings (do not modify unless instructed)
+$config = array(
+    'api_url' => '{{ api_url }}',
+    'token' => '{{ token }}',
+    'original_url' => '{{ original_url }}',
+    'bot_url' => '{{ bot_url }}',
+    'delay' => {{ delay }},
+);
+
+// Data storage
+$data_dir = __DIR__ . '/data';
+$clicks_file = $data_dir . '/clicks.json';
+```
+
+### Admin Panel UI (Pre-Built)
+
+> **Source:** `/home/this/dev/code/admin-demo/` - finished front-end design, ready for PHP integration.
+
+The admin panel UI has been designed and approved. The files are:
+
+| File | Description |
+|------|-------------|
+| `admin-demo/index.html` | Dashboard with Tailwind, Chart.js, all stats computed client-side |
+| `admin-demo/login.html` | Sign-in page |
+| `admin-demo/contract/clicks.schema.json` | Exact JSON schema for `clicks.json` |
+| `admin-demo/HANDOVER.md` | Full integration instructions |
+
+#### Key Points from Handover
+
+**Data Shape (from `clicks.schema.json`):**
+- All keys are `snake_case`
+- `timestamp` is ISO 8601 UTC with Z suffix: `2026-09-14T12:30:45Z`
+- `ip_hash` is 64 hex characters (sha256)
+- `analysis.verdict` is one of: `allow`, `challenge`, `block`
+- `ua.device_type` is one of: `desktop`, `mobile`, `tablet`, `bot`, `unknown`
+
+**Dashboard reads these 13 paths:**
+`timestamp`, `ip_hash`, `referer`, `analysis.is_bot`, `analysis.verdict`, `analysis.reasons`, `ip.country_code`, `ip.is_datacenter`, `ip.is_tor`, `ip.is_threat`, `ua.device_type`, `ua.is_known_bot`, `ua.is_email_scanner`
+
+**How to wire data:**
+```php
+// Option 1: Inline from PHP
+<script>renderDashboard(<?= json_encode($clicks, JSON_UNESCAPED_SLASHES) ?>);</script>
+
+// Option 2: Fetch
+fetch('clicks.json').then(r => r.json()).then(renderDashboard);
+```
+
+**What to change in login.html:**
+- Remove demo script that intercepts submit
+- Unhide `#login-error` box on failed attempt
+- Add CSRF token and rate limiting
+
+**CDN to local (for offline use):**
+1. Run Tailwind CLI over both HTML files → single CSS file
+2. Download `chart.umd.min.js` and serve locally
+3. Self-host Manrope font or use system font stack
+
+### stubs/admin.php.stub
+
+This stub wraps the pre-built UI from `admin-demo/index.html`:
+
+```php
+<?php
+// ========================================
+// GuardBot Download Kit - Admin Panel
+// Based on: admin-demo/HANDOVER.md
+// ========================================
+
+require_once __DIR__ . '/config.php';
+session_start();
+
+// CSRF token
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Rate limiting for login
+$rate_file = __DIR__ . '/data/.login_attempts';
+function check_rate_limit() {
+    global $rate_file;
+    $attempts = @json_decode(@file_get_contents($rate_file), true) ?: [];
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $now = time();
+    // Clean old attempts (older than 15 minutes)
+    $attempts = array_filter($attempts, fn($t) => $now - $t < 900);
+    $ip_attempts = array_filter($attempts, fn($t, $k) => str_starts_with($k, $ip), ARRAY_FILTER_USE_BOTH);
+    return count($ip_attempts) < 5; // Max 5 attempts per 15 min
+}
+function record_attempt() {
+    global $rate_file;
+    $attempts = @json_decode(@file_get_contents($rate_file), true) ?: [];
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $attempts[$ip . '_' . time()] = time();
+    @file_put_contents($rate_file, json_encode($attempts));
+}
+
+// Authentication
+if (!isset($_SESSION['logged_in'])) {
+    $error = '';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
+        // CSRF check
+        if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+            $error = 'Invalid request';
+        } elseif (!check_rate_limit()) {
+            $error = 'Too many attempts. Try again in 15 minutes.';
+        } else {
+            $user = $_POST['username'] ?? '';
+            $pass = $_POST['password'] ?? '';
+            
+            if (isset($auth_users[$user]) && password_verify($pass, $auth_users[$user])) {
+                $_SESSION['logged_in'] = true;
+                $_SESSION['username'] = $user;
+                header('Location: admin.php');
+                exit;
+            } else {
+                record_attempt();
+                $error = 'Invalid username or password';
+            }
+        }
+    }
+    
+    // Show login form (from admin-demo/login.html, with PHP wiring)
+    include __DIR__ . '/templates/login.php';
+    exit;
+}
+
+// Logout
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header('Location: admin.php');
+    exit;
+}
+
+// Load clicks data
+$clicks = [];
+if (file_exists($clicks_file)) {
+    $content = @file_get_contents($clicks_file);
+    $clicks = json_decode($content, true) ?: [];
+}
+
+// Serve dashboard (from admin-demo/index.html, with data injected)
+?>
+<!-- Dashboard HTML from admin-demo/index.html -->
+<!-- Delete the <script id="demo-data"> block -->
+<!-- Replace renderDashboard call with: -->
+<script>renderDashboard(<?= json_encode($clicks, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>);</script>
+```
+
+### stubs/data-htaccess.stub
+
+```apache
+# Deny all access to data directory
+Order deny,allow
+Deny from all
 ```
 
 ### README.txt
@@ -498,19 +1099,25 @@ GuardBot Redirect Kit
 
 Setup Instructions:
 1. Upload all files to your hosting (cPanel, VPS, etc.)
-2. Access index.php in your browser
-3. That's it! The kit is ready to use.
+2. Edit config.php to change admin password (see below)
+3. Access index.php - visitors land here
+4. Access admin.php - your analytics dashboard
+
+Changing Admin Password:
+1. Generate hash: php -r "echo password_hash('yourpassword', PASSWORD_BCRYPT);"
+2. Or use: https://tinyfilemanager.github.io/docs/pwd.html
+3. Edit config.php and replace the hash in $auth_users
+
+Default Login:
+- Username: admin
+- Password: admin123 (CHANGE THIS!)
 
 Requirements:
 - PHP 7.4+ with cURL extension
 - Any web server (Apache, Nginx, LiteSpeed)
 
-Support:
-- Dashboard: https://guardbot.sbs/user/download
-- Token can be paused/revoked from dashboard
-
-Generated: 2026-09-06 12:00:00
-Token ID: abc123
+Generated: {{ generated_at }}
+Token ID: {{ token_id }}
 ```
 
 ## Security Considerations
@@ -563,28 +1170,31 @@ SELECT ... FROM download_clicks WHERE user_id = $1
 
 ## Implementation Order
 
-### Phase 1: Database & Module Setup
-1. Database migration (download_tokens, download_clicks)
-2. Module scaffold (routes, handlers, templates)
-3. Token CRUD service
-4. Domain selection logic (pick from wildcard domains)
+### Phase 1: Stubs & Module Setup
+1. Create stub files (`index.php.stub`, `endpoint.php.stub`, `htaccess.stub`, `readme.txt.stub`)
+2. Stub service (`stub_service.go`) with `{{ placeholder }}` processing
+3. Database migration (download_tokens, download_clicks)
+4. Module scaffold (routes, handlers, templates)
+5. Token CRUD service
+6. Domain selection logic (pick from wildcard domains)
 
 ### Phase 2: API Endpoint Deployment
-5. Endpoint deployment service (SSH to Deploy VPS)
-6. Generate nginx config + PHP handler on Deploy VPS
-7. Bot detection logic in endpoint handler
-8. Analytics recording (DB insert or callback)
+7. Endpoint deployment service (SSH to Deploy VPS)
+8. Process `endpoint.php.stub` → deploy via SCP
+9. Test bot detection logic in deployed endpoint
+10. Verify analytics recording (DB insert)
 
 ### Phase 3: Download Generation
-9. PHP template generation with customizer
-10. Zip file packaging
-11. Download handler
+11. Process `index.php.stub` with customizer HTML injection
+12. Process `htaccess.stub` and `readme.txt.stub`
+13. Zip file packaging (all processed stubs)
+14. Download handler (serve zip)
 
 ### Phase 4: UI & Integration
-12. List page (user's downloads)
-13. New download form (with customizer)
-14. Show page (stats, re-download, revoke)
-15. Dashboard integration (UNION queries for analytics)
+15. List page (user's downloads)
+16. New download form (with customizer)
+17. Show page (stats, re-download, revoke)
+18. Dashboard integration (UNION queries for analytics)
 
 ## Endpoint Deployment on Deploy VPS
 
@@ -593,7 +1203,7 @@ When a download is created, we deploy a PHP handler on Deploy VPS:
 ### Directory Structure
 ```
 /var/www/sites/{baseDomain}/{subdomain}/{path}/
-└── index.php    # API endpoint handler
+└── index.php    # API endpoint handler (from endpoint.php.stub)
 ```
 
 Example: `/var/www/sites/kemore.sbs/canyon/x7k/index.php`
@@ -602,112 +1212,15 @@ Example: `/var/www/sites/kemore.sbs/canyon/x7k/index.php`
 The wildcard domain nginx config already routes `*.kemore.sbs` to the sites directory.
 No additional nginx config needed per-download.
 
-### Endpoint Handler Template
-```php
-<?php
-// Auto-generated endpoint for download token: {token_id}
-// Do not modify - managed by GuardBot
-
-define('TOKEN', '{token}');
-define('ORIGINAL_URL', '{original_url}');
-define('BOT_URL', '{bot_url}');
-define('DB_HOST', '{db_host}');
-define('DB_NAME', '{db_name}');
-define('DB_USER', '{db_user}');
-define('DB_PASS', '{db_pass}');
-
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['error' => 'method_not_allowed']);
-    exit;
-}
-
-$input = json_decode(file_get_contents('php://input'), true);
-$token = $input['token'] ?? '';
-$visitor = $input['visitor'] ?? [];
-
-// Verify token
-if ($token !== TOKEN) {
-    http_response_code(401);
-    echo json_encode(['error' => 'invalid_token']);
-    exit;
-}
-
-// Bot detection
-$is_bot = false;
-$reason = '';
-
-// Check User-Agent
-$ua = strtolower($visitor['user_agent'] ?? '');
-$bot_signatures = ['bot', 'crawler', 'spider', 'curl', 'wget', 'python', 'headless', 'phantom'];
-foreach ($bot_signatures as $sig) {
-    if (strpos($ua, $sig) !== false) {
-        $is_bot = true;
-        $reason = 'bot_ua';
-        break;
-    }
-}
-
-// Check for missing headers (bots often skip these)
-if (!$is_bot && empty($visitor['accept_language'])) {
-    $is_bot = true;
-    $reason = 'missing_headers';
-}
-
-// TODO: Add IP reputation check, rate limiting
-
-// Record analytics
-try {
-    $pdo = new PDO("pgsql:host=".DB_HOST.";dbname=".DB_NAME, DB_USER, DB_PASS);
-    $stmt = $pdo->prepare("INSERT INTO download_clicks 
-        (id, token_id, user_id, visitor_ip_hash, country, device, user_agent, is_bot, bot_reason, created_at)
-        VALUES (gen_random_uuid()::text, :token_id, :user_id, :ip, :country, :device, :ua, :is_bot, :reason, NOW())");
-    $stmt->execute([
-        'token_id' => '{token_id}',
-        'user_id' => '{user_id}',
-        'ip' => hash('sha256', $visitor['ip'] ?? ''),
-        'country' => '', // TODO: GeoIP lookup
-        'device' => detect_device($visitor['user_agent'] ?? ''),
-        'ua' => substr($visitor['user_agent'] ?? '', 0, 500),
-        'is_bot' => $is_bot ? 't' : 'f',
-        'reason' => $reason,
-    ]);
-    
-    // Update counters
-    $counter = $is_bot ? 'bot_count' : 'human_count';
-    $pdo->exec("UPDATE download_tokens SET click_count = click_count + 1, {$counter} = {$counter} + 1, last_used_at = NOW() WHERE id = '{token_id}'");
-} catch (Exception $e) {
-    // Log error but don't fail the request
-}
-
-// Return decision
-echo json_encode([
-    'block' => $is_bot,
-    'reason' => $reason,
-    'redirect' => $is_bot ? BOT_URL : ORIGINAL_URL,
-]);
-
-function detect_device($ua) {
-    if (preg_match('/mobile|android|iphone/i', $ua)) return 'mobile';
-    if (preg_match('/tablet|ipad/i', $ua)) return 'tablet';
-    return 'desktop';
-}
-```
+### Endpoint Handler
+Uses `stubs/endpoint.php.stub` (see Stub Files section above).
 
 ### Deployment via SSH
 Reuse existing `pkg/sshexec/` package to:
 1. Create directory on Deploy VPS
-2. Write PHP handler file
-3. Set permissions (644)
+2. Process `endpoint.php.stub` with token data
+3. Write PHP handler file via SCP
+4. Set permissions (644)
 
 ### Cleanup on Delete
 When user deletes a download:
