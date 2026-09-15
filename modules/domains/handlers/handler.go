@@ -108,6 +108,35 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	module.RenderUserSection(w, r, h.templates, "domains:show.html", data)
 }
 
+// Settings renders the domain settings page (Turnstile credentials, etc.)
+func (h *Handler) Settings(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		http.Error(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	if !h.canAccessDomain(r, domain) {
+		http.Error(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	// Get base domain for Turnstile setup instructions
+	baseDomain := domain.Name
+	if domain.IsWildcard {
+		baseDomain = strings.TrimPrefix(domain.Name, "*.")
+	}
+
+	data := map[string]interface{}{
+		"Title":      domain.Name + " Settings",
+		"Domain":     domain,
+		"BaseDomain": baseDomain,
+	}
+
+	module.RenderUserSection(w, r, h.templates, "domains:settings.html", data)
+}
+
 // Admin page handlers -- the shared platform pool
 
 func (h *Handler) SharedList(w http.ResponseWriter, r *http.Request) {
@@ -464,6 +493,37 @@ func (h *Handler) APIUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{"domain": domain})
+}
+
+// APIUpdateSettings updates domain settings (Turnstile credentials)
+func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	var input struct {
+		TurnstileSiteKey   string `json:"turnstile_site_key"`
+		TurnstileSecretKey string `json:"turnstile_secret_key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.UpdateTurnstile(id, input.TurnstileSiteKey, input.TurnstileSecretKey); err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
 func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {

@@ -79,6 +79,7 @@ func (m *Module) Routes() chi.Router {
 	r.Get("/", m.handler.List)
 	r.Get("/new", m.handler.New)
 	r.Get("/{id}", m.handler.Show)
+	r.Get("/{id}/settings", m.handler.Settings)   // Domain settings (Turnstile, etc.)
 	r.Get("/{id}/setup", m.handler.ExternalSetup) // External domain setup wizard
 
 	// API
@@ -105,6 +106,9 @@ func (m *Module) Routes() chi.Router {
 		r.Post("/{id}/acme-dns/register", m.handler.APIRegisterAcmeDNS) // Register with acme-dns
 		r.Post("/{id}/acme-dns/verify", m.handler.APICheckAcmeCname)    // Verify CNAME record
 		r.Post("/{id}/ssl/acme-dns", m.handler.APIGenerateSSLAcmeDNS)   // Generate SSL via acme-dns
+
+		// Domain settings (Turnstile, etc.)
+		r.Put("/{id}/settings", m.handler.APIUpdateSettings)
 	})
 
 	return r

@@ -314,6 +314,40 @@ func (s *DomainService) Delete(id string) error {
 	return err
 }
 
+// UpdateTurnstile updates the Cloudflare Turnstile credentials for a domain
+func (s *DomainService) UpdateTurnstile(id, siteKey, secretKey string) error {
+	_, err := s.db.Exec(`
+		UPDATE domains
+		SET turnstile_site_key = $1, turnstile_secret_key = $2, updated_at = NOW()
+		WHERE id = $3
+	`, siteKey, secretKey, id)
+	return err
+}
+
+// GetTurnstileByDomain returns Turnstile credentials for a domain name
+func (s *DomainService) GetTurnstileByDomain(domainName string) (siteKey, secretKey string, err error) {
+	var result struct {
+		SiteKey   *string `db:"turnstile_site_key"`
+		SecretKey *string `db:"turnstile_secret_key"`
+	}
+	err = s.db.Get(&result, `
+		SELECT turnstile_site_key, turnstile_secret_key
+		FROM domains
+		WHERE name = $1 OR name = $2
+		LIMIT 1
+	`, domainName, "*."+domainName)
+	if err != nil {
+		return "", "", err
+	}
+	if result.SiteKey != nil {
+		siteKey = *result.SiteKey
+	}
+	if result.SecretKey != nil {
+		secretKey = *result.SecretKey
+	}
+	return siteKey, secretKey, nil
+}
+
 // TransferOwnership changes the owner of a domain to another user
 func (s *DomainService) TransferOwnership(domainID, newUserID string) error {
 	result, err := s.db.Exec(`

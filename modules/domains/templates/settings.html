@@ -1,0 +1,96 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/user/domains">Domains</a></li>
+                    <li class="breadcrumb-item"><a href="/user/domains/{{.Domain.ID}}">{{.Domain.Name}}</a></li>
+                    <li class="breadcrumb-item active">Settings</li>
+                </ol>
+            </nav>
+            <h2 class="mt-2">{{.Domain.Name}} Settings</h2>
+        </div>
+    </div>
+
+    <!-- Cloudflare Turnstile -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>Cloudflare Turnstile</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-4">
+                Turnstile credentials are used when you select the "Cloudflare" bot protection template for links on this domain.
+                The keys will be automatically applied to all links using this domain.
+            </p>
+
+            <form id="turnstileForm">
+                <div class="mb-3">
+                    <label for="turnstileSiteKey" class="form-label">Site Key</label>
+                    <input type="text" class="form-control" id="turnstileSiteKey"
+                           placeholder="0x4AAAAAAA..."
+                           value="{{if .Domain.TurnstileSiteKey}}{{.Domain.TurnstileSiteKey}}{{end}}">
+                    <div class="form-text">The public site key from your Turnstile widget</div>
+                </div>
+                <div class="mb-3">
+                    <label for="turnstileSecretKey" class="form-label">Secret Key</label>
+                    <input type="password" class="form-control" id="turnstileSecretKey"
+                           placeholder="0x4AAAAAAA..."
+                           value="{{if .Domain.TurnstileSecretKey}}{{.Domain.TurnstileSecretKey}}{{end}}">
+                    <div class="form-text">The secret key for server-side verification</div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-1"></i>Save Turnstile Settings
+                </button>
+            </form>
+
+            <hr class="my-4">
+
+            <h6><i class="bi bi-info-circle me-2"></i>Setup Guide</h6>
+            <ol class="mb-0">
+                <li>Go to <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank">Cloudflare Dashboard &rarr; Turnstile</a></li>
+                <li>Click <strong>Add Widget</strong></li>
+                <li>Enter widget name: <code>{{.BaseDomain}}</code></li>
+                <li>Add domain: <code>{{.BaseDomain}}</code> <span class="text-muted">(Turnstile automatically covers all subdomains)</span></li>
+                <li>Select widget mode (Managed recommended)</li>
+                <li>Copy the <strong>Site Key</strong> and <strong>Secret Key</strong> to the form above</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('turnstileForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const btn = this.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    try {
+        const response = await fetch('/user/domains/api/{{.Domain.ID}}/settings', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                turnstile_site_key: document.getElementById('turnstileSiteKey').value,
+                turnstile_secret_key: document.getElementById('turnstileSecretKey').value
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            window.showToast?.('Turnstile settings saved', 'success') || alert('Settings saved!');
+        } else {
+            window.showToast?.(data.error || 'Failed to save', 'danger') || alert(data.error || 'Failed to save');
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger') || alert('Network error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+});
+</script>
+{{end}}
