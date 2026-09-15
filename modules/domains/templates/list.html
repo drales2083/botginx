@@ -68,6 +68,7 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="/user/domains/{{.ID}}"><i class="bi bi-eye me-2"></i>View Details</a></li>
+                                <li><a class="dropdown-item" href="/user/domains/{{.ID}}/settings"><i class="bi bi-sliders me-2"></i>Settings</a></li>
                                 {{if and .IsWildcard (not .SSLEnabled)}}
                                 <li><a class="dropdown-item" href="/user/domains/{{.ID}}/setup"><i class="bi bi-gear me-2"></i>Setup Wizard</a></li>
                                 {{end}}
