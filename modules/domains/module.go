@@ -109,6 +109,7 @@ func (m *Module) Routes() chi.Router {
 
 		// Domain settings (Turnstile, etc.)
 		r.Put("/{id}/settings", m.handler.APIUpdateSettings)
+		r.Get("/{id}/turnstile", m.handler.APIGetTurnstileStatus)
 	})
 
 	return r

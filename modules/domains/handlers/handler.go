@@ -526,6 +526,22 @@ func (h *Handler) APIUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
+// APIGetTurnstileStatus returns whether a domain has Turnstile keys configured
+func (h *Handler) APIGetTurnstileStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	hasKeys := domain.TurnstileSiteKey != nil && *domain.TurnstileSiteKey != "" &&
+		domain.TurnstileSecretKey != nil && *domain.TurnstileSecretKey != ""
+
+	h.json(w, http.StatusOK, map[string]interface{}{"hasKeys": hasKeys})
+}
+
 func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 

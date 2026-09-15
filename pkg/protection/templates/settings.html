@@ -410,6 +410,24 @@
                         </a>
                     </div>
                 </div>
+                <!-- Turnstile Warning (shown when cloudflare template selected without keys) -->
+                <div id="prot-turnstile-warning" class="alert alert-warning d-none mt-3" style="max-width: 600px;">
+                    <div class="d-flex align-items-start">
+                        <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                        <div>
+                            <strong>Turnstile Not Configured</strong>
+                            <p class="mb-2 small">The "cloudflare" template works best with Cloudflare Turnstile keys. Without them, it uses proof-of-work instead of the official widget.</p>
+                            <a href="#" id="prot-turnstile-settings-link" class="btn btn-sm btn-warning">
+                                <i class="bi bi-gear me-1"></i>Configure Turnstile Keys
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Turnstile Enabled (shown when cloudflare template selected with keys) -->
+                <div id="prot-turnstile-enabled" class="alert alert-success d-none mt-3" style="max-width: 600px;">
+                    <i class="bi bi-check-circle-fill me-1"></i>
+                    <span>Turnstile enabled — using keys from domain settings</span>
+                </div>
             </div>
 
             <div class="mb-4">
@@ -575,6 +593,8 @@
         const previewImg = document.getElementById('prot-template-preview');
         const previewLink = document.getElementById('prot-template-link');
         const themeModeSection = document.getElementById('prot-theme-mode-section');
+        const turnstileWarning = document.getElementById('prot-turnstile-warning');
+        const turnstileEnabled = document.getElementById('prot-turnstile-enabled');
         if (!select || !previewCol || !previewImg) return;
 
         const value = select.value;
@@ -598,6 +618,43 @@
         const puzzleModeSection = document.getElementById('prot-puzzle-mode-section');
         if (puzzleModeSection) {
             puzzleModeSection.style.display = (value === 'wave' || value === 'latch') ? '' : 'none';
+        }
+
+        // Check Turnstile status when cloudflare template is selected
+        if (turnstileWarning && turnstileEnabled) {
+            if (value === 'cloudflare' && window.PROT_DOMAIN_ID) {
+                protCheckTurnstileStatus(window.PROT_DOMAIN_ID);
+            } else {
+                turnstileWarning.classList.add('d-none');
+                turnstileEnabled.classList.add('d-none');
+            }
+        }
+    };
+
+    // Check if domain has Turnstile keys configured
+    window.protCheckTurnstileStatus = async function(domainId) {
+        const turnstileWarning = document.getElementById('prot-turnstile-warning');
+        const turnstileEnabled = document.getElementById('prot-turnstile-enabled');
+        const settingsLink = document.getElementById('prot-turnstile-settings-link');
+        if (!domainId || !turnstileWarning || !turnstileEnabled) return;
+
+        try {
+            const resp = await fetch('/user/domains/api/' + domainId + '/turnstile');
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.hasKeys) {
+                    turnstileWarning.classList.add('d-none');
+                    turnstileEnabled.classList.remove('d-none');
+                } else {
+                    turnstileWarning.classList.remove('d-none');
+                    turnstileEnabled.classList.add('d-none');
+                    if (settingsLink) {
+                        settingsLink.href = '/user/domains/' + domainId + '/settings';
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Failed to check Turnstile status:', err);
         }
     };
 
