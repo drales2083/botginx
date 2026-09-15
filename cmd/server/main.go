@@ -279,6 +279,7 @@ func main() {
 	// Wire up dependencies after init to avoid circular imports
 	analyticsModule.SetLinkDetails(redirectLinksModule)
 	analyticsModule.SetServerProvider(serversModule)
+	analyticsModule.SetTurnstileProvider(domainsModule.Service())
 	analyticsModule.SetHostingSettingsProvider(&hostingSettingsAdapter{hosting: hostingModule})
 	analyticsModule.SetHostingVisitRecorder(&hostingVisitRecorderAdapter{hosting: hostingModule})
 	analyticsModule.SetShortLinkResolver(shortenerModule)

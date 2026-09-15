@@ -193,3 +193,8 @@ func (m *Module) SetHostingVisitRecorder(recorder handlers.HostingVisitRecorder)
 func (m *Module) SetShortLinkResolver(resolver handlers.ShortLinkResolver) {
 	m.handler.SetShortLinkResolver(resolver)
 }
+
+// SetTurnstileProvider sets the Turnstile keys provider for settings push
+func (m *Module) SetTurnstileProvider(turnstile handlers.TurnstileProvider) {
+	m.handler.SetTurnstileProvider(turnstile)
+}

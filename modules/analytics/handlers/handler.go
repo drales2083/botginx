@@ -46,6 +46,11 @@ type ServerProvider interface {
 	GetServerForDomain(domainID string) (ip string, port int, user, password string, err error)
 }
 
+// TurnstileProvider provides Cloudflare Turnstile keys for a domain
+type TurnstileProvider interface {
+	GetTurnstileKeys(domainID string) (siteKey, secretKey string, err error)
+}
+
 // HostingSettings represents antibot settings for a hosting domain
 type HostingSettings struct {
 	CountryMode      string
@@ -134,6 +139,7 @@ type Handler struct {
 	links          LinkResolver
 	linkInfo       LinkDetails
 	servers        ServerProvider
+	turnstile      TurnstileProvider
 	hosting        HostingSettingsProvider
 	hostingVisits  HostingVisitRecorder
 	shortLinks     ShortLinkResolver
@@ -161,6 +167,11 @@ func (h *Handler) SetLinkDetails(linkInfo LinkDetails) {
 // SetServerProvider sets the server provider (called after init to avoid circular deps)
 func (h *Handler) SetServerProvider(servers ServerProvider) {
 	h.servers = servers
+}
+
+// SetTurnstileProvider sets the Turnstile keys provider (called after init to avoid circular deps)
+func (h *Handler) SetTurnstileProvider(turnstile TurnstileProvider) {
+	h.turnstile = turnstile
 }
 
 // SetHostingSettingsProvider sets the hosting settings provider (called after init to avoid circular deps)
@@ -235,22 +246,25 @@ func (h *Handler) LinkSettings(w http.ResponseWriter, r *http.Request) {
 	linkID := chi.URLParam(r, "linkId")
 	settings, _ := h.service.GetLinkSettings(linkID)
 
-	// Get link URL and type for copy/open/delete buttons
+	// Get link URL, domain ID and type for copy/open/delete buttons
 	var linkURL string
 	var linkType string // "redirect" or "shortener"
+	var domainID string
 	if h.linkInfo != nil {
-		if host, _, err := h.linkInfo.GetLinkHost(linkID); err == nil && host != "" {
+		if host, dID, err := h.linkInfo.GetLinkHost(linkID); err == nil && host != "" {
 			linkURL = "https://" + host
 			linkType = "redirect"
+			domainID = dID
 		}
 	}
 	if linkURL == "" && h.shortLinks != nil {
-		if host, path, _, err := h.shortLinks.GetLinkHost(linkID); err == nil && host != "" {
+		if host, path, dID, err := h.shortLinks.GetLinkHost(linkID); err == nil && host != "" {
 			linkURL = "https://" + host
 			if path != "" {
 				linkURL += "/" + path
 			}
 			linkType = "shortener"
+			domainID = dID
 		}
 	}
 
@@ -259,6 +273,7 @@ func (h *Handler) LinkSettings(w http.ResponseWriter, r *http.Request) {
 		"LinkID":   linkID,
 		"LinkURL":  linkURL,
 		"LinkType": linkType,
+		"DomainID": domainID,
 		"Settings": settings,
 	})
 }
@@ -453,6 +468,15 @@ func (h *Handler) pushSettingsToVPS(linkID string, settings *models.LinkSettings
 		DeviceList:       settings.DeviceList,
 		MinBehaviorScore: settings.MinBehaviorScore,
 		RedirectOnBlock:  settings.RedirectOnBlock,
+	}
+
+	// If template is cloudflare, fetch domain's Turnstile keys
+	if settings.Template == "cloudflare" && domainID != "" && h.turnstile != nil {
+		siteKey, secretKey, err := h.turnstile.GetTurnstileKeys(domainID)
+		if err == nil {
+			pushSettings.TurnstileSiteKey = siteKey
+			pushSettings.TurnstileSecretKey = secretKey
+		}
 	}
 
 	server := settingspush.ServerInfo{

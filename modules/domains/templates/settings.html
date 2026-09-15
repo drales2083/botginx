@@ -1,0 +1,154 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0"><i class="bi bi-gear me-2"></i>Domain Settings</h3>
+                <a href="/user/domains/{{.Domain.ID}}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Domain
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="text-muted"><i class="bi bi-globe me-1"></i>{{.Domain.Name}}</h6>
+                </div>
+
+                <hr class="my-4">
+
+                <h5 class="mb-3"><i class="bi bi-shield-check me-2"></i>Cloudflare Turnstile</h5>
+                <p class="text-muted small mb-4">
+                    Configure Cloudflare Turnstile for the "cloudflare" bot protection template.
+                    These keys will be used for all links on this domain that use the cloudflare template.
+                    Same keys work for all subdomains.
+                </p>
+
+                {{if .HasTurnstileKeys}}
+                <div class="alert alert-success d-flex align-items-center mb-4">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <span>Turnstile is configured for this domain</span>
+                </div>
+                {{end}}
+
+                <form id="settingsForm">
+                    <div class="mb-3">
+                        <label for="turnstileSiteKey" class="form-label">Site Key</label>
+                        <input type="text" class="form-control" id="turnstileSiteKey"
+                               placeholder="0x4AAAAAAA..."
+                               value="{{if .TurnstileSiteKey}}{{.TurnstileSiteKey}}{{end}}">
+                        <div class="form-text">Public key - safe to expose in frontend</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="turnstileSecretKey" class="form-label">Secret Key</label>
+                        <input type="password" class="form-control" id="turnstileSecretKey"
+                               placeholder="{{if .HasTurnstileKeys}}••••••••••••••••••••{{else}}0x4AAAAAAA...{{end}}">
+                        <div class="form-text">Private key - never exposed, used for server-side verification</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Save Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-book me-2"></i>How to Get Turnstile Keys</h5>
+            </div>
+            <div class="card-body">
+                <ol class="mb-4">
+                    <li class="mb-2">
+                        Go to <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noopener">
+                            Cloudflare Dashboard → Turnstile <i class="bi bi-box-arrow-up-right small"></i>
+                        </a>
+                    </li>
+                    <li class="mb-2">Click <strong>"Add site"</strong></li>
+                    <li class="mb-2">Enter your domain name: <code>{{.Domain.Name}}</code></li>
+                    <li class="mb-2">Select widget type: <strong>Managed</strong> (recommended)</li>
+                    <li class="mb-2">Copy the <strong>Site Key</strong> and <strong>Secret Key</strong></li>
+                </ol>
+
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>Free:</strong> Turnstile is free for unlimited use.
+                    <hr class="my-2">
+                    <small>Without keys, the cloudflare template uses proof-of-work instead of the official Turnstile widget.</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-question-circle me-2"></i>What is Turnstile?</h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">
+                    Cloudflare Turnstile is a CAPTCHA alternative that verifies visitors are human
+                    without the frustration of solving puzzles.
+                </p>
+                <p class="small text-muted mb-0">
+                    When configured, visitors using the "cloudflare" bot protection template will
+                    see the official Cloudflare verification widget instead of proof-of-work.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('settingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const btn = this.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+    try {
+        const siteKey = document.getElementById('turnstileSiteKey').value.trim();
+        const secretKey = document.getElementById('turnstileSecretKey').value.trim();
+
+        // Only send secret key if it was changed (not placeholder)
+        const payload = {
+            turnstileSiteKey: siteKey || null
+        };
+
+        // Only include secret key if user entered something (not the placeholder dots)
+        if (secretKey && !secretKey.startsWith('•')) {
+            payload.turnstileSecretKey = secretKey;
+        }
+
+        const resp = await fetch('/user/domains/api/{{.Domain.ID}}/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json();
+
+        if (resp.ok) {
+            flashToast('Settings saved successfully', 'success');
+            // Update the secret key placeholder if it was set
+            if (secretKey && !secretKey.startsWith('•')) {
+                document.getElementById('turnstileSecretKey').value = '';
+                document.getElementById('turnstileSecretKey').placeholder = '••••••••••••••••••••';
+            }
+            // Show the success alert if keys are now set
+            if (siteKey) {
+                setTimeout(() => location.reload(), 500);
+            }
+        } else {
+            flashToast(data.error || 'Failed to save settings', 'danger');
+        }
+    } catch (err) {
+        flashToast('Failed to save settings', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+});
+</script>
+{{end}}

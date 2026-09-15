@@ -55,6 +55,10 @@ type Domain struct {
 	MarketplaceDescription *string    `db:"marketplace_description" json:"marketplaceDescription,omitempty"`
 	MarketplaceListedAt    *time.Time `db:"marketplace_listed_at" json:"marketplaceListedAt,omitempty"`
 
+	// Cloudflare Turnstile credentials (per-domain, used when cloudflare template selected)
+	TurnstileSiteKey   *string `db:"turnstile_site_key" json:"turnstileSiteKey,omitempty"`
+	TurnstileSecretKey *string `db:"turnstile_secret_key" json:"-"` // Never expose in JSON
+
 	// Joined fields
 	ServerName string `db:"server_name" json:"serverName,omitempty"`
 }

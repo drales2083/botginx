@@ -112,6 +112,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 		"Link":     link,
 		"Stats":    stats,
 		"Settings": link.ProtectionSettings,
+		"DomainID": link.DomainID,
 	})
 }
 

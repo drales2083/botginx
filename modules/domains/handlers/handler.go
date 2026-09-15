@@ -1462,6 +1462,113 @@ func (h *Handler) APICancelSSLChallenge(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// Settings handlers
+
+// Settings shows the domain settings page (Turnstile configuration, etc.)
+func (h *Handler) Settings(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if !h.canAccessDomain(r, domain) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Check if Turnstile keys are set (don't expose actual values)
+	hasTurnstileKeys := domain.TurnstileSiteKey != nil && *domain.TurnstileSiteKey != ""
+
+	module.RenderUserSection(w, r, h.templates, "domains:settings.html", map[string]interface{}{
+		"Title":            "Domain Settings",
+		"Domain":           domain,
+		"HasTurnstileKeys": hasTurnstileKeys,
+		"TurnstileSiteKey": domain.TurnstileSiteKey, // Show site key (it's public)
+	})
+}
+
+// APIGetSettings returns domain settings (safe to expose)
+func (h *Handler) APIGetSettings(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"turnstileSiteKey":    domain.TurnstileSiteKey,
+		"hasTurnstileKeys":    domain.TurnstileSiteKey != nil && *domain.TurnstileSiteKey != "",
+		"hasSecretKey":        domain.TurnstileSecretKey != nil && *domain.TurnstileSecretKey != "",
+	})
+}
+
+// APISaveSettings saves domain settings
+func (h *Handler) APISaveSettings(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	var input struct {
+		TurnstileSiteKey   *string `json:"turnstileSiteKey"`
+		TurnstileSecretKey *string `json:"turnstileSecretKey"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Update Turnstile keys
+	if err := h.service.UpdateTurnstileKeys(id, input.TurnstileSiteKey, input.TurnstileSecretKey); err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"status":  "success",
+		"message": "Settings saved",
+	})
+}
+
+// APIGetTurnstileStatus returns whether Turnstile keys are configured (for link settings validation)
+func (h *Handler) APIGetTurnstileStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	siteKeySet := domain.TurnstileSiteKey != nil && *domain.TurnstileSiteKey != ""
+	secretKeySet := domain.TurnstileSecretKey != nil && *domain.TurnstileSecretKey != ""
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"hasKeys":      siteKeySet && secretKeySet,
+		"siteKeySet":   siteKeySet,
+		"secretKeySet": secretKeySet,
+	})
+}
+
 // Helpers
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {

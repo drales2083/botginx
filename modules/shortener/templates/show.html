@@ -182,6 +182,9 @@
 </div>
 
 <script>
+// Domain ID for Turnstile check
+window.PROT_DOMAIN_ID = '{{.DomainID}}';
+
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
         showToast('Copied to clipboard', 'success');
