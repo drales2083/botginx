@@ -44,10 +44,13 @@ func (b *BackgroundVerifier) Stop() {
 }
 
 func (b *BackgroundVerifier) run() {
+	// Wait for migrations to complete before first check
+	time.Sleep(5 * time.Second)
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	// Run once immediately on startup
+	// Run first check after startup delay
 	b.checkAllDomains()
 
 	for {
