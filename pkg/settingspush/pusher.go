@@ -30,6 +30,10 @@ type LinkSettings struct {
 	MinBehaviorScore int      `json:"min_behavior_score"`
 	RedirectOnBlock  string   `json:"redirect_on_block"`
 	UpdatedAt        string   `json:"updated_at"`
+
+	// Cloudflare Turnstile credentials (from domain settings)
+	TurnstileSiteKey   string `json:"turnstile_site_key,omitempty"`
+	TurnstileSecretKey string `json:"turnstile_secret_key,omitempty"`
 }
 
 // ServerInfo contains SSH connection details
