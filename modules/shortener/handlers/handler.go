@@ -110,6 +110,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	module.RenderUserSection(w, r, h.templates, "shortener:show.html", map[string]interface{}{
 		"Title":    "Short Link",
 		"Link":     link,
+		"DomainID": link.DomainID,
 		"Stats":    stats,
 		"Settings": link.ProtectionSettings,
 	})
