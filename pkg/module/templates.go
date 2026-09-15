@@ -62,7 +62,8 @@ func defaultFuncs() template.FuncMap {
 		"safeHTML":  func(s string) template.HTML { return template.HTML(s) },
 		"safeJS":    func(s string) template.JS { return template.JS(s) },
 		"safeURL":   func(s string) template.URL { return template.URL(s) },
-		"hasPrefix": strings.HasPrefix,
+		"hasPrefix":  strings.HasPrefix,
+		"trimPrefix": strings.TrimPrefix,
 		"json": func(v interface{}) template.JS {
 			b, err := json.Marshal(v)
 			if err != nil {

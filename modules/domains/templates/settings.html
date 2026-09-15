@@ -66,7 +66,7 @@
                         </a>
                     </li>
                     <li class="mb-2">Click <strong>"Add site"</strong></li>
-                    <li class="mb-2">Enter your domain name: <code>{{.Domain.Name}}</code></li>
+                    <li class="mb-2">Enter your domain name: <code>*.{{if hasPrefix .Domain.Name "*."}}{{trimPrefix .Domain.Name "*."}}{{else}}{{.Domain.Name}}{{end}}</code></li>
                     <li class="mb-2">Select widget type: <strong>Managed</strong> (recommended)</li>
                     <li class="mb-2">Copy the <strong>Site Key</strong> and <strong>Secret Key</strong></li>
                 </ol>
