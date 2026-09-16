@@ -279,9 +279,37 @@ func (s *Service) ensureAcmeDnsRegistration(domain *Domain, server Server) error
 		needsRegistration = true
 		log.Printf("[DomainSync] Domain %s has no acme-dns credentials, registering", domain.Name)
 	} else {
+		// IMPORTANT: Before testing credentials, check if CNAME is already set up by the user
+		// If CNAME is verified and pointing to our stored subdomain, DO NOT register new credentials
+		// This prevents breaking users who already configured their DNS
+		baseDomain := domain.Name
+		if strings.HasPrefix(baseDomain, "*.") {
+			baseDomain = baseDomain[2:]
+		}
+		cname, err := net.LookupCNAME("_acme-challenge." + baseDomain)
+		if err == nil && domain.AcmeFulldomain != nil {
+			expectedCname := *domain.AcmeFulldomain
+			if !strings.HasSuffix(expectedCname, ".") {
+				expectedCname += "."
+			}
+			if strings.EqualFold(strings.TrimSuffix(cname, "."), strings.TrimSuffix(expectedCname, ".")) {
+				// CNAME is verified and matches our stored subdomain - don't touch the credentials
+				log.Printf("[DomainSync] Domain %s has verified CNAME pointing to %s, keeping existing credentials", domain.Name, *domain.AcmeFulldomain)
+				return nil
+			}
+		}
+
 		// Test if existing credentials work on this server's acme-dns
 		valid := s.testAcmeDnsCredentials(server, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword)
 		if !valid {
+			// Credentials don't work, but check if CNAME points to ANY valid acme subdomain
+			// If so, we should NOT register new credentials (user already set up DNS)
+			if err == nil && strings.HasSuffix(strings.ToLower(cname), ".acme.pamach.xyz.") {
+				log.Printf("[DomainSync] Domain %s has CNAME pointing to acme-dns (%s) but credentials are invalid. User must update CNAME or we need to adopt the subdomain.", domain.Name, cname)
+				// Don't register new credentials - that would require user to change DNS
+				// Instead, try to adopt the existing subdomain by registering new creds with same subdomain
+				return s.adoptAcmeDnsSubdomain(domain, server, strings.TrimSuffix(cname, "."))
+			}
 			needsRegistration = true
 			log.Printf("[DomainSync] Domain %s acme-dns credentials invalid on server %s, re-registering", domain.Name, server.IP)
 		}
@@ -379,6 +407,92 @@ func (s *Service) testAcmeDnsCredentials(server Server, subdomain, username, pas
 	}
 
 	return false
+}
+
+// adoptAcmeDnsSubdomain handles the case where user has CNAME set up but we don't have valid credentials
+// It registers new credentials in acme-dns and updates the database to use the existing subdomain
+func (s *Service) adoptAcmeDnsSubdomain(domain *Domain, server Server, existingFulldomain string) error {
+	// Extract subdomain from fulldomain (e.g., "abc123.acme.pamach.xyz" -> "abc123")
+	parts := strings.Split(existingFulldomain, ".")
+	if len(parts) < 1 {
+		return fmt.Errorf("invalid fulldomain format: %s", existingFulldomain)
+	}
+	existingSubdomain := parts[0]
+
+	log.Printf("[DomainSync] Attempting to adopt acme-dns subdomain %s for domain %s", existingSubdomain, domain.Name)
+
+	// Connect to server via SSH
+	client := ssh.NewClient(ssh.Config{
+		Host:         server.IP,
+		Port:         server.Port,
+		User:         server.SSHUser,
+		Password:     server.Password,
+		TrustOnFirst: true,
+	})
+	defer client.Close()
+
+	if err := client.Connect(); err != nil {
+		return fmt.Errorf("SSH connect failed: %w", err)
+	}
+
+	// Register new credentials in acme-dns
+	result, err := client.Exec(`curl -s -X POST "http://127.0.0.1:8053/register"`)
+	if err != nil {
+		return fmt.Errorf("failed to register with acme-dns: %w", err)
+	}
+
+	var regResp AcmeDnsRegisterResponse
+	if err := json.Unmarshal([]byte(result.Output), &regResp); err != nil {
+		return fmt.Errorf("failed to decode acme-dns response: %w - output: %s", err, result.Output)
+	}
+
+	// Now update the acme-dns database to change the new subdomain to the existing one
+	// This allows us to use new credentials with the user's existing CNAME
+	updateCmd := fmt.Sprintf(`
+		# Delete any existing record with this subdomain
+		sqlite3 /var/lib/acme-dns/acme-dns.db "DELETE FROM records WHERE Subdomain = '%s';"
+		# Update the new record to use the existing subdomain
+		sqlite3 /var/lib/acme-dns/acme-dns.db "UPDATE records SET Subdomain = '%s' WHERE Username = '%s';"
+		# Add TXT table entries for the subdomain
+		sqlite3 /var/lib/acme-dns/acme-dns.db "INSERT OR IGNORE INTO txt (Subdomain, Value, LastUpdate) VALUES ('%s', '', 0);"
+		sqlite3 /var/lib/acme-dns/acme-dns.db "INSERT OR IGNORE INTO txt (Subdomain, Value, LastUpdate) VALUES ('%s', '', 0);"
+		echo "OK"
+	`, existingSubdomain, existingSubdomain, regResp.Username, existingSubdomain, existingSubdomain)
+
+	result, err = client.Exec(updateCmd)
+	if err != nil {
+		return fmt.Errorf("failed to update acme-dns database: %w", err)
+	}
+
+	if !strings.Contains(result.Output, "OK") {
+		return fmt.Errorf("acme-dns database update failed: %s", result.Output)
+	}
+
+	// Restart acme-dns to pick up changes
+	if _, err := client.Exec("systemctl restart acme-dns"); err != nil {
+		log.Printf("[DomainSync] Warning: failed to restart acme-dns: %v", err)
+	}
+
+	// Update our database with the new credentials but existing subdomain
+	_, err = s.db.Exec(`
+		UPDATE domains
+		SET acme_subdomain = $1, acme_username = $2, acme_password = $3,
+		    acme_fulldomain = $4, acme_cname_verified = TRUE, updated_at = NOW()
+		WHERE id = $5
+	`, existingSubdomain, regResp.Username, regResp.Password, existingFulldomain, domain.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update database: %w", err)
+	}
+
+	// Update domain object
+	domain.AcmeSubdomain = &existingSubdomain
+	domain.AcmeUsername = &regResp.Username
+	domain.AcmePassword = &regResp.Password
+	fulldomainStr := existingFulldomain
+	domain.AcmeFulldomain = &fulldomainStr
+
+	log.Printf("[DomainSync] Successfully adopted acme-dns subdomain %s for domain %s", existingSubdomain, domain.Name)
+	return nil
 }
 
 // checkDomainConfigExists checks if the domain has config on the server
