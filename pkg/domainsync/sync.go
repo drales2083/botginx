@@ -461,23 +461,23 @@ func (s *Service) updateSyncStatus(domainID, status, errorMsg string) {
 		errPtr = &errorMsg
 	}
 
-	// Keep legacy fields (ssl_enabled, dns_verified) in sync with sync_status
-	// so the UI displays correct status
+	// Keep legacy fields (ssl_enabled, dns_verified, setup_step) in sync with sync_status
+	// so the UI displays correct status and shows/hides setup wizard appropriately
 	switch status {
 	case SyncStatusActive:
 		// Fully synced - DNS verified and SSL enabled
 		s.db.Exec(`
 			UPDATE domains
 			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2,
-			    dns_verified = TRUE, ssl_enabled = TRUE, updated_at = NOW()
+			    dns_verified = TRUE, ssl_enabled = TRUE, setup_step = 'complete', updated_at = NOW()
 			WHERE id = $3
 		`, status, errPtr, domainID)
 	case SyncStatusDNSWaiting, SyncStatusPending, SyncStatusSyncing:
-		// Not ready yet - reset legacy fields
+		// Not ready yet - reset legacy fields, show setup wizard
 		s.db.Exec(`
 			UPDATE domains
 			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2,
-			    dns_verified = FALSE, ssl_enabled = FALSE, updated_at = NOW()
+			    dns_verified = FALSE, ssl_enabled = FALSE, setup_step = 'dns', updated_at = NOW()
 			WHERE id = $3
 		`, status, errPtr, domainID)
 	case SyncStatusSSLGenerating:
@@ -485,7 +485,7 @@ func (s *Service) updateSyncStatus(domainID, status, errorMsg string) {
 		s.db.Exec(`
 			UPDATE domains
 			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2,
-			    dns_verified = TRUE, ssl_enabled = FALSE, updated_at = NOW()
+			    dns_verified = TRUE, ssl_enabled = FALSE, setup_step = 'ssl', updated_at = NOW()
 			WHERE id = $3
 		`, status, errPtr, domainID)
 	default:
