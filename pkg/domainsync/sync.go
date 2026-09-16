@@ -272,51 +272,55 @@ func (s *Service) ensureAcmeDnsRegistration(domain *Domain, server Server) error
 		return nil
 	}
 
-	// Check if we have credentials and if they work on this server
-	needsRegistration := false
+	baseDomain := domain.Name
+	if strings.HasPrefix(baseDomain, "*.") {
+		baseDomain = baseDomain[2:]
+	}
 
-	if domain.AcmeSubdomain == nil || domain.AcmeUsername == nil || domain.AcmePassword == nil {
-		needsRegistration = true
-		log.Printf("[DomainSync] Domain %s has no acme-dns credentials, registering", domain.Name)
-	} else {
-		// IMPORTANT: Before testing credentials, check if CNAME is already set up by the user
-		// If CNAME is verified and pointing to our stored subdomain, DO NOT register new credentials
-		// This prevents breaking users who already configured their DNS
-		baseDomain := domain.Name
-		if strings.HasPrefix(baseDomain, "*.") {
-			baseDomain = baseDomain[2:]
-		}
-		cname, err := net.LookupCNAME("_acme-challenge." + baseDomain)
-		if err == nil && domain.AcmeFulldomain != nil {
-			expectedCname := *domain.AcmeFulldomain
-			if !strings.HasSuffix(expectedCname, ".") {
-				expectedCname += "."
-			}
-			if strings.EqualFold(strings.TrimSuffix(cname, "."), strings.TrimSuffix(expectedCname, ".")) {
-				// CNAME is verified and matches our stored subdomain - don't touch the credentials
-				log.Printf("[DomainSync] Domain %s has verified CNAME pointing to %s, keeping existing credentials", domain.Name, *domain.AcmeFulldomain)
-				return nil
-			}
-		}
+	// FIRST: Check if user has CNAME set up - this is the source of truth
+	// If CNAME exists pointing to acme-dns, NEVER register new credentials
+	cname, cnameErr := net.LookupCNAME("_acme-challenge." + baseDomain)
+	cnamePointsToAcmeDns := cnameErr == nil && strings.HasSuffix(strings.ToLower(cname), ".acme.pamach.xyz.")
 
-		// Test if existing credentials work on this server's acme-dns
-		valid := s.testAcmeDnsCredentials(server, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword)
-		if !valid {
-			// Credentials don't work, but check if CNAME points to ANY valid acme subdomain
-			// If so, we should NOT register new credentials (user already set up DNS)
-			if err == nil && strings.HasSuffix(strings.ToLower(cname), ".acme.pamach.xyz.") {
-				log.Printf("[DomainSync] Domain %s has CNAME pointing to acme-dns (%s) but credentials are invalid. User must update CNAME or we need to adopt the subdomain.", domain.Name, cname)
-				// Don't register new credentials - that would require user to change DNS
-				// Instead, try to adopt the existing subdomain by registering new creds with same subdomain
-				return s.adoptAcmeDnsSubdomain(domain, server, strings.TrimSuffix(cname, "."))
+	if cnamePointsToAcmeDns {
+		// User has CNAME set up - extract the subdomain they're using
+		existingFulldomain := strings.TrimSuffix(cname, ".")
+		parts := strings.Split(existingFulldomain, ".")
+		if len(parts) >= 1 {
+			existingSubdomain := parts[0]
+
+			// Check if our stored subdomain matches what CNAME points to
+			if domain.AcmeSubdomain != nil && *domain.AcmeSubdomain == existingSubdomain {
+				// Subdomain matches - test if credentials work on this server
+				if domain.AcmeUsername != nil && domain.AcmePassword != nil {
+					if s.testAcmeDnsCredentials(server, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword) {
+						log.Printf("[DomainSync] Domain %s CNAME verified, credentials work", domain.Name)
+						return nil
+					}
+				}
+				// Credentials don't work on this server - adopt the subdomain with new creds
+				log.Printf("[DomainSync] Domain %s CNAME verified but credentials invalid on server, adopting subdomain", domain.Name)
+				return s.adoptAcmeDnsSubdomain(domain, server, existingFulldomain)
+			} else {
+				// CNAME points to different subdomain than we have stored - adopt it
+				log.Printf("[DomainSync] Domain %s CNAME points to %s but we have %v stored, adopting", domain.Name, existingSubdomain, domain.AcmeSubdomain)
+				return s.adoptAcmeDnsSubdomain(domain, server, existingFulldomain)
 			}
-			needsRegistration = true
-			log.Printf("[DomainSync] Domain %s acme-dns credentials invalid on server %s, re-registering", domain.Name, server.IP)
 		}
 	}
 
-	if !needsRegistration {
-		return nil
+	// No CNAME set up - check if we have credentials at all
+	if domain.AcmeSubdomain == nil || domain.AcmeUsername == nil || domain.AcmePassword == nil {
+		log.Printf("[DomainSync] Domain %s has no acme-dns credentials and no CNAME, registering new", domain.Name)
+		// Fall through to registration below
+	} else {
+		// We have credentials but no CNAME - test if credentials work
+		if s.testAcmeDnsCredentials(server, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword) {
+			log.Printf("[DomainSync] Domain %s credentials work, waiting for CNAME setup", domain.Name)
+			return nil
+		}
+		// Credentials don't work and no CNAME - register new
+		log.Printf("[DomainSync] Domain %s credentials invalid and no CNAME, registering new", domain.Name)
 	}
 
 	// Register new credentials via SSH to the server's acme-dns API
