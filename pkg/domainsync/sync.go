@@ -309,18 +309,35 @@ func (s *Service) ensureAcmeDnsRegistration(domain *Domain, server Server) error
 		}
 	}
 
-	// No CNAME set up - check if we have credentials at all
+	// No CNAME detected - but could be DNS lookup failure
+	// If we already have credentials with a fulldomain, assume CNAME still exists
+	// and DON'T register new credentials (would break user's existing CNAME)
+	if domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
+		// We have stored credentials - DNS lookup may have failed transiently
+		// Test if credentials work on this server
+		if domain.AcmeUsername != nil && domain.AcmePassword != nil && domain.AcmeSubdomain != nil {
+			if s.testAcmeDnsCredentials(server, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword) {
+				log.Printf("[DomainSync] Domain %s credentials work (DNS lookup may have failed)", domain.Name)
+				return nil
+			}
+			// Credentials don't work - try to adopt the stored subdomain on this server
+			log.Printf("[DomainSync] Domain %s has stored fulldomain %s, adopting on this server", domain.Name, *domain.AcmeFulldomain)
+			return s.adoptAcmeDnsSubdomain(domain, server, *domain.AcmeFulldomain)
+		}
+	}
+
+	// No stored credentials at all - safe to register new
 	if domain.AcmeSubdomain == nil || domain.AcmeUsername == nil || domain.AcmePassword == nil {
-		log.Printf("[DomainSync] Domain %s has no acme-dns credentials and no CNAME, registering new", domain.Name)
+		log.Printf("[DomainSync] Domain %s has no acme-dns credentials, registering new", domain.Name)
 		// Fall through to registration below
 	} else {
-		// We have credentials but no CNAME - test if credentials work
+		// We have partial credentials but no fulldomain - test if they work
 		if s.testAcmeDnsCredentials(server, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword) {
 			log.Printf("[DomainSync] Domain %s credentials work, waiting for CNAME setup", domain.Name)
 			return nil
 		}
-		// Credentials don't work and no CNAME - register new
-		log.Printf("[DomainSync] Domain %s credentials invalid and no CNAME, registering new", domain.Name)
+		// Credentials don't work and no fulldomain stored - register new
+		log.Printf("[DomainSync] Domain %s credentials invalid and no fulldomain stored, registering new", domain.Name)
 	}
 
 	// Register new credentials via SSH to the server's acme-dns API
