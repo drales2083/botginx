@@ -91,16 +91,11 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Order:   85,
 			Section: module.MenuSectionUser,
 		},
-	}
-}
-
-// AdminMenuItems returns admin sidebar navigation items
-func (m *Module) AdminMenuItems() []module.MenuItem {
-	return []module.MenuItem{
 		{
 			Title:   "Support",
 			Icon:    "bi-headset",
 			Path:    "/admin/support",
+			Order:   50,
 			Section: module.MenuSectionAdmin,
 		},
 	}
