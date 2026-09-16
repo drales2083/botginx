@@ -134,6 +134,15 @@ Used by settings push (`pkg/settingspush/`) to SCP link settings to deploy serve
 | `DEPLOY_VPS_PASSWORD` | SSH password |
 | `DEPLOY_VPS_PORT` | SSH port (default: 22) |
 
+### Telegram Notifications
+
+| Variable | Description |
+|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token from @BotFather |
+| `TELEGRAM_CHAT_ID` | Chat/group ID to send notifications to |
+
+Sends notifications for new support tickets and user replies.
+
 ### ACME DNS (Wildcard SSL)
 
 | Variable | Description |

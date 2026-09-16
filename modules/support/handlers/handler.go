@@ -10,6 +10,7 @@ import (
 
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/botginx/botginx/pkg/telegram"
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 )
@@ -429,29 +430,21 @@ func (h *Handler) APIAdminReopen(w http.ResponseWriter, r *http.Request) {
 	h.jsonOK(w, map[string]interface{}{"success": true})
 }
 
-// Telegram notifications (placeholder - implement later)
+// Telegram notifications
 
 func (h *Handler) notifyAdminNewTicket(userID, category, subject, message string) {
-	// Get user email
 	var email string
 	h.db.Get(&email, `SELECT email FROM users WHERE id = $1`, userID)
-
-	// TODO: Send to Telegram
-	// Format: 🎫 New ticket from {email}
-	//         Category: {category}
-	//         Subject: {subject}
-	//         {message preview}
-	_ = email
+	telegram.NotifyNewTicket(email, category, subject, message)
 }
 
 func (h *Handler) notifyAdminReply(ticketID, userID, message string) {
-	// Get user email
 	var email string
 	h.db.Get(&email, `SELECT email FROM users WHERE id = $1`, userID)
 
-	// TODO: Send to Telegram
-	// Format: 💬 Reply on ticket #{ticketID}
-	//         From: {email}
-	//         {message preview}
-	_ = email
+	// Get ticket subject for context
+	var subject string
+	h.db.Get(&subject, `SELECT subject FROM support_tickets WHERE id = $1`, ticketID)
+
+	telegram.NotifyTicketReply(ticketID, email, subject, message)
 }
