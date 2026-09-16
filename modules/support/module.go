@@ -66,19 +66,17 @@ func (m *Module) Routes() chi.Router {
 	return r
 }
 
-func (m *Module) AdminRoutes() chi.Router {
-	r := chi.NewRouter()
-
-	// Admin pages
-	r.Get("/", m.handler.AdminList)
-	r.Get("/{id}", m.handler.AdminShow)
-
-	// API
-	r.Post("/api/{id}/reply", m.handler.APIAdminReply)
-	r.Post("/api/{id}/close", m.handler.APIAdminClose)
-	r.Post("/api/{id}/reopen", m.handler.APIAdminReopen)
-
-	return r
+func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
+	if section == module.MenuSectionAdmin {
+		r := chi.NewRouter()
+		r.Get("/", m.handler.AdminList)
+		r.Get("/{id}", m.handler.AdminShow)
+		r.Post("/api/{id}/reply", m.handler.APIAdminReply)
+		r.Post("/api/{id}/close", m.handler.APIAdminClose)
+		r.Post("/api/{id}/reopen", m.handler.APIAdminReopen)
+		return r
+	}
+	return m.Routes()
 }
 
 // MenuItems returns sidebar navigation items for this module
