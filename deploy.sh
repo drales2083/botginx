@@ -332,9 +332,12 @@ SUPABASE_KEY=${SUPABASE_KEY:-}
 PANEL_URL=${PANEL_DOMAIN:-guardbot.sbs}
 # UI display name
 UI_APP_NAME=${UI_APP_NAME:-GuardBot}
-# Telegram notifications (support tickets)
+# Telegram notifications - deploy channel
 TG_DEPLOY_BOT_TOKEN=8809328273:AAE4mVBbnzdjhVJ77M676y8KSLkL1JesEBk
 TG_DEPLOY_CHAT_ID=-1004338360346
+# Telegram notifications - support tickets
+TG_SUPPORT_BOT_TOKEN=8559701777:AAEOEOJR2waR8rl3wF9yvNfdhbAv9ikvNSU
+TG_SUPPORT_CHAT_ID=-5518056987
 # Hosting module: AES-256-GCM encryption key for HestiaCP passwords
 HOSTING_ENCRYPTION_KEY=${encryption_key}
 ENVEOF"

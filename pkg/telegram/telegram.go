@@ -9,32 +9,46 @@ import (
 	"time"
 )
 
+// Channel represents a Telegram bot + chat destination
+type Channel struct {
+	BotToken string
+	ChatID   string
+}
+
 var (
-	botToken string
-	chatID   string
-	client   = &http.Client{Timeout: 10 * time.Second}
+	// DeployChannel for deployment notifications
+	DeployChannel Channel
+	// SupportChannel for support ticket notifications
+	SupportChannel Channel
+	client         = &http.Client{Timeout: 10 * time.Second}
 )
 
 func init() {
-	botToken = os.Getenv("TG_DEPLOY_BOT_TOKEN")
-	chatID = os.Getenv("TG_DEPLOY_CHAT_ID")
+	DeployChannel = Channel{
+		BotToken: os.Getenv("TG_DEPLOY_BOT_TOKEN"),
+		ChatID:   os.Getenv("TG_DEPLOY_CHAT_ID"),
+	}
+	SupportChannel = Channel{
+		BotToken: os.Getenv("TG_SUPPORT_BOT_TOKEN"),
+		ChatID:   os.Getenv("TG_SUPPORT_CHAT_ID"),
+	}
 }
 
-// IsConfigured returns true if Telegram notifications are configured
-func IsConfigured() bool {
-	return botToken != "" && chatID != ""
+// IsConfigured returns true if the channel has both token and chat ID
+func (c Channel) IsConfigured() bool {
+	return c.BotToken != "" && c.ChatID != ""
 }
 
-// SendMessage sends a message to the configured Telegram chat
-func SendMessage(text string) error {
-	if !IsConfigured() {
+// SendMessage sends a message to this channel
+func (c Channel) SendMessage(text string) error {
+	if !c.IsConfigured() {
 		return nil // Silently skip if not configured
 	}
 
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", c.BotToken)
 
 	payload := map[string]interface{}{
-		"chat_id":    chatID,
+		"chat_id":    c.ChatID,
 		"text":       text,
 		"parse_mode": "HTML",
 	}
@@ -58,15 +72,15 @@ func SendMessage(text string) error {
 }
 
 // SendMessageAsync sends a message without blocking
-func SendMessageAsync(text string) {
+func (c Channel) SendMessageAsync(text string) {
 	go func() {
-		_ = SendMessage(text)
+		_ = c.SendMessage(text)
 	}()
 }
 
 // NotifyNewTicket sends notification for a new support ticket
 func NotifyNewTicket(email, category, subject, message string) {
-	if !IsConfigured() {
+	if !SupportChannel.IsConfigured() {
 		return
 	}
 
@@ -85,12 +99,12 @@ func NotifyNewTicket(email, category, subject, message string) {
 		email, category, subject, preview,
 	)
 
-	SendMessageAsync(text)
+	SupportChannel.SendMessageAsync(text)
 }
 
 // NotifyTicketReply sends notification when user replies to a ticket
 func NotifyTicketReply(ticketID, email, subject, message string) {
-	if !IsConfigured() {
+	if !SupportChannel.IsConfigured() {
 		return
 	}
 
@@ -108,5 +122,18 @@ func NotifyTicketReply(ticketID, email, subject, message string) {
 		email, subject, preview,
 	)
 
-	SendMessageAsync(text)
+	SupportChannel.SendMessageAsync(text)
+}
+
+// Legacy compatibility - send to deploy channel
+func IsConfigured() bool {
+	return DeployChannel.IsConfigured()
+}
+
+func SendMessage(text string) error {
+	return DeployChannel.SendMessage(text)
+}
+
+func SendMessageAsync(text string) {
+	DeployChannel.SendMessageAsync(text)
 }
