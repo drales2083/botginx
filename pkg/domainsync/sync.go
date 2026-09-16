@@ -1,10 +1,14 @@
 package domainsync
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -214,6 +218,14 @@ func (s *Service) syncDomain(domain Domain) error {
 		}
 	}
 
+	// Step 1.5: For wildcard domains, ensure acme-dns credentials are registered on this server
+	if domain.IsWildcard {
+		if err := s.ensureAcmeDnsRegistration(&domain, *server); err != nil {
+			log.Printf("[DomainSync] Warning: acme-dns registration failed for %s: %v", domain.Name, err)
+			// Continue anyway - user can manually set up CNAME
+		}
+	}
+
 	// Step 2: Check DNS records
 	dnsOK, missingRecords := s.checkDNSRecords(domain, server.IP)
 	if !dnsOK {
@@ -246,6 +258,120 @@ func (s *Service) syncDomain(domain Domain) error {
 	// All good - mark active
 	s.updateSyncStatus(domain.ID, SyncStatusActive, "")
 	return nil
+}
+
+// AcmeDnsRegisterResponse is the response from acme-dns register endpoint
+type AcmeDnsRegisterResponse struct {
+	Subdomain  string `json:"subdomain"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	Fulldomain string `json:"fulldomain"`
+}
+
+// ensureAcmeDnsRegistration ensures acme-dns credentials are valid for this server
+func (s *Service) ensureAcmeDnsRegistration(domain *Domain, server Server) error {
+	// Only for wildcard domains
+	if !domain.IsWildcard {
+		return nil
+	}
+
+	// Check if we have credentials and if they work on this server
+	needsRegistration := false
+
+	if domain.AcmeSubdomain == nil || domain.AcmeUsername == nil || domain.AcmePassword == nil {
+		needsRegistration = true
+		log.Printf("[DomainSync] Domain %s has no acme-dns credentials, registering", domain.Name)
+	} else {
+		// Test if existing credentials work on this server's acme-dns
+		valid := s.testAcmeDnsCredentials(server, *domain.AcmeSubdomain, *domain.AcmeUsername, *domain.AcmePassword)
+		if !valid {
+			needsRegistration = true
+			log.Printf("[DomainSync] Domain %s acme-dns credentials invalid on server %s, re-registering", domain.Name, server.IP)
+		}
+	}
+
+	if !needsRegistration {
+		return nil
+	}
+
+	// Register new credentials via the server's acme-dns API
+	// acme-dns runs on port 8053 on the deploy server
+	acmeDnsURL := fmt.Sprintf("http://%s:8053/register", server.IP)
+
+	resp, err := http.Post(acmeDnsURL, "application/json", nil)
+	if err != nil {
+		return fmt.Errorf("failed to call acme-dns register: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("acme-dns register failed: %s - %s", resp.Status, string(body))
+	}
+
+	var regResp AcmeDnsRegisterResponse
+	if err := json.NewDecoder(resp.Body).Decode(&regResp); err != nil {
+		return fmt.Errorf("failed to decode acme-dns response: %w", err)
+	}
+
+	// Update database with new credentials
+	_, err = s.db.Exec(`
+		UPDATE domains
+		SET acme_subdomain = $1, acme_username = $2, acme_password = $3,
+		    acme_fulldomain = $4, acme_cname_verified = FALSE, updated_at = NOW()
+		WHERE id = $5
+	`, regResp.Subdomain, regResp.Username, regResp.Password, regResp.Fulldomain, domain.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update database with acme-dns credentials: %w", err)
+	}
+
+	// Update the domain object for subsequent operations
+	domain.AcmeSubdomain = &regResp.Subdomain
+	domain.AcmeUsername = &regResp.Username
+	domain.AcmePassword = &regResp.Password
+	domain.AcmeFulldomain = &regResp.Fulldomain
+
+	log.Printf("[DomainSync] Registered new acme-dns credentials for %s: %s", domain.Name, regResp.Fulldomain)
+	return nil
+}
+
+// testAcmeDnsCredentials tests if acme-dns credentials work on a server
+func (s *Service) testAcmeDnsCredentials(server Server, subdomain, username, password string) bool {
+	acmeDnsURL := fmt.Sprintf("http://%s:8053/update", server.IP)
+
+	// Try to update with a test token
+	payload := map[string]string{
+		"subdomain": subdomain,
+		"txt":       "test_validation_" + fmt.Sprintf("%d", time.Now().Unix()),
+	}
+	body, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest("POST", acmeDnsURL, bytes.NewReader(body))
+	if err != nil {
+		return false
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Api-User", username)
+	req.Header.Set("X-Api-Key", password)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	// If we get a 200 with txt in response, credentials are valid
+	if resp.StatusCode == http.StatusOK {
+		var result map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
+			if _, ok := result["txt"]; ok {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // checkDomainConfigExists checks if the domain has config on the server
