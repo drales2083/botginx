@@ -44,18 +44,14 @@
                     <h6 class="card-title mb-0"><i class="bi bi-chat-dots me-2"></i>Conversation</h6>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex flex-column gap-3">
-                        {{range .Messages}}
-                        <div class="d-flex {{if .IsAdmin}}justify-content-end{{else}}justify-content-start{{end}}">
-                            <div class="{{if .IsAdmin}}bg-primary text-white{{else}}bg-light border{{end}} rounded p-3" style="max-width: 80%;">
-                                <div class="mb-1" style="white-space: pre-wrap;">{{.Message}}</div>
-                                <div class="{{if .IsAdmin}}text-white-50{{else}}text-muted{{end}} small">
-                                    {{if .IsAdmin}}You (Admin){{else}}User{{end}} &bull; {{.CreatedAt.Format "Jan 2, 3:04 PM"}}
-                                </div>
-                            </div>
+                    {{range .Messages}}
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1">
+                            {{if .IsAdmin}}Admin{{else}}{{$.Ticket.UserEmail}}{{end}} &bull; {{.CreatedAt.Format "Jan 2, 3:04 PM"}}
                         </div>
-                        {{end}}
+                        <div style="white-space: pre-wrap;">{{.Message}}</div>
                     </div>
+                    {{end}}
                 </div>
             </div>
 
