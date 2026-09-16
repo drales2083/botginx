@@ -32,6 +32,7 @@ import (
 	"github.com/botginx/botginx/modules/servers"
 	"github.com/botginx/botginx/modules/shortener"
 	"github.com/botginx/botginx/modules/support"
+	"github.com/botginx/botginx/modules/telegram"
 	"github.com/botginx/botginx/modules/users"
 	"github.com/botginx/botginx/pkg/buildinfo"
 	"github.com/botginx/botginx/pkg/ctx"
@@ -264,7 +265,10 @@ func main() {
 	registry.Register(marketplaceModule)         // Domain marketplace
 	registry.Register(paymentsModule)            // Crypto payments
 	registry.Register(help.New())                // Help/FAQ module
-	registry.Register(support.New())             // Support tickets
+	supportModule := support.New()
+	registry.Register(supportModule)             // Support tickets
+	telegramModule := telegram.New()
+	registry.Register(telegramModule)            // Telegram bot integration
 	usersModule := users.New()
 	registry.Register(usersModule)               // Admin module
 	referralsModule := referrals.New()
@@ -296,6 +300,7 @@ func main() {
 	hostingModule.SetPaymentProcessor(referralsModule)  // Referral commissions on hosting payments
 	authModule.SetSubscriptionService(subscriptions)    // Self-service subscription purchase
 	usersModule.SetAuthService(authModule.AuthService()) // Admin impersonation
+	supportModule.SetNotifier(telegramModule.Handler)    // Telegram notifications for tickets
 
 	// Run migrations
 	if err := registry.MigrateAll(); err != nil {

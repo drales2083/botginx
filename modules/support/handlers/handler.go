@@ -10,18 +10,28 @@ import (
 
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
-	"github.com/botginx/botginx/pkg/telegram"
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 )
 
+// Notifier interface for sending ticket notifications
+type Notifier interface {
+	NotifyNewTicket(ticketID, email, category, subject, message string)
+	NotifyTicketReply(ticketID, email, subject, message string)
+}
+
 type Handler struct {
 	db        *sqlx.DB
 	templates *module.TemplateEngine
+	notifier  Notifier
 }
 
 func NewHandler(db *sqlx.DB, templates *module.TemplateEngine) *Handler {
 	return &Handler{db: db, templates: templates}
+}
+
+func (h *Handler) SetNotifier(n Notifier) {
+	h.notifier = n
 }
 
 // Models
@@ -189,8 +199,8 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Send Telegram notification to admin
-	h.notifyAdminNewTicket(userID, input.Category, input.Subject, input.Message)
+	// Send Telegram notification to admin
+	h.notifyAdminNewTicket(ticketID, userID, input.Category, input.Subject, input.Message)
 
 	h.jsonOK(w, map[string]interface{}{
 		"success":   true,
@@ -432,13 +442,19 @@ func (h *Handler) APIAdminReopen(w http.ResponseWriter, r *http.Request) {
 
 // Telegram notifications
 
-func (h *Handler) notifyAdminNewTicket(userID, category, subject, message string) {
+func (h *Handler) notifyAdminNewTicket(ticketID, userID, category, subject, message string) {
+	if h.notifier == nil {
+		return
+	}
 	var email string
 	h.db.Get(&email, `SELECT email FROM users WHERE id = $1`, userID)
-	telegram.NotifyNewTicket(email, category, subject, message)
+	h.notifier.NotifyNewTicket(ticketID, email, category, subject, message)
 }
 
 func (h *Handler) notifyAdminReply(ticketID, userID, message string) {
+	if h.notifier == nil {
+		return
+	}
 	var email string
 	h.db.Get(&email, `SELECT email FROM users WHERE id = $1`, userID)
 
@@ -446,5 +462,5 @@ func (h *Handler) notifyAdminReply(ticketID, userID, message string) {
 	var subject string
 	h.db.Get(&subject, `SELECT subject FROM support_tickets WHERE id = $1`, ticketID)
 
-	telegram.NotifyTicketReply(ticketID, email, subject, message)
+	h.notifier.NotifyTicketReply(ticketID, email, subject, message)
 }
