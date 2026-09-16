@@ -16,8 +16,8 @@ var (
 )
 
 func init() {
-	botToken = os.Getenv("TELEGRAM_BOT_TOKEN")
-	chatID = os.Getenv("TELEGRAM_CHAT_ID")
+	botToken = os.Getenv("TG_DEPLOY_BOT_TOKEN")
+	chatID = os.Getenv("TG_DEPLOY_CHAT_ID")
 }
 
 // IsConfigured returns true if Telegram notifications are configured

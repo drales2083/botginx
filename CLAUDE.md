@@ -138,10 +138,10 @@ Used by settings push (`pkg/settingspush/`) to SCP link settings to deploy serve
 
 | Variable | Description |
 |----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token from @BotFather |
-| `TELEGRAM_CHAT_ID` | Chat/group ID to send notifications to |
+| `TG_DEPLOY_BOT_TOKEN` | Telegram bot token from @BotFather |
+| `TG_DEPLOY_CHAT_ID` | Chat/group ID to send notifications to |
 
-Sends notifications for new support tickets and user replies.
+Sends notifications for new support tickets and user replies. Pre-configured in deploy.sh.
 
 ### ACME DNS (Wildcard SSL)
 
