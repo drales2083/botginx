@@ -298,38 +298,26 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 	botID := chi.URLParam(r, "botID")
 	secret := chi.URLParam(r, "secret")
 
-	log.Debug().Str("botID", botID).Msg("Telegram webhook received")
-
 	// Validate bot and secret
 	bot, err := h.service.GetBot(botID)
 	if err != nil || bot == nil {
-		log.Warn().Str("botID", botID).Err(err).Msg("Webhook: bot not found")
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
 	if bot.WebhookSecret == nil || *bot.WebhookSecret != secret {
-		log.Warn().Str("botID", botID).Msg("Webhook: invalid secret")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	var update WebhookUpdate
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-		log.Warn().Err(err).Msg("Webhook: failed to decode body")
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
-	log.Debug().
-		Int64("updateID", update.UpdateID).
-		Bool("hasCallback", update.CallbackQuery != nil).
-		Bool("hasMessage", update.Message != nil).
-		Msg("Webhook update parsed")
-
 	// Handle callback query (button click)
 	if update.CallbackQuery != nil {
-		log.Info().Str("data", update.CallbackQuery.Data).Msg("Processing callback query")
 		h.handleCallbackQuery(bot, update.CallbackQuery)
 		w.WriteHeader(http.StatusOK)
 		return
@@ -337,7 +325,6 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 
 	// Handle message (text reply)
 	if update.Message != nil && update.Message.Text != "" {
-		log.Debug().Str("text", update.Message.Text).Msg("Processing message")
 		h.handleMessage(bot, update.Message)
 		w.WriteHeader(http.StatusOK)
 		return
@@ -347,20 +334,15 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleCallbackQuery(bot *service.Bot, query *WebhookCallbackQuery) {
-	log.Debug().Str("queryID", query.ID).Str("data", query.Data).Msg("handleCallbackQuery")
-
 	// Parse callback data: "action:ticket_id"
 	parts := strings.SplitN(query.Data, ":", 2)
 	if len(parts) != 2 {
-		log.Warn().Str("data", query.Data).Msg("Invalid callback data format")
 		h.service.AnswerCallbackQuery(bot.BotToken, query.ID, "Invalid action")
 		return
 	}
 
 	action := parts[0]
 	ticketID := parts[1]
-
-	log.Info().Str("action", action).Str("ticketID", ticketID).Msg("Processing callback action")
 
 	switch action {
 	case "reply":
@@ -370,14 +352,11 @@ func (h *Handler) handleCallbackQuery(bot *service.Bot, query *WebhookCallbackQu
 	case "view":
 		h.handleViewButton(bot, query, ticketID)
 	default:
-		log.Warn().Str("action", action).Msg("Unknown callback action")
 		h.service.AnswerCallbackQuery(bot.BotToken, query.ID, "Unknown action")
 	}
 }
 
 func (h *Handler) handleReplyButton(bot *service.Bot, query *WebhookCallbackQuery, ticketID string) {
-	log.Debug().Str("ticketID", ticketID).Msg("handleReplyButton start")
-
 	// Get ticket info
 	var ticket struct {
 		Subject   string `db:"subject"`
@@ -390,23 +369,17 @@ func (h *Handler) handleReplyButton(bot *service.Bot, query *WebhookCallbackQuer
 		WHERE t.id = $1
 	`, ticketID)
 	if err != nil {
-		log.Error().Err(err).Str("ticketID", ticketID).Msg("Failed to get ticket")
 		h.service.AnswerCallbackQuery(bot.BotToken, query.ID, "Ticket not found")
 		return
 	}
-
-	log.Debug().Str("subject", ticket.Subject).Msg("Ticket found")
 
 	// Create pending reply
 	chatID := query.Message.Chat.ID
 	userID := query.From.ID
 	if err := h.service.CreatePendingReply(bot.ID, userID, chatID, ticketID); err != nil {
-		log.Error().Err(err).Msg("Failed to create pending reply")
 		h.service.AnswerCallbackQuery(bot.BotToken, query.ID, "Error creating reply session")
 		return
 	}
-
-	log.Debug().Int64("chatID", chatID).Int64("userID", userID).Msg("Pending reply created")
 
 	// Send prompt message with ForceReply to ensure bot receives the response
 	text := "📝 <b>Reply to:</b> " + ticket.Subject + "\n\n" +
@@ -420,13 +393,8 @@ func (h *Handler) handleReplyButton(bot *service.Bot, query *WebhookCallbackQuer
 		"selective":               true,
 	}
 
-	if _, err := h.service.SendMessage(bot.BotToken, *bot.ChatID, text, forceReply); err != nil {
-		log.Error().Err(err).Msg("Failed to send prompt message")
-	}
-	if err := h.service.AnswerCallbackQuery(bot.BotToken, query.ID, "Send your reply message"); err != nil {
-		log.Error().Err(err).Msg("Failed to answer callback query")
-	}
-	log.Info().Str("ticketID", ticketID).Msg("Reply button handled successfully")
+	h.service.SendMessage(bot.BotToken, *bot.ChatID, text, forceReply)
+	h.service.AnswerCallbackQuery(bot.BotToken, query.ID, "Send your reply message")
 }
 
 func (h *Handler) handleCloseButton(bot *service.Bot, query *WebhookCallbackQuery, ticketID string) {
