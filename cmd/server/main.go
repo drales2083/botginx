@@ -386,6 +386,10 @@ func main() {
 	// POST /api/payments/webhook/bitgo - BitGo transaction callback
 	r.Mount("/api/payments", paymentsModule.PublicRoutes())
 
+	// Telegram webhook (no auth, secret verified in handler)
+	// POST /telegram/webhook/{botID}/{secret} - Telegram bot callback
+	r.Mount("/telegram", telegramModule.Routes())
+
 	// User routes (/user/*) - require auth and active subscription for all
 	// product features. Unsubscribed users are redirected to settings.
 	r.Route("/user", func(r chi.Router) {
