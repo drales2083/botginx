@@ -199,6 +199,24 @@ func (s *Service) syncDomain(domain Domain) error {
 		return fmt.Errorf("server not found or not ready: %w", err)
 	}
 
+	// If domain is already active with SSL, skip re-validation
+	// Only recheck config exists on server, don't downgrade on transient DNS failures
+	if domain.SyncStatus == SyncStatusActive && domain.SSLEnabled {
+		configExists, err := s.checkDomainConfigExists(domain, *server)
+		if err != nil {
+			log.Printf("[DomainSync] Domain %s config check failed: %v", domain.Name, err)
+			return nil // Don't downgrade active domain
+		}
+		if !configExists {
+			log.Printf("[DomainSync] Domain %s config missing on server, redeploying links", domain.Name)
+			if err := s.redeployDomainLinks(domain, *server); err != nil {
+				log.Printf("[DomainSync] Failed to redeploy links for %s: %v", domain.Name, err)
+			}
+		}
+		// Domain is active - don't re-run DNS/SSL checks
+		return nil
+	}
+
 	// Step 1: Check if domain config exists on server
 	configExists, err := s.checkDomainConfigExists(domain, *server)
 	if err != nil {
