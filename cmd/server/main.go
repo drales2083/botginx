@@ -31,6 +31,7 @@ import (
 	"github.com/botginx/botginx/modules/redirectlinks"
 	"github.com/botginx/botginx/modules/servers"
 	"github.com/botginx/botginx/modules/shortener"
+	"github.com/botginx/botginx/modules/support"
 	"github.com/botginx/botginx/modules/users"
 	"github.com/botginx/botginx/pkg/buildinfo"
 	"github.com/botginx/botginx/pkg/ctx"
@@ -263,6 +264,7 @@ func main() {
 	registry.Register(marketplaceModule)         // Domain marketplace
 	registry.Register(paymentsModule)            // Crypto payments
 	registry.Register(help.New())                // Help/FAQ module
+	registry.Register(support.New())             // Support tickets
 	usersModule := users.New()
 	registry.Register(usersModule)               // Admin module
 	referralsModule := referrals.New()

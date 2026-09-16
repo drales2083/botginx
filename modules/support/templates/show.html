@@ -1,0 +1,160 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/user/support">Support</a></li>
+                    <li class="breadcrumb-item active">Ticket</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Ticket Header -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-1">{{.Ticket.Subject}}</h5>
+                            <div class="text-muted small">
+                                <span class="me-3"><i class="bi bi-tag me-1"></i>{{.Ticket.Category}}</span>
+                                <span><i class="bi bi-calendar me-1"></i>{{.Ticket.CreatedAt.Format "Jan 2, 2006"}}</span>
+                            </div>
+                        </div>
+                        <div>
+                            {{if eq .Ticket.Status "open"}}
+                            <span class="badge bg-warning fs-6">Open</span>
+                            {{else if eq .Ticket.Status "answered"}}
+                            <span class="badge bg-info fs-6">Answered</span>
+                            {{else}}
+                            <span class="badge bg-secondary fs-6">Closed</span>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conversation -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-chat-dots me-2"></i>Conversation</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-column gap-3">
+                        {{range .Messages}}
+                        <div class="d-flex {{if .IsAdmin}}justify-content-start{{else}}justify-content-end{{end}}">
+                            <div class="{{if .IsAdmin}}bg-light border{{else}}bg-primary text-white{{end}} rounded p-3" style="max-width: 80%;">
+                                <div class="mb-1" style="white-space: pre-wrap;">{{.Message}}</div>
+                                <div class="{{if .IsAdmin}}text-muted{{else}}text-white-50{{end}} small">
+                                    {{if .IsAdmin}}Admin{{else}}You{{end}} &bull; {{.CreatedAt.Format "Jan 2, 3:04 PM"}}
+                                </div>
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reply Form (only if not closed) -->
+            {{if ne .Ticket.Status "closed"}}
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-reply me-2"></i>Reply</h6>
+                </div>
+                <div class="card-body">
+                    <form id="replyForm">
+                        <div class="mb-3">
+                            <textarea class="form-control" name="message" rows="4"
+                                      placeholder="Type your reply (10-2000 chars)..."
+                                      required minlength="10" maxlength="2000"></textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" id="closeBtn">
+                                <i class="bi bi-x-circle me-1"></i>Close Ticket
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="replyBtn">
+                                <i class="bi bi-send me-1"></i>Send Reply
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {{else}}
+            <div class="alert alert-secondary text-center">
+                <i class="bi bi-check-circle me-1"></i>This ticket is closed. Need more help? <a href="/user/support/new">Open a new ticket</a>.
+            </div>
+            {{end}}
+        </div>
+    </div>
+</div>
+
+<script>
+const ticketID = '{{.Ticket.ID}}';
+
+document.getElementById('replyForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const btn = document.getElementById('replyBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sending...';
+
+    const message = this.querySelector('[name="message"]').value;
+
+    try {
+        const response = await fetch(`/user/support/api/${ticketID}/reply`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            window.showToast?.('Reply sent', 'success');
+            location.reload();
+        } else {
+            window.showToast?.(result.error || 'Failed to send reply', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+});
+
+document.getElementById('closeBtn')?.addEventListener('click', async function() {
+    if (!confirm('Are you sure you want to close this ticket?')) return;
+
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Closing...';
+
+    try {
+        const response = await fetch(`/user/support/api/${ticketID}/close`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            window.showToast?.('Ticket closed', 'success');
+            location.reload();
+        } else {
+            window.showToast?.(result.error || 'Failed to close ticket', 'danger');
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-x-circle me-1"></i>Close Ticket';
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-x-circle me-1"></i>Close Ticket';
+    }
+});
+</script>
+{{end}}

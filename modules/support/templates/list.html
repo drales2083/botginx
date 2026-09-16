@@ -1,0 +1,68 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item active">Support</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="col-auto">
+            <a href="/user/support/new" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>New Ticket
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">My Tickets</h5>
+        </div>
+        <div class="card-body p-0">
+            {{if .Tickets}}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Last Update</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Tickets}}
+                        <tr style="cursor: pointer;" onclick="window.location='/user/support/{{.ID}}'">
+                            <td>
+                                <strong>{{.Subject}}</strong>
+                            </td>
+                            <td>{{.Category}}</td>
+                            <td>
+                                {{if eq .Status "open"}}
+                                <span class="badge bg-warning">Open</span>
+                                {{else if eq .Status "answered"}}
+                                <span class="badge bg-info">Answered</span>
+                                {{else}}
+                                <span class="badge bg-secondary">Closed</span>
+                                {{end}}
+                            </td>
+                            <td>{{.UpdatedAt.Format "Jan 2, 3:04 PM"}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <div class="text-center py-5">
+                <i class="bi bi-headset display-4 text-muted mb-3 d-block"></i>
+                <p class="text-muted mb-3">No support tickets yet</p>
+                <a href="/user/support/new" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i>Create Your First Ticket
+                </a>
+            </div>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}
