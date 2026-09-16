@@ -31,6 +31,7 @@ import (
 	"github.com/botginx/botginx/modules/redirectlinks"
 	"github.com/botginx/botginx/modules/servers"
 	"github.com/botginx/botginx/modules/shortener"
+	"github.com/botginx/botginx/modules/settings"
 	"github.com/botginx/botginx/modules/support"
 	"github.com/botginx/botginx/modules/telegram"
 	"github.com/botginx/botginx/modules/users"
@@ -269,6 +270,8 @@ func main() {
 	registry.Register(supportModule)             // Support tickets
 	telegramModule := telegram.New()
 	registry.Register(telegramModule)            // Telegram bot integration
+	settingsModule := settings.New(telegramModule)
+	registry.Register(settingsModule)            // Admin settings (telegram, etc.)
 	usersModule := users.New()
 	registry.Register(usersModule)               // Admin module
 	referralsModule := referrals.New()

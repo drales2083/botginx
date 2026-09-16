@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="bi bi-gear me-2"></i>Settings</h2>
+            <p class="text-muted">Configure system settings and integrations.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        {{range .Sections}}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <a href="{{.Path}}" class="text-decoration-none">
+                <div class="card h-100 hover-shadow">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-primary bg-opacity-10 rounded-3 p-3 me-3">
+                                <i class="{{.Icon}} text-primary fs-4"></i>
+                            </div>
+                            <h5 class="card-title mb-0">{{.Title}}</h5>
+                        </div>
+                        <p class="card-text text-muted small mb-0">{{.Description}}</p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 pt-0">
+                        <span class="text-primary small">Configure <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<style>
+.hover-shadow {
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.hover-shadow:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+</style>
+{{end}}

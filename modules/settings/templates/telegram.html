@@ -1,0 +1,338 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="/admin/settings">Settings</a></li>
+                    <li class="breadcrumb-item active">Telegram</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-telegram me-2"></i>Telegram</h2>
+            <p class="text-muted">Configure Telegram bots for notifications and ticket replies.</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBotModal">
+                <i class="bi bi-plus-lg me-1"></i>Add Bot
+            </button>
+        </div>
+    </div>
+
+    <!-- Bots List -->
+    <div class="row">
+        {{range .Bots}}
+        <div class="col-lg-6 mb-3">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        {{if .BotUsername}}@{{.BotUsername}}{{else}}{{.Name}}{{end}}
+                        {{if .Enabled}}
+                        <span class="badge bg-success ms-2">Enabled</span>
+                        {{else}}
+                        <span class="badge bg-secondary ms-2">Disabled</span>
+                        {{end}}
+                        {{if .UseForSupport}}
+                        <span class="badge bg-info ms-1">Support</span>
+                        {{end}}
+                    </h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="testBot('{{.ID}}')">
+                                <i class="bi bi-lightning me-2"></i>Test Connection
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="fetchChats('{{.ID}}')">
+                                <i class="bi bi-chat-dots me-2"></i>Fetch Chats
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="setupWebhook('{{.ID}}')">
+                                <i class="bi bi-link-45deg me-2"></i>Setup Webhook
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteBot('{{.ID}}')">
+                                <i class="bi bi-trash me-2"></i>Delete
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" value="{{.Name}}"
+                                   onchange="updateBot('{{.ID}}', 'name', this.value)">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Chat ID</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="chat-{{.ID}}"
+                                       value="{{if .ChatID}}{{.ChatID}}{{end}}"
+                                       placeholder="Click 'Fetch Chats' to get available chats"
+                                       onchange="updateBot('{{.ID}}', 'chat_id', this.value)">
+                                <button class="btn btn-outline-secondary" onclick="fetchChats('{{.ID}}')" title="Fetch available chats">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="enabled-{{.ID}}"
+                                       {{if .Enabled}}checked{{end}}
+                                       onchange="updateBot('{{.ID}}', 'enabled', this.checked)">
+                                <label class="form-check-label" for="enabled-{{.ID}}">Enabled</label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="support-{{.ID}}"
+                                       {{if .UseForSupport}}checked{{end}}
+                                       onchange="updateBot('{{.ID}}', 'use_for_support', this.checked)">
+                                <label class="form-check-label" for="support-{{.ID}}">Support Tickets</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-muted small">
+                    Created {{.CreatedAt.Format "Jan 2, 2006"}}
+                </div>
+            </div>
+        </div>
+        {{else}}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-telegram display-4 text-muted mb-3 d-block"></i>
+                    <p class="text-muted">No Telegram bots configured</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBotModal">
+                        <i class="bi bi-plus-lg me-1"></i>Add Your First Bot
+                    </button>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Instructions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Setup Instructions</h6>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li>Create a bot via <a href="https://t.me/BotFather" target="_blank">@BotFather</a> on Telegram</li>
+                        <li>Copy the bot token and add it here</li>
+                        <li>Add the bot to your group/channel</li>
+                        <li>Send a message in the group, then click "Fetch Chats" to get the chat ID</li>
+                        <li>Enable "Support Tickets" to receive ticket notifications</li>
+                        <li>Click "Setup Webhook" to enable replies from Telegram</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Bot Modal -->
+<div class="modal fade" id="addBotModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Telegram Bot</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addBotForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" name="name" required
+                               placeholder="e.g., Support Bot">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Bot Token</label>
+                        <input type="text" class="form-control" name="bot_token" required
+                               placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                        <small class="text-muted">Get this from @BotFather</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="addBotBtn">
+                        <i class="bi bi-plus-lg me-1"></i>Add Bot
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Chats Modal -->
+<div class="modal fade" id="chatsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Available Chats</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="chatsList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_BASE = '/admin/settings/telegram/api';
+
+document.getElementById('addBotForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('addBotBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
+
+    const formData = new FormData(this);
+    const data = {
+        name: formData.get('name'),
+        bot_token: formData.get('bot_token')
+    };
+
+    try {
+        const resp = await fetch(API_BASE + '/bots', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+
+        if (resp.ok && result.success) {
+            window.showToast?.('Bot added successfully', 'success');
+            location.reload();
+        } else {
+            window.showToast?.(result.error || 'Failed to add bot', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Bot';
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Bot';
+    }
+});
+
+async function updateBot(id, field, value) {
+    const data = {};
+    data[field] = value;
+
+    try {
+        const resp = await fetch(API_BASE + '/bots/' + id, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+
+        if (resp.ok && result.success) {
+            window.showToast?.('Updated', 'success');
+        } else {
+            window.showToast?.(result.error || 'Failed to update', 'danger');
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+    }
+}
+
+async function testBot(id) {
+    try {
+        const resp = await fetch(API_BASE + '/bots/' + id + '/test', {method: 'POST'});
+        const result = await resp.json();
+
+        if (result.success) {
+            let msg = '✅ Connected to @' + result.bot_username;
+            if (result.message_sent) {
+                msg += ' - Test message sent!';
+            }
+            window.showToast?.(msg, 'success');
+        } else {
+            window.showToast?.(result.error || 'Connection failed', 'danger');
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+    }
+}
+
+async function fetchChats(id) {
+    try {
+        const resp = await fetch(API_BASE + '/bots/' + id + '/chats');
+        const result = await resp.json();
+
+        if (result.chats && result.chats.length > 0) {
+            let html = '<p class="text-muted small mb-3">Click a chat to use it:</p>';
+            html += '<div class="list-group">';
+            for (const chat of result.chats) {
+                const title = chat.title || chat.type + ' ' + chat.id;
+                html += `<a href="#" class="list-group-item list-group-item-action"
+                            onclick="selectChat('${id}', '${chat.id}', '${title.replace(/'/g, "\\'")}')">
+                    <strong>${title}</strong>
+                    <br><small class="text-muted">ID: ${chat.id}</small>
+                </a>`;
+            }
+            html += '</div>';
+            document.getElementById('chatsList').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('chatsModal')).show();
+        } else {
+            window.showToast?.('No chats found. Send a message to the bot first.', 'warning');
+        }
+    } catch (err) {
+        window.showToast?.('Failed to fetch chats', 'danger');
+    }
+}
+
+function selectChat(botId, chatId, title) {
+    document.getElementById('chat-' + botId).value = chatId;
+    updateBot(botId, 'chat_id', chatId);
+    bootstrap.Modal.getInstance(document.getElementById('chatsModal')).hide();
+    window.showToast?.('Selected: ' + title, 'success');
+}
+
+async function setupWebhook(id) {
+    const baseUrl = window.location.origin;
+
+    try {
+        const resp = await fetch(API_BASE + '/bots/' + id + '/webhook', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({base_url: baseUrl})
+        });
+        const result = await resp.json();
+
+        if (result.success) {
+            window.showToast?.('Webhook configured!', 'success');
+        } else {
+            window.showToast?.(result.error || 'Failed to setup webhook', 'danger');
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+    }
+}
+
+async function deleteBot(id) {
+    if (!confirm('Delete this bot? This cannot be undone.')) return;
+
+    try {
+        const resp = await fetch(API_BASE + '/bots/' + id, {method: 'DELETE'});
+        const result = await resp.json();
+
+        if (resp.ok && result.success) {
+            window.showToast?.('Bot deleted', 'success');
+            location.reload();
+        } else {
+            window.showToast?.(result.error || 'Failed to delete', 'danger');
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+    }
+}
+</script>
+{{end}}

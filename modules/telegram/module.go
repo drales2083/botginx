@@ -68,35 +68,7 @@ func (m *Module) Routes() chi.Router {
 	return r
 }
 
-func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
-	if section == module.MenuSectionAdmin {
-		r := chi.NewRouter()
-		// Admin settings pages
-		r.Get("/", m.Handler.Settings)
-		// Admin API
-		r.Get("/api/bots", m.Handler.APIListBots)
-		r.Post("/api/bots", m.Handler.APICreateBot)
-		r.Put("/api/bots/{id}", m.Handler.APIUpdateBot)
-		r.Delete("/api/bots/{id}", m.Handler.APIDeleteBot)
-		r.Post("/api/bots/{id}/test", m.Handler.APITestBot)
-		r.Post("/api/bots/{id}/webhook", m.Handler.APISetupWebhook)
-		r.Get("/api/bots/{id}/chats", m.Handler.APIGetChats)
-		return r
-	}
-	return m.Routes()
-}
-
-func (m *Module) MenuItems() []module.MenuItem {
-	return []module.MenuItem{
-		{
-			Title:   "Telegram",
-			Icon:    "bi-telegram",
-			Path:    "/admin/telegram",
-			Order:   95,
-			Section: module.MenuSectionAdmin,
-		},
-	}
-}
+// Note: Admin routes and menu are handled by the settings module
 
 // migrateEnvVars migrates existing environment variables to database
 func (m *Module) migrateEnvVars() {
