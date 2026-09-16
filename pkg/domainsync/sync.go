@@ -47,14 +47,13 @@ type Server struct {
 
 // RedirectLink for redeployment
 type RedirectLink struct {
-	ID   string `db:"id"`
-	Host string `db:"host"`
+	ID        string `db:"id"`
+	Subdomain string `db:"subdomain"`
 }
 
 // ShortLink for redeployment
 type ShortLink struct {
 	ID   string `db:"id"`
-	Host string `db:"host"`
 	Path string `db:"path"`
 }
 
@@ -418,7 +417,7 @@ func (s *Service) redeployDomainLinks(domain Domain, server Server) error {
 	// Get all redirect links for this domain
 	var redirectLinks []RedirectLink
 	err := s.db.Select(&redirectLinks, `
-		SELECT id, host FROM redirect_links
+		SELECT id, subdomain FROM redirect_links
 		WHERE domain_id = $1
 	`, domain.ID)
 	if err != nil {
@@ -428,7 +427,7 @@ func (s *Service) redeployDomainLinks(domain Domain, server Server) error {
 	// Get all short links for this domain
 	var shortLinks []ShortLink
 	err = s.db.Select(&shortLinks, `
-		SELECT id, host, path FROM short_links
+		SELECT id, path FROM short_links
 		WHERE domain_id = $1
 	`, domain.ID)
 	if err != nil {

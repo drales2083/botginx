@@ -3,6 +3,7 @@ package domainsync
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/botginx/botginx/pkg/ssh"
@@ -33,37 +34,17 @@ type LinkSettings struct {
 	UpdatedAt        string   `json:"updated_at"`
 }
 
-// RedirectLinkFull contains full redirect link data for redeployment
-type RedirectLinkFull struct {
-	ID               string  `db:"id"`
-	UserID           string  `db:"user_id"`
-	Host             string  `db:"host"`
-	Template         string  `db:"template"`
-	PuzzleMode       *string `db:"puzzle_mode"`
-	ThemeMode        *string `db:"theme_mode"`
-	BlockBots        bool    `db:"block_bots"`
-	BlockTor         bool    `db:"block_tor"`
-	BlockProxy       bool    `db:"block_proxy"`
-	BlockDatacenter  bool    `db:"block_datacenter"`
-	BlockHeadless    bool    `db:"block_headless"`
-	CountryMode      string  `db:"country_mode"`
-	CountryList      string  `db:"country_list"` // JSON array
-	ASNMode          *string `db:"asn_mode"`
-	ASNList          *string `db:"asn_list"` // JSON array
-	DeviceMode       *string `db:"device_mode"`
-	DeviceList       *string `db:"device_list"` // JSON array
-	MinBehaviorScore int     `db:"min_behavior_score"`
-	RedirectOnBlock  *string `db:"redirect_on_block"`
+// RedirectLinkInfo contains basic redirect link info for redeployment
+type RedirectLinkInfo struct {
+	ID         string `db:"id"`
+	UserID     string `db:"user_id"`
+	Subdomain  string `db:"subdomain"`
+	DomainName string `db:"domain_name"`
 }
 
-// ShortLinkFull contains full short link data for redeployment
-type ShortLinkFull struct {
-	ID               string  `db:"id"`
-	UserID           string  `db:"user_id"`
-	Host             string  `db:"host"`
-	Path             string  `db:"path"`
+// LinkSettingsRow represents protection settings from link_settings table
+type LinkSettingsRow struct {
 	Template         *string `db:"template"`
-	PuzzleMode       *string `db:"puzzle_mode"`
 	ThemeMode        *string `db:"theme_mode"`
 	BlockBots        bool    `db:"block_bots"`
 	BlockTor         bool    `db:"block_tor"`
@@ -71,9 +52,21 @@ type ShortLinkFull struct {
 	BlockDatacenter  bool    `db:"block_datacenter"`
 	BlockHeadless    bool    `db:"block_headless"`
 	CountryMode      *string `db:"country_mode"`
-	CountryList      *string `db:"country_list"` // JSON array
-	MinBehaviorScore *int    `db:"min_behavior_score"`
+	CountryList      *string `db:"country_list"`
+	ASNMode          *string `db:"asn_mode"`
+	ASNList          *string `db:"asn_list"`
+	DeviceMode       *string `db:"device_mode"`
+	DeviceList       *string `db:"device_list"`
+	MinBehaviorScore int     `db:"min_behavior_score"`
 	RedirectOnBlock  *string `db:"redirect_on_block"`
+}
+
+// ShortLinkInfo contains basic short link info for redeployment
+type ShortLinkInfo struct {
+	ID         string `db:"id"`
+	UserID     string `db:"user_id"`
+	Path       string `db:"path"`
+	DomainName string `db:"domain_name"`
 }
 
 // DefaultRedeployer implements LinkRedeployer using the database
@@ -88,59 +81,83 @@ func NewDefaultRedeployer(db *sqlx.DB) *DefaultRedeployer {
 
 // RedeployRedirectLink deploys a redirect link to a server
 func (r *DefaultRedeployer) RedeployRedirectLink(linkID string, server Server) error {
-	// Fetch full link data
-	var link RedirectLinkFull
+	// Fetch link info with domain name
+	var link RedirectLinkInfo
 	err := r.db.Get(&link, `
-		SELECT id, user_id, host, template, puzzle_mode, theme_mode,
-		       block_bots, block_tor, block_proxy, block_datacenter, block_headless,
-		       country_mode, COALESCE(country_list, '[]') as country_list,
-		       asn_mode, asn_list, device_mode, device_list,
-		       min_behavior_score, redirect_on_block
-		FROM redirect_links WHERE id = $1
+		SELECT r.id, r.user_id, r.subdomain, d.name as domain_name
+		FROM redirect_links r
+		JOIN domains d ON d.id = r.domain_id
+		WHERE r.id = $1
 	`, linkID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch link: %w", err)
+	}
+
+	// Compute host from subdomain + domain
+	baseDomain := link.DomainName
+	if strings.HasPrefix(baseDomain, "*.") {
+		baseDomain = baseDomain[2:]
+	}
+	host := link.Subdomain + "." + baseDomain
+
+	// Fetch protection settings
+	var settingsRow LinkSettingsRow
+	err = r.db.Get(&settingsRow, `
+		SELECT template, theme_mode, block_bots, block_tor, block_proxy,
+		       block_datacenter, block_headless, country_mode, country_list,
+		       asn_mode, asn_list, device_mode, device_list,
+		       min_behavior_score, redirect_on_block
+		FROM link_settings WHERE link_id = $1
+	`, linkID)
+	// If no settings exist, use defaults
+	if err != nil {
+		settingsRow = LinkSettingsRow{
+			BlockBots: true,
+		}
 	}
 
 	// Build settings
 	settings := LinkSettings{
 		LinkID:           link.ID,
 		UserID:           link.UserID,
-		Host:             link.Host,
-		Template:         link.Template,
-		BlockBots:        link.BlockBots,
-		BlockTor:         link.BlockTor,
-		BlockProxy:       link.BlockProxy,
-		BlockDatacenter:  link.BlockDatacenter,
-		BlockHeadless:    link.BlockHeadless,
-		CountryMode:      link.CountryMode,
-		MinBehaviorScore: link.MinBehaviorScore,
+		Host:             host,
+		BlockBots:        settingsRow.BlockBots,
+		BlockTor:         settingsRow.BlockTor,
+		BlockProxy:       settingsRow.BlockProxy,
+		BlockDatacenter:  settingsRow.BlockDatacenter,
+		BlockHeadless:    settingsRow.BlockHeadless,
+		MinBehaviorScore: settingsRow.MinBehaviorScore,
 		UpdatedAt:        time.Now().UTC().Format(time.RFC3339),
 	}
 
-	if link.PuzzleMode != nil {
-		settings.PuzzleMode = *link.PuzzleMode
+	if settingsRow.Template != nil {
+		settings.Template = *settingsRow.Template
+	} else {
+		settings.Template = "cloudflare"
 	}
-	if link.ThemeMode != nil {
-		settings.ThemeMode = *link.ThemeMode
+	if settingsRow.ThemeMode != nil {
+		settings.ThemeMode = *settingsRow.ThemeMode
 	}
-	if link.RedirectOnBlock != nil {
-		settings.RedirectOnBlock = *link.RedirectOnBlock
+	if settingsRow.CountryMode != nil {
+		settings.CountryMode = *settingsRow.CountryMode
 	}
-
-	// Parse JSON arrays
-	json.Unmarshal([]byte(link.CountryList), &settings.CountryList)
-	if link.ASNMode != nil {
-		settings.ASNMode = *link.ASNMode
+	if settingsRow.CountryList != nil {
+		json.Unmarshal([]byte(*settingsRow.CountryList), &settings.CountryList)
 	}
-	if link.ASNList != nil {
-		json.Unmarshal([]byte(*link.ASNList), &settings.ASNList)
+	if settingsRow.ASNMode != nil {
+		settings.ASNMode = *settingsRow.ASNMode
 	}
-	if link.DeviceMode != nil {
-		settings.DeviceMode = *link.DeviceMode
+	if settingsRow.ASNList != nil {
+		json.Unmarshal([]byte(*settingsRow.ASNList), &settings.ASNList)
 	}
-	if link.DeviceList != nil {
-		json.Unmarshal([]byte(*link.DeviceList), &settings.DeviceList)
+	if settingsRow.DeviceMode != nil {
+		settings.DeviceMode = *settingsRow.DeviceMode
+	}
+	if settingsRow.DeviceList != nil {
+		json.Unmarshal([]byte(*settingsRow.DeviceList), &settings.DeviceList)
+	}
+	if settingsRow.RedirectOnBlock != nil {
+		settings.RedirectOnBlock = *settingsRow.RedirectOnBlock
 	}
 
 	// Push to server
@@ -149,53 +166,70 @@ func (r *DefaultRedeployer) RedeployRedirectLink(linkID string, server Server) e
 
 // RedeployShortLink deploys a short link to a server
 func (r *DefaultRedeployer) RedeployShortLink(linkID string, server Server) error {
-	// Fetch full link data
-	var link ShortLinkFull
+	// Fetch link info with domain name
+	var link ShortLinkInfo
 	err := r.db.Get(&link, `
-		SELECT id, user_id, host, path, template, puzzle_mode, theme_mode,
-		       block_bots, block_tor, block_proxy, block_datacenter, block_headless,
-		       country_mode, country_list, min_behavior_score, redirect_on_block
-		FROM short_links WHERE id = $1
+		SELECT s.id, s.user_id, s.path, d.name as domain_name
+		FROM short_links s
+		JOIN domains d ON d.id = s.domain_id
+		WHERE s.id = $1
 	`, linkID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch link: %w", err)
 	}
 
-	// Build settings
-	settings := LinkSettings{
-		LinkID:        link.ID,
-		UserID:        link.UserID,
-		Host:          link.Host + link.Path, // Short links include path
-		BlockBots:     link.BlockBots,
-		BlockTor:      link.BlockTor,
-		BlockProxy:    link.BlockProxy,
-		BlockDatacenter: link.BlockDatacenter,
-		BlockHeadless: link.BlockHeadless,
-		UpdatedAt:     time.Now().UTC().Format(time.RFC3339),
+	// Compute host from domain + path
+	baseDomain := link.DomainName
+	if strings.HasPrefix(baseDomain, "*.") {
+		baseDomain = baseDomain[2:]
+	}
+	host := baseDomain + "/" + link.Path
+
+	// Fetch protection settings (short links use same link_settings table)
+	var settingsRow LinkSettingsRow
+	err = r.db.Get(&settingsRow, `
+		SELECT template, theme_mode, block_bots, block_tor, block_proxy,
+		       block_datacenter, block_headless, country_mode, country_list,
+		       asn_mode, asn_list, device_mode, device_list,
+		       min_behavior_score, redirect_on_block
+		FROM link_settings WHERE link_id = $1
+	`, linkID)
+	if err != nil {
+		settingsRow = LinkSettingsRow{
+			BlockBots: true,
+		}
 	}
 
-	if link.Template != nil {
-		settings.Template = *link.Template
+	// Build settings
+	settings := LinkSettings{
+		LinkID:           link.ID,
+		UserID:           link.UserID,
+		Host:             host,
+		BlockBots:        settingsRow.BlockBots,
+		BlockTor:         settingsRow.BlockTor,
+		BlockProxy:       settingsRow.BlockProxy,
+		BlockDatacenter:  settingsRow.BlockDatacenter,
+		BlockHeadless:    settingsRow.BlockHeadless,
+		MinBehaviorScore: settingsRow.MinBehaviorScore,
+		UpdatedAt:        time.Now().UTC().Format(time.RFC3339),
+	}
+
+	if settingsRow.Template != nil {
+		settings.Template = *settingsRow.Template
 	} else {
 		settings.Template = "cloudflare"
 	}
-	if link.PuzzleMode != nil {
-		settings.PuzzleMode = *link.PuzzleMode
+	if settingsRow.ThemeMode != nil {
+		settings.ThemeMode = *settingsRow.ThemeMode
 	}
-	if link.ThemeMode != nil {
-		settings.ThemeMode = *link.ThemeMode
+	if settingsRow.CountryMode != nil {
+		settings.CountryMode = *settingsRow.CountryMode
 	}
-	if link.CountryMode != nil {
-		settings.CountryMode = *link.CountryMode
+	if settingsRow.CountryList != nil {
+		json.Unmarshal([]byte(*settingsRow.CountryList), &settings.CountryList)
 	}
-	if link.CountryList != nil {
-		json.Unmarshal([]byte(*link.CountryList), &settings.CountryList)
-	}
-	if link.MinBehaviorScore != nil {
-		settings.MinBehaviorScore = *link.MinBehaviorScore
-	}
-	if link.RedirectOnBlock != nil {
-		settings.RedirectOnBlock = *link.RedirectOnBlock
+	if settingsRow.RedirectOnBlock != nil {
+		settings.RedirectOnBlock = *settingsRow.RedirectOnBlock
 	}
 
 	// Push to server
