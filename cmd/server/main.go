@@ -35,10 +35,11 @@ import (
 	"github.com/botginx/botginx/pkg/buildinfo"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/database"
+	"github.com/botginx/botginx/pkg/domainstats"
+	"github.com/botginx/botginx/pkg/domainsync"
 	"github.com/botginx/botginx/pkg/i18n"
 	"github.com/botginx/botginx/pkg/lifecycle"
 	"github.com/botginx/botginx/pkg/module"
-	"github.com/botginx/botginx/pkg/domainstats"
 	"github.com/botginx/botginx/pkg/subscription"
 	"github.com/botginx/botginx/web"
 	"github.com/go-chi/chi/v5"
@@ -223,6 +224,11 @@ func main() {
 
 	// Start auto-renewal background loop (checks hourly, renews from balance)
 	subscriptions.StartAutoRenewalLoop()
+
+	// Start domain sync service (checks every 5 min, syncs domains to servers)
+	domainSyncSvc := domainsync.NewService(db.DB, 5*time.Minute)
+	domainSyncSvc.SetLinkRedeployer(domainsync.NewDefaultRedeployer(db.DB))
+	go domainSyncSvc.Start(context.Background())
 
 	// Module registry
 	registry := module.NewRegistry()

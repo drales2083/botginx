@@ -59,6 +59,11 @@ type Domain struct {
 	TurnstileSiteKey   *string `db:"turnstile_site_key" json:"-"`
 	TurnstileSecretKey *string `db:"turnstile_secret_key" json:"-"`
 
+	// Automatic sync fields
+	LastSyncAt    *time.Time `db:"last_sync_at" json:"lastSyncAt,omitempty"`
+	LastSyncError *string    `db:"last_sync_error" json:"lastSyncError,omitempty"`
+	SyncStatus    string     `db:"sync_status" json:"syncStatus"` // pending, syncing, dns_waiting, ssl_generating, active, error
+
 	// Joined fields
 	ServerName string `db:"server_name" json:"serverName,omitempty"`
 }
