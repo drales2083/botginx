@@ -1,14 +1,11 @@
 package domainsync
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -294,24 +291,34 @@ func (s *Service) ensureAcmeDnsRegistration(domain *Domain, server Server) error
 		return nil
 	}
 
-	// Register new credentials via the server's acme-dns API
-	// acme-dns runs on port 8053 on the deploy server
-	acmeDnsURL := fmt.Sprintf("http://%s:8053/register", server.IP)
+	// Register new credentials via SSH to the server's acme-dns API
+	// acme-dns listens on 127.0.0.1:8053, so we need to call it via SSH
+	client := ssh.NewClient(ssh.Config{
+		Host:         server.IP,
+		Port:         server.Port,
+		User:         server.SSHUser,
+		Password:     server.Password,
+		TrustOnFirst: true,
+	})
+	defer client.Close()
 
-	resp, err := http.Post(acmeDnsURL, "application/json", nil)
+	if err := client.Connect(); err != nil {
+		return fmt.Errorf("SSH connect failed: %w", err)
+	}
+
+	// Call acme-dns register API via curl on the server
+	result, err := client.Exec(`curl -s -X POST "http://127.0.0.1:8053/register"`)
 	if err != nil {
 		return fmt.Errorf("failed to call acme-dns register: %w", err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("acme-dns register failed: %s - %s", resp.Status, string(body))
-	}
 
 	var regResp AcmeDnsRegisterResponse
-	if err := json.NewDecoder(resp.Body).Decode(&regResp); err != nil {
-		return fmt.Errorf("failed to decode acme-dns response: %w", err)
+	if err := json.Unmarshal([]byte(result.Output), &regResp); err != nil {
+		return fmt.Errorf("failed to decode acme-dns response: %w - output: %s", err, result.Output)
+	}
+
+	if regResp.Subdomain == "" {
+		return fmt.Errorf("acme-dns register returned empty subdomain: %s", result.Output)
 	}
 
 	// Update database with new credentials
@@ -335,39 +342,39 @@ func (s *Service) ensureAcmeDnsRegistration(domain *Domain, server Server) error
 	return nil
 }
 
-// testAcmeDnsCredentials tests if acme-dns credentials work on a server
+// testAcmeDnsCredentials tests if acme-dns credentials work on a server via SSH
 func (s *Service) testAcmeDnsCredentials(server Server, subdomain, username, password string) bool {
-	acmeDnsURL := fmt.Sprintf("http://%s:8053/update", server.IP)
+	client := ssh.NewClient(ssh.Config{
+		Host:         server.IP,
+		Port:         server.Port,
+		User:         server.SSHUser,
+		Password:     server.Password,
+		TrustOnFirst: true,
+	})
+	defer client.Close()
 
-	// Try to update with a test token
-	payload := map[string]string{
-		"subdomain": subdomain,
-		"txt":       "test_validation_" + fmt.Sprintf("%d", time.Now().Unix()),
+	if err := client.Connect(); err != nil {
+		return false
 	}
-	body, _ := json.Marshal(payload)
 
-	req, err := http.NewRequest("POST", acmeDnsURL, bytes.NewReader(body))
+	// Test update via curl on the server
+	testToken := fmt.Sprintf("test_validation_%d", time.Now().Unix())
+	cmd := fmt.Sprintf(`curl -s -X POST "http://127.0.0.1:8053/update" \
+		-H "X-Api-User: %s" \
+		-H "X-Api-Key: %s" \
+		-H "Content-Type: application/json" \
+		-d '{"subdomain":"%s","txt":"%s"}'`, username, password, subdomain, testToken)
+
+	result, err := client.Exec(cmd)
 	if err != nil {
 		return false
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Api-User", username)
-	req.Header.Set("X-Api-Key", password)
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-
-	// If we get a 200 with txt in response, credentials are valid
-	if resp.StatusCode == http.StatusOK {
-		var result map[string]interface{}
-		if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
-			if _, ok := result["txt"]; ok {
-				return true
-			}
+	// If we get txt in response, credentials are valid
+	var response map[string]interface{}
+	if err := json.Unmarshal([]byte(result.Output), &response); err == nil {
+		if _, ok := response["txt"]; ok {
+			return true
 		}
 	}
 
