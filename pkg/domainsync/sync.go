@@ -454,17 +454,48 @@ func (s *Service) redeployDomainLinks(domain Domain, server Server) error {
 	return nil
 }
 
-// updateSyncStatus updates the sync status of a domain
+// updateSyncStatus updates the sync status of a domain and keeps legacy fields in sync
 func (s *Service) updateSyncStatus(domainID, status, errorMsg string) {
 	var errPtr *string
 	if errorMsg != "" {
 		errPtr = &errorMsg
 	}
-	s.db.Exec(`
-		UPDATE domains
-		SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2, updated_at = NOW()
-		WHERE id = $3
-	`, status, errPtr, domainID)
+
+	// Keep legacy fields (ssl_enabled, dns_verified) in sync with sync_status
+	// so the UI displays correct status
+	switch status {
+	case SyncStatusActive:
+		// Fully synced - DNS verified and SSL enabled
+		s.db.Exec(`
+			UPDATE domains
+			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2,
+			    dns_verified = TRUE, ssl_enabled = TRUE, updated_at = NOW()
+			WHERE id = $3
+		`, status, errPtr, domainID)
+	case SyncStatusDNSWaiting, SyncStatusPending, SyncStatusSyncing:
+		// Not ready yet - reset legacy fields
+		s.db.Exec(`
+			UPDATE domains
+			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2,
+			    dns_verified = FALSE, ssl_enabled = FALSE, updated_at = NOW()
+			WHERE id = $3
+		`, status, errPtr, domainID)
+	case SyncStatusSSLGenerating:
+		// DNS verified but SSL not yet
+		s.db.Exec(`
+			UPDATE domains
+			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2,
+			    dns_verified = TRUE, ssl_enabled = FALSE, updated_at = NOW()
+			WHERE id = $3
+		`, status, errPtr, domainID)
+	default:
+		// Error or unknown - just update sync fields
+		s.db.Exec(`
+			UPDATE domains
+			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2, updated_at = NOW()
+			WHERE id = $3
+		`, status, errPtr, domainID)
+	}
 }
 
 // containsIP checks if an IP is in a list
