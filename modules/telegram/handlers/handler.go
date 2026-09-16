@@ -408,12 +408,19 @@ func (h *Handler) handleReplyButton(bot *service.Bot, query *WebhookCallbackQuer
 
 	log.Debug().Int64("chatID", chatID).Int64("userID", userID).Msg("Pending reply created")
 
-	// Send prompt message
+	// Send prompt message with ForceReply to ensure bot receives the response
 	text := "📝 <b>Reply to:</b> " + ticket.Subject + "\n\n" +
 		"Ticket from <code>" + ticket.UserEmail + "</code>\n\n" +
-		"Send your reply message, or /cancel to abort."
+		"⬇️ <b>Reply to THIS message</b> with your response, or send /cancel"
 
-	if _, err := h.service.SendMessage(bot.BotToken, *bot.ChatID, text, nil); err != nil {
+	// ForceReply prompts user to reply directly to this message
+	forceReply := map[string]interface{}{
+		"force_reply":             true,
+		"input_field_placeholder": "Type your reply here...",
+		"selective":               true,
+	}
+
+	if _, err := h.service.SendMessage(bot.BotToken, *bot.ChatID, text, forceReply); err != nil {
 		log.Error().Err(err).Msg("Failed to send prompt message")
 	}
 	if err := h.service.AnswerCallbackQuery(bot.BotToken, query.ID, "Send your reply message"); err != nil {
