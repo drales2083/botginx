@@ -128,7 +128,7 @@ func (s *RedirectLinkService) Create(userID string, input models.CreateRedirectL
 		Path:              input.Path,
 		Type:              linkType,
 		DestinationURLs:   input.DestinationURLs,
-		AnimationDuration: 3,
+		AnimationDuration: 1,
 		TurnstileEnabled:  input.TurnstileEnabled,
 		BotProtection:     input.BotProtection,
 		PassParams:        input.PassParams,
