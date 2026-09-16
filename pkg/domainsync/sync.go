@@ -199,49 +199,31 @@ func (s *Service) syncDomain(domain Domain) error {
 		return fmt.Errorf("server not found or not ready: %w", err)
 	}
 
-	// If domain is already active with SSL, skip re-validation
-	// Only recheck config exists on server, don't downgrade on transient DNS failures
-	if domain.SyncStatus == SyncStatusActive && domain.SSLEnabled {
-		configExists, err := s.checkDomainConfigExists(domain, *server)
-		if err != nil {
-			log.Printf("[DomainSync] Domain %s config check failed: %v", domain.Name, err)
-			return nil // Don't downgrade active domain
-		}
-		if !configExists {
-			log.Printf("[DomainSync] Domain %s config missing on server, redeploying links", domain.Name)
-			if err := s.redeployDomainLinks(domain, *server); err != nil {
-				log.Printf("[DomainSync] Failed to redeploy links for %s: %v", domain.Name, err)
-			}
-		}
-		// Domain is active - don't re-run DNS/SSL checks
+	// FIRST: Check if domain config exists on VPS server
+	// If config exists, domain is working - don't touch status
+	configExists, err := s.checkDomainConfigExists(domain, *server)
+	if err != nil {
+		log.Printf("[DomainSync] Domain %s config check failed: %v", domain.Name, err)
+		return nil // Don't change status on check failure
+	}
+
+	if configExists {
+		// Domain config exists on VPS - it's working, don't touch anything
 		return nil
 	}
 
-	// Step 1: Check if domain config exists on server
-	configExists, err := s.checkDomainConfigExists(domain, *server)
-	if err != nil {
-		return fmt.Errorf("failed to check server config: %w", err)
-	}
+	// Config doesn't exist - domain needs setup
+	log.Printf("[DomainSync] Domain %s config missing on server, starting setup", domain.Name)
+	s.updateSyncStatus(domain.ID, SyncStatusSyncing, "")
 
-	if !configExists {
-		log.Printf("[DomainSync] Domain %s config missing on server, redeploying links", domain.Name)
-		s.updateSyncStatus(domain.ID, SyncStatusSyncing, "")
-
-		// Redeploy all redirect links for this domain
-		if err := s.redeployDomainLinks(domain, *server); err != nil {
-			return fmt.Errorf("failed to redeploy links: %w", err)
-		}
-	}
-
-	// Step 1.5: For wildcard domains, ensure acme-dns credentials are registered on this server
+	// For wildcard domains, ensure acme-dns credentials are registered
 	if domain.IsWildcard {
 		if err := s.ensureAcmeDnsRegistration(&domain, *server); err != nil {
 			log.Printf("[DomainSync] Warning: acme-dns registration failed for %s: %v", domain.Name, err)
-			// Continue anyway - user can manually set up CNAME
 		}
 	}
 
-	// Step 2: Check DNS records
+	// Check DNS records
 	dnsOK, missingRecords := s.checkDNSRecords(domain, server.IP)
 	if !dnsOK {
 		log.Printf("[DomainSync] Domain %s waiting for DNS: %v", domain.Name, missingRecords)
