@@ -389,9 +389,10 @@ class SourceRandomizer {
 
     public function randomComment() {
         // All comments use seed-derived values for per-deploy consistency
+        // Use only block comments to avoid single-line comments eating the next line
         $comments = [
             '/* Build: ' . $this->seed . ' */',
-            '// Session: ' . $this->seed,
+            '/* Session: ' . $this->seed . ' */',
             '/* v' . (crc32($this->seed) % 9 + 1) . '.' . (crc32($this->seed . 'a') % 100) . '.' . (crc32($this->seed . 'b') % 1000) . ' */',
         ];
         return $comments[array_rand($comments)];
