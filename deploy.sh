@@ -638,6 +638,23 @@ deploy() {
     else
         printf '\n  http://%s:%s\n\n' "$SSH_HOST" "$APP_PORT"
     fi
+
+    # Important reminder for server changes
+    cat << 'EOF'
+================================================================================
+  IMPORTANT: If you changed the panel server IP/domain, update botection config!
+================================================================================
+
+  On the Deploy VPS (where botection runs), run:
+
+    sed -i 's/MAIN_APP_IP=.*/MAIN_APP_IP=guardbot.sbs/' /var/www/antibot/.env.local
+    systemctl restart botection
+
+  This ensures visitor analytics webhooks reach the new panel server.
+  Without this, redirect link visit counts will not be recorded.
+
+================================================================================
+EOF
 }
 
 usage() {
