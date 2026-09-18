@@ -7,6 +7,34 @@
     </div>
 </div>
 
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0">{{.TotalUsers}}</h3>
+                <small class="text-muted">Total Users</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-success">{{.ActiveSubscriptions}}</h3>
+                <small class="text-muted">Active Subscriptions</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-primary">${{printf "%.2f" .TotalBalance}}</h3>
+                <small class="text-muted">Total Balance</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">All Users</h3>

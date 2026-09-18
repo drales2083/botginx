@@ -48,10 +48,26 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		ids = append(ids, u.ID)
 	}
 
+	// Calculate stats
+	subscriptions := h.subscriptions.StatesFor(ids)
+	var totalBalance float64
+	var activeSubscriptions int
+	for _, u := range users {
+		totalBalance += u.Balance
+	}
+	for _, state := range subscriptions {
+		if state.Active {
+			activeSubscriptions++
+		}
+	}
+
 	module.Render(w, r, h.templates, "users:list.html", map[string]interface{}{
-		"Title":         "Users",
-		"Users":         users,
-		"Subscriptions": h.subscriptions.StatesFor(ids),
+		"Title":               "Users",
+		"Users":               users,
+		"Subscriptions":       subscriptions,
+		"TotalUsers":          len(users),
+		"ActiveSubscriptions": activeSubscriptions,
+		"TotalBalance":        totalBalance,
 	})
 }
 
