@@ -32,10 +32,8 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h3 class="mb-0 text-primary" id="stat-revenue">
-                    ${{range $i, $s := .Sales}}{{if eq $i 0}}{{printf "%.2f" $s.Price}}{{end}}{{else}}0.00{{end}}
-                </h3>
-                <small class="text-muted">Last Sale</small>
+                <h3 class="mb-0 text-primary" id="stat-revenue">${{printf "%.2f" .TotalRevenue}}</h3>
+                <small class="text-muted">Total Revenue</small>
             </div>
         </div>
     </div>

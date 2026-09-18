@@ -31,11 +31,18 @@ func (h *Handler) AdminList(w http.ResponseWriter, r *http.Request) {
 	sales, _ := h.service.GetSalesHistory()
 	sellable, _ := h.service.ListSellable()
 
+	// Calculate total revenue
+	var totalRevenue float64
+	for _, sale := range sales {
+		totalRevenue += sale.Price
+	}
+
 	module.Render(w, r, h.templates, "marketplace:admin_list.html", map[string]interface{}{
-		"Title":    "Sell Domain",
-		"Domains":  domains,
-		"Sales":    sales,
-		"Sellable": sellable,
+		"Title":        "Sell Domain",
+		"Domains":      domains,
+		"Sales":        sales,
+		"Sellable":     sellable,
+		"TotalRevenue": totalRevenue,
 	})
 }
 
