@@ -81,7 +81,7 @@
                             </label>
                             <input type="radio" class="btn-check" name="pathStyle" id="pathStyleTracking" value="tracking">
                             <label class="btn btn-outline-secondary" for="pathStyleTracking">
-                                <i class="bi bi-shield-lock me-1"></i>Tracking
+                                <i class="bi bi-shield-lock me-1"></i>Advanced
                             </label>
                         </div>
                         <div class="input-group">
@@ -281,7 +281,7 @@ document.querySelectorAll('input[name="pathStyle"]').forEach(radio => {
         const style = document.querySelector('input[name="pathStyle"]:checked').value;
         const hint = document.getElementById('pathStyleHint');
         if (style === 'tracking') {
-            hint.textContent = 'Tracking: enterprise-style obfuscated path';
+            hint.textContent = 'Advanced: enterprise-style obfuscated path';
         } else {
             hint.textContent = 'Simple: short readable path';
         }
