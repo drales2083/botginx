@@ -262,7 +262,7 @@ func (s *RedirectLinkService) DeleteByDomainID(domainID string) error {
 
 // GetLinkHost returns the full hostname (including path) and domain ID for a link
 // Used by analytics to push settings to the deploy VPS
-func (s *RedirectLinkService) GetLinkHost(linkID string) (host string, domainID string, err error) {
+func (s *RedirectLinkService) GetLinkHost(linkID string) (host, path, domainID string, err error) {
 	var row struct {
 		Subdomain  string `db:"subdomain"`
 		Path       string `db:"path"`
@@ -276,11 +276,10 @@ func (s *RedirectLinkService) GetLinkHost(linkID string) (host string, domainID 
 		WHERE rl.id = $1
 	`, linkID)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	host = row.Subdomain + "." + stripWildcard(row.DomainName)
-	// Path is cosmetic only (handled by nginx), not included in host for settings lookup
-	return host, row.DomainID, nil
+	return host, row.Path, row.DomainID, nil
 }
 
 // Helper

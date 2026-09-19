@@ -30,7 +30,7 @@ type LinkResolver interface {
 
 // LinkDetails provides link information for settings push
 type LinkDetails interface {
-	GetLinkHost(linkID string) (host string, domainID string, err error)
+	GetLinkHost(linkID string) (host, path, domainID string, err error)
 }
 
 // ShortLinkResolver resolves short links by host and path
@@ -240,8 +240,11 @@ func (h *Handler) LinkSettings(w http.ResponseWriter, r *http.Request) {
 	var linkType string // "redirect" or "shortener"
 	var domainID string
 	if h.linkInfo != nil {
-		if host, dID, err := h.linkInfo.GetLinkHost(linkID); err == nil && host != "" {
+		if host, path, dID, err := h.linkInfo.GetLinkHost(linkID); err == nil && host != "" {
 			linkURL = "https://" + host
+			if path != "" {
+				linkURL += "/" + path
+			}
 			linkType = "redirect"
 			domainID = dID
 		}
@@ -403,9 +406,9 @@ func (h *Handler) pushSettingsToVPS(linkID string, settings *models.LinkSettings
 	var host, domainID, userID string
 	var err error
 
-	// Try redirect links first
+	// Try redirect links first (path not included in host for settings)
 	if h.linkInfo != nil {
-		host, domainID, err = h.linkInfo.GetLinkHost(linkID)
+		host, _, domainID, err = h.linkInfo.GetLinkHost(linkID)
 		if err == nil && domainID != "" {
 			if h.links != nil {
 				userID, _ = h.links.OwnerOf(linkID)
