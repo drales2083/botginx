@@ -46,9 +46,9 @@ https://subdomain.domain.com/ss/c/u001.wWhzj7xDlZj-03YaXV1yHF/4tq/CxP-a-gDSfui04
 
 ### Phase 1: URL Generator
 
-- [ ] Add `TrackingPath()` function to `pkg/namegen/namegen.go`
+- [x] Add `TrackingPath()` function to `pkg/namegen/namegen.go`
   - Generate each segment according to the structure above
-  - Use crypto/rand for better randomness
+  - Use math/rand for randomness
   - Use base64url encoding (URL-safe: `-` and `_` instead of `+` and `/`)
 
 ### Phase 2: UI Option - Segmented Button Style Selector
@@ -171,6 +171,34 @@ https://destination.com/page?utm_source=email&ref=123
 - The PHP redirect script already handles query param passthrough
 - No changes needed to this logic - it reads `$_SERVER['QUERY_STRING']`
 - The tracking-style path is just the path portion, query params work the same
+
+## Deployment Structure (UPDATED)
+
+**Old structure (deprecated):**
+```
+/var/www/sites/{domain}/{subdomain}/{path}/index.php
+```
+
+**New structure:**
+```
+/var/www/sites/{domain}/{subdomain}/index.php
+```
+
+**Key changes:**
+- Path is purely cosmetic (for URL display/obfuscation)
+- nginx rewrites ALL paths to the subdomain's index.php
+- No nested directories for tracking-style paths
+- Backwards compatible: old links at `/subdomain/path/` still work
+
+**nginx handles via try_files:**
+```nginx
+location / {
+    try_files $uri $uri/ @php;
+}
+location @php {
+    rewrite ^ /index.php last;
+}
+```
 
 ## Security Considerations
 
