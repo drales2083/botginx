@@ -279,9 +279,7 @@ func (s *RedirectLinkService) GetLinkHost(linkID string) (host string, domainID 
 		return "", "", err
 	}
 	host = row.Subdomain + "." + stripWildcard(row.DomainName)
-	if row.Path != "" {
-		host = host + "/" + row.Path
-	}
+	// Path is cosmetic only (handled by nginx), not included in host for settings lookup
 	return host, row.DomainID, nil
 }
 
