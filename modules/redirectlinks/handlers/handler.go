@@ -247,10 +247,16 @@ func (h *Handler) cleanupVPS(link *models.RedirectLink) {
 		log.Printf("[cleanup] deleted botection settings: %s", settingsPath)
 	}
 
-	// Delete site directory for this link (includes path)
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s/%s", baseDomain, subdomain, link.Path)
-	if _, err := client.Run(fmt.Sprintf("rm -rf %s", siteDir)); err == nil {
-		log.Printf("[cleanup] deleted site directory: %s", siteDir)
+	// Delete site directory - try both old and new structures for backwards compatibility
+	// Old structure: /var/www/sites/{domain}/{subdomain}/{path}/
+	// New structure: /var/www/sites/{domain}/{subdomain}/
+	oldSiteDir := fmt.Sprintf("/var/www/sites/%s/%s/%s", baseDomain, subdomain, link.Path)
+	if _, err := client.Run(fmt.Sprintf("rm -rf %s", oldSiteDir)); err == nil {
+		log.Printf("[cleanup] deleted old site directory: %s", oldSiteDir)
+	}
+	newSiteDir := fmt.Sprintf("/var/www/sites/%s/%s", baseDomain, subdomain)
+	if _, err := client.Run(fmt.Sprintf("rm -rf %s", newSiteDir)); err == nil {
+		log.Printf("[cleanup] deleted site directory: %s", newSiteDir)
 	}
 
 	// Clean up empty parent directories if no other links exist
@@ -443,10 +449,10 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer client.Close()
 
-	// Create site directory: /var/www/sites/{domain}/{subdomain}/{path}/
-	// This matches the nginx upstream config which parses host as subdomain.domain
-	// The path is included because URL is subdomain.domain/path
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s/%s", link.BaseDomain(), link.Subdomain, link.Path)
+	// Create site directory: /var/www/sites/{domain}/{subdomain}/
+	// Path is NOT included in directory - nginx rewrites all paths to index.php
+	// This allows tracking-style paths (/ss/c/u001.../4tq/.../h1/...) without nested dirs
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", siteDir)
 	client.Run(mkdirCmd)
 
@@ -511,7 +517,8 @@ func (h *Handler) autoDeploy(linkID string) {
 	}
 	defer client.Close()
 
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s/%s", link.BaseDomain(), link.Subdomain, link.Path)
+	// Path is NOT included in directory - nginx rewrites all paths to index.php
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
 	client.Run(fmt.Sprintf("mkdir -p %s", siteDir))
 
 	// Get content and file type based on link type
