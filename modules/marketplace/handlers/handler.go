@@ -7,6 +7,7 @@ import (
 	"github.com/botginx/botginx/modules/marketplace/models"
 	"github.com/botginx/botginx/modules/marketplace/services"
 	"github.com/botginx/botginx/pkg/ctx"
+	"github.com/botginx/botginx/pkg/domainmask"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/go-chi/chi/v5"
 )
@@ -129,6 +130,11 @@ func (h *Handler) UserBrowse(w http.ResponseWriter, r *http.Request) {
 	domains, _ := h.service.ListAvailable()
 	balance := h.service.GetUserBalance(userID)
 
+	// Mask domain names for display (hide full name until purchase)
+	for i := range domains {
+		domains[i].Name = domainmask.Mask(domains[i].Name)
+	}
+
 	module.RenderUserSection(w, r, h.templates, "marketplace:user_browse.html", map[string]interface{}{
 		"Title":   "Buy Domain",
 		"Domains": domains,
@@ -143,6 +149,12 @@ func (h *Handler) APIListAvailable(w http.ResponseWriter, r *http.Request) {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Mask domain names for display (hide full name until purchase)
+	for i := range domains {
+		domains[i].Name = domainmask.Mask(domains[i].Name)
+	}
+
 	h.json(w, http.StatusOK, domains)
 }
 

@@ -73,6 +73,17 @@
 
                     <div class="mb-3">
                         <label for="path" class="form-label">{{t "redirectlinks.path"}}</label>
+                        <!-- Path Style Selector -->
+                        <div class="btn-group mb-2 w-100" role="group">
+                            <input type="radio" class="btn-check" name="pathStyle" id="pathStyleSimple" value="simple" checked>
+                            <label class="btn btn-outline-secondary" for="pathStyleSimple">
+                                <i class="bi bi-link-45deg me-1"></i>Simple
+                            </label>
+                            <input type="radio" class="btn-check" name="pathStyle" id="pathStyleTracking" value="tracking">
+                            <label class="btn btn-outline-secondary" for="pathStyleTracking">
+                                <i class="bi bi-shield-lock me-1"></i>Tracking
+                            </label>
+                        </div>
                         <div class="input-group">
                             <span class="input-group-text">/</span>
                             <input type="text" class="form-control" id="path" name="path"
@@ -82,6 +93,7 @@
                                 <i class="bi bi-shuffle"></i>
                             </button>
                         </div>
+                        <small class="text-muted" id="pathStyleHint">Simple: short readable path</small>
                     </div>
 
                     <div class="mb-3">
@@ -245,22 +257,46 @@ document.getElementById('btn-random-subdomain').addEventListener('click', async 
     btn.innerHTML = icon;
 });
 
-// Random path suggestion. Single word for cleaner URLs.
+// Path style selection and random path generation
+async function generateRandomPath() {
+    const style = document.querySelector('input[name="pathStyle"]:checked').value;
+    const endpoint = style === 'tracking'
+        ? '/user/redirectlinks/api/random-tracking-path'
+        : '/user/redirectlinks/api/random-path';
+
+    try {
+        const res = await fetch(endpoint);
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('path').value = data.path;
+        }
+    } catch (err) {
+        // Leave the field as-is
+    }
+}
+
+// Update hint text when style changes
+document.querySelectorAll('input[name="pathStyle"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const style = document.querySelector('input[name="pathStyle"]:checked').value;
+        const hint = document.getElementById('pathStyleHint');
+        if (style === 'tracking') {
+            hint.textContent = 'Tracking: enterprise-style obfuscated path';
+        } else {
+            hint.textContent = 'Simple: short readable path';
+        }
+        generateRandomPath(); // Auto-generate when switching styles
+    });
+});
+
+// Random path button
 document.getElementById('btn-random-path').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     const icon = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-    try {
-        const res = await fetch('/user/redirectlinks/api/random-path');
-        if (res.ok) {
-            const data = await res.json();
-            document.getElementById('path').value = data.path;
-        }
-    } catch (err) {
-        // Leave the field as-is; the user can type their own.
-    }
+    await generateRandomPath();
 
     btn.disabled = false;
     btn.innerHTML = icon;

@@ -400,6 +400,13 @@ func (h *Handler) APIRandomPath(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// APIRandomTrackingPath generates a tracking-style URL path that mimics enterprise email links.
+func (h *Handler) APIRandomTrackingPath(w http.ResponseWriter, r *http.Request) {
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"path": namegen.TrackingPath(),
+	})
+}
+
 func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
