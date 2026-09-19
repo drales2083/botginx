@@ -81,7 +81,7 @@ func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 		"Title":              "Create Redirect Link",
 		"Domains":            domains,
 		"SuggestedSubdomain": namegen.Subdomain(),
-		"SuggestedPath":      namegen.Path(),
+		"SuggestedPath":      namegen.TrackingPath(),
 	})
 }
 

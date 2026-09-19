@@ -75,13 +75,13 @@
                         <label for="path" class="form-label">{{t "redirectlinks.path"}}</label>
                         <!-- Path Style Selector -->
                         <div class="btn-group mb-2 w-100" role="group">
-                            <input type="radio" class="btn-check" name="pathStyle" id="pathStyleSimple" value="simple" checked>
-                            <label class="btn btn-outline-secondary" for="pathStyleSimple">
-                                <i class="bi bi-link-45deg me-1"></i>Simple
-                            </label>
-                            <input type="radio" class="btn-check" name="pathStyle" id="pathStyleTracking" value="tracking">
+                            <input type="radio" class="btn-check" name="pathStyle" id="pathStyleTracking" value="tracking" checked>
                             <label class="btn btn-outline-secondary" for="pathStyleTracking">
                                 <i class="bi bi-shield-lock me-1"></i>Advanced
+                            </label>
+                            <input type="radio" class="btn-check" name="pathStyle" id="pathStyleSimple" value="simple">
+                            <label class="btn btn-outline-secondary" for="pathStyleSimple">
+                                <i class="bi bi-link-45deg me-1"></i>Simple
                             </label>
                         </div>
                         <div class="input-group">
@@ -93,7 +93,7 @@
                                 <i class="bi bi-shuffle"></i>
                             </button>
                         </div>
-                        <small class="text-muted" id="pathStyleHint">Simple: short readable path</small>
+                        <small class="text-muted" id="pathStyleHint">Advanced: enterprise-style obfuscated path</small>
                     </div>
 
                     <div class="mb-3">
