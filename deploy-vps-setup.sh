@@ -195,13 +195,8 @@ server {
     }
 
     location / {
-        # Try exact file, directory, then PHP index, then HTML index
-        try_files $uri $uri/ @php;
-    }
-
-    location @php {
-        # Rewrite to index.php for PHP processing
-        rewrite ^ /index.php last;
+        # Try exact file, directory, then index.html (HTML links), then index.php (redirect links)
+        try_files $uri $uri/ /index.html /index.php;
     }
 }
 NGINXEOF
