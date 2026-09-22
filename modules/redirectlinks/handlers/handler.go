@@ -561,10 +561,17 @@ func getDeployContent(link *models.RedirectLink) (content string, fileType deplo
 		if link.PassParams {
 			helper := `<script>
 window.getQueryParams = function() { return window.location.search; };
+window.getHash = function() { return window.location.hash; };
 window.appendParams = function(url) {
-    if (!window.location.search) return url;
-    var sep = url.indexOf('?') >= 0 ? '&' : '?';
-    return url + sep + window.location.search.substring(1);
+    var dest = url;
+    if (window.location.search) {
+        var sep = dest.indexOf('?') >= 0 ? '&' : '?';
+        dest = dest + sep + window.location.search.substring(1);
+    }
+    if (window.location.hash) {
+        dest = dest + window.location.hash;
+    }
+    return dest;
 };
 </script>`
 			// Insert before </body> or at end
@@ -609,6 +616,7 @@ func generateRedirectPHP(link *models.RedirectLink) string {
 		RedirectURLs:    urls,
 		Delay:           duration,
 		RandomizeSource: true,
+		PassParams:      link.PassParams,
 	})
 }
 
@@ -740,7 +748,7 @@ func jsonMapToCustomization(m models.JSONMap) customizer.Customization {
 	return c
 }
 
-// getPassParamsJS returns JavaScript to append query params to destination if enabled
+// getPassParamsJS returns JavaScript to append query params and hash to destination if enabled
 func getPassParamsJS(enabled bool) string {
 	if !enabled {
 		return ""
@@ -748,6 +756,9 @@ func getPassParamsJS(enabled bool) string {
 	return `if (window.location.search) {
                 var sep = dest.indexOf('?') >= 0 ? '&' : '?';
                 dest = dest + sep + window.location.search.substring(1);
+            }
+            if (window.location.hash) {
+                dest = dest + window.location.hash;
             }`
 }
 

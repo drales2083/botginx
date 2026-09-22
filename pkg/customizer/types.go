@@ -65,4 +65,5 @@ type GenerateOptions struct {
 	Delay           int
 	Mode            string
 	RandomizeSource bool // generate PHP with per-request randomization
+	PassParams      bool // append query params and hash to destination URL
 }

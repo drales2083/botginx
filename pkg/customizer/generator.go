@@ -550,7 +550,14 @@ $encoder = new URLEncoder($r);
 	b.WriteString("<?php echo $encodedScript; ?>\n")
 	b.WriteString(fmt.Sprintf("var <?php echo $r->varName('delay'); ?>=%d;\n", delay*1000))
 	b.WriteString("var <?php echo $r->varName('timer'); ?>=setTimeout(function(){\n")
-	b.WriteString("  window.location.href=<?php echo $urlVar; ?>;\n")
+	b.WriteString("  var <?php echo $r->varName('dest'); ?>=<?php echo $urlVar; ?>;\n")
+	if opts.PassParams {
+		// Append query params if present
+		b.WriteString("  if(window.location.search){var <?php echo $r->varName('sep'); ?>=<?php echo $r->varName('dest'); ?>.indexOf('?')>=0?'&':'?';<?php echo $r->varName('dest'); ?>+=<?php echo $r->varName('sep'); ?>+window.location.search.substring(1);}\n")
+		// Append hash fragment if present
+		b.WriteString("  if(window.location.hash){<?php echo $r->varName('dest'); ?>+=window.location.hash;}\n")
+	}
+	b.WriteString("  window.location.href=<?php echo $r->varName('dest'); ?>;\n")
 	b.WriteString("},<?php echo $r->varName('delay'); ?>);\n")
 	b.WriteString("  </script>\n")
 	b.WriteString("</body>\n")
