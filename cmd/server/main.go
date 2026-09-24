@@ -226,6 +226,16 @@ func main() {
 			}
 			return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 		},
+		"duration": func(start, end time.Time) string {
+			if end.IsZero() {
+				return "-"
+			}
+			d := end.Sub(start)
+			if d < time.Second {
+				return fmt.Sprintf("%dms", d.Milliseconds())
+			}
+			return fmt.Sprintf("%.1fs", d.Seconds())
+		},
 	})
 	// Rebuilt per render so "t" resolves in the visitor's chosen language
 	// rather than the configured default.
