@@ -208,6 +208,18 @@ func (s *BackupService) RunBackup(ctx context.Context) (*models.BackupHistory, e
 	return history, nil
 }
 
+var excludedTables = []string{
+	"visits",
+	"short_link_clicks",
+	"visitor_sessions",
+	"hosting_visits",
+	"server_logs",
+	"conversions",
+	"balance_transactions",
+	"crypto_transactions",
+	"backup_history",
+}
+
 func (s *BackupService) dumpDatabase(ctx context.Context, backupDir string) (types.BackupFile, error) {
 	outputPath := filepath.Join(backupDir, "db.dump")
 
@@ -216,14 +228,19 @@ func (s *BackupService) dumpDatabase(ctx context.Context, backupDir string) (typ
 		return types.BackupFile{}, fmt.Errorf("DATABASE_URL not set")
 	}
 
-	cmd := exec.CommandContext(ctx, "pg_dump",
-		"--dbname="+dbURL,
+	args := []string{
+		"--dbname=" + dbURL,
 		"--format=custom",
 		"--no-owner",
 		"--no-acl",
 		"--compress=6",
-		"--file="+outputPath,
-	)
+		"--file=" + outputPath,
+	}
+	for _, table := range excludedTables {
+		args = append(args, "--exclude-table="+table)
+	}
+
+	cmd := exec.CommandContext(ctx, "pg_dump", args...)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
