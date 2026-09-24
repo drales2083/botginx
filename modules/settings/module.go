@@ -80,8 +80,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Settings",
 			Icon:    "bi-gear",
 			Path:    "/admin/settings",
-			Order:   99, // Last item in admin menu
+			Order:   30,
 			Section: module.MenuSectionAdmin,
+			Group:   "System",
 		},
 	}
 }

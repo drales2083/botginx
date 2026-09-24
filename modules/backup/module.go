@@ -105,8 +105,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Backup",
 			Icon:    "bi-cloud-arrow-up",
 			Path:    "/admin/backup",
-			Order:   98, // Before Settings
+			Order:   20,
 			Section: module.MenuSectionAdmin,
+			Group:   "System",
 		},
 	}
 }

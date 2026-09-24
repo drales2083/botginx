@@ -155,10 +155,16 @@ func groupMenuItems(items []MenuItem) []MenuItem {
 		Icon  string
 		Order int
 	}{
+		// User section groups
 		"Links":          {Icon: "bi-link-45deg", Order: 10},
 		"Infrastructure": {Icon: "bi-server", Order: 30},
 		"Billing":        {Icon: "bi-wallet2", Order: 40},
 		"Help":           {Icon: "bi-question-circle", Order: 50},
+		// Admin section groups
+		"Admin Infrastructure": {Icon: "bi-hdd-stack", Order: 20},
+		"Revenue":              {Icon: "bi-currency-dollar", Order: 30},
+		"Users & Support":      {Icon: "bi-people", Order: 40},
+		"System":               {Icon: "bi-gear", Order: 50},
 	}
 
 	// Separate grouped and ungrouped items

@@ -177,6 +177,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/admin/domains",
 			Order:   15,
 			Section: module.MenuSectionAdmin,
+			Group:   "Admin Infrastructure",
 		},
 	}
 }

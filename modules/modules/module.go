@@ -94,8 +94,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Modules",
 			Icon:    "bi-puzzle",
 			Path:    "/admin/modules",
-			Order:   110,
+			Order:   40,
 			Section: module.MenuSectionAdmin,
+			Group:   "System",
 		},
 	}
 }

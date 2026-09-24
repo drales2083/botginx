@@ -234,6 +234,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/admin/admindash/domains/all",
 			Order:   5,
 			Section: module.MenuSectionAdmin,
+			Group:   "Admin Infrastructure",
 		},
 	}
 }

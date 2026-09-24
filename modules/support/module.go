@@ -99,8 +99,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Support",
 			Icon:    "bi-headset",
 			Path:    "/admin/support",
-			Order:   50,
+			Order:   20,
 			Section: module.MenuSectionAdmin,
+			Group:   "Users & Support",
 		},
 	}
 }

@@ -66,8 +66,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Announcements",
 			Icon:    "bi-megaphone",
 			Path:    "/admin/announcements",
-			Order:   90,
+			Order:   10,
 			Section: module.MenuSectionAdmin,
+			Group:   "System",
 		},
 	}
 }

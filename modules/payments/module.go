@@ -126,8 +126,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Payments",
 			Icon:    "bi-credit-card",
 			Path:    "/admin/payments",
-			Order:   50,
+			Order:   10,
 			Section: module.MenuSectionAdmin,
+			Group:   "Revenue",
 		},
 	}
 }

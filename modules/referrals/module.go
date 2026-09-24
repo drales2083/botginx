@@ -496,8 +496,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Referrals",
 			Icon:    "bi-diagram-3",
 			Path:    "/admin/referrals/settings",
-			Order:   60,
+			Order:   30,
 			Section: module.MenuSectionAdmin,
+			Group:   "Revenue",
 		},
 	}
 }

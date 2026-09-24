@@ -43,6 +43,16 @@
     .app-sidebar .brand-text {
       font-size: 1.4rem;
     }
+    /* Collapsible menu groups */
+    .app-sidebar .nav-treeview {
+      padding-left: 1rem;
+    }
+    .app-sidebar .nav-link .bi-chevron-down {
+      transition: transform 0.2s;
+    }
+    .app-sidebar .nav-link[aria-expanded="true"] .bi-chevron-down {
+      transform: rotate(180deg);
+    }
     .sidebar-brand {
       justify-content: flex-start !important;
       padding-left: 1rem !important;
@@ -251,25 +261,34 @@
               <i class="bi bi-shield-lock me-1"></i> {{t "admin"}}
             </li>
             {{range .AdminMenu}}
+            {{if .Children}}
+            <!-- Collapsible group -->
             <li class="nav-item">
-              <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
+              <a href="#" class="nav-link" data-bs-toggle="collapse" data-bs-target="#admin-group-{{.Title | urlquery}}">
                 <i class="nav-icon bi {{.Icon}}"></i>
-                <p>{{.Title}}</p>
-                {{if .Badge}}<span class="badge bg-danger ms-auto">{{.Badge}}</span>{{end}}
+                <p>{{.Title}}<i class="bi bi-chevron-down ms-auto"></i></p>
               </a>
-              {{if .Children}}
-              <ul class="nav nav-treeview">
+              <ul class="nav nav-treeview collapse" id="admin-group-{{.Title | urlquery}}">
                 {{range .Children}}
                 <li class="nav-item">
-                  <a href="{{.Path}}" class="nav-link">
+                  <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
                     <i class="nav-icon bi {{.Icon}}"></i>
                     <p>{{.Title}}</p>
                   </a>
                 </li>
                 {{end}}
               </ul>
-              {{end}}
             </li>
+            {{else}}
+            <!-- Standalone item -->
+            <li class="nav-item">
+              <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
+                <i class="nav-icon bi {{.Icon}}"></i>
+                <p>{{.Title}}</p>
+                {{if .Badge}}<span class="badge bg-danger ms-auto">{{.Badge}}</span>{{end}}
+              </a>
+            </li>
+            {{end}}
             {{end}}
           </ul>
           {{end}}
@@ -569,6 +588,15 @@
             info: paging ? 'Showing {start} to {end} of {rows}' : ''
           }
         });
+      });
+    });
+
+    // Auto-expand admin menu groups that contain the active page
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.nav-treeview').forEach(treeview => {
+        if (treeview.querySelector('.nav-link.active')) {
+          treeview.classList.add('show');
+        }
       });
     });
   </script>

@@ -111,8 +111,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Sell Domain",
 			Icon:    "bi-tag",
 			Path:    "/admin/marketplace",
-			Order:   45,
+			Order:   20,
 			Section: module.MenuSectionAdmin,
+			Group:   "Revenue",
 		},
 	}
 }

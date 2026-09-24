@@ -121,8 +121,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Users",
 			Icon:    "bi-people",
 			Path:    "/admin/users",
-			Order:   100,
+			Order:   10,
 			Section: module.MenuSectionAdmin,
+			Group:   "Users & Support",
 		},
 	}
 }
