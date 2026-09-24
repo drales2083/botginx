@@ -55,8 +55,8 @@
                 <div class="col-md-6">
                     <label class="form-label">Chunk Size (MB)</label>
                     <input type="number" class="form-control" id="chunkSizeMb"
-                           value="{{.Settings.TelegramChunkSizeMB}}" min="10" max="50">
-                    <small class="text-muted">Files larger than this are split (max 50MB)</small>
+                           value="{{.Settings.TelegramChunkSizeMB}}" min="5" max="20">
+                    <small class="text-muted">Files larger than this are split (max 20MB for Telegram API)</small>
                 </div>
                 <div class="col-md-6 d-flex align-items-end">
                     <div class="form-check form-switch">

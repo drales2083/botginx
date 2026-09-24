@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS backup_settings (
 
     telegram_bot_token_encrypted BYTEA,
     telegram_chat_ids TEXT[] DEFAULT ARRAY[]::TEXT[],
-    telegram_chunk_size_mb INT DEFAULT 45,
+    telegram_chunk_size_mb INT DEFAULT 20,
     telegram_send_notification BOOLEAN DEFAULT TRUE,
 
     include_database BOOLEAN DEFAULT TRUE,

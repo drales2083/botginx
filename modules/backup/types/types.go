@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	DefaultChunkSizeMB = 45
-	MaxChunkSizeMB     = 50
+	DefaultChunkSizeMB = 20
+	MaxChunkSizeMB     = 20
 )
 
 type BackupFile struct {
