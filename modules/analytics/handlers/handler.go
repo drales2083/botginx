@@ -20,6 +20,7 @@ import (
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/settingspush"
 	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
 )
 
 // LinkResolver attributes inbound traffic to a redirect link and its owner.
@@ -138,18 +139,21 @@ type Handler struct {
 	hostingVisits  HostingVisitRecorder
 	shortLinks     ShortLinkResolver
 	pusher         *settingspush.Pusher
+	db             *sqlx.DB
 }
 
 func NewHandler(
 	service *services.AnalyticsService,
 	templates *module.TemplateEngine,
 	links LinkResolver,
+	db *sqlx.DB,
 ) *Handler {
 	return &Handler{
 		service:   service,
 		templates: templates,
 		links:     links,
 		pusher:    settingspush.New(),
+		db:        db,
 	}
 }
 
@@ -880,6 +884,13 @@ func (h *Handler) processWebhookEvent(payload antibot.WebhookPayload) {
 	switch payload.Event {
 	case "request", "request.blocked", "request.challenged", "request.challenge_passed", "request.challenge_failed", "request.allowed":
 		h.handleRequestEvent(payload.Data)
+		// Increment user stats based on outcome
+		switch payload.Event {
+		case "request.blocked", "request.challenge_failed":
+			h.incrementUserStat(payload.Data, "bots_detected")
+		case "request.challenge_passed":
+			h.incrementUserStat(payload.Data, "humans_verified")
+		}
 	case "session.start":
 		h.handleSessionStartEvent(payload.Data)
 	case "session.end":
@@ -901,6 +912,36 @@ func (h *Handler) verifySignature(body []byte, signature, secret string) bool {
 	mac.Write(body)
 	expected := hex.EncodeToString(mac.Sum(nil))
 	return hmac.Equal([]byte(signature), []byte(expected))
+}
+
+// incrementUserStat increments bots_detected or humans_verified counter for the domain owner
+func (h *Handler) incrementUserStat(data any, column string) {
+	eventData, ok := data.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	// Resolve user from the domain
+	_, userID := h.resolveLink(eventData)
+	if userID == "" {
+		// Try hosting domain
+		host := getString(eventData, "host")
+		if h.hostingVisits != nil {
+			if info, err := h.hostingVisits.GetDomainByHost(host); err == nil && info != nil {
+				userID = info.UserID
+			}
+		}
+	}
+
+	if userID == "" {
+		return
+	}
+
+	// Increment the counter
+	query := "UPDATE users SET " + column + " = COALESCE(" + column + ", 0) + 1 WHERE id = $1"
+	if _, err := h.db.Exec(query, userID); err != nil {
+		log.Printf("Webhook: failed to increment %s for user=%s: %v", column, userID, err)
+	}
 }
 
 func (h *Handler) handleRequestEvent(data any) {

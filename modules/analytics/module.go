@@ -46,7 +46,7 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 
 	m.service = services.NewAnalyticsService(deps.DB)
-	m.handler = handlers.NewHandler(m.service, deps.Templates, m.links)
+	m.handler = handlers.NewHandler(m.service, deps.Templates, m.links, deps.DB)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
