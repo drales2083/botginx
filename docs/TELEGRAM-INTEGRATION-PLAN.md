@@ -6,7 +6,7 @@ Enable admins to manage support tickets directly from Telegram using inline butt
 
 ## Current State
 
-- Hardcoded bot tokens in `deploy.sh` and `/etc/botginx/botginx.env`
+- Hardcoded bot tokens in `deploy.sh` and `/opt/botginx/.env`
 - One-way notifications only (panel → Telegram)
 - No ability to reply from Telegram
 

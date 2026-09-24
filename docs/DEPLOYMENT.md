@@ -374,7 +374,7 @@ The script outputs a `WEBHOOK_SECRET` - add it to the panel's `.env`:
 
 ```bash
 # On panel VPS
-echo "ANTIBOT_WEBHOOK_SECRET=<secret-from-output>" >> /etc/botginx/botginx.env
+echo "ANTIBOT_WEBHOOK_SECRET=<secret-from-output>" >> /opt/botginx/.env
 systemctl restart botginx
 ```
 
