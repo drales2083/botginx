@@ -39,8 +39,10 @@ echo "[1/5] Installing system packages..."
 apt-get update -qq
 apt-get install -y -qq nginx redis-server jq curl certbot python3-certbot-nginx ufw cron git php-fpm
 
-systemctl enable nginx redis-server cron php8.3-fpm
-systemctl start nginx redis-server cron php8.3-fpm
+# Detect PHP-FPM version
+PHP_FPM=$(systemctl list-unit-files | grep -oP 'php[0-9.]+\-fpm' | head -1 || echo "php-fpm")
+systemctl enable nginx redis-server cron "$PHP_FPM"
+systemctl start nginx redis-server cron "$PHP_FPM"
 
 # Install lego (for wildcard SSL via DNS-01 challenge)
 echo "Installing lego ACME client..."
@@ -190,7 +192,7 @@ server {
     # PHP processing for randomized redirect pages
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_pass unix:PHP_FPM_SOCK_PLACEHOLDER;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
     }
 
@@ -200,6 +202,10 @@ server {
     }
 }
 NGINXEOF
+
+# Replace PHP socket placeholder with actual socket
+PHP_SOCK=$(ls /var/run/php/php*-fpm.sock 2>/dev/null | head -1 || echo "/var/run/php/php-fpm.sock")
+sed -i "s|PHP_FPM_SOCK_PLACEHOLDER|$PHP_SOCK|g" /etc/nginx/sites-available/redirect-upstream.conf
 
 ln -sf /etc/nginx/sites-available/redirect-upstream.conf /etc/nginx/sites-enabled/
 
@@ -331,7 +337,7 @@ echo "[5/5] Verifying installation..."
 echo ""
 echo "Services:"
 echo "  Nginx:     $(systemctl is-active nginx)"
-echo "  PHP-FPM:   $(systemctl is-active php8.3-fpm)"
+echo "  PHP-FPM:   $(systemctl is-active $PHP_FPM)"
 echo "  Redis:     $(systemctl is-active redis-server)"
 echo "  acme-dns:  $(systemctl is-active acme-dns)"
 
