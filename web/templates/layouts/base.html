@@ -43,16 +43,6 @@
     .app-sidebar .brand-text {
       font-size: 1.4rem;
     }
-    /* Collapsible menu groups */
-    .app-sidebar .nav-treeview {
-      padding-left: 1rem;
-    }
-    .app-sidebar .nav-link .bi-chevron-down {
-      transition: transform 0.2s;
-    }
-    .app-sidebar .nav-link[aria-expanded="true"] .bi-chevron-down {
-      transform: rotate(180deg);
-    }
     .sidebar-brand {
       justify-content: flex-start !important;
       padding-left: 1rem !important;
@@ -256,19 +246,18 @@
 
           <!-- Admin Section -->
           {{if .AdminMenu}}
-          <ul class="nav sidebar-menu flex-column mt-3" role="menu">
+          <ul class="nav sidebar-menu flex-column mt-3" data-lte-toggle="treeview" role="menu">
             <li class="nav-header text-uppercase small text-muted px-3 mb-2">
               <i class="bi bi-shield-lock me-1"></i> {{t "admin"}}
             </li>
             {{range .AdminMenu}}
             {{if .Children}}
-            <!-- Collapsible group -->
             <li class="nav-item">
-              <a href="#" class="nav-link" data-bs-toggle="collapse" data-bs-target="#admin-group-{{.Title | urlquery}}">
+              <a href="#" class="nav-link">
                 <i class="nav-icon bi {{.Icon}}"></i>
-                <p>{{.Title}}<i class="bi bi-chevron-down ms-auto"></i></p>
+                <p>{{.Title}}<i class="nav-arrow bi bi-chevron-right"></i></p>
               </a>
-              <ul class="nav nav-treeview collapse" id="admin-group-{{.Title | urlquery}}">
+              <ul class="nav nav-treeview">
                 {{range .Children}}
                 <li class="nav-item">
                   <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
@@ -280,7 +269,6 @@
               </ul>
             </li>
             {{else}}
-            <!-- Standalone item -->
             <li class="nav-item">
               <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
                 <i class="nav-icon bi {{.Icon}}"></i>
@@ -588,15 +576,6 @@
             info: paging ? 'Showing {start} to {end} of {rows}' : ''
           }
         });
-      });
-    });
-
-    // Auto-expand admin menu groups that contain the active page
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.nav-treeview').forEach(treeview => {
-        if (treeview.querySelector('.nav-link.active')) {
-          treeview.classList.add('show');
-        }
       });
     });
   </script>
