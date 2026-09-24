@@ -76,18 +76,17 @@ func (m *Module) Routes() chi.Router {
 	return r
 }
 
-func (m *Module) AdminRoutes() chi.Router {
-	r := chi.NewRouter()
-
-	r.Get("/", m.handleAdminAnnouncements)
-
-	// API endpoints
-	r.Get("/api/list", m.apiListAnnouncements)
-	r.Post("/api/create", m.apiCreateAnnouncement)
-	r.Put("/api/{id}", m.apiUpdateAnnouncement)
-	r.Delete("/api/{id}", m.apiDeleteAnnouncement)
-
-	return r
+func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
+	if section == module.MenuSectionAdmin {
+		r := chi.NewRouter()
+		r.Get("/", m.handleAdminAnnouncements)
+		r.Get("/api/list", m.apiListAnnouncements)
+		r.Post("/api/create", m.apiCreateAnnouncement)
+		r.Put("/api/{id}", m.apiUpdateAnnouncement)
+		r.Delete("/api/{id}", m.apiDeleteAnnouncement)
+		return r
+	}
+	return m.Routes()
 }
 
 func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -225,15 +224,10 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Order:   0,
 			Section: module.MenuSectionUser,
 		},
-	}
-}
-
-func (m *Module) AdminMenuItems() []module.MenuItem {
-	return []module.MenuItem{
 		{
 			Title:   "Announcements",
 			Icon:    "bi-megaphone",
-			Path:    "/admin/announcements",
+			Path:    "/admin/dashboard",
 			Order:   90,
 			Section: module.MenuSectionAdmin,
 		},
