@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"io"
 	"os"
@@ -22,7 +23,14 @@ func initKey() {
 	keyOnce.Do(func() {
 		key := os.Getenv("HOSTING_ENCRYPTION_KEY")
 		if key != "" {
-			encryptionKey = []byte(key)
+			// Key is hex-encoded (64 chars = 32 bytes)
+			decoded, err := hex.DecodeString(key)
+			if err == nil {
+				encryptionKey = decoded
+			} else {
+				// Fallback to raw bytes if not valid hex
+				encryptionKey = []byte(key)
+			}
 		}
 	})
 }
