@@ -10,9 +10,6 @@
             <div class="small-box-icon">
                 <i class="bi bi-globe"></i>
             </div>
-            <a href="/user/domains" class="small-box-footer">
-                View Domains <i class="bi bi-arrow-right-short"></i>
-            </a>
         </div>
     </div>
     <div class="col-6 col-lg-3">
@@ -24,9 +21,6 @@
             <div class="small-box-icon">
                 <i class="bi bi-robot"></i>
             </div>
-            <a href="#" class="small-box-footer" onclick="resetStat('bots'); return false;">
-                <i class="bi bi-trash"></i> Reset Counter
-            </a>
         </div>
     </div>
     <div class="col-6 col-lg-3">
@@ -38,9 +32,6 @@
             <div class="small-box-icon">
                 <i class="bi bi-person-check"></i>
             </div>
-            <a href="#" class="small-box-footer" onclick="resetStat('humans'); return false;">
-                <i class="bi bi-trash"></i> Reset Counter
-            </a>
         </div>
     </div>
     <div class="col-6 col-lg-3">
@@ -52,9 +43,6 @@
             <div class="small-box-icon">
                 <i class="bi bi-calendar-check"></i>
             </div>
-            <a href="/user/subscription" class="small-box-footer">
-                Manage Plan <i class="bi bi-arrow-right-short"></i>
-            </a>
         </div>
     </div>
 </div>
@@ -153,26 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const code = input.dataset.code;
     input.value = window.location.origin + '/auth/signup?ref=' + code;
 });
-
-// Reset stat counter
-async function resetStat(metric) {
-    if (!confirm('Reset ' + metric + ' counter to 0?')) return;
-    try {
-        const res = await fetch('/user/dashboard/api/reset-stat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ metric: metric })
-        });
-        if (res.ok) {
-            showToast('Counter reset', 'success');
-            setTimeout(() => location.reload(), 500);
-        } else {
-            showToast('Failed to reset', 'danger');
-        }
-    } catch (err) {
-        showToast('Network error', 'danger');
-    }
-}
 
 // Copy referral link
 function copyReferral() {
