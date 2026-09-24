@@ -757,19 +757,20 @@ func (s *Service) updateSyncStatus(domainID, status, errorMsg string) {
 			WHERE id = $3
 		`, status, errPtr, domainID)
 	case SyncStatusDNSWaiting, SyncStatusPending:
-		// Waiting for DNS - reset fields, show setup wizard
+		// Waiting for DNS - update status but DON'T reset ssl_enabled
+		// Domain may have valid SSL on another server or from previous setup
 		s.db.Exec(`
 			UPDATE domains
 			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2,
-			    dns_verified = FALSE, ssl_enabled = FALSE, setup_step = 'dns', updated_at = NOW()
+			    setup_step = 'dns', updated_at = NOW()
 			WHERE id = $3
 		`, status, errPtr, domainID)
 	case SyncStatusSSLGenerating:
-		// DNS verified but SSL not yet
+		// DNS verified, generating SSL - update status but DON'T reset ssl_enabled
 		s.db.Exec(`
 			UPDATE domains
 			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2,
-			    dns_verified = TRUE, ssl_enabled = FALSE, setup_step = 'ssl', updated_at = NOW()
+			    dns_verified = TRUE, setup_step = 'ssl', updated_at = NOW()
 			WHERE id = $3
 		`, status, errPtr, domainID)
 	default:
