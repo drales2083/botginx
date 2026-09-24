@@ -208,7 +208,8 @@ func (s *Service) syncDomain(domain Domain) error {
 	}
 
 	if configExists {
-		// Domain config exists on VPS - it's working, don't touch anything
+		// Domain SSL exists on VPS - it's working, don't touch anything
+		log.Printf("[DomainSync] Domain %s SSL exists on server, skipping", domain.Name)
 		return nil
 	}
 
@@ -543,7 +544,8 @@ func (s *Service) checkDomainConfigExists(domain Domain, server Server) (bool, e
 	cmd := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "exists"`, baseDomain)
 	result, err := client.Exec(cmd)
 	if err != nil {
-		return false, nil
+		// Return error so caller knows check failed (don't proceed with reset)
+		return false, fmt.Errorf("SSL check command failed: %w", err)
 	}
 
 	return strings.TrimSpace(result.Output) == "exists", nil
