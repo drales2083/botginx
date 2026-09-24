@@ -556,6 +556,18 @@ func (h *Handler) APIGetOverview(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) APIGetVisitors(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	points, _ := h.service.GetUserVisitorPoints(userID, 500)
+	h.json(w, http.StatusOK, points)
+}
+
+func (h *Handler) APIGetUserCountries(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	countries, _ := h.service.GetUserCountryStats(userID, 20)
+	h.json(w, http.StatusOK, countries)
+}
+
 // Callback handler for botection decision-making
 
 // ShouldBlockCallback is called by botection BEFORE taking action.

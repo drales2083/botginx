@@ -99,7 +99,69 @@
     </div>
 </div>
 
+<!-- Visitor Map -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-geo-alt me-2"></i>Visitor Map</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="vmap-layout">
+                    <div class="vmap-container">
+                        <div id="visitor-map" class="vmap-host"></div>
+                        <div class="vmap-legend">
+                            <div class="row"><span class="dot" style="background:#22d3ee"></span> Allowed</div>
+                            <div class="row"><span class="dot" style="background:#ef4444"></span> Blocked</div>
+                        </div>
+                        <div id="map-empty" class="vmap-empty d-none">No geolocated visits yet</div>
+                    </div>
+                    <div class="vmap-sidebar">
+                        <h4>Top Countries</h4>
+                        <div id="country-list">
+                            <div class="text-muted small text-center py-3">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.vmap-layout { display:flex; gap:0; height:420px; }
+.vmap-container { flex:1; min-width:0; position:relative; }
+.vmap-host { width:100%; height:420px; }
+.vmap-sidebar { width:200px; flex-shrink:0; padding:16px; overflow-y:auto; border-left:1px solid var(--bs-border-color); }
+@media(max-width:768px) { .vmap-layout{flex-direction:column;height:auto;} .vmap-host{height:300px;} .vmap-sidebar{width:100%;max-height:200px;border-left:none;border-top:1px solid var(--bs-border-color);} }
+.vmap-legend { position:absolute; bottom:10px; left:10px; z-index:1000; border-radius:6px; padding:6px 10px; font-size:11px; background:rgba(15,23,42,.85); border:1px solid rgba(255,255,255,.08); color:#d1d5db; }
+.vmap-legend .row { display:flex; align-items:center; gap:6px; margin-bottom:2px; }
+.vmap-legend .row:last-child { margin-bottom:0; }
+.vmap-legend .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+.vmap-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#6b7280; font-size:13px; pointer-events:none; background:rgba(0,0,0,.3); }
+.vmap-sidebar h4 { font-size:10px; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; margin:0 0 12px; }
+.vmap-country-row { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-radius:5px; margin-bottom:2px; }
+.vmap-country-row:hover { background:rgba(255,255,255,.04); }
+.vmap-country-row .left { display:flex; align-items:center; gap:8px; font-size:13px; }
+.vmap-country-row .count { font-size:12px; color:#9ca3af; }
+.leaflet-popup-content-wrapper { background:rgba(15,23,42,.92)!important; color:#e2e8f0!important; border:1px solid rgba(255,255,255,.1)!important; border-radius:8px!important; }
+.leaflet-popup-tip { background:rgba(15,23,42,.92)!important; }
+.leaflet-control-zoom a { background:rgba(15,23,42,.8)!important; color:#e2e8f0!important; border-color:rgba(255,255,255,.1)!important; }
+.marker-cluster-small { background:rgba(34,211,238,.25)!important; }
+.marker-cluster-small div { background:rgba(34,211,238,.6)!important; color:#fff!important; }
+.marker-cluster-medium { background:rgba(16,185,129,.25)!important; }
+.marker-cluster-medium div { background:rgba(16,185,129,.6)!important; color:#fff!important; }
+.marker-cluster-large { background:rgba(245,158,11,.25)!important; }
+.marker-cluster-large div { background:rgba(245,158,11,.6)!important; color:#fff!important; }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 <script>
 let trafficChart;
 
@@ -145,5 +207,78 @@ document.querySelectorAll('.period-btn').forEach(btn => {
 });
 
 loadChart('hourly');
+
+// Flag emoji from country code
+function flagEmoji(code) {
+    if (!code || code.length !== 2) return '🌐';
+    return String.fromCodePoint(code.charCodeAt(0)+127397, code.charCodeAt(1)+127397);
+}
+
+// Visitor Map
+let visitorMap = null;
+
+async function loadMap() {
+    const [pointsRes, countriesRes] = await Promise.all([
+        fetch('/user/analytics/api/visitors'),
+        fetch('/user/analytics/api/countries')
+    ]);
+    const points = await pointsRes.json();
+    const countries = await countriesRes.json();
+
+    const mapEl = document.getElementById('visitor-map');
+    const empty = document.getElementById('map-empty');
+    const countryList = document.getElementById('country-list');
+
+    // Country sidebar
+    if (!countries || countries.length === 0) {
+        countryList.innerHTML = '<div class="text-muted small text-center py-3">No visitors yet</div>';
+    } else {
+        countryList.innerHTML = countries.slice(0, 12).map(c => `
+            <div class="vmap-country-row">
+                <div class="left">
+                    <span>${flagEmoji(c.country)}</span>
+                    <span>${c.country || '—'}</span>
+                </div>
+                <span class="count">${c.count}</span>
+            </div>
+        `).join('');
+    }
+
+    // Map
+    if (!points || points.length === 0) {
+        empty.classList.remove('d-none');
+    } else {
+        empty.classList.add('d-none');
+    }
+
+    if (visitorMap) visitorMap.remove();
+
+    visitorMap = L.map('visitor-map', { center: [20, 0], zoom: 2, minZoom: 2, maxZoom: 12, zoomControl: true, attributionControl: false });
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }).addTo(visitorMap);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, pane: 'overlayPane' }).addTo(visitorMap);
+
+    if (points && points.length > 0) {
+        const cluster = L.markerClusterGroup({ maxClusterRadius: 40, showCoverageOnHover: false });
+        const heat = [];
+
+        points.forEach(p => {
+            const color = p.blocked ? '#ef4444' : '#22d3ee';
+            const m = L.circleMarker([p.lat, p.lng], { radius: 6, fillColor: color, color: color, weight: 2, opacity: .6, fillOpacity: .8 });
+            const where = [p.city, p.country].filter(Boolean).join(', ') || 'Unknown';
+            m.bindPopup(`<div style="font-weight:600">${flagEmoji(p.country)} ${where}</div><div style="margin-top:4px"><span style="background:${p.blocked?'rgba(239,68,68,.25)':'rgba(34,211,238,.25)'};color:${p.blocked?'#f87171':'#22d3ee'};padding:2px 6px;border-radius:4px;font-size:10px">${p.blocked?'blocked':'allowed'}</span></div>`, { closeButton: false });
+            cluster.addLayer(m);
+            heat.push([p.lat, p.lng, p.blocked ? 0.8 : 0.4]);
+        });
+
+        visitorMap.addLayer(cluster);
+        L.heatLayer(heat, { radius: 25, blur: 18, maxZoom: 8, gradient: { 0.2: '#22d3ee', 0.5: '#10b981', 0.8: '#ef4444', 1.0: '#ef4444' } }).addTo(visitorMap);
+
+        const bounds = cluster.getBounds();
+        if (bounds.isValid()) visitorMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 5 });
+    }
+}
+
+loadMap();
 </script>
 {{end}}

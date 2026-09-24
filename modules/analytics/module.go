@@ -74,6 +74,8 @@ func (m *Module) Routes() chi.Router {
 	// API
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/overview", m.handler.APIGetOverview)
+		r.Get("/visitors", m.handler.APIGetVisitors)
+		r.Get("/countries", m.handler.APIGetUserCountries)
 		r.Post("/record", m.handler.APIRecordVisit)
 
 		r.Route("/link/{linkId}", func(r chi.Router) {
