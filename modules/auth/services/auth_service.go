@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/botginx/botginx/modules/auth/models"
@@ -93,11 +94,14 @@ func (s *AuthService) Login(input models.LoginInput) (*models.User, string, erro
 	var user models.User
 	err := s.db.Get(&user, "SELECT * FROM users WHERE email = $1 AND is_active = true", input.Email)
 	if err != nil {
+		log.Printf("[AUTH DEBUG] User lookup failed for email=%q: %v", input.Email, err)
 		return nil, "", ErrInvalidCredentials
 	}
+	log.Printf("[AUTH DEBUG] User found: id=%s, email=%s, hash_len=%d, hash_prefix=%s", user.ID, user.Email, len(user.PasswordHash), user.PasswordHash[:10])
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+		log.Printf("[AUTH DEBUG] Password mismatch for user=%s: %v", user.Email, err)
 		return nil, "", ErrInvalidCredentials
 	}
 
