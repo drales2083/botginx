@@ -50,6 +50,9 @@ func (s *BackupService) UpdateSettings(input models.UpdateSettingsInput) error {
 		return err
 	}
 
+	if input.BackupName != nil {
+		settings.BackupName = *input.BackupName
+	}
 	if input.Enabled != nil {
 		settings.Enabled = *input.Enabled
 	}
@@ -93,18 +96,20 @@ func (s *BackupService) UpdateSettings(input models.UpdateSettingsInput) error {
 
 	_, err = s.db.Exec(`
 		UPDATE backup_settings SET
-			enabled = $1,
-			interval_hours = $2,
-			retention_count = $3,
-			telegram_bot_token_encrypted = $4,
-			telegram_chat_ids = $5,
-			telegram_chunk_size_mb = $6,
-			telegram_send_notification = $7,
-			include_database = $8,
-			include_config = $9,
+			backup_name = $1,
+			enabled = $2,
+			interval_hours = $3,
+			retention_count = $4,
+			telegram_bot_token_encrypted = $5,
+			telegram_chat_ids = $6,
+			telegram_chunk_size_mb = $7,
+			telegram_send_notification = $8,
+			include_database = $9,
+			include_config = $10,
 			updated_at = NOW()
 		WHERE id = 'default'
 	`,
+		settings.BackupName,
 		settings.Enabled,
 		settings.IntervalHours,
 		settings.RetentionCount,
@@ -179,6 +184,7 @@ func (s *BackupService) RunBackup(ctx context.Context) (*models.BackupHistory, e
 			ChatIDs:          settings.TelegramChatIDs,
 			ChunkSizeMB:      settings.TelegramChunkSizeMB,
 			BackupID:         history.ID,
+			BackupName:       settings.BackupName,
 			Timestamp:        history.StartedAt,
 			SendNotification: settings.TelegramSendNotification,
 		})

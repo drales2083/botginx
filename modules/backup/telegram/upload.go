@@ -19,6 +19,7 @@ type UploadOptions struct {
 	ChatIDs          []string
 	ChunkSizeMB      int
 	BackupID         string
+	BackupName       string
 	Timestamp        time.Time
 	SendNotification bool
 }
@@ -84,6 +85,26 @@ func (c *Client) UploadBackup(ctx context.Context, opts UploadOptions) (*UploadR
 
 	if len(opts.Files) == 0 || len(opts.ChatIDs) == 0 {
 		return result, nil
+	}
+
+	backupName := opts.BackupName
+	if backupName == "" {
+		backupName = "Botginx Backup"
+	}
+
+	startMsg := fmt.Sprintf(
+		"🔄 <b>Starting Backup</b>\n\n"+
+			"📛 <b>Name:</b> %s\n"+
+			"📅 <b>Date:</b> %s\n"+
+			"📁 <b>Files:</b> %d\n\n"+
+			"<i>Uploading files...</i>",
+		backupName,
+		opts.Timestamp.Format("2006-01-02 15:04:05"),
+		len(opts.Files),
+	)
+
+	for _, chatID := range opts.ChatIDs {
+		c.SendMessage(ctx, chatID, startMsg, "HTML")
 	}
 
 	manifest := Manifest{
@@ -193,9 +214,11 @@ func (c *Client) UploadBackup(ctx context.Context, opts UploadOptions) (*UploadR
 	if opts.SendNotification && firstResult.Error == "" {
 		notification := fmt.Sprintf(
 			"✅ <b>Backup Complete</b>\n\n"+
-				"📅 %s\n"+
-				"📁 %d file(s) (%d chunks)\n"+
-				"💾 %s",
+				"📛 <b>Name:</b> %s\n"+
+				"📅 <b>Date:</b> %s\n"+
+				"📁 <b>Files:</b> %d (%d chunks)\n"+
+				"💾 <b>Size:</b> %s",
+			backupName,
 			opts.Timestamp.Format("2006-01-02 15:04:05"),
 			len(opts.Files),
 			result.ChunkCount,
@@ -233,9 +256,11 @@ func (c *Client) UploadBackup(ctx context.Context, opts UploadOptions) (*UploadR
 		if opts.SendNotification && chanResult.Error == "" {
 			notification := fmt.Sprintf(
 				"✅ <b>Backup Complete</b>\n\n"+
-					"📅 %s\n"+
-					"📁 %d file(s) (%d chunks)\n"+
-					"💾 %s",
+					"📛 <b>Name:</b> %s\n"+
+					"📅 <b>Date:</b> %s\n"+
+					"📁 <b>Files:</b> %d (%d chunks)\n"+
+					"💾 <b>Size:</b> %s",
+				backupName,
 				opts.Timestamp.Format("2006-01-02 15:04:05"),
 				len(opts.Files),
 				result.ChunkCount,

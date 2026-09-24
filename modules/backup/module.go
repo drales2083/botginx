@@ -58,12 +58,20 @@ func (m *Module) Init(deps *module.Dependencies) error {
 }
 
 func (m *Module) Migrate() error {
-	sql, err := migrationsFS.ReadFile("migrations/001_create_tables.sql")
-	if err != nil {
-		return err
+	migrations := []string{
+		"migrations/001_create_tables.sql",
+		"migrations/002_add_backup_name.sql",
 	}
-	_, err = m.DB().Exec(string(sql))
-	return err
+	for _, file := range migrations {
+		sql, err := migrationsFS.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		if _, err := m.DB().Exec(string(sql)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {

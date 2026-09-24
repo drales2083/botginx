@@ -20,6 +20,13 @@
                 </div>
             </div>
 
+            <div class="mb-3">
+                <label class="form-label">Backup Name</label>
+                <input type="text" class="form-control" id="backupName"
+                       value="{{.Settings.BackupName}}" placeholder="Botginx Backup">
+                <small class="text-muted">Identifies this backup in Telegram messages (e.g., "GuardBot Production")</small>
+            </div>
+
             <hr>
             <h5 class="mb-3">Schedule</h5>
 
@@ -111,6 +118,7 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
     btn.disabled = true;
 
     const data = {
+        backupName: document.getElementById('backupName').value,
         enabled: document.getElementById('enabled').checked,
         intervalHours: parseInt(document.getElementById('intervalHours').value),
         retentionCount: parseInt(document.getElementById('retentionCount').value),

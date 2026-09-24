@@ -9,6 +9,7 @@ import (
 
 type BackupSettings struct {
 	ID                        string         `db:"id" json:"id"`
+	BackupName                string         `db:"backup_name" json:"backupName"`
 	Enabled                   bool           `db:"enabled" json:"enabled"`
 	IntervalHours             int            `db:"interval_hours" json:"intervalHours"`
 	RetentionCount            int            `db:"retention_count" json:"retentionCount"`
@@ -31,6 +32,7 @@ func (s *BackupSettings) TelegramChatIDsStr() string {
 }
 
 type UpdateSettingsInput struct {
+	BackupName               *string `json:"backupName"`
 	Enabled                  *bool   `json:"enabled"`
 	IntervalHours            *int    `json:"intervalHours"`
 	RetentionCount           *int    `json:"retentionCount"`
