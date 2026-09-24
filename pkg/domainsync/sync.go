@@ -516,7 +516,9 @@ func (s *Service) adoptAcmeDnsSubdomain(domain *Domain, server Server, existingF
 	return nil
 }
 
-// checkDomainConfigExists checks if the domain has config on the server
+// checkDomainConfigExists checks if the domain has SSL configured on the server
+// SSL certificate is the reliable indicator - it exists regardless of whether
+// redirect links have been deployed
 func (s *Service) checkDomainConfigExists(domain Domain, server Server) (bool, error) {
 	client := ssh.NewClient(ssh.Config{
 		Host:         server.IP,
@@ -531,16 +533,20 @@ func (s *Service) checkDomainConfigExists(domain Domain, server Server) (bool, e
 		return false, fmt.Errorf("SSH connect failed: %w", err)
 	}
 
-	// Check if any link config exists for this domain
-	// Link configs are stored in /etc/botection/links/*.json with host field
-	cmd := fmt.Sprintf(`grep -l '"host":.*"%s"' /etc/botection/links/*.json 2>/dev/null | head -1`, domain.Name)
+	// Check if SSL certificate exists for this domain
+	// This is reliable regardless of whether links are deployed
+	baseDomain := domain.Name
+	if strings.HasPrefix(baseDomain, "*.") {
+		baseDomain = baseDomain[2:]
+	}
+
+	cmd := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "exists"`, baseDomain)
 	result, err := client.Exec(cmd)
 	if err != nil {
-		// No configs found is not an error, just means empty
 		return false, nil
 	}
 
-	return strings.TrimSpace(result.Output) != "", nil
+	return strings.TrimSpace(result.Output) == "exists", nil
 }
 
 // checkDNSRecords verifies DNS records for the domain
@@ -740,8 +746,16 @@ func (s *Service) updateSyncStatus(domainID, status, errorMsg string) {
 			    dns_verified = TRUE, ssl_enabled = TRUE, setup_step = 'complete', updated_at = NOW()
 			WHERE id = $3
 		`, status, errPtr, domainID)
-	case SyncStatusDNSWaiting, SyncStatusPending, SyncStatusSyncing:
-		// Not ready yet - reset legacy fields, show setup wizard
+	case SyncStatusSyncing:
+		// Syncing in progress - don't touch ssl_enabled or setup_step
+		// Domain may already have valid SSL, we're just redeploying config
+		s.db.Exec(`
+			UPDATE domains
+			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2, updated_at = NOW()
+			WHERE id = $3
+		`, status, errPtr, domainID)
+	case SyncStatusDNSWaiting, SyncStatusPending:
+		// Waiting for DNS - reset fields, show setup wizard
 		s.db.Exec(`
 			UPDATE domains
 			SET sync_status = $1, last_sync_at = NOW(), last_sync_error = $2,
