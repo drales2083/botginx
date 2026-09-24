@@ -72,11 +72,14 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 
 		r.Get("/", m.handler.Settings)
 		r.Get("/history", m.handler.History)
+		r.Get("/restore", m.handler.Restore)
 
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/settings", m.handler.APIUpdateSettings)
 			r.Post("/run", m.handler.APIRunBackup)
 			r.Get("/history", m.handler.APIGetHistory)
+			r.Post("/restore/validate", m.handler.APIValidateManifest)
+			r.Post("/restore/run", m.handler.APIRunRestore)
 		})
 
 		return r

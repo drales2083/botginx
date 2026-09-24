@@ -51,18 +51,25 @@ type Manifest struct {
 }
 
 type FileEntry struct {
-	Name    string       `json:"name"`
-	Size    int64        `json:"size"`
-	SHA256  string       `json:"sha256"`
-	Chunked bool         `json:"chunked"`
-	Chunks  []ChunkEntry `json:"chunks,omitempty"`
+	Name     string        `json:"name"`
+	Size     int64         `json:"size"`
+	SHA256   string        `json:"sha256"`
+	Chunked  bool          `json:"chunked"`
+	Chunks   []ChunkEntry  `json:"chunks,omitempty"`
+	Telegram *TelegramInfo `json:"telegram,omitempty"`
 }
 
 type ChunkEntry struct {
-	Part   int    `json:"part"`
-	Name   string `json:"name"`
-	Size   int64  `json:"size"`
-	SHA256 string `json:"sha256"`
+	Part     int           `json:"part"`
+	Name     string        `json:"name"`
+	Size     int64         `json:"size"`
+	SHA256   string        `json:"sha256"`
+	Telegram *TelegramInfo `json:"telegram,omitempty"`
+}
+
+type TelegramInfo struct {
+	FileID       string `json:"file_id"`
+	FileUniqueID string `json:"file_unique_id"`
 }
 
 type uploadItem struct {
@@ -75,7 +82,7 @@ func (c *Client) UploadBackup(ctx context.Context, opts UploadOptions) (*UploadR
 		Channels: make(map[string]ChannelResult),
 	}
 
-	if len(opts.Files) == 0 {
+	if len(opts.Files) == 0 || len(opts.ChatIDs) == 0 {
 		return result, nil
 	}
 
@@ -87,9 +94,16 @@ func (c *Client) UploadBackup(ctx context.Context, opts UploadOptions) (*UploadR
 		Files:     make([]FileEntry, 0),
 	}
 
-	var uploadQueue []uploadItem
+	// Build file entries and upload queue
+	type queueItem struct {
+		path      string
+		caption   string
+		fileIdx   int // index in manifest.Files
+		chunkIdx  int // index in Chunks array, -1 if not chunked
+	}
+	var uploadQueue []queueItem
 
-	for _, file := range opts.Files {
+	for fileIdx, file := range opts.Files {
 		chunks, err := types.ChunkFile(file.Path, opts.ChunkSizeMB)
 		if err != nil {
 			return nil, fmt.Errorf("chunk %s: %w", file.Name, err)
@@ -103,23 +117,27 @@ func (c *Client) UploadBackup(ctx context.Context, opts UploadOptions) (*UploadR
 		}
 
 		if len(chunks) > 1 {
-			for _, chunk := range chunks {
+			for chunkIdx, chunk := range chunks {
 				entry.Chunks = append(entry.Chunks, ChunkEntry{
 					Part:   chunk.Part,
 					Name:   chunk.Name,
 					Size:   chunk.Size,
 					SHA256: chunk.SHA256,
 				})
-				uploadQueue = append(uploadQueue, uploadItem{
-					path:    chunk.Path,
-					caption: fmt.Sprintf("📦 %s (%s)", file.Name, chunk.Name),
+				uploadQueue = append(uploadQueue, queueItem{
+					path:     chunk.Path,
+					caption:  fmt.Sprintf("📦 %s (%s)", file.Name, chunk.Name),
+					fileIdx:  fileIdx,
+					chunkIdx: chunkIdx,
 				})
 				result.ChunkCount++
 			}
 		} else {
-			uploadQueue = append(uploadQueue, uploadItem{
-				path:    file.Path,
-				caption: fmt.Sprintf("📄 %s", file.Name),
+			uploadQueue = append(uploadQueue, queueItem{
+				path:     file.Path,
+				caption:  fmt.Sprintf("📄 %s", file.Name),
+				fileIdx:  fileIdx,
+				chunkIdx: -1,
 			})
 		}
 
@@ -127,17 +145,69 @@ func (c *Client) UploadBackup(ctx context.Context, opts UploadOptions) (*UploadR
 		manifest.Files = append(manifest.Files, entry)
 	}
 
+	// Upload to first chat ID, capturing file_ids
+	firstChatID := opts.ChatIDs[0]
+	firstResult := ChannelResult{}
+
+	for _, item := range uploadQueue {
+		msg, err := c.SendDocument(ctx, firstChatID, item.path, item.caption)
+		if err != nil {
+			firstResult.Error = err.Error()
+			break
+		}
+		firstResult.MessageIDs = append(firstResult.MessageIDs, msg.MessageID)
+
+		// Capture file_id and store in manifest
+		if msg.Document != nil {
+			telegramInfo := &TelegramInfo{
+				FileID:       msg.Document.FileID,
+				FileUniqueID: msg.Document.FileUniqueID,
+			}
+			if item.chunkIdx >= 0 {
+				manifest.Files[item.fileIdx].Chunks[item.chunkIdx].Telegram = telegramInfo
+			} else {
+				manifest.Files[item.fileIdx].Telegram = telegramInfo
+			}
+		}
+	}
+
+	// Write manifest WITH file_ids
 	manifestPath := filepath.Join(filepath.Dir(opts.Files[0].Path), "_manifest.json")
 	manifestData, _ := json.MarshalIndent(manifest, "", "  ")
 	if err := os.WriteFile(manifestPath, manifestData, 0600); err != nil {
 		return nil, err
 	}
-	uploadQueue = append(uploadQueue, uploadItem{
-		path:    manifestPath,
-		caption: "📋 _manifest.json",
-	})
 
-	for _, chatID := range opts.ChatIDs {
+	// Upload manifest to first chat
+	if firstResult.Error == "" {
+		msg, err := c.SendDocument(ctx, firstChatID, manifestPath, "📋 _manifest.json")
+		if err != nil {
+			firstResult.Error = err.Error()
+		} else {
+			firstResult.MessageIDs = append(firstResult.MessageIDs, msg.MessageID)
+			firstResult.ManifestID = msg.MessageID
+		}
+	}
+
+	// Send notification to first chat
+	if opts.SendNotification && firstResult.Error == "" {
+		notification := fmt.Sprintf(
+			"✅ <b>Backup Complete</b>\n\n"+
+				"📅 %s\n"+
+				"📁 %d file(s) (%d chunks)\n"+
+				"💾 %s",
+			opts.Timestamp.Format("2006-01-02 15:04:05"),
+			len(opts.Files),
+			result.ChunkCount,
+			formatBytes(result.TotalBytes),
+		)
+		c.SendMessage(ctx, firstChatID, notification, "HTML")
+	}
+
+	result.Channels[firstChatID] = firstResult
+
+	// Upload to additional chat IDs (file_ids already captured, just re-upload)
+	for _, chatID := range opts.ChatIDs[1:] {
 		chanResult := ChannelResult{}
 
 		for _, item := range uploadQueue {
@@ -147,8 +217,15 @@ func (c *Client) UploadBackup(ctx context.Context, opts UploadOptions) (*UploadR
 				break
 			}
 			chanResult.MessageIDs = append(chanResult.MessageIDs, msg.MessageID)
+		}
 
-			if filepath.Base(item.path) == "_manifest.json" {
+		// Upload manifest
+		if chanResult.Error == "" {
+			msg, err := c.SendDocument(ctx, chatID, manifestPath, "📋 _manifest.json")
+			if err != nil {
+				chanResult.Error = err.Error()
+			} else {
+				chanResult.MessageIDs = append(chanResult.MessageIDs, msg.MessageID)
 				chanResult.ManifestID = msg.MessageID
 			}
 		}

@@ -2,9 +2,14 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="card-title mb-0">Backup Settings</h3>
-        <a href="/admin/backup/history" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-clock-history me-1"></i>View History
-        </a>
+        <div>
+            <a href="/admin/backup/restore" class="btn btn-outline-warning btn-sm me-2">
+                <i class="bi bi-arrow-clockwise me-1"></i>Restore
+            </a>
+            <a href="/admin/backup/history" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-clock-history me-1"></i>History
+            </a>
+        </div>
     </div>
     <div class="card-body">
         <form id="settings-form">

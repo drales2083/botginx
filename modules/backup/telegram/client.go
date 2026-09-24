@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const FileDownloadBaseURL = "https://api.telegram.org/file/bot"
+
 const BaseURL = "https://api.telegram.org/bot"
 
 type Client struct {
@@ -30,7 +32,15 @@ func NewClient(token string) *Client {
 }
 
 type Message struct {
-	MessageID int `json:"message_id"`
+	MessageID int       `json:"message_id"`
+	Document  *Document `json:"document,omitempty"`
+}
+
+type Document struct {
+	FileID       string `json:"file_id"`
+	FileUniqueID string `json:"file_unique_id"`
+	FileName     string `json:"file_name"`
+	FileSize     int64  `json:"file_size"`
 }
 
 type APIResponse struct {
@@ -41,6 +51,18 @@ type APIResponse struct {
 	Parameters  struct {
 		RetryAfter int `json:"retry_after"`
 	} `json:"parameters"`
+}
+
+type FileInfo struct {
+	FileID   string `json:"file_id"`
+	FileSize int64  `json:"file_size"`
+	FilePath string `json:"file_path"`
+}
+
+type FileInfoResponse struct {
+	OK          bool     `json:"ok"`
+	Result      FileInfo `json:"result"`
+	Description string   `json:"description"`
 }
 
 func (c *Client) SendDocument(ctx context.Context, chatID string, filePath string, caption string) (*Message, error) {
@@ -161,4 +183,96 @@ func (c *Client) DeleteMessages(ctx context.Context, chatID string, messageIDs [
 	}
 
 	return nil
+}
+
+// GetFile retrieves file info from Telegram (needed for download URL)
+func (c *Client) GetFile(ctx context.Context, fileID string) (*FileInfo, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET",
+		fmt.Sprintf("%s%s/getFile?file_id=%s", BaseURL, c.token, fileID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result FileInfoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	if !result.OK {
+		return nil, fmt.Errorf("telegram error: %s", result.Description)
+	}
+
+	return &result.Result, nil
+}
+
+// DownloadFile downloads a file from Telegram to local path
+func (c *Client) DownloadFile(ctx context.Context, fileID string, outputPath string) error {
+	// Get file path
+	fileInfo, err := c.GetFile(ctx, fileID)
+	if err != nil {
+		return fmt.Errorf("getFile: %w", err)
+	}
+
+	// Download with retry
+	downloadURL := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", c.token, fileInfo.FilePath)
+
+	for attempt := 1; attempt <= 3; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
+		if err != nil {
+			return err
+		}
+
+		resp, err := c.http.Do(req)
+		if err != nil {
+			if attempt == 3 {
+				return err
+			}
+			time.Sleep(time.Duration(attempt*2) * time.Second)
+			continue
+		}
+
+		if resp.StatusCode == 429 {
+			retryAfter := 30
+			if ra := resp.Header.Get("Retry-After"); ra != "" {
+				fmt.Sscanf(ra, "%d", &retryAfter)
+			}
+			resp.Body.Close()
+			time.Sleep(time.Duration(retryAfter) * time.Second)
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			resp.Body.Close()
+			return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
+		}
+
+		// Write to file
+		out, err := os.Create(outputPath)
+		if err != nil {
+			resp.Body.Close()
+			return err
+		}
+
+		_, err = io.Copy(out, resp.Body)
+		out.Close()
+		resp.Body.Close()
+
+		if err != nil {
+			os.Remove(outputPath)
+			if attempt == 3 {
+				return err
+			}
+			continue
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("download failed after 3 attempts")
 }

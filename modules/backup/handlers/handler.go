@@ -86,6 +86,67 @@ func (h *Handler) APIGetHistory(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, history)
 }
 
+func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
+	module.Render(w, r, h.templates, "backup:restore.html", map[string]interface{}{
+		"Title": "Restore Backup",
+	})
+}
+
+func (h *Handler) APIValidateManifest(w http.ResponseWriter, r *http.Request) {
+	var manifest services.RestoreManifest
+	if err := json.NewDecoder(r.Body).Decode(&manifest); err != nil {
+		h.jsonError(w, "Invalid manifest JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.ValidateManifest(&manifest); err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Calculate total size
+	var totalBytes int64
+	var totalChunks int
+	for _, f := range manifest.Files {
+		totalBytes += f.Size
+		if f.Chunked {
+			totalChunks += len(f.Chunks)
+		}
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"valid":       true,
+		"backupId":    manifest.BackupID,
+		"timestamp":   manifest.Timestamp,
+		"host":        manifest.Host,
+		"totalFiles":  len(manifest.Files),
+		"totalBytes":  totalBytes,
+		"totalChunks": totalChunks,
+	})
+}
+
+func (h *Handler) APIRunRestore(w http.ResponseWriter, r *http.Request) {
+	var manifest services.RestoreManifest
+	if err := json.NewDecoder(r.Body).Decode(&manifest); err != nil {
+		h.jsonError(w, "Invalid manifest JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.ValidateManifest(&manifest); err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Run restore synchronously (for now - could be background job)
+	result, err := h.service.RunRestore(context.Background(), &manifest, nil)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, result)
+}
+
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
