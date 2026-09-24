@@ -209,13 +209,7 @@ func (s *BackupService) RunBackup(ctx context.Context) (*models.BackupHistory, e
 }
 
 var excludedTables = []string{
-	"visits",
-	"short_link_clicks",
-	"visitor_sessions",
-	"hosting_visits",
-	"conversions",
-	"balance_transactions",
-	"crypto_transactions",
+	"server_logs",
 	"backup_history",
 }
 
