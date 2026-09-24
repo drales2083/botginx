@@ -447,15 +447,33 @@ setup_autodeploy() {
 
     remote_sudo "chmod 755 ${APP_DIR}/auto-deploy.sh"
     remote_sudo "mkdir -p ${APP_DIR}/logs"
+    remote_sudo "chown -R ${RUN_USER}:${RUN_USER} ${APP_DIR}/logs"
 
-    # Add cron jobs - preserve other crons, remove our old entries first
+    # Add cron jobs - robust method that works with empty crontab
     local autodeploy_cron="*/2 * * * * ${APP_DIR}/auto-deploy.sh >> ${APP_DIR}/logs/auto-deploy.log 2>&1"
     local billing_cron="0 * * * * curl -fsS -X POST http://127.0.0.1:${APP_PORT}/api/cron/hosting/billing >> ${APP_DIR}/logs/billing.log 2>&1"
 
-    remote_sudo "(crontab -l 2>/dev/null | grep -v '${APP_DIR}/auto-deploy.sh' | grep -v '/api/cron/hosting/billing'; echo '${autodeploy_cron}'; echo '${billing_cron}') | crontab -"
+    # Remove old entries first (if any), then add new ones
+    # Using a temp file approach that works reliably with empty crontab
+    remote_sudo "{ crontab -l 2>/dev/null || true; } | grep -v '${APP_DIR}/auto-deploy.sh' | grep -v '/api/cron/hosting/billing' > /tmp/crontab.tmp || true"
+    remote_sudo "echo '${autodeploy_cron}' >> /tmp/crontab.tmp"
+    remote_sudo "echo '${billing_cron}' >> /tmp/crontab.tmp"
+    remote_sudo "crontab /tmp/crontab.tmp"
+    remote_sudo "rm -f /tmp/crontab.tmp"
 
-    log "cron: auto-deploy every 2 minutes"
-    log "cron: hosting billing every hour"
+    # Verify crons were added
+    log "verifying cron registration..."
+    if remote_sudo "crontab -l 2>/dev/null | grep -q '${APP_DIR}/auto-deploy.sh'"; then
+        log "cron: auto-deploy every 2 minutes ✓"
+    else
+        warn "cron: auto-deploy FAILED to register"
+    fi
+
+    if remote_sudo "crontab -l 2>/dev/null | grep -q '/api/cron/hosting/billing'"; then
+        log "cron: hosting billing every hour ✓"
+    else
+        warn "cron: billing FAILED to register"
+    fi
 }
 
 install_systemd_unit() {
