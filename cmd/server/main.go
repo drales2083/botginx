@@ -15,6 +15,7 @@ import (
 
 	"github.com/botginx/botginx/modules/admindash"
 	"github.com/botginx/botginx/modules/analytics"
+	"github.com/botginx/botginx/modules/backup"
 	"github.com/botginx/botginx/modules/referrals"
 	analyticshandlers "github.com/botginx/botginx/modules/analytics/handlers"
 	"github.com/botginx/botginx/modules/auth"
@@ -272,6 +273,8 @@ func main() {
 	registry.Register(telegramModule)            // Telegram bot integration
 	settingsModule := settings.New(telegramModule)
 	registry.Register(settingsModule)            // Admin settings (telegram, etc.)
+	backupModule := backup.New()
+	registry.Register(backupModule)              // Telegram backup system
 	usersModule := users.New()
 	registry.Register(usersModule)               // Admin module
 	referralsModule := referrals.New()

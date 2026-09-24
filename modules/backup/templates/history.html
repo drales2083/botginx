@@ -1,0 +1,64 @@
+{{define "content"}}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title mb-0">Backup History</h3>
+        <a href="/admin/backup" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-gear me-1"></i>Settings
+        </a>
+    </div>
+    <div class="card-body">
+        {{if .History}}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Database</th>
+                        <th>Config</th>
+                        <th>Total</th>
+                        <th>Chunks</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .History}}
+                    <tr>
+                        <td>{{.StartedAt.Format "Jan 02, 15:04"}}</td>
+                        <td>
+                            {{if eq .Status "completed"}}
+                            <span class="badge bg-success">Completed</span>
+                            {{else if eq .Status "running"}}
+                            <span class="badge bg-warning">Running</span>
+                            {{else if eq .Status "failed"}}
+                            <span class="badge bg-danger" title="{{.ErrorMessage}}">Failed</span>
+                            {{else}}
+                            <span class="badge bg-secondary">{{.Status}}</span>
+                            {{end}}
+                        </td>
+                        <td>{{formatBytes .DBSizeBytes}}</td>
+                        <td>{{formatBytes .ConfigSizeBytes}}</td>
+                        <td>{{formatBytes .TotalSizeBytes}}</td>
+                        <td>{{.ChunkCount}}</td>
+                        <td>
+                            {{if .CompletedAt}}
+                            {{duration .StartedAt .CompletedAt}}
+                            {{else}}
+                            -
+                            {{end}}
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-cloud-arrow-up display-4"></i>
+            <p class="mt-3">No backups yet</p>
+            <a href="/admin/backup" class="btn btn-primary">Configure Backup</a>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}

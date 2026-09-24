@@ -1,0 +1,158 @@
+{{define "content"}}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title mb-0">Backup Settings</h3>
+        <a href="/admin/backup/history" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-clock-history me-1"></i>View History
+        </a>
+    </div>
+    <div class="card-body">
+        <form id="settings-form">
+            <div class="mb-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="enabled" {{if .Settings.Enabled}}checked{{end}}>
+                    <label class="form-check-label fw-bold" for="enabled">Enable Automatic Backups</label>
+                </div>
+            </div>
+
+            <hr>
+            <h5 class="mb-3">Schedule</h5>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Backup Interval (hours)</label>
+                    <input type="number" class="form-control" id="intervalHours"
+                           value="{{.Settings.IntervalHours}}" min="1" max="168">
+                    <small class="text-muted">How often to run automatic backups</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Keep Last N Backups</label>
+                    <input type="number" class="form-control" id="retentionCount"
+                           value="{{.Settings.RetentionCount}}" min="1" max="30">
+                    <small class="text-muted">Older backups are deleted automatically</small>
+                </div>
+            </div>
+
+            <hr>
+            <h5 class="mb-3">Telegram</h5>
+
+            <div class="mb-3">
+                <label class="form-label">Bot Token</label>
+                <input type="password" class="form-control" id="telegramBotToken"
+                       placeholder="{{if .Settings.HasBotToken}}••••••••••••••••••••{{else}}Enter bot token from @BotFather{{end}}">
+                <small class="text-muted">Create a bot with <a href="https://t.me/BotFather" target="_blank">@BotFather</a> and paste the token here</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Chat IDs</label>
+                <input type="text" class="form-control" id="telegramChatIds"
+                       value="{{.Settings.TelegramChatIDsStr}}"
+                       placeholder="-1001234567890">
+                <small class="text-muted">Channel or group ID. Add bot as admin. Comma-separate multiple IDs.</small>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Chunk Size (MB)</label>
+                    <input type="number" class="form-control" id="chunkSizeMb"
+                           value="{{.Settings.TelegramChunkSizeMB}}" min="10" max="50">
+                    <small class="text-muted">Files larger than this are split (max 50MB)</small>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="sendNotification"
+                               {{if .Settings.TelegramSendNotification}}checked{{end}}>
+                        <label class="form-check-label" for="sendNotification">Send completion notification</label>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+            <h5 class="mb-3">What to Backup</h5>
+
+            <div class="mb-3">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="includeDatabase"
+                           {{if .Settings.IncludeDatabase}}checked{{end}}>
+                    <label class="form-check-label" for="includeDatabase">
+                        <strong>Database</strong> (pg_dump)
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="includeConfig"
+                           {{if .Settings.IncludeConfig}}checked{{end}}>
+                    <label class="form-check-label" for="includeConfig">
+                        <strong>Configuration files</strong> (.env, .env.local)
+                    </label>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i>Save Settings
+                </button>
+                <button type="button" class="btn btn-outline-success" id="btn-run-now">
+                    <i class="bi bi-play-fill me-1"></i>Run Backup Now
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+
+    const data = {
+        enabled: document.getElementById('enabled').checked,
+        intervalHours: parseInt(document.getElementById('intervalHours').value),
+        retentionCount: parseInt(document.getElementById('retentionCount').value),
+        telegramBotToken: document.getElementById('telegramBotToken').value || null,
+        telegramChatIds: document.getElementById('telegramChatIds').value,
+        telegramChunkSizeMb: parseInt(document.getElementById('chunkSizeMb').value),
+        telegramSendNotification: document.getElementById('sendNotification').checked,
+        includeDatabase: document.getElementById('includeDatabase').checked,
+        includeConfig: document.getElementById('includeConfig').checked
+    };
+
+    try {
+        const res = await fetch('/admin/backup/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (res.ok) {
+            showToast('Settings saved', 'success');
+        } else {
+            showToast(result.error || 'Failed to save', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+    btn.disabled = false;
+});
+
+document.getElementById('btn-run-now').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-run-now');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Running...';
+
+    try {
+        const res = await fetch('/admin/backup/api/run', { method: 'POST' });
+        const result = await res.json();
+        if (res.ok) {
+            showToast('Backup completed successfully', 'success');
+        } else {
+            showToast(result.error || 'Backup failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-play-fill me-1"></i>Run Backup Now';
+});
+</script>
+{{end}}
