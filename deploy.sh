@@ -254,8 +254,8 @@ deploy_config() {
     fi
 
     # Secrets live only in the server's env file and are never shipped from here.
-    remote_sudo "test -f ${CONFIG_DIR}/${APP_NAME}.env" \
-        || warn "${CONFIG_DIR}/${APP_NAME}.env missing -- run --setup, then set DATABASE_URL there"
+    remote_sudo "test -f ${APP_DIR}/.env" \
+        || warn "${APP_DIR}/.env missing -- run --setup, then set DATABASE_URL there"
 }
 
 health_check() {
@@ -319,7 +319,7 @@ setup() {
     encryption_key=$(openssl rand -hex 32)
 
     # Written only if absent, so a redeploy never clobbers live secrets.
-    remote_sudo "test -f ${CONFIG_DIR}/${APP_NAME}.env || cat > ${CONFIG_DIR}/${APP_NAME}.env <<ENVEOF
+    remote_sudo "test -f ${APP_DIR}/.env || cat > ${APP_DIR}/.env <<ENVEOF
 # botginx environment. Secrets belong here, not in config.yaml or git.
 DATABASE_URL=${db_url}
 ANTIBOT_WEBHOOK_SECRET=${webhook_secret}
@@ -341,9 +341,9 @@ TG_SUPPORT_CHAT_ID=-5518056987
 # Hosting module: AES-256-GCM encryption key for HestiaCP passwords
 HOSTING_ENCRYPTION_KEY=${encryption_key}
 ENVEOF"
-    remote_sudo "chown root:${RUN_USER} ${CONFIG_DIR}/${APP_NAME}.env"
-    remote_sudo "chmod 640 ${CONFIG_DIR}/${APP_NAME}.env"
-    ok "env file at ${CONFIG_DIR}/${APP_NAME}.env"
+    remote_sudo "chown ${RUN_USER}:${RUN_USER} ${APP_DIR}/.env"
+    remote_sudo "chmod 600 ${APP_DIR}/.env"
+    ok "env file at ${APP_DIR}/.env"
 
     if [[ -n "$PANEL_DOMAIN" ]]; then
         step "Configuring nginx for ${PANEL_DOMAIN}"
@@ -490,7 +490,7 @@ User=${RUN_USER}
 Group=${RUN_USER}
 WorkingDirectory=${APP_DIR}
 ExecStart=${APP_DIR}/bin/${APP_NAME} -config ${CONFIG_DIR}/config.yaml
-EnvironmentFile=${CONFIG_DIR}/${APP_NAME}.env
+EnvironmentFile=${APP_DIR}/.env
 
 Restart=always
 RestartSec=5

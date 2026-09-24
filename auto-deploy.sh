@@ -23,7 +23,7 @@ mkdir -p "$APP_DIR/logs"
 
 # Cron has no environment — load GITHUB_TOKEN from env file.
 # shellcheck disable=SC1091
-[ -f "$CONFIG_DIR/botginx.env" ] && . "$CONFIG_DIR/botginx.env"
+[ -f "$APP_DIR/.env" ] && . "$APP_DIR/.env"
 
 # Detect architecture
 case "$(uname -m)" in
