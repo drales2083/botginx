@@ -156,6 +156,29 @@
     </div>
 </div>
 
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Traffic Sources (UTM)</h6></div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0" id="sources-table" data-datatable data-per-page="10">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Medium</th>
+                            <th>Campaign</th>
+                            <th class="text-end">Visits</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sources-tbody">
+                        <tr><td colspan="4" class="text-muted text-center py-3">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -537,6 +560,28 @@ async function refreshReferrers() {
     } catch (e) {}
 }
 
+// Refresh Traffic Sources table
+async function refreshSources() {
+    try {
+        const res = await fetch(`/user/analytics/api/link/${linkId}/sources`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const tbody = document.getElementById('sources-tbody');
+        if (!tbody || !data.sources) return;
+        tbody.innerHTML = data.sources.length ? data.sources.map(s => `
+            <tr>
+                <td>${s.source || '-'}</td>
+                <td>${s.medium || '-'}</td>
+                <td>${s.campaign || '-'}</td>
+                <td class="text-end"><span class="badge bg-secondary">${s.count}</span></td>
+            </tr>
+        `).join('') : '<tr><td colspan="4" class="text-muted text-center py-3">No UTM data</td></tr>';
+    } catch (e) {}
+}
+
+// Initial load of sources
+refreshSources();
+
 // Poll every 5 seconds
 setInterval(() => {
     loadBlocklist(); // Refresh blocklist to catch changes
@@ -544,6 +589,7 @@ setInterval(() => {
     refreshVisits();
     refreshOS();
     refreshReferrers();
+    refreshSources();
     const activeBtn = document.querySelector('.period-btn.active');
     if (activeBtn) loadTimeline(activeBtn.dataset.period);
     loadCountryChart();

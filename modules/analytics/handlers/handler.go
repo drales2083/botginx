@@ -327,6 +327,12 @@ func (h *Handler) APIGetReferrers(w http.ResponseWriter, r *http.Request) {
 	h.json(w, http.StatusOK, map[string]interface{}{"referrers": referrers})
 }
 
+func (h *Handler) APIGetSources(w http.ResponseWriter, r *http.Request) {
+	linkID := chi.URLParam(r, "linkId")
+	sources, _ := h.service.GetUTMStats(linkID, 20)
+	h.json(w, http.StatusOK, map[string]interface{}{"sources": sources})
+}
+
 func (h *Handler) APIGetRecentVisits(w http.ResponseWriter, r *http.Request) {
 	linkID := chi.URLParam(r, "linkId")
 	visits, _ := h.service.GetRecentVisits(linkID, 50)
