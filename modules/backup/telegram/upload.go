@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/botginx/botginx/modules/backup/types"
 )
+
+var chunkPattern = regexp.MustCompile(`\.part\d{3}$`)
 
 type UploadOptions struct {
 	Files            []types.BackupFile
@@ -170,7 +173,7 @@ func (c *Client) UploadBackup(ctx context.Context, opts UploadOptions) (*UploadR
 	// Cleanup chunk files
 	for _, item := range uploadQueue {
 		base := filepath.Base(item.path)
-		if len(base) > 8 && base[len(base)-8:len(base)-3] == ".part" {
+		if chunkPattern.MatchString(base) {
 			os.Remove(item.path)
 		}
 	}

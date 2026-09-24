@@ -43,7 +43,7 @@ func ChunkFile(filePath string, chunkSizeMB int) ([]ChunkInfo, error) {
 	if info.Size() <= chunkSize {
 		hash, _ := HashFile(filePath)
 		return []ChunkInfo{{
-			Part:   0,
+			Part:   1,
 			Name:   filepath.Base(filePath),
 			Path:   filePath,
 			Size:   info.Size(),
@@ -65,34 +65,32 @@ func ChunkFile(filePath string, chunkSizeMB int) ([]ChunkInfo, error) {
 	part := 1
 
 	for {
-		n, err := file.Read(buf)
-		if n == 0 {
+		n, readErr := file.Read(buf)
+		if n > 0 {
+			chunkName := fmt.Sprintf("%s.part%03d", baseName, part)
+			chunkPath := filepath.Join(dir, chunkName)
+
+			if err := os.WriteFile(chunkPath, buf[:n], 0600); err != nil {
+				return nil, err
+			}
+
+			hash, _ := HashFile(chunkPath)
+			chunks = append(chunks, ChunkInfo{
+				Part:   part,
+				Name:   chunkName,
+				Path:   chunkPath,
+				Size:   int64(n),
+				SHA256: hash,
+			})
+
+			part++
+		}
+
+		if readErr == io.EOF {
 			break
 		}
-
-		chunkName := fmt.Sprintf("%s.part%03d", baseName, part)
-		chunkPath := filepath.Join(dir, chunkName)
-
-		if err := os.WriteFile(chunkPath, buf[:n], 0600); err != nil {
-			return nil, err
-		}
-
-		hash, _ := HashFile(chunkPath)
-		chunks = append(chunks, ChunkInfo{
-			Part:   part,
-			Name:   chunkName,
-			Path:   chunkPath,
-			Size:   int64(n),
-			SHA256: hash,
-		})
-
-		part++
-
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
+		if readErr != nil {
+			return nil, readErr
 		}
 	}
 
