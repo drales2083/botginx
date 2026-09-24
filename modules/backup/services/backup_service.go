@@ -213,7 +213,6 @@ var excludedTables = []string{
 	"short_link_clicks",
 	"visitor_sessions",
 	"hosting_visits",
-	"server_logs",
 	"conversions",
 	"balance_transactions",
 	"crypto_transactions",
