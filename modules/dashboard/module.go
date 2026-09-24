@@ -76,18 +76,6 @@ func (m *Module) Routes() chi.Router {
 	return r
 }
 
-func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
-	if section == module.MenuSectionAdmin {
-		r := chi.NewRouter()
-		r.Get("/", m.handleAdminAnnouncements)
-		r.Get("/api/list", m.apiListAnnouncements)
-		r.Post("/api/create", m.apiCreateAnnouncement)
-		r.Put("/api/{id}", m.apiUpdateAnnouncement)
-		r.Delete("/api/{id}", m.apiDeleteAnnouncement)
-		return r
-	}
-	return m.Routes()
-}
 
 func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	user := ctx.GetUser(r)
@@ -223,13 +211,6 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/dashboard",
 			Order:   0,
 			Section: module.MenuSectionUser,
-		},
-		{
-			Title:   "Announcements",
-			Icon:    "bi-megaphone",
-			Path:    "/admin/dashboard",
-			Order:   90,
-			Section: module.MenuSectionAdmin,
 		},
 	}
 }
@@ -439,90 +420,3 @@ func (m *Module) apiVisitors(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(points)
 }
 
-// Admin handlers for announcements
-
-func (m *Module) handleAdminAnnouncements(w http.ResponseWriter, r *http.Request) {
-	module.Render(w, r, m.templates, "dashboard:admin_announcements.html", map[string]interface{}{
-		"Title": "Announcements",
-	})
-}
-
-func (m *Module) apiListAnnouncements(w http.ResponseWriter, r *http.Request) {
-	var items []announcement
-	m.DB().Select(&items, `
-		SELECT id, title, body, badge, is_pinned, published_at
-		FROM announcements
-		ORDER BY is_pinned DESC, published_at DESC
-	`)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(items)
-}
-
-func (m *Module) apiCreateAnnouncement(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Title    string  `json:"title"`
-		Body     string  `json:"body"`
-		Badge    *string `json:"badge"`
-		IsPinned bool    `json:"is_pinned"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
-		return
-	}
-
-	id := time.Now().Format("20060102150405")
-	_, err := m.DB().Exec(`
-		INSERT INTO announcements (id, title, body, badge, is_pinned, published_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
-	`, id, req.Title, req.Body, req.Badge, req.IsPinned)
-
-	if err != nil {
-		http.Error(w, `{"error":"database error"}`, http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "id": id})
-}
-
-func (m *Module) apiUpdateAnnouncement(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-
-	var req struct {
-		Title    string  `json:"title"`
-		Body     string  `json:"body"`
-		Badge    *string `json:"badge"`
-		IsPinned bool    `json:"is_pinned"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
-		return
-	}
-
-	_, err := m.DB().Exec(`
-		UPDATE announcements SET title = $2, body = $3, badge = $4, is_pinned = $5
-		WHERE id = $1
-	`, id, req.Title, req.Body, req.Badge, req.IsPinned)
-
-	if err != nil {
-		http.Error(w, `{"error":"database error"}`, http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"ok":true}`))
-}
-
-func (m *Module) apiDeleteAnnouncement(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-
-	_, err := m.DB().Exec(`DELETE FROM announcements WHERE id = $1`, id)
-	if err != nil {
-		http.Error(w, `{"error":"database error"}`, http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"ok":true}`))
-}

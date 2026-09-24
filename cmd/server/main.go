@@ -15,6 +15,7 @@ import (
 
 	"github.com/botginx/botginx/modules/admindash"
 	"github.com/botginx/botginx/modules/analytics"
+	"github.com/botginx/botginx/modules/announcements"
 	"github.com/botginx/botginx/modules/backup"
 	"github.com/botginx/botginx/modules/referrals"
 	analyticshandlers "github.com/botginx/botginx/modules/analytics/handlers"
@@ -302,6 +303,7 @@ func main() {
 	referralsModule := referrals.New()
 
 	registry.Register(admindash.New())           // Admin dashboard (stats)
+	registry.Register(announcements.New())       // News announcements (admin)
 	registry.Register(referralsModule)           // Referral commission system
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
 
