@@ -63,18 +63,18 @@
 <div class="row g-3">
     <!-- News Feed Column -->
     <div class="col-lg-8">
-        <div class="card h-100">
+        <div class="card">
             <div class="card-header">
                 <h3 class="card-title"><i class="bi bi-newspaper me-2"></i>What's New</h3>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
                 {{if .Announcements}}
                 <div class="list-group list-group-flush">
                     {{range .Announcements}}
                     <div class="list-group-item">
                         <div class="d-flex w-100 justify-content-between align-items-start">
                             <div>
-                                <h6 class="mb-1">
+                                <h6 class="mb-1 fw-bold">
                                     {{.Title}}
                                     {{if .Badge}}
                                     <span class="badge bg-danger ms-1">{{.Badge}}</span>
@@ -83,7 +83,7 @@
                                     <i class="bi bi-pin-angle-fill text-warning ms-1" title="Pinned"></i>
                                     {{end}}
                                 </h6>
-                                <p class="mb-0 text-muted small">{{.Body | safeHTML}}</p>
+                                <div class="text-muted small">{{.Body | safeHTML}}</div>
                             </div>
                             <small class="text-muted text-nowrap ms-3">{{.PublishedAt.Format "Jan 2"}}</small>
                         </div>
@@ -102,7 +102,7 @@
 
     <!-- Account Overview Column -->
     <div class="col-lg-4">
-        <div class="card h-100">
+        <div class="card">
             <div class="card-header">
                 <h3 class="card-title"><i class="bi bi-person-circle me-2"></i>Account Overview</h3>
             </div>
