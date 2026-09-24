@@ -152,6 +152,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/subscription",
 			Order:   85,
 			Section: module.MenuSectionUser,
+			Group:   "Billing",
 		},
 		{
 			Title:   "Settings",
@@ -159,6 +160,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/settings",
 			Order:   90,
 			Section: module.MenuSectionUser,
+			// No group - standalone item
 		},
 	}
 }

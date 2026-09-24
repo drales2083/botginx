@@ -142,6 +142,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/analytics",
 			Order:   25,
 			Section: module.MenuSectionUser,
+			Group:   "Infrastructure",
 		},
 	}
 }

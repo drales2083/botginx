@@ -91,6 +91,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/iplists/whitelist",
 			Order:   35,
 			Section: module.MenuSectionUser,
+			Group:   "Infrastructure",
 		},
 	}
 }

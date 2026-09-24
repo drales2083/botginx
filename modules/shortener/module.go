@@ -118,6 +118,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/shortener",
 			Order:   10,
 			Section: module.MenuSectionUser,
+			Group:   "Links",
 		},
 	}
 }

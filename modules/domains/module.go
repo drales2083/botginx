@@ -169,6 +169,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/domains",
 			Order:   35,
 			Section: module.MenuSectionUser,
+			Group:   "Infrastructure",
 		},
 		{
 			Title:   "Shared Domains",

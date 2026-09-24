@@ -100,11 +100,12 @@ func (m *Module) AdminRoutes() chi.Router {
 func (m *Module) MenuItems() []module.MenuItem {
 	return []module.MenuItem{
 		{
-			Title:   "Help",
+			Title:   "FAQ",
 			Icon:    "bi-question-circle",
 			Path:    "/user/help",
-			Order:   86, // After Subscription (85), before Settings (90)
+			Order:   86,
 			Section: module.MenuSectionUser,
+			Group:   "Help",
 		},
 	}
 }

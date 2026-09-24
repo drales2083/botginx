@@ -59,6 +59,7 @@ type MenuItem struct {
 	Order    int         // Sort order
 	Section  MenuSection // admin or user section
 	Hidden   bool        // If true, routes mount but menu item doesn't show
+	Group    string      // Group name for collapsible menus (Links, Infrastructure, Billing, Help)
 }
 
 // Widget for dashboard
@@ -133,7 +134,7 @@ func (r *Registry) CollectMenuItems() []MenuItem {
 	return items
 }
 
-// CollectMenuBySection returns menu items for a specific section
+// CollectMenuBySection returns menu items for a specific section, grouped by Group field
 func (r *Registry) CollectMenuBySection(section MenuSection) []MenuItem {
 	var items []MenuItem
 	for _, m := range r.All() {
@@ -144,7 +145,68 @@ func (r *Registry) CollectMenuBySection(section MenuSection) []MenuItem {
 		}
 	}
 	sortMenuItems(items)
-	return items
+	return groupMenuItems(items)
+}
+
+// groupMenuItems organizes items into collapsible groups
+func groupMenuItems(items []MenuItem) []MenuItem {
+	// Define group metadata (order, icon)
+	groupMeta := map[string]struct {
+		Icon  string
+		Order int
+	}{
+		"Links":          {Icon: "bi-link-45deg", Order: 10},
+		"Infrastructure": {Icon: "bi-server", Order: 30},
+		"Billing":        {Icon: "bi-wallet2", Order: 40},
+		"Help":           {Icon: "bi-question-circle", Order: 50},
+	}
+
+	// Separate grouped and ungrouped items
+	groups := make(map[string][]MenuItem)
+	var ungrouped []MenuItem
+
+	for _, item := range items {
+		if item.Group != "" {
+			groups[item.Group] = append(groups[item.Group], item)
+		} else {
+			ungrouped = append(ungrouped, item)
+		}
+	}
+
+	// Build result: ungrouped items + group parents with children
+	var result []MenuItem
+
+	// Add ungrouped items first (they keep their original order)
+	for _, item := range ungrouped {
+		result = append(result, item)
+	}
+
+	// Add grouped items as collapsible parents
+	for groupName, children := range groups {
+		meta, ok := groupMeta[groupName]
+		if !ok {
+			meta = struct {
+				Icon  string
+				Order int
+			}{Icon: "bi-folder", Order: 99}
+		}
+
+		// Sort children by their order
+		sortMenuItems(children)
+
+		parent := MenuItem{
+			Title:    groupName,
+			Icon:     meta.Icon,
+			Path:     "#", // No direct path, just expands
+			Order:    meta.Order,
+			Children: children,
+		}
+		result = append(result, parent)
+	}
+
+	// Sort final result by order
+	sortMenuItems(result)
+	return result
 }
 
 // CollectWidgets returns all dashboard widgets

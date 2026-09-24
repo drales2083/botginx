@@ -210,28 +210,35 @@
         <nav class="mt-2">
           <!-- User Section -->
           {{if .UserMenu}}
-          <ul class="nav sidebar-menu flex-column" role="menu">
+          <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu">
             {{range .UserMenu}}
             {{if not .Hidden}}
+            {{if .Children}}
             <li class="nav-item">
-              <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
+              <a href="#" class="nav-link">
                 <i class="nav-icon bi {{.Icon}}"></i>
-                <p>{{.Title}}</p>
-                {{if .Badge}}<span class="badge bg-primary ms-auto">{{.Badge}}</span>{{end}}
+                <p>{{.Title}}<i class="nav-arrow bi bi-chevron-right"></i></p>
               </a>
-              {{if .Children}}
               <ul class="nav nav-treeview">
                 {{range .Children}}
                 <li class="nav-item">
-                  <a href="{{.Path}}" class="nav-link">
+                  <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
                     <i class="nav-icon bi {{.Icon}}"></i>
                     <p>{{.Title}}</p>
                   </a>
                 </li>
                 {{end}}
               </ul>
-              {{end}}
             </li>
+            {{else}}
+            <li class="nav-item">
+              <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
+                <i class="nav-icon bi {{.Icon}}"></i>
+                <p>{{.Title}}</p>
+                {{if .Badge}}<span class="badge bg-primary ms-auto">{{.Badge}}</span>{{end}}
+              </a>
+            </li>
+            {{end}}
             {{end}}
             {{end}}
           </ul>

@@ -490,6 +490,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/referrals",
 			Order:   50,
 			Section: module.MenuSectionUser,
+			Group:   "Billing",
 		},
 		{
 			Title:   "Referrals",

@@ -93,6 +93,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/support",
 			Order:   85,
 			Section: module.MenuSectionUser,
+			Group:   "Help",
 		},
 		{
 			Title:   "Support",

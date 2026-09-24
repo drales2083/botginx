@@ -128,6 +128,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/redirectlinks",
 			Order:   5,
 			Section: module.MenuSectionUser,
+			Group:   "Links",
 		},
 	}
 }

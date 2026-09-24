@@ -251,6 +251,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/hosting",
 			Order:   30,
 			Section: module.MenuSectionUser,
+			Group:   "Infrastructure",
 		},
 		{
 			Title:   "Hosting",

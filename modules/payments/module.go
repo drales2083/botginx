@@ -120,6 +120,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Path:    "/user/payments",
 			Order:   25,
 			Section: module.MenuSectionUser,
+			Group:   "Billing",
 		},
 		{
 			Title:   "Payments",
