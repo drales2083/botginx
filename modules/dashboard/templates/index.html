@@ -1,354 +1,185 @@
 {{define "content"}}
+<!-- KPI Cards Row -->
 <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-md-3">
-        <div class="info-box shadow-sm">
-            <span class="info-box-icon text-bg-success shadow-sm">
-                <i class="bi bi-link-45deg"></i>
-            </span>
-            <div class="info-box-content">
-                <span class="info-box-text">{{t "redirects"}}</span>
-                <span class="info-box-number">{{.Stats.redirectLinks}}</span>
+    <div class="col-6 col-lg-3">
+        <div class="small-box text-bg-primary">
+            <div class="inner">
+                <h3>{{.KPI.domains}}</h3>
+                <p>Domains Owned</p>
             </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-md-3">
-        <div class="info-box shadow-sm">
-            <span class="info-box-icon text-bg-warning shadow-sm">
+            <div class="small-box-icon">
                 <i class="bi bi-globe"></i>
-            </span>
-            <div class="info-box-content">
-                <span class="info-box-text">{{t "domains.title"}}</span>
-                <span class="info-box-number">{{.Stats.domains}}</span>
             </div>
+            <a href="/user/domains" class="small-box-footer">
+                View Domains <i class="bi bi-arrow-right-short"></i>
+            </a>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-md-3">
-        <div class="info-box shadow-sm">
-            <span class="info-box-icon text-bg-info shadow-sm">
-                <i class="bi bi-cloud-check-fill"></i>
-            </span>
-            <div class="info-box-content">
-                <span class="info-box-text">{{t "live"}}</span>
-                <span class="info-box-number">{{.Stats.live}}</span>
+    <div class="col-6 col-lg-3">
+        <div class="small-box text-bg-danger">
+            <div class="inner">
+                <h3>{{.KPI.botsDetected}}</h3>
+                <p>Bots Blocked</p>
             </div>
+            <div class="small-box-icon">
+                <i class="bi bi-robot"></i>
+            </div>
+            <a href="#" class="small-box-footer" onclick="resetStat('bots'); return false;">
+                <i class="bi bi-trash"></i> Reset Counter
+            </a>
         </div>
     </div>
-    {{if .Hosting.available}}
-    <div class="col-12 col-sm-6 col-md-3">
-        <div class="info-box shadow-sm">
-            <span class="info-box-icon text-bg-secondary shadow-sm">
-                <i class="bi bi-hdd-rack-fill"></i>
-            </span>
-            <div class="info-box-content">
-                <span class="info-box-text">Hosting Accounts</span>
-                <span class="info-box-number">{{.Hosting.activeCount}}</span>
+    <div class="col-6 col-lg-3">
+        <div class="small-box text-bg-success">
+            <div class="inner">
+                <h3>{{.KPI.humansVerified}}</h3>
+                <p>Humans Verified</p>
             </div>
+            <div class="small-box-icon">
+                <i class="bi bi-person-check"></i>
+            </div>
+            <a href="#" class="small-box-footer" onclick="resetStat('humans'); return false;">
+                <i class="bi bi-trash"></i> Reset Counter
+            </a>
         </div>
     </div>
-    {{end}}
+    <div class="col-6 col-lg-3">
+        <div class="small-box text-bg-warning">
+            <div class="inner">
+                <h3>{{.KPI.subDaysLeft}}</h3>
+                <p>Days Left</p>
+            </div>
+            <div class="small-box-icon">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+            <a href="/user/subscription" class="small-box-footer">
+                Manage Plan <i class="bi bi-arrow-right-short"></i>
+            </a>
+        </div>
+    </div>
 </div>
 
-<!-- Hosting Section -->
-{{if .Hosting.available}}
-<div class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-shield-fill-check me-2"></i>Bullet Proof Hosting</h5>
-                <a href="/user/hosting/buy" class="btn btn-sm btn-primary">
-                    <i class="bi bi-plus-lg me-1"></i>Buy Hosting
-                </a>
+<!-- Main Content Row -->
+<div class="row g-3">
+    <!-- News Feed Column -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <h3 class="card-title"><i class="bi bi-newspaper me-2"></i>What's New</h3>
             </div>
-            <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-secondary bg-opacity-10 p-3 me-3">
-                                <i class="bi bi-hdd-rack text-secondary" style="font-size:1.5rem"></i>
-                            </div>
+            <div class="card-body p-0">
+                {{if .Announcements}}
+                <div class="list-group list-group-flush">
+                    {{range .Announcements}}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between align-items-start">
                             <div>
-                                <h4 class="mb-0">{{.Hosting.activeCount}}</h4>
-                                <small class="text-muted">Active Accounts</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-primary bg-opacity-10 p-3 me-3">
-                                <i class="bi bi-globe text-primary" style="font-size:1.5rem"></i>
-                            </div>
-                            <div>
-                                <h4 class="mb-0">{{.Hosting.hostingDomains}}</h4>
-                                <small class="text-muted">Hosting Domains</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-success bg-opacity-10 p-3 me-3">
-                                <i class="bi bi-check-circle text-success" style="font-size:1.5rem"></i>
-                            </div>
-                            <div>
-                                <h4 class="mb-0">{{.Hosting.accountCount}}</h4>
-                                <small class="text-muted">Total Accounts</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {{if .Hosting.accounts}}
-                <hr>
-                <div class="row g-3">
-                    {{range .Hosting.accounts}}
-                    <div class="col-md-4">
-                        <div class="card h-100 {{if eq .Status "active"}}border-success{{else}}border-warning{{end}}">
-                            <div class="card-body py-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{.PackageName}}</strong>
-                                        <br><small class="text-muted">{{.DomainCount}} domain{{if gt .DomainCount 1}}s{{end}}</small>
-                                    </div>
-                                    {{if eq .Status "active"}}
-                                    <span class="badge bg-success">Active</span>
-                                    {{else}}
-                                    <span class="badge bg-warning">{{.Status}}</span>
+                                <h6 class="mb-1">
+                                    {{.Title}}
+                                    {{if .Badge}}
+                                    <span class="badge bg-danger ms-1">{{.Badge}}</span>
                                     {{end}}
-                                </div>
+                                    {{if .IsPinned}}
+                                    <i class="bi bi-pin-angle-fill text-warning ms-1" title="Pinned"></i>
+                                    {{end}}
+                                </h6>
+                                <p class="mb-0 text-muted small">{{.Body | safeHTML}}</p>
                             </div>
+                            <small class="text-muted text-nowrap ms-3">{{.PublishedAt.Format "Jan 2"}}</small>
                         </div>
                     </div>
                     {{end}}
                 </div>
                 {{else}}
-                <hr>
-                <p class="text-muted mb-0 text-center">
-                    <i class="bi bi-shield-plus me-1"></i>
-                    No hosting accounts yet. <a href="/user/hosting/buy">Get bulletproof hosting</a> for your domains.
-                </p>
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-inbox" style="font-size:2.5rem"></i>
+                    <p class="mt-2 mb-0">No announcements yet</p>
+                </div>
                 {{end}}
             </div>
         </div>
     </div>
-</div>
-{{end}}
 
-<!-- Traffic Analytics -->
-<div class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0"><i class="bi bi-graph-up me-2"></i>Traffic Overview</h5>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-primary period-btn active" data-period="hourly">24 Hours</button>
-                    <button class="btn btn-outline-primary period-btn" data-period="daily">7 Days</button>
-                    <button class="btn btn-outline-primary period-btn" data-period="monthly">12 Months</button>
-                </div>
+    <!-- Account Overview Column -->
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h3 class="card-title"><i class="bi bi-person-circle me-2"></i>Account Overview</h3>
             </div>
             <div class="card-body">
-                <canvas id="traffic-chart" height="280"></canvas>
-                <div id="chart-empty" class="text-center text-muted py-5 d-none">
-                    <i class="bi bi-graph-up" style="font-size:3rem"></i>
-                    <p class="mt-2 mb-0">No traffic data yet</p>
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted">Plan</td>
+                        <td class="text-end fw-bold">{{.Account.plan}}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Balance</td>
+                        <td class="text-end fw-bold text-success">${{printf "%.2f" .Account.balance}}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Referral Earnings</td>
+                        <td class="text-end fw-bold">${{printf "%.2f" .Account.referralEarnings}}</td>
+                    </tr>
+                </table>
+                <hr>
+                <div class="d-grid gap-2">
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" id="referral-link" data-code="{{.Account.referralCode}}" readonly>
+                        <button class="btn btn-outline-secondary" type="button" onclick="copyReferral()">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted text-center">Share your referral link to earn commissions</small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between">
+                    <a href="/user/payments" class="btn btn-sm btn-success">
+                        <i class="bi bi-plus-lg me-1"></i>Deposit
+                    </a>
+                    <a href="/user/referrals" class="btn btn-sm btn-outline-primary">
+                        View Referrals
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<!-- Visitor Map -->
-<div class="row g-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0"><i class="bi bi-geo-alt me-2"></i>Visitor Map</h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="vmap-layout">
-                    <div class="vmap-container">
-                        <div id="visitor-map" class="vmap-host"></div>
-                        <div class="vmap-legend">
-                            <div class="row"><span class="dot" style="background:#22d3ee"></span> Allowed</div>
-                            <div class="row"><span class="dot" style="background:#ef4444"></span> Blocked</div>
-                        </div>
-                        <div id="map-empty" class="vmap-empty d-none">No geolocated visits yet</div>
-                    </div>
-                    <div class="vmap-sidebar">
-                        <h4>Top Countries</h4>
-                        <div id="country-list">
-                            <div class="text-muted small text-center py-3">Loading...</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<style>
-.vmap-layout { display:flex; gap:0; height:420px; }
-.vmap-container { flex:1; min-width:0; position:relative; }
-.vmap-host { width:100%; height:420px; }
-.vmap-sidebar { width:200px; flex-shrink:0; padding:16px; overflow-y:auto; border-left:1px solid var(--bs-border-color); }
-@media(max-width:768px) { .vmap-layout{flex-direction:column;height:auto;} .vmap-host{height:300px;} .vmap-sidebar{width:100%;max-height:200px;border-left:none;border-top:1px solid var(--bs-border-color);} }
-.vmap-legend { position:absolute; bottom:10px; left:10px; z-index:1000; border-radius:6px; padding:6px 10px; font-size:11px; background:rgba(15,23,42,.85); border:1px solid rgba(255,255,255,.08); color:#d1d5db; }
-.vmap-legend .row { display:flex; align-items:center; gap:6px; margin-bottom:2px; }
-.vmap-legend .row:last-child { margin-bottom:0; }
-.vmap-legend .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
-.vmap-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#6b7280; font-size:13px; pointer-events:none; background:rgba(0,0,0,.3); }
-.vmap-sidebar h4 { font-size:10px; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; margin:0 0 12px; }
-.vmap-country-row { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-radius:5px; margin-bottom:2px; }
-.vmap-country-row:hover { background:rgba(255,255,255,.04); }
-.vmap-country-row .left { display:flex; align-items:center; gap:8px; font-size:13px; }
-.vmap-country-row .count { font-size:12px; color:#9ca3af; }
-.leaflet-popup-content-wrapper { background:rgba(15,23,42,.92)!important; color:#e2e8f0!important; border:1px solid rgba(255,255,255,.1)!important; border-radius:8px!important; }
-.leaflet-popup-tip { background:rgba(15,23,42,.92)!important; }
-.leaflet-control-zoom a { background:rgba(15,23,42,.8)!important; color:#e2e8f0!important; border-color:rgba(255,255,255,.1)!important; }
-.marker-cluster-small { background:rgba(34,211,238,.25)!important; }
-.marker-cluster-small div { background:rgba(34,211,238,.6)!important; color:#fff!important; }
-.marker-cluster-medium { background:rgba(16,185,129,.25)!important; }
-.marker-cluster-medium div { background:rgba(16,185,129,.6)!important; color:#fff!important; }
-.marker-cluster-large { background:rgba(245,158,11,.25)!important; }
-.marker-cluster-large div { background:rgba(245,158,11,.6)!important; color:#fff!important; }
-</style>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
 <script>
-// Flag emoji from country code
-function flagEmoji(code) {
-    if (!code || code.length !== 2) return '🌐';
-    return String.fromCodePoint(code.charCodeAt(0)+127397, code.charCodeAt(1)+127397);
-}
-
-// Traffic Chart
-let trafficChart = null;
-
-async function loadChart(period) {
-    const res = await fetch('/user/dashboard/api/timeline?period=' + period);
-    const data = await res.json();
-
-    const canvas = document.getElementById('traffic-chart');
-    const empty = document.getElementById('chart-empty');
-
-    if (!data || data.length === 0) {
-        canvas.style.display = 'none';
-        empty.classList.remove('d-none');
-        return;
-    }
-    canvas.style.display = 'block';
-    empty.classList.add('d-none');
-
-    const labels = data.map(d => {
-        if (period === 'monthly') return d.time;
-        if (period === 'daily') return d.time.slice(5);
-        return d.time.slice(11, 16);
-    });
-
-    if (trafficChart) trafficChart.destroy();
-
-    trafficChart = new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'Total Visitors', data: data.map(d => d.total), borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,.1)', fill: true, tension: .3 },
-                { label: 'Blocked', data: data.map(d => d.blocked), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.1)', fill: true, tension: .3 },
-                { label: 'Unique', data: data.map(d => d.unique), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.1)', fill: true, tension: .3 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { intersect: false, mode: 'index' },
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: true } }
-        }
-    });
-}
-
-document.querySelectorAll('.period-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        loadChart(btn.dataset.period);
-    });
-});
-
-// Visitor Map
-let visitorMap = null;
-
-async function loadMap() {
-    const [pointsRes, countriesRes] = await Promise.all([
-        fetch('/user/dashboard/api/visitors'),
-        fetch('/user/dashboard/api/countries')
-    ]);
-    const points = await pointsRes.json();
-    const countries = await countriesRes.json();
-
-    const mapEl = document.getElementById('visitor-map');
-    const empty = document.getElementById('map-empty');
-    const countryList = document.getElementById('country-list');
-
-    // Country sidebar
-    if (!countries || countries.length === 0) {
-        countryList.innerHTML = '<div class="text-muted small text-center py-3">No visitors yet</div>';
-    } else {
-        countryList.innerHTML = countries.slice(0, 12).map(c => `
-            <div class="vmap-country-row">
-                <div class="left">
-                    <span>${flagEmoji(c.country)}</span>
-                    <span>${c.country || '—'}</span>
-                </div>
-                <span class="count">${c.count}</span>
-            </div>
-        `).join('');
-    }
-
-    // Map
-    if (!points || points.length === 0) {
-        empty.classList.remove('d-none');
-    } else {
-        empty.classList.add('d-none');
-    }
-
-    if (visitorMap) visitorMap.remove();
-
-    visitorMap = L.map('visitor-map', { center: [20, 0], zoom: 2, minZoom: 2, maxZoom: 12, zoomControl: true, attributionControl: false });
-
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }).addTo(visitorMap);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, pane: 'overlayPane' }).addTo(visitorMap);
-
-    if (points && points.length > 0) {
-        const cluster = L.markerClusterGroup({ maxClusterRadius: 40, showCoverageOnHover: false, spiderfyOnMaxZoom: true, zoomToBoundsOnClick: true });
-        const heat = [];
-        const jitter = () => (Math.random() - 0.5) * 0.001;
-
-        points.forEach(p => {
-            const color = p.blocked ? '#ef4444' : '#22d3ee';
-            const m = L.circleMarker([p.lat + jitter(), p.lng + jitter()], { radius: 6, fillColor: color, color: color, weight: 2, opacity: .6, fillOpacity: .8 });
-            const where = [p.city, p.country].filter(Boolean).join(', ') || 'Unknown';
-            m.bindPopup(`<div style="font-weight:600">${flagEmoji(p.country)} ${where}</div><div style="margin-top:4px"><span style="background:${p.blocked?'rgba(239,68,68,.25)':'rgba(34,211,238,.25)'};color:${p.blocked?'#f87171':'#22d3ee'};padding:2px 6px;border-radius:4px;font-size:10px">${p.blocked?'blocked':'allowed'}</span></div>`, { closeButton: false });
-            cluster.addLayer(m);
-            heat.push([p.lat, p.lng, p.blocked ? 0.8 : 0.4]);
-        });
-
-        visitorMap.addLayer(cluster);
-        L.heatLayer(heat, { radius: 25, blur: 18, maxZoom: 8, gradient: { 0.2: '#22d3ee', 0.5: '#10b981', 0.8: '#ef4444', 1.0: '#ef4444' } }).addTo(visitorMap);
-
-        const bounds = cluster.getBounds();
-        if (bounds.isValid()) visitorMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 5 });
-    }
-}
-
-// Init
+// Set referral link on load
 document.addEventListener('DOMContentLoaded', () => {
-    loadChart('hourly');
-    loadMap();
+    const input = document.getElementById('referral-link');
+    const code = input.dataset.code;
+    input.value = window.location.origin + '/auth/signup?ref=' + code;
 });
+
+// Reset stat counter
+async function resetStat(metric) {
+    if (!confirm('Reset ' + metric + ' counter to 0?')) return;
+    try {
+        const res = await fetch('/user/dashboard/api/reset-stat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ metric: metric })
+        });
+        if (res.ok) {
+            showToast('Counter reset', 'success');
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast('Failed to reset', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+}
+
+// Copy referral link
+function copyReferral() {
+    const input = document.getElementById('referral-link');
+    input.select();
+    document.execCommand('copy');
+    showToast('Referral link copied!', 'success');
+}
 </script>
 {{end}}

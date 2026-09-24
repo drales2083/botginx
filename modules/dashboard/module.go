@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
+	"time"
 
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
@@ -13,6 +14,9 @@ import (
 
 //go:embed templates/*.html
 var templatesFS embed.FS
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
 // Module implements the dashboard feature
 type Module struct {
@@ -42,8 +46,12 @@ func (m *Module) Init(deps *module.Dependencies) error {
 }
 
 func (m *Module) Migrate() error {
-	// No migrations for dashboard
-	return nil
+	sql, err := migrationsFS.ReadFile("migrations/001_dashboard_stats.sql")
+	if err != nil {
+		return err
+	}
+	_, err = m.DB().Exec(string(sql))
+	return err
 }
 
 func (m *Module) Routes() chi.Router {
@@ -51,142 +59,134 @@ func (m *Module) Routes() chi.Router {
 
 	r.Get("/", m.handleDashboard)
 
-	// API endpoints for charts
+	// API endpoints
 	r.Get("/api/timeline", m.apiTimeline)
 	r.Get("/api/countries", m.apiCountries)
 	r.Get("/api/visitors", m.apiVisitors)
+	r.Post("/api/reset-stat", m.apiResetStat)
 
 	return r
 }
 
 func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
-	userID := ctx.GetUserID(r)
+	user := ctx.GetUser(r)
+	userID := user.ID
+
+	// Subscription info
+	var subDaysLeft int
+	var subStatus string
+	m.DB().Get(&subDaysLeft, `
+		SELECT GREATEST(0, EXTRACT(DAY FROM (expires_at - NOW()))::INT)
+		FROM subscriptions WHERE user_id = $1 AND status = 'active'
+		ORDER BY expires_at DESC LIMIT 1
+	`, userID)
+	m.DB().Get(&subStatus, `
+		SELECT COALESCE(status, 'none') FROM subscriptions
+		WHERE user_id = $1 ORDER BY expires_at DESC LIMIT 1
+	`, userID)
+
+	// KPI stats
+	var domains, botsDetected, humansVerified int64
+	m.DB().Get(&domains, `SELECT COUNT(*) FROM domains WHERE user_id = $1 AND is_shared = FALSE`, userID)
+	m.DB().Get(&botsDetected, `SELECT COALESCE(bots_detected, 0) FROM users WHERE id = $1`, userID)
+	m.DB().Get(&humansVerified, `SELECT COALESCE(humans_verified, 0) FROM users WHERE id = $1`, userID)
+
+	// Account overview
+	var balance, referralEarnings float64
+	var planName string
+	m.DB().Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
+	m.DB().Get(&referralEarnings, `
+		SELECT COALESCE(SUM(amount), 0) FROM balance_transactions
+		WHERE user_id = $1 AND type = 'referral_commission'
+	`, userID)
+	m.DB().Get(&planName, `
+		SELECT COALESCE(p.name, 'Free') FROM subscriptions s
+		LEFT JOIN subscription_plans p ON p.id = s.plan_id
+		WHERE s.user_id = $1 AND s.status = 'active'
+		ORDER BY s.expires_at DESC LIMIT 1
+	`, userID)
+	if planName == "" {
+		planName = "Free"
+	}
+
+	// Referral link
+	var referralCode string
+	m.DB().Get(&referralCode, `SELECT COALESCE(referral_code, '') FROM users WHERE id = $1`, userID)
+	if referralCode == "" {
+		referralCode = userID[:8]
+	}
+
+	// News feed
+	announcements := m.getAnnouncements()
+
 	module.RenderUserSection(w, r, m.templates, "dashboard:index.html", map[string]interface{}{
-		"Title":   "Dashboard",
-		"Stats":   m.stats(userID),
-		"Domains": m.recentDomains(userID),
-		"Links":   m.recentLinks(userID),
-		"Hosting": m.hostingStats(userID),
+		"Title": "Dashboard",
+		"KPI": map[string]interface{}{
+			"domains":        domains,
+			"botsDetected":   botsDetected,
+			"humansVerified": humansVerified,
+			"subDaysLeft":    subDaysLeft,
+		},
+		"Account": map[string]interface{}{
+			"plan":             planName,
+			"balance":          balance,
+			"referralEarnings": referralEarnings,
+			"referralCode":     referralCode,
+		},
+		"SubStatus":     subStatus,
+		"Announcements": announcements,
 	})
 }
 
-// stats counts what the dashboard boxes show. A failed query leaves its counter
-// at zero rather than failing the page -- the dashboard is a summary, and one
-// bad count is not worth an error screen.
-func (m *Module) stats(userID string) map[string]interface{} {
-	var redirectLinks, domains, live int
+type announcement struct {
+	ID          string    `db:"id"`
+	Title       string    `db:"title"`
+	Body        string    `db:"body"`
+	Badge       *string   `db:"badge"`
+	IsPinned    bool      `db:"is_pinned"`
+	PublishedAt time.Time `db:"published_at"`
+}
 
-	m.DB().Get(&redirectLinks,
-		`SELECT COUNT(*) FROM redirect_links WHERE user_id = $1 AND is_active = true`, userID)
+func (m *Module) getAnnouncements() []announcement {
+	var items []announcement
+	m.DB().Select(&items, `
+		SELECT id, title, body, badge, is_pinned, published_at
+		FROM announcements
+		ORDER BY is_pinned DESC, published_at DESC
+		LIMIT 10
+	`)
+	return items
+}
 
-	// Shared platform domains belong to the admin pool, not to this user.
-	m.DB().Get(&domains,
-		`SELECT COUNT(*) FROM domains WHERE user_id = $1 AND is_shared = FALSE`, userID)
+func (m *Module) apiResetStat(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
 
-	m.DB().Get(&live,
-		`SELECT COUNT(*) FROM redirect_links WHERE user_id = $1 AND deploy_status = 'deployed' AND is_active = true`, userID)
-
-	return map[string]interface{}{
-		"redirectLinks": redirectLinks,
-		"domains":       domains,
-		"live":          live,
+	var req struct {
+		Metric string `json:"metric"`
 	}
-}
-
-type recentDomain struct {
-	ID        string `db:"id"`
-	Name      string `db:"name"`
-	SSLStatus string `db:"ssl_status"`
-}
-
-func (m *Module) recentDomains(userID string) []recentDomain {
-	var domains []recentDomain
-	m.DB().Select(&domains, `
-		SELECT id, name, ssl_status
-		FROM domains
-		WHERE user_id = $1 AND is_shared = FALSE
-		ORDER BY created_at DESC
-		LIMIT 5
-	`, userID)
-	return domains
-}
-
-type recentLink struct {
-	ID           string `db:"id"`
-	Subdomain    string `db:"subdomain"`
-	DomainName   string `db:"domain_name"`
-	Path         string `db:"path"`
-	DeployStatus string `db:"deploy_status"`
-}
-
-func (m *Module) recentLinks(userID string) []recentLink {
-	var links []recentLink
-	m.DB().Select(&links, `
-		SELECT r.id, r.subdomain, REGEXP_REPLACE(d.name, '^\*\.', '') as domain_name, r.path, r.deploy_status
-		FROM redirect_links r
-		JOIN domains d ON d.id = r.domain_id
-		WHERE r.user_id = $1 AND r.is_active = true
-		ORDER BY r.created_at DESC
-		LIMIT 5
-	`, userID)
-	return links
-}
-
-type hostingAccount struct {
-	ID          string  `db:"id"`
-	PackageName string  `db:"package_name"`
-	Status      string  `db:"status"`
-	DomainCount int     `db:"domain_count"`
-	Price       float64 `db:"price"`
-}
-
-func (m *Module) hostingStats(userID string) map[string]interface{} {
-	var accountCount, activeCount, hostingDomains, serverCount int
-	var balance float64
-
-	// Check if hosting feature is available (any servers exist)
-	m.DB().Get(&serverCount,
-		`SELECT COUNT(*) FROM hosting_servers WHERE is_active = true`)
-
-	// Count hosting accounts
-	m.DB().Get(&accountCount,
-		`SELECT COUNT(*) FROM hosting_accounts WHERE user_id = $1`, userID)
-
-	// Count active accounts
-	m.DB().Get(&activeCount,
-		`SELECT COUNT(*) FROM hosting_accounts WHERE user_id = $1 AND status = 'active'`, userID)
-
-	// Count hosting domains
-	m.DB().Get(&hostingDomains,
-		`SELECT COUNT(*) FROM hosting_domains hd
-		 JOIN hosting_accounts ha ON ha.id = hd.account_id
-		 WHERE ha.user_id = $1`, userID)
-
-	// Get balance
-	m.DB().Get(&balance,
-		`SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
-
-	// Get recent accounts
-	var accounts []hostingAccount
-	m.DB().Select(&accounts, `
-		SELECT ha.id, hp.name as package_name, ha.status,
-		       (SELECT COUNT(*) FROM hosting_domains WHERE account_id = ha.id) as domain_count,
-		       hp.price_monthly as price
-		FROM hosting_accounts ha
-		JOIN hosting_packages hp ON hp.id = ha.package_id
-		WHERE ha.user_id = $1
-		ORDER BY ha.created_at DESC
-		LIMIT 3
-	`, userID)
-
-	return map[string]interface{}{
-		"available":      serverCount > 0,
-		"accountCount":   accountCount,
-		"activeCount":    activeCount,
-		"hostingDomains": hostingDomains,
-		"balance":        balance,
-		"accounts":       accounts,
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+		return
 	}
+
+	var err error
+	switch req.Metric {
+	case "bots":
+		_, err = m.DB().Exec(`UPDATE users SET bots_detected = 0 WHERE id = $1`, userID)
+	case "humans":
+		_, err = m.DB().Exec(`UPDATE users SET humans_verified = 0 WHERE id = $1`, userID)
+	default:
+		http.Error(w, `{"error":"invalid metric"}`, http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, `{"error":"database error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"ok":true}`))
 }
 
 func (m *Module) Templates() fs.FS {
@@ -325,7 +325,6 @@ type countryStats struct {
 func (m *Module) apiCountries(w http.ResponseWriter, r *http.Request) {
 	userID := ctx.GetUserID(r)
 
-	// Normalize country names to codes for consistent grouping
 	var countries []countryStats
 	m.DB().Select(&countries, `
 		SELECT country, SUM(count) as count FROM (
