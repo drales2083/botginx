@@ -87,7 +87,7 @@ async function loadAnnouncements() {
             <td>${a.is_pinned ? '<i class="bi bi-pin-angle-fill text-warning"></i>' : '-'}</td>
             <td>${new Date(a.published_at).toLocaleDateString()}</td>
             <td>
-                <button class="btn btn-sm btn-outline-primary me-1" onclick='editAnnouncement(${JSON.stringify(a)})'>
+                <button class="btn btn-sm btn-outline-primary me-1" data-item="${btoa(encodeURIComponent(JSON.stringify(a)))}" onclick="editFromData(this)">
                     <i class="bi bi-pencil"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" onclick="deleteAnnouncement('${a.id}')">
@@ -114,6 +114,11 @@ function openModal(item = null) {
     document.getElementById('badge').value = item?.badge || '';
     document.getElementById('is_pinned').checked = item?.is_pinned || false;
     modal.show();
+}
+
+function editFromData(btn) {
+    const item = JSON.parse(decodeURIComponent(atob(btn.dataset.item)));
+    openModal(item);
 }
 
 function editAnnouncement(item) {
