@@ -1,0 +1,318 @@
+{{define "content"}}
+<style>
+.wizard-steps {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+}
+.wizard-steps::before {
+    content: '';
+    position: absolute;
+    top: 1rem;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--bs-border-color);
+    z-index: 0;
+}
+.wizard-steps li {
+    position: relative;
+    z-index: 1;
+    background: var(--bs-body-bg);
+    padding: 0 0.75rem;
+    text-align: center;
+    color: var(--bs-secondary-color);
+    font-size: 0.875rem;
+}
+.wizard-steps li::before {
+    counter-increment: step;
+    content: counter(step);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    margin: 0 auto 0.5rem;
+    border-radius: 50%;
+    background: var(--bs-tertiary-bg);
+    border: 2px solid var(--bs-border-color);
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+}
+.wizard-steps li.active {
+    color: var(--bs-primary);
+    font-weight: 600;
+}
+.wizard-steps li.active::before {
+    background: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: #fff;
+}
+.wizard-steps li.completed::before {
+    background: var(--bs-success);
+    border-color: var(--bs-success);
+    color: #fff;
+    content: '\f633';
+    font-family: 'bootstrap-icons';
+}
+</style>
+
+<div class="card card-primary card-outline">
+    <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-magic me-2"></i>Link Wizard</h3>
+    </div>
+    <div class="card-body">
+        <!-- Wizard Steps -->
+        <ol class="wizard-steps mb-4" id="wizard-steps">
+            <li class="active" data-step="0">Link Details</li>
+            <li data-step="1">Bot Protection</li>
+        </ol>
+
+        <!-- Step 1: Link Details -->
+        <div id="step-1">
+            <div id="error-alert" class="alert alert-danger d-none"></div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="domainId" class="form-label">Domain</label>
+                    <select class="form-select" id="domainId" name="domainId" required>
+                        <option value="">Select domain...</option>
+                        {{range .Domains}}
+                        {{if and .DNSVerified .SSLEnabled}}
+                        <option value="{{.ID}}">{{.Name}}{{if .IsShared}} (shared){{end}}</option>
+                        {{end}}
+                        {{end}}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="subdomain" class="form-label">Subdomain</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="subdomain" name="subdomain"
+                               value="{{.SuggestedSubdomain}}" placeholder="amber-canyon" required>
+                        <button type="button" class="btn btn-outline-secondary" id="btn-random-subdomain">
+                            <i class="bi bi-shuffle"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="path" class="form-label">Path</label>
+                <div class="btn-group mb-2 w-100" role="group">
+                    <input type="radio" class="btn-check" name="pathStyle" id="pathStyleTracking" value="tracking" checked>
+                    <label class="btn btn-outline-secondary" for="pathStyleTracking">
+                        <i class="bi bi-shield-lock me-1"></i>Advanced
+                    </label>
+                    <input type="radio" class="btn-check" name="pathStyle" id="pathStyleSimple" value="simple">
+                    <label class="btn btn-outline-secondary" for="pathStyleSimple">
+                        <i class="bi bi-link-45deg me-1"></i>Simple
+                    </label>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-text">/</span>
+                    <input type="text" class="form-control" id="path" name="path"
+                           value="{{.SuggestedPath}}" placeholder="redirect" required>
+                    <button type="button" class="btn btn-outline-secondary" id="btn-random-path">
+                        <i class="bi bi-shuffle"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Destination URLs</label>
+                <div id="urls-container">
+                    <div class="input-group mb-2">
+                        <input type="url" class="form-control url-input" placeholder="https://example.com" required>
+                        <button type="button" class="btn btn-outline-secondary btn-add-url">
+                            <i class="bi bi-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <small class="text-muted">Add multiple URLs for random rotation</small>
+            </div>
+
+            <div class="mb-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="passParams" name="passParams" checked>
+                    <label class="form-check-label" for="passParams">
+                        Pass query parameters to destination
+                    </label>
+                </div>
+            </div>
+
+            <hr>
+            <div class="d-flex justify-content-between">
+                <a href="/user/redirectlinks" class="btn btn-secondary">Cancel</a>
+                <button type="button" class="btn btn-primary" id="btn-next">
+                    Next<i class="bi bi-arrow-right ms-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Bot Protection -->
+        <div id="step-2" class="d-none">
+            {{template "protection-settings" .}}
+
+            <hr>
+            <div class="d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" id="btn-back">
+                    <i class="bi bi-arrow-left me-1"></i>Previous
+                </button>
+                <button type="button" class="btn btn-success" id="btn-create">
+                    <i class="bi bi-check-lg me-1"></i>Create Link
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Wizard state
+let currentStep = 1;
+let linkData = {};
+
+// Step navigation
+function showStep(step) {
+    currentStep = step;
+    document.getElementById('step-1').classList.toggle('d-none', step !== 1);
+    document.getElementById('step-2').classList.toggle('d-none', step !== 2);
+
+    const steps = document.querySelectorAll('.wizard-steps li');
+    steps.forEach((li, i) => {
+        li.classList.remove('active', 'completed');
+        if (i < step - 1) li.classList.add('completed');
+        if (i === step - 1) li.classList.add('active');
+    });
+}
+
+// Next button
+document.getElementById('btn-next').addEventListener('click', () => {
+    const domainId = document.getElementById('domainId').value;
+    const subdomain = document.getElementById('subdomain').value.trim();
+    const path = document.getElementById('path').value.trim();
+    const urls = Array.from(document.querySelectorAll('.url-input'))
+        .map(i => i.value.trim())
+        .filter(u => u);
+    const passParams = document.getElementById('passParams').checked;
+
+    if (!domainId) {
+        showToast('Please select a domain', 'warning');
+        return;
+    }
+    if (!subdomain) {
+        showToast('Please enter a subdomain', 'warning');
+        return;
+    }
+    if (!path) {
+        showToast('Please enter a path', 'warning');
+        return;
+    }
+    if (urls.length === 0) {
+        showToast('Please enter at least one destination URL', 'warning');
+        return;
+    }
+
+    linkData = { domainId, subdomain, path, urls, passParams, type: 'REDIRECT' };
+    showStep(2);
+});
+
+// Back button
+document.getElementById('btn-back').addEventListener('click', () => showStep(1));
+
+// Create button
+document.getElementById('btn-create').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-create');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+
+    try {
+        const protSettings = window.protectionSettings ? window.protectionSettings.getSettings() : {};
+
+        const linkRes = await fetch('/user/redirectlinks/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(linkData)
+        });
+
+        const linkResult = await linkRes.json();
+        if (!linkRes.ok) {
+            showToast(linkResult.error || 'Failed to create link', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Create Link';
+            return;
+        }
+
+        const linkId = linkResult.link.id;
+
+        const settingsRes = await fetch(`/user/analytics/api/link/${linkId}/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(protSettings)
+        });
+
+        if (settingsRes.ok) {
+            showToast('Link created successfully!', 'success');
+        } else {
+            showToast('Link created but protection settings may not have saved', 'warning');
+        }
+        setTimeout(() => window.location.href = `/user/redirectlinks/${linkId}`, 500);
+    } catch (err) {
+        showToast('Error creating link', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Create Link';
+    }
+});
+
+// Random subdomain
+document.getElementById('btn-random-subdomain').addEventListener('click', async () => {
+    const res = await fetch('/user/redirectlinks/api/random-subdomain');
+    const data = await res.json();
+    if (data.subdomain) document.getElementById('subdomain').value = data.subdomain;
+});
+
+// Random path
+document.getElementById('btn-random-path').addEventListener('click', async () => {
+    const style = document.querySelector('input[name="pathStyle"]:checked').value;
+    const endpoint = style === 'tracking'
+        ? '/user/redirectlinks/api/random-tracking-path'
+        : '/user/redirectlinks/api/random-path';
+    const res = await fetch(endpoint);
+    const data = await res.json();
+    if (data.path) document.getElementById('path').value = data.path;
+});
+
+// Path style change
+document.querySelectorAll('input[name="pathStyle"]').forEach(radio => {
+    radio.addEventListener('change', async () => {
+        const style = document.querySelector('input[name="pathStyle"]:checked').value;
+        const endpoint = style === 'tracking'
+            ? '/user/redirectlinks/api/random-tracking-path'
+            : '/user/redirectlinks/api/random-path';
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        if (data.path) document.getElementById('path').value = data.path;
+    });
+});
+
+// Add URL button
+document.querySelector('.btn-add-url').addEventListener('click', function() {
+    const container = document.getElementById('urls-container');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <input type="url" class="form-control url-input" placeholder="https://example.com">
+        <button type="button" class="btn btn-outline-danger btn-remove-url"><i class="bi bi-trash"></i></button>
+    `;
+    container.appendChild(div);
+    div.querySelector('.btn-remove-url').addEventListener('click', () => div.remove());
+});
+
+// Initialize protection settings
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.protectionSettings) window.protectionSettings.init({});
+});
+</script>
+{{end}}

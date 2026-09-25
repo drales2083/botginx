@@ -91,6 +91,7 @@ func (m *Module) Routes() chi.Router {
 	// Pages
 	r.Get("/", m.handler.List)
 	r.Get("/new", m.handler.New)
+	r.Get("/wizard", m.handler.Wizard)
 	r.Get("/{id}", m.handler.Show)
 	r.Get("/{id}/customize", m.handler.Customize)
 	r.Get("/{id}/edit-html", m.handler.EditHTML)

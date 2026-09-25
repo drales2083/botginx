@@ -85,6 +85,18 @@ func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) Wizard(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	domains, _ := h.domains.ListAvailable(userID)
+
+	module.RenderUserSection(w, r, h.templates, "redirectlinks:wizard.html", map[string]interface{}{
+		"Title":              "Link Wizard",
+		"Domains":            domains,
+		"SuggestedSubdomain": namegen.Subdomain(),
+		"SuggestedPath":      namegen.TrackingPath(),
+	})
+}
+
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	link, err := h.service.Get(id)
