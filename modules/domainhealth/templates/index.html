@@ -1,0 +1,175 @@
+{{define "content"}}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title">
+            <i class="bi bi-heart-pulse me-2"></i>Domain Health
+        </h3>
+        <button class="btn btn-primary btn-sm" id="checkAllBtn" onclick="checkAll()" {{if not .Domains}}disabled{{end}}>
+            <i class="bi bi-arrow-repeat me-1"></i>Check All
+        </button>
+    </div>
+    {{if .Domains}}
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Domain</th>
+                        <th class="text-center" style="width: 120px;">DNS</th>
+                        <th class="text-center" style="width: 120px;">SSL</th>
+                        <th class="text-center" style="width: 120px;">HTTP</th>
+                        <th class="text-end" style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="domainTable">
+                    {{range .Domains}}
+                    <tr data-id="{{.ID}}">
+                        <td>
+                            <div class="fw-semibold">{{.Name}}</div>
+                            <small class="text-secondary">Added {{.CreatedAt.Format "Jan 2, 2006"}}</small>
+                        </td>
+                        <td class="text-center">
+                            <span class="status-badge status-pending" data-check="dns">
+                                <i class="bi bi-dash-circle"></i> Pending
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="status-badge status-pending" data-check="ssl">
+                                <i class="bi bi-dash-circle"></i> Pending
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="status-badge status-pending" data-check="http">
+                                <i class="bi bi-dash-circle"></i> Pending
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary" onclick="checkDomain('{{.ID}}')" title="Check Now">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{else}}
+    <div class="card-body text-center py-5">
+        <i class="bi bi-globe display-1 text-muted mb-3 d-block"></i>
+        <h5>No Domains Yet</h5>
+        <p class="text-muted mb-4">Add a domain first to monitor its health</p>
+        <a href="/user/domains/new" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Add Domain
+        </a>
+    </div>
+    {{end}}
+</div>
+
+<style>
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.status-pending { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+.status-ok { background: rgba(25, 135, 84, 0.15); color: #198754; }
+.status-warning { background: rgba(255, 193, 7, 0.15); color: #997404; }
+.status-error { background: rgba(220, 53, 69, 0.15); color: #dc3545; }
+.status-checking { background: var(--bs-primary-bg-subtle); color: var(--bs-primary); }
+</style>
+
+<script>
+async function checkDomain(id) {
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (!row) return;
+
+    setRowChecking(row);
+
+    try {
+        const res = await fetch(`/user/domains/health/api/check/${id}`, { method: 'POST' });
+        const data = await res.json();
+        updateRow(row, data);
+    } catch (e) {
+        setRowError(row, 'Check failed');
+    }
+}
+
+async function checkAll() {
+    const btn = document.getElementById('checkAllBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking...';
+
+    document.querySelectorAll('#domainTable tr').forEach(row => setRowChecking(row));
+
+    try {
+        const res = await fetch('/user/domains/health/api/check-all', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.results) {
+            data.results.forEach(result => {
+                const row = document.querySelector(`tr[data-id="${result.id}"]`);
+                if (row) updateRow(row, result);
+            });
+        }
+    } catch (e) {
+        showToast('Health check failed', 'danger');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Check All';
+}
+
+function setRowChecking(row) {
+    ['dns', 'ssl', 'http'].forEach(check => {
+        const badge = row.querySelector(`[data-check="${check}"]`);
+        if (badge) {
+            badge.className = 'status-badge status-checking';
+            badge.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        }
+    });
+}
+
+function setRowError(row, msg) {
+    ['dns', 'ssl', 'http'].forEach(check => {
+        const badge = row.querySelector(`[data-check="${check}"]`);
+        if (badge) {
+            badge.className = 'status-badge status-error';
+            badge.innerHTML = '<i class="bi bi-x-circle"></i> Error';
+            badge.title = msg;
+        }
+    });
+}
+
+function updateRow(row, data) {
+    updateBadge(row.querySelector('[data-check="dns"]'), data.dns);
+    updateBadge(row.querySelector('[data-check="ssl"]'), data.ssl);
+    updateBadge(row.querySelector('[data-check="http"]'), data.http);
+}
+
+function updateBadge(badge, check) {
+    if (!badge || !check) return;
+
+    const icons = { ok: 'check-circle', warning: 'exclamation-triangle', error: 'x-circle' };
+    const icon = icons[check.status] || 'dash-circle';
+
+    badge.className = `status-badge status-${check.status}`;
+    badge.innerHTML = `<i class="bi bi-${icon}"></i> ${statusLabel(check.status)}`;
+    badge.title = check.message || '';
+}
+
+function statusLabel(status) {
+    return { ok: 'OK', warning: 'Warning', error: 'Error' }[status] || 'Unknown';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelectorAll('#domainTable tr').length > 0) {
+        checkAll();
+    }
+});
+</script>
+{{end}}

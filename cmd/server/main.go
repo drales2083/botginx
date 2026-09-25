@@ -21,6 +21,7 @@ import (
 	analyticshandlers "github.com/botginx/botginx/modules/analytics/handlers"
 	"github.com/botginx/botginx/modules/auth"
 	"github.com/botginx/botginx/modules/dashboard"
+	"github.com/botginx/botginx/modules/domainhealth"
 	"github.com/botginx/botginx/modules/domains"
 	"github.com/botginx/botginx/modules/help"
 	"github.com/botginx/botginx/modules/hosting"
@@ -30,7 +31,10 @@ import (
 	"github.com/botginx/botginx/modules/marketplace"
 	modulesmgmt "github.com/botginx/botginx/modules/modules"
 	"github.com/botginx/botginx/modules/payments"
+	"github.com/botginx/botginx/modules/qrcodes"
+	qrcodeshandlers "github.com/botginx/botginx/modules/qrcodes/handlers"
 	"github.com/botginx/botginx/modules/redirectlinks"
+	"github.com/botginx/botginx/modules/reports"
 	"github.com/botginx/botginx/modules/servers"
 	"github.com/botginx/botginx/modules/shortener"
 	"github.com/botginx/botginx/modules/settings"
@@ -287,6 +291,12 @@ func main() {
 	registry.Register(analyticsModule)           // Analytics module
 	registry.Register(iplistsModule)             // IP Lists module
 	registry.Register(shortenerModule)           // Link Shortener module
+	qrcodesModule := qrcodes.New()
+	registry.Register(qrcodesModule)             // QR Codes module
+	reportsModule := reports.New()
+	registry.Register(reportsModule)             // Reports module (CSV export)
+	domainHealthModule := domainhealth.New()
+	registry.Register(domainHealthModule)        // Domain health checker
 	registry.Register(hostingModule)             // Bullet Proof Hosting module
 	registry.Register(marketplaceModule)         // Domain marketplace
 	registry.Register(paymentsModule)            // Crypto payments
@@ -333,6 +343,24 @@ func main() {
 	authModule.SetSubscriptionService(subscriptions)    // Self-service subscription purchase
 	usersModule.SetAuthService(authModule.AuthService()) // Admin impersonation
 	supportModule.SetNotifier(telegramModule.Handler)    // Telegram notifications for tickets
+
+	// QR codes needs redirect links list
+	qrcodesModule.SetLinkLister(func(userID string) ([]qrcodeshandlers.RedirectLink, error) {
+		links, err := redirectLinksModule.ListForUser(userID)
+		if err != nil {
+			return nil, err
+		}
+		result := make([]qrcodeshandlers.RedirectLink, len(links))
+		for i, l := range links {
+			result[i] = qrcodeshandlers.RedirectLink{
+				ID:        l.ID,
+				Subdomain: l.Subdomain,
+				Domain:    l.Domain,
+				Path:      l.Path,
+			}
+		}
+		return result, nil
+	})
 
 	// Run migrations
 	if err := registry.MigrateAll(); err != nil {
@@ -448,11 +476,26 @@ func main() {
 			r.Mount("/twofactor", tfMod.Routes())
 		}
 
+		// QR Codes: available to all users regardless of subscription.
+		if qrMod, ok := registry.Get("qrcodes"); ok {
+			r.Mount("/qrcodes", qrMod.Routes())
+		}
+
+		// Reports: CSV export of analytics data.
+		if repMod, ok := registry.Get("reports"); ok {
+			r.Mount("/reports", repMod.Routes())
+		}
+
+		// Domain Health: check DNS, SSL, HTTP status.
+		if dhMod, ok := registry.Get("domainhealth"); ok {
+			r.Mount("/domains/health", dhMod.Routes())
+		}
+
 		// Product routes: writes require an active subscription.
 		// Unsubscribed users can browse but cannot create, edit, or delete.
 		r.Group(func(r chi.Router) {
 			r.Use(subscriptions.Enforce)
-			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth", "payments", "twofactor")
+			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth", "payments", "twofactor", "qrcodes", "reports", "domainhealth")
 		})
 
 		// Registered on the section rather than inside the group above: chi

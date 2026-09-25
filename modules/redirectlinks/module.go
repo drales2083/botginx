@@ -160,3 +160,29 @@ func (m *Module) GetLinkHost(linkID string) (host, path, domainID string, err er
 func (m *Module) SetServerProvider(sp handlers.ServerProvider) {
 	m.handler.SetServerProvider(sp)
 }
+
+// LinkBasic is a minimal link representation for other modules
+type LinkBasic struct {
+	ID        string `json:"id"`
+	Subdomain string `json:"subdomain"`
+	Domain    string `json:"domain"`
+	Path      string `json:"path"`
+}
+
+// ListForUser returns basic link info for the given user (used by QR codes module)
+func (m *Module) ListForUser(userID string) ([]LinkBasic, error) {
+	links, err := m.service.List(userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]LinkBasic, len(links))
+	for i, l := range links {
+		result[i] = LinkBasic{
+			ID:        l.ID,
+			Subdomain: l.Subdomain,
+			Domain:    l.BaseDomain(),
+			Path:      l.Path,
+		}
+	}
+	return result, nil
+}

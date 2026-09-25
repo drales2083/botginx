@@ -1,0 +1,174 @@
+{{define "content"}}
+<div class="mb-3">
+    <a href="/user/qrcodes" class="text-decoration-none">
+        <i class="bi bi-arrow-left me-1"></i>Back to QR Codes
+    </a>
+</div>
+<div class="row">
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body text-center py-4">
+                <div class="d-inline-block p-4 rounded mb-3" style="background: {{.QRCode.BGColor}};">
+                    <img src="/user/qrcodes/api/{{.QRCode.ID}}/download?size=300&format=png"
+                         alt="QR Code"
+                         style="width: 300px; height: 300px;">
+                </div>
+
+                <div class="d-flex justify-content-center gap-2 mb-3">
+                    <div class="dropdown">
+                        <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-download me-1"></i>Download PNG
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=200&format=png" download="qrcode-200.png">Small (200px)</a></li>
+                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=400&format=png" download="qrcode-400.png">Medium (400px)</a></li>
+                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=800&format=png" download="qrcode-800.png">Large (800px)</a></li>
+                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=1200&format=png" download="qrcode-1200.png">Print (1200px)</a></li>
+                        </ul>
+                    </div>
+                    <a href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=400&format=svg" class="btn btn-outline-secondary" download="qrcode.svg">
+                        <i class="bi bi-filetype-svg me-1"></i>SVG
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-qr-code me-2"></i>
+                    {{if .QRCode.Title}}{{.QRCode.Title}}{{else}}QR Code Details{{end}}
+                </h5>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteQR()">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+            </div>
+            <div class="card-body">
+                <form id="editForm">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="title" value="{{.QRCode.Title}}" placeholder="Untitled">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="url" class="form-label">URL</label>
+                        <div class="input-group">
+                            <input type="url" class="form-control" id="url" value="{{.QRCode.URL}}" readonly>
+                            <button type="button" class="btn btn-outline-secondary" onclick="copyURL()">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="fgColor" class="form-label">Foreground</label>
+                            <div class="input-group">
+                                <input type="color" class="form-control form-control-color" id="fgColorPicker" value="{{.QRCode.FGColor}}">
+                                <input type="text" class="form-control" id="fgColor" value="{{.QRCode.FGColor}}" maxlength="7">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="bgColor" class="form-label">Background</label>
+                            <div class="input-group">
+                                <input type="color" class="form-control form-control-color" id="bgColorPicker" value="{{.QRCode.BGColor}}">
+                                <input type="text" class="form-control" id="bgColor" value="{{.QRCode.BGColor}}" maxlength="7">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            Created: {{.QRCode.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}
+                        </small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Save Changes
+                    </button>
+                    <a href="/user/qrcodes" class="btn btn-secondary">Back to Library</a>
+                </form>
+            </div>
+        </div>
+
+        {{if .QRCode.RedirectLinkID.Valid}}
+        <div class="card mt-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-arrow-repeat text-primary me-3 fs-4"></i>
+                    <div>
+                        <div class="fw-semibold">Linked to Redirect</div>
+                        <small class="text-muted">This QR code is connected to one of your redirect links</small>
+                    </div>
+                    <a href="/user/redirectlinks/{{.QRCode.RedirectLinkID.String}}" class="btn btn-sm btn-outline-primary ms-auto">
+                        View Link
+                    </a>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<script>
+const qrId = '{{.QRCode.ID}}';
+
+// Color sync
+document.getElementById('fgColor').addEventListener('input', (e) => {
+    document.getElementById('fgColorPicker').value = e.target.value;
+});
+document.getElementById('bgColor').addEventListener('input', (e) => {
+    document.getElementById('bgColorPicker').value = e.target.value;
+});
+document.getElementById('fgColorPicker').addEventListener('input', (e) => {
+    document.getElementById('fgColor').value = e.target.value;
+});
+document.getElementById('bgColorPicker').addEventListener('input', (e) => {
+    document.getElementById('bgColor').value = e.target.value;
+});
+
+// Copy URL
+function copyURL() {
+    navigator.clipboard.writeText(document.getElementById('url').value);
+    showToast('URL copied!', 'success');
+}
+
+// Save form
+document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const res = await fetch(`/user/qrcodes/api/${qrId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: document.getElementById('title').value,
+            url: document.getElementById('url').value,
+            fgColor: document.getElementById('fgColor').value,
+            bgColor: document.getElementById('bgColor').value
+        })
+    });
+
+    if (res.ok) {
+        showToast('Changes saved!', 'success');
+        location.reload();
+    } else {
+        showToast('Failed to save', 'danger');
+    }
+});
+
+// Delete
+async function deleteQR() {
+    if (!confirm('Delete this QR code?')) return;
+
+    const res = await fetch(`/user/qrcodes/api/${qrId}`, { method: 'DELETE' });
+    if (res.ok) {
+        showToast('QR code deleted', 'success');
+        window.location.href = '/user/qrcodes';
+    } else {
+        showToast('Failed to delete', 'danger');
+    }
+}
+</script>
+{{end}}

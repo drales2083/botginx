@@ -1,0 +1,131 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>Download Reports
+                </h3>
+            </div>
+            <div class="card-body">
+                <form id="reportForm">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Report Type</label>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <input type="radio" class="btn-check" name="reportType" id="typeLinks" value="links" checked>
+                                <label class="btn btn-outline-primary w-100 py-3" for="typeLinks">
+                                    <i class="bi bi-link-45deg d-block fs-4 mb-1"></i>
+                                    Link Performance
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="radio" class="btn-check" name="reportType" id="typeTraffic" value="traffic">
+                                <label class="btn btn-outline-primary w-100 py-3" for="typeTraffic">
+                                    <i class="bi bi-globe d-block fs-4 mb-1"></i>
+                                    Traffic
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="radio" class="btn-check" name="reportType" id="typeBots" value="bots">
+                                <label class="btn btn-outline-primary w-100 py-3" for="typeBots">
+                                    <i class="bi bi-robot d-block fs-4 mb-1"></i>
+                                    Bot Protection
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Date Range</label>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text">From</span>
+                                    <input type="date" class="form-control" id="startDate" name="start">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text">To</span>
+                                    <input type="date" class="form-control" id="endDate" name="end">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setRange(7)">Last 7 days</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setRange(30)">Last 30 days</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setRange(90)">Last 90 days</button>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary btn-lg flex-fill" onclick="download('csv')">
+                            <i class="bi bi-filetype-csv me-2"></i>Download CSV
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="download('pdf')">
+                            <i class="bi bi-filetype-pdf me-1"></i>PDF
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="bi bi-question-circle me-2"></i>Report Contents</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item">
+                        <div class="fw-semibold"><i class="bi bi-link-45deg text-primary me-2"></i>Link Performance</div>
+                        <small class="text-secondary">All your redirect links with clicks, unique visitors, subdomain, domain, and path.</small>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="fw-semibold"><i class="bi bi-globe text-primary me-2"></i>Traffic</div>
+                        <small class="text-secondary">Daily breakdown by country and device type.</small>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="fw-semibold"><i class="bi bi-robot text-primary me-2"></i>Bot Protection</div>
+                        <small class="text-secondary">Daily bots blocked vs humans passed.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setRange(30);
+});
+
+function setRange(days) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+
+    document.getElementById('startDate').value = formatDate(start);
+    document.getElementById('endDate').value = formatDate(end);
+}
+
+function formatDate(d) {
+    return d.toISOString().split('T')[0];
+}
+
+function download(format) {
+    const type = document.querySelector('input[name="reportType"]:checked').value;
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+
+    if (!start || !end) {
+        showToast('Please select a date range', 'warning');
+        return;
+    }
+
+    window.location.href = `/user/reports/download?type=${type}&format=${format}&start=${start}&end=${end}`;
+}
+</script>
+{{end}}

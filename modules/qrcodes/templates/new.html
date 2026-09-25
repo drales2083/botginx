@@ -1,0 +1,344 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-qr-code me-2"></i>Create QR Code</h5>
+            </div>
+            <div class="card-body">
+                <!-- URL Source -->
+                <div class="mb-4">
+                    <label class="form-label">URL Source</label>
+                    <div class="btn-group w-100 mb-3" role="group">
+                        <input type="radio" class="btn-check" name="urlSource" id="sourcePaste" value="paste" checked>
+                        <label class="btn btn-outline-secondary" for="sourcePaste">
+                            <i class="bi bi-link-45deg me-1"></i>Paste URL
+                        </label>
+                        <input type="radio" class="btn-check" name="urlSource" id="sourceLink" value="link">
+                        <label class="btn btn-outline-secondary" for="sourceLink">
+                            <i class="bi bi-arrow-repeat me-1"></i>Select Redirect Link
+                        </label>
+                    </div>
+
+                    <div id="pasteInput">
+                        <input type="url" class="form-control" id="url" placeholder="https://example.com" required>
+                    </div>
+
+                    <div id="linkSelect" class="d-none">
+                        <select class="form-select" id="redirectLink">
+                            <option value="">Select a redirect link...</option>
+                            {{range .RedirectLinks}}
+                            <option value="{{.ID}}" data-url="https://{{.Subdomain}}.{{.Domain}}/{{.Path}}">
+                                {{.Subdomain}}.{{.Domain}}/{{.Path}}
+                            </option>
+                            {{end}}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Title -->
+                <div class="mb-4">
+                    <label for="title" class="form-label">Title (optional)</label>
+                    <input type="text" class="form-control" id="title" placeholder="My QR Code">
+                </div>
+
+                <!-- Colors -->
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <label for="fgColor" class="form-label">Foreground Color</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control form-control-color" id="fgColorPicker" value="#000000">
+                            <input type="text" class="form-control" id="fgColor" value="#000000" maxlength="7">
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label for="bgColor" class="form-label">Background Color</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control form-control-color" id="bgColorPicker" value="#FFFFFF">
+                            <input type="text" class="form-control" id="bgColor" value="#FFFFFF" maxlength="7">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Color Presets -->
+                <div class="mb-4">
+                    <label class="form-label">Quick Presets</label>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#000000" data-bg="#FFFFFF">
+                            <span style="display:inline-block;width:12px;height:12px;background:#000;border:1px solid #ccc;"></span> Classic
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#FFFFFF" data-bg="#000000">
+                            <span style="display:inline-block;width:12px;height:12px;background:#fff;border:1px solid #ccc;"></span> Inverted
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#1a73e8" data-bg="#FFFFFF">
+                            <span style="display:inline-block;width:12px;height:12px;background:#1a73e8;border:1px solid #ccc;"></span> Blue
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#dc3545" data-bg="#FFFFFF">
+                            <span style="display:inline-block;width:12px;height:12px;background:#dc3545;border:1px solid #ccc;"></span> Red
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#198754" data-bg="#FFFFFF">
+                            <span style="display:inline-block;width:12px;height:12px;background:#198754;border:1px solid #ccc;"></span> Green
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Download Size -->
+                <div class="mb-4">
+                    <label class="form-label">Download Size</label>
+                    <select class="form-select" id="downloadSize">
+                        <option value="200">Small (200px)</option>
+                        <option value="400" selected>Medium (400px)</option>
+                        <option value="800">Large (800px)</option>
+                        <option value="1200">Print (1200px)</option>
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" id="btnSave">
+                        <i class="bi bi-save me-1"></i>Save to Library
+                    </button>
+                    <button type="button" class="btn btn-success" id="btnDownloadPNG">
+                        <i class="bi bi-download me-1"></i>Download PNG
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="btnDownloadSVG">
+                        <i class="bi bi-filetype-svg me-1"></i>SVG
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-eye me-2"></i>Preview</h5>
+            </div>
+            <div class="card-body text-center">
+                <div id="qrPreview" class="d-inline-block p-4 rounded" style="background: #FFFFFF;">
+                    <div id="qrPlaceholder" class="text-muted" style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--bs-border-color); border-radius: 0.5rem;">
+                        <span>Enter a URL to preview</span>
+                    </div>
+                    <img id="qrImage" src="" alt="QR Preview" style="width: 200px; height: 200px; display: none;">
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted" id="previewUrl"></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let debounceTimer;
+
+function getFormData() {
+    const source = document.querySelector('input[name="urlSource"]:checked').value;
+    let url = '';
+    let redirectLinkId = '';
+
+    if (source === 'paste') {
+        url = document.getElementById('url').value.trim();
+    } else {
+        const select = document.getElementById('redirectLink');
+        const option = select.options[select.selectedIndex];
+        url = option?.dataset?.url || '';
+        redirectLinkId = select.value;
+    }
+
+    return {
+        url,
+        redirectLinkId,
+        title: document.getElementById('title').value.trim(),
+        fgColor: document.getElementById('fgColor').value,
+        bgColor: document.getElementById('bgColor').value,
+        size: parseInt(document.getElementById('downloadSize').value)
+    };
+}
+
+function updatePreview() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+        const data = getFormData();
+
+        if (!data.url) {
+            document.getElementById('qrPlaceholder').style.display = 'flex';
+            document.getElementById('qrImage').style.display = 'none';
+            document.getElementById('previewUrl').textContent = '';
+            return;
+        }
+
+        document.getElementById('qrPreview').style.background = data.bgColor;
+        document.getElementById('previewUrl').textContent = data.url;
+
+        try {
+            const res = await fetch('/user/qrcodes/api/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    url: data.url,
+                    fgColor: data.fgColor,
+                    bgColor: data.bgColor,
+                    size: 200,
+                    format: 'png'
+                })
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const imgUrl = URL.createObjectURL(blob);
+                document.getElementById('qrImage').src = imgUrl;
+                document.getElementById('qrImage').style.display = 'block';
+                document.getElementById('qrPlaceholder').style.display = 'none';
+            } else {
+                console.error('Preview failed:', res.status, await res.text());
+            }
+        } catch (e) {
+            console.error('Preview error:', e);
+        }
+    }, 300);
+}
+
+// URL source toggle
+document.querySelectorAll('input[name="urlSource"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const isPaste = radio.value === 'paste';
+        document.getElementById('pasteInput').classList.toggle('d-none', !isPaste);
+        document.getElementById('linkSelect').classList.toggle('d-none', isPaste);
+        updatePreview();
+    });
+});
+
+// Input listeners
+document.getElementById('url').addEventListener('input', updatePreview);
+document.getElementById('redirectLink').addEventListener('change', updatePreview);
+document.getElementById('fgColor').addEventListener('input', (e) => {
+    document.getElementById('fgColorPicker').value = e.target.value;
+    updatePreview();
+});
+document.getElementById('bgColor').addEventListener('input', (e) => {
+    document.getElementById('bgColorPicker').value = e.target.value;
+    updatePreview();
+});
+document.getElementById('fgColorPicker').addEventListener('input', (e) => {
+    document.getElementById('fgColor').value = e.target.value;
+    updatePreview();
+});
+document.getElementById('bgColorPicker').addEventListener('input', (e) => {
+    document.getElementById('bgColor').value = e.target.value;
+    updatePreview();
+});
+
+// Presets
+document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.getElementById('fgColor').value = btn.dataset.fg;
+        document.getElementById('fgColorPicker').value = btn.dataset.fg;
+        document.getElementById('bgColor').value = btn.dataset.bg;
+        document.getElementById('bgColorPicker').value = btn.dataset.bg;
+        updatePreview();
+    });
+});
+
+// Save to library
+document.getElementById('btnSave').addEventListener('click', async () => {
+    const data = getFormData();
+    if (!data.url) {
+        showToast('Please enter a URL', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('btnSave');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/user/qrcodes/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: data.url,
+                title: data.title,
+                redirectLinkId: data.redirectLinkId,
+                fgColor: data.fgColor,
+                bgColor: data.bgColor
+            })
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+            showToast('QR code saved!', 'success');
+            window.location.href = `/user/qrcodes/${result.qrcode.id}`;
+        } else {
+            showToast(result.error || 'Failed to save', 'danger');
+        }
+    } catch (e) {
+        showToast('Error saving QR code', 'danger');
+    }
+
+    btn.disabled = false;
+});
+
+// Download PNG
+document.getElementById('btnDownloadPNG').addEventListener('click', async () => {
+    const data = getFormData();
+    if (!data.url) {
+        showToast('Please enter a URL', 'warning');
+        return;
+    }
+
+    const res = await fetch('/user/qrcodes/api/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            url: data.url,
+            fgColor: data.fgColor,
+            bgColor: data.bgColor,
+            size: data.size,
+            format: 'png'
+        })
+    });
+
+    if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'qrcode.png';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+});
+
+// Download SVG
+document.getElementById('btnDownloadSVG').addEventListener('click', async () => {
+    const data = getFormData();
+    if (!data.url) {
+        showToast('Please enter a URL', 'warning');
+        return;
+    }
+
+    const res = await fetch('/user/qrcodes/api/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            url: data.url,
+            fgColor: data.fgColor,
+            bgColor: data.bgColor,
+            size: data.size,
+            format: 'svg'
+        })
+    });
+
+    if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'qrcode.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+});
+</script>
+{{end}}
