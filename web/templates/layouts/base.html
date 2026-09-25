@@ -209,38 +209,32 @@
       <div class="sidebar-wrapper" data-overlayscrollbars-options='{"scrollbars":{"autoHide":"scroll"}}'>
         <nav class="mt-2">
           <!-- User Section -->
-          {{if .UserMenu}}
+          {{if not .IsAdminSection}}
           <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu">
-            {{range .UserMenu}}
-            {{if not .Hidden}}
-            {{if .Children}}
             <li class="nav-item">
-              <a href="#" class="nav-link">
-                <i class="nav-icon bi {{.Icon}}"></i>
-                <p>{{.Title}}<i class="nav-arrow bi bi-chevron-right"></i></p>
-              </a>
-              <ul class="nav nav-treeview">
-                {{range .Children}}
-                <li class="nav-item">
-                  <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
-                    <i class="nav-icon bi {{.Icon}}"></i>
-                    <p>{{.Title}}</p>
-                  </a>
-                </li>
-                {{end}}
-              </ul>
-            </li>
-            {{else}}
-            <li class="nav-item">
-              <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
-                <i class="nav-icon bi {{.Icon}}"></i>
-                <p>{{.Title}}</p>
-                {{if .Badge}}<span class="badge bg-primary ms-auto">{{.Badge}}</span>{{end}}
+              <a href="/user/dashboard" class="nav-link {{if eq .Title "Dashboard"}}active{{end}}">
+                <i class="nav-icon bi bi-grid-3x3-gap-fill"></i>
+                <p>Dashboard</p>
               </a>
             </li>
-            {{end}}
-            {{end}}
-            {{end}}
+            <li class="nav-item">
+              <a href="/user/analytics" class="nav-link {{if hasPrefix .Title "Analytics"}}active{{end}}">
+                <i class="nav-icon bi bi-graph-up"></i>
+                <p>Analytics</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="/user/settings" class="nav-link {{if eq .Title "Settings"}}active{{end}}">
+                <i class="nav-icon bi bi-person-gear"></i>
+                <p>Preferences</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="/user/support" class="nav-link {{if hasPrefix .Title "Support"}}active{{end}}">
+                <i class="nav-icon bi bi-life-preserver"></i>
+                <p>Support</p>
+              </a>
+            </li>
           </ul>
           {{end}}
 

@@ -95,10 +95,11 @@ func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	`, userID)
 
 	// KPI stats
-	var domains, botsDetected, humansVerified int64
+	var domains, botsDetected, humansVerified, redirectLinks int64
 	m.DB().Get(&domains, `SELECT COUNT(*) FROM domains WHERE user_id = $1 AND is_shared = FALSE`, userID)
 	m.DB().Get(&botsDetected, `SELECT COALESCE(bots_detected, 0) FROM users WHERE id = $1`, userID)
 	m.DB().Get(&humansVerified, `SELECT COALESCE(humans_verified, 0) FROM users WHERE id = $1`, userID)
+	m.DB().Get(&redirectLinks, `SELECT COUNT(*) FROM redirect_links WHERE user_id = $1`, userID)
 
 	// Account overview
 	var balance, referralEarnings float64
@@ -125,6 +126,10 @@ func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		referralCode = userID[:8]
 	}
 
+	// Member since
+	var memberSince time.Time
+	m.DB().Get(&memberSince, `SELECT COALESCE(created_at, NOW()) FROM users WHERE id = $1`, userID)
+
 	// News feed
 	announcements := m.getAnnouncements()
 
@@ -135,12 +140,14 @@ func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			"botsDetected":   botsDetected,
 			"humansVerified": humansVerified,
 			"subDaysLeft":    subDaysLeft,
+			"redirectLinks":  redirectLinks,
 		},
 		"Account": map[string]interface{}{
 			"plan":             planName,
 			"balance":          balance,
 			"referralEarnings": referralEarnings,
 			"referralCode":     referralCode,
+			"memberSince":      memberSince.Format("Jan 2006"),
 		},
 		"SubStatus":     subStatus,
 		"Announcements": announcements,

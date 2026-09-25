@@ -64,6 +64,7 @@ func (m *Module) Migrate() error {
 	migrations := []string{
 		"migrations/001_create_tables.sql",
 		"migrations/002_global_whitelist.sql",
+		"migrations/003_pending_2fa_sessions.sql",
 	}
 
 	for _, mig := range migrations {
@@ -112,11 +113,13 @@ func (m *Module) Routes() chi.Router {
 	// Public pages
 	r.Get("/login", m.Handler.LoginPage)
 	r.Get("/signup", m.Handler.SignupPage)
+	r.Get("/2fa-verify", m.Handler.TwoFactorVerifyPage)
 
 	// API
 	r.Post("/api/signup", m.Handler.APISignup)
 	r.Post("/api/login", m.Handler.APILogin)
 	r.Post("/api/logout", m.Handler.APILogout)
+	r.Post("/api/2fa-verify", m.Handler.API2FAVerify)
 	r.Get("/api/me", m.Handler.APIMe)
 
 	// Logout redirect

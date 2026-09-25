@@ -1,148 +1,358 @@
 {{define "content"}}
-<!-- KPI Cards Row -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
-        <div class="small-box text-bg-primary">
-            <div class="inner">
-                <h3>{{.KPI.domains}}</h3>
-                <p>Domains Owned</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-globe"></i>
-            </div>
-        </div>
+<div class="row">
+    <!-- Tool Groups -->
+    <div class="col-xl-9 col-lg-8">
+        <div id="tool-groups"></div>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="small-box text-bg-danger">
-            <div class="inner">
-                <h3>{{.KPI.botsDetected}}</h3>
-                <p>Bots Blocked</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-robot"></i>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="small-box text-bg-success">
-            <div class="inner">
-                <h3>{{.KPI.humansVerified}}</h3>
-                <p>Humans Verified</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-person-check"></i>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="small-box text-bg-warning">
-            <div class="inner">
-                <h3>{{.KPI.subDaysLeft}}</h3>
-                <p>Days Left</p>
-            </div>
-            <div class="small-box-icon">
-                <i class="bi bi-calendar-check"></i>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Main Content Row -->
-<div class="row g-3">
-    <!-- News Feed Column -->
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title"><i class="bi bi-newspaper me-2"></i>What's New</h3>
-            </div>
-            <div class="card-body p-0" style="max-height: 800px; overflow-y: auto;">
-                {{if .Announcements}}
-                <div class="list-group list-group-flush">
-                    {{range .Announcements}}
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1 fw-bold">
-                                    {{.Title}}
-                                    {{if .Badge}}
-                                    <span class="badge bg-danger ms-1">{{.Badge}}</span>
-                                    {{end}}
-                                    {{if .IsPinned}}
-                                    <i class="bi bi-pin-angle-fill text-warning ms-1" title="Pinned"></i>
-                                    {{end}}
-                                </h6>
-                                <div class="text-muted small">{{.Body | safeHTML}}</div>
-                            </div>
-                            <small class="text-muted text-nowrap ms-3">{{.PublishedAt.Format "Jan 2"}}</small>
-                        </div>
-                    </div>
+    <!-- Account Sidebar -->
+    <div class="col-xl-3 col-lg-4">
+        <!-- Account Card -->
+        <div class="card mb-4">
+            <div class="card-body text-center py-4">
+                <div class="cpanel-avatar mx-auto mb-3">{{slice .User.Name 0 2 | upper}}</div>
+                <div class="fw-semibold mb-2">{{.User.Email}}</div>
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <span class="badge text-bg-primary"><i class="bi bi-gem me-1"></i>{{.Account.plan}}</span>
+                    {{if .Subscription.Active}}
+                    <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                    {{else}}
+                    <span class="badge text-bg-warning"><i class="bi bi-exclamation-triangle me-1"></i>Inactive</span>
                     {{end}}
                 </div>
-                {{else}}
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-inbox" style="font-size:2.5rem"></i>
-                    <p class="mt-2 mb-0">No announcements yet</p>
+            </div>
+            <div class="list-group list-group-flush cpanel-info-list">
+                <div class="list-group-item d-flex align-items-center gap-3">
+                    <span class="cpanel-info-icon text-bg-success"><i class="bi bi-wallet2"></i></span>
+                    <div class="flex-grow-1">
+                        <div class="cpanel-info-label">Balance</div>
+                        <div class="cpanel-info-value">${{printf "%.2f" .User.Balance}}</div>
+                    </div>
                 </div>
-                {{end}}
+                <div class="list-group-item d-flex align-items-center gap-3">
+                    <span class="cpanel-info-icon text-bg-warning"><i class="bi bi-calendar-check"></i></span>
+                    <div class="flex-grow-1">
+                        <div class="cpanel-info-label">Days Left</div>
+                        <div class="cpanel-info-value">{{.KPI.subDaysLeft}}</div>
+                    </div>
+                </div>
+                <div class="list-group-item d-flex align-items-center gap-3">
+                    <span class="cpanel-info-icon text-bg-info"><i class="bi bi-calendar-event"></i></span>
+                    <div class="flex-grow-1">
+                        <div class="cpanel-info-label">Member Since</div>
+                        <div class="cpanel-info-value">{{.Account.memberSince}}</div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Account Overview Column -->
-    <div class="col-lg-4">
-        <div class="card">
+        <!-- Statistics -->
+        <div class="card mb-4">
             <div class="card-header">
-                <h3 class="card-title"><i class="bi bi-person-circle me-2"></i>Account Overview</h3>
+                <h3 class="card-title"><i class="bi bi-bar-chart-fill me-2"></i>Statistics</h3>
             </div>
-            <div class="card-body">
-                <table class="table table-borderless mb-0">
-                    <tr>
-                        <td class="text-muted">Plan</td>
-                        <td class="text-end fw-bold">{{.Account.plan}}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Balance</td>
-                        <td class="text-end fw-bold text-success">${{printf "%.2f" .Account.balance}}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Referral Earnings</td>
-                        <td class="text-end fw-bold">${{printf "%.2f" .Account.referralEarnings}}</td>
-                    </tr>
-                </table>
-                <hr>
-                <div class="d-grid gap-2">
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control" id="referral-link" data-code="{{.Account.referralCode}}" readonly>
-                        <button class="btn btn-outline-secondary" type="button" onclick="copyReferral()">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
+            <div class="card-body p-0">
+                <!-- This Month -->
+                <div class="cpanel-stat-section">
+                    <div class="cpanel-stat-title">This Month</div>
+                    <div class="cpanel-stat-row">
+                        <span class="cpanel-stat-icon text-bg-danger"><i class="bi bi-robot"></i></span>
+                        <span class="cpanel-stat-label">Bots Blocked</span>
+                        <span class="cpanel-stat-count">{{formatNumber .KPI.botsDetected}}</span>
                     </div>
-                    <small class="text-muted text-center">Share your referral link to earn commissions</small>
+                    <div class="cpanel-stat-row">
+                        <span class="cpanel-stat-icon text-bg-success"><i class="bi bi-person-check-fill"></i></span>
+                        <span class="cpanel-stat-label">Humans Verified</span>
+                        <span class="cpanel-stat-count">{{formatNumber .KPI.humansVerified}}</span>
+                    </div>
+                </div>
+                <!-- Resources -->
+                <div class="cpanel-stat-section">
+                    <div class="cpanel-stat-title">Resources</div>
+                    <div class="cpanel-stat-row">
+                        <span class="cpanel-stat-icon text-bg-primary"><i class="bi bi-globe2"></i></span>
+                        <span class="cpanel-stat-label">Domains</span>
+                        <span class="cpanel-stat-count">{{.KPI.domains}} / ∞</span>
+                    </div>
+                    <div class="cpanel-stat-row">
+                        <span class="cpanel-stat-icon text-bg-info"><i class="bi bi-link-45deg"></i></span>
+                        <span class="cpanel-stat-label">Redirect Links</span>
+                        <span class="cpanel-stat-count">{{.KPI.redirectLinks}} / ∞</span>
+                    </div>
                 </div>
             </div>
-            <div class="card-footer">
-                <div class="d-flex justify-content-between">
-                    <a href="/user/payments" class="btn btn-sm btn-success">
-                        <i class="bi bi-plus-lg me-1"></i>Deposit
-                    </a>
-                    <a href="/user/referrals" class="btn btn-sm btn-outline-primary">
-                        View Referrals
-                    </a>
+        </div>
+
+        <!-- Referral -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="bi bi-gift me-2"></i>Referral</h3>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Earnings</span>
+                    <span class="fw-bold text-success">${{printf "%.2f" .Account.referralEarnings}}</span>
+                </div>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control" id="referral-link" data-code="{{.Account.referralCode}}" readonly>
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyReferral()">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<style>
+/* cPanel Tool Grid */
+.cpanel-group > .card-header { border-left: 4px solid var(--cpanel-accent); }
+.cpanel-group-icon { width: 1.4rem; height: 1.4rem; vertical-align: -0.25rem; margin-right: 0.5rem; }
+
+.cpanel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.25rem;
+}
+
+.cpanel-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.8rem 0.5rem;
+    border-radius: var(--bs-border-radius);
+    color: var(--bs-body-color);
+    text-align: center;
+    text-decoration: none;
+    font-size: 0.85rem;
+    line-height: 1.2;
+    transition: background-color 0.15s, transform 0.15s;
+    position: relative;
+}
+
+.cpanel-tile:hover {
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-emphasis-color);
+    transform: translateY(-2px);
+}
+
+.cpanel-tile .cpanel-icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    transition: transform 0.15s;
+}
+
+.cpanel-tile:hover .cpanel-icon { transform: scale(1.1); }
+
+.cpanel-tile.cpanel-soon {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.cpanel-tile.cpanel-soon:hover {
+    transform: none;
+    background-color: transparent;
+}
+.cpanel-tile.cpanel-soon .cpanel-icon { filter: grayscale(0.6); }
+.cpanel-tile.cpanel-soon:hover .cpanel-icon { transform: none; }
+
+.cpanel-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: var(--bs-warning);
+    color: #000;
+    padding: 2px 5px;
+    border-radius: 3px;
+    line-height: 1;
+}
+
+/* Account sidebar */
+.cpanel-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--bs-primary) 0%, color-mix(in srgb, var(--bs-primary) 70%, #000) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fff;
+    font-weight: 600;
+}
+
+.cpanel-info-list .list-group-item { border-color: var(--bs-border-color); }
+.cpanel-info-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.cpanel-info-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--bs-secondary-color); }
+.cpanel-info-value { font-weight: 600; font-size: 0.9rem; }
+
+/* Stats */
+.cpanel-stat-section { padding: 0.5rem 1rem 0.25rem; border-bottom: 1px solid var(--bs-border-color); }
+.cpanel-stat-section:last-child { border-bottom: 0; }
+.cpanel-stat-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--bs-secondary-color); margin-bottom: 0.5rem; font-weight: 600; }
+.cpanel-stat-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0; }
+.cpanel-stat-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; }
+.cpanel-stat-label { font-size: 0.8rem; flex-grow: 1; }
+.cpanel-stat-count { font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cpanel-stat-info { flex: 1; min-width: 0; }
+.cpanel-stat-bar { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
+.cpanel-stat-bar .progress { height: 5px; flex: 1; }
+.cpanel-stat-usage { font-size: 0.7rem; color: var(--bs-secondary-color); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 575.98px) {
+    .cpanel-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+    .cpanel-tile { font-size: 0.8rem; }
+    .cpanel-tile .cpanel-icon { width: 2rem; height: 2rem; }
+}
+</style>
+
 <script>
-// Set referral link on load
+const ICON_PATH = '/static/img/fluent-emoji-flat/';
+
+const TOOL_GROUPS = [
+    {
+        id: 'traffic',
+        title: 'Traffic',
+        icon: 'rocket',
+        accent: '#0d6efd',
+        tools: [
+            { label: 'Redirect Links', icon: 'link', href: '/user/redirectlinks' },
+            { label: 'Create Link', icon: 'plus', href: '/user/redirectlinks/new' },
+            { label: 'Link Wizard', icon: 'magic-wand', href: '/user/redirectlinks/wizard', soon: true },
+            { label: 'Short URLs', icon: 'scissors', href: '/user/shortener' },
+            { label: 'Create Short URL', icon: 'plus', href: '/user/shortener/new' },
+            { label: 'QR Codes', icon: 'mobile-phone-with-arrow', href: '/user/qrcodes', soon: true },
+            { label: 'Bulk Import', icon: 'inbox-tray', href: '/user/redirectlinks/import', soon: true },
+            { label: 'Link Templates', icon: 'card-file-box', href: '/user/redirectlinks/templates', soon: true },
+        ],
+    },
+    {
+        id: 'domains',
+        title: 'Domains',
+        icon: 'globe-with-meridians',
+        accent: '#20c997',
+        tools: [
+            { label: 'My Domains', icon: 'globe-showing-americas', href: '/user/domains' },
+            { label: 'Add Domain', icon: 'plus', href: '/user/domains/new' },
+            { label: 'Domain Store', icon: 'shopping-cart', href: '/user/marketplace' },
+            { label: 'Domain Health', icon: 'stethoscope', href: '/user/domains/health', soon: true },
+        ],
+    },
+    {
+        id: 'metrics',
+        title: 'Metrics',
+        icon: 'bar-chart',
+        accent: '#0dcaf0',
+        tools: [
+            { label: 'Analytics', icon: 'chart-increasing', href: '/user/analytics' },
+            { label: 'Click Logs', icon: 'page-facing-up', href: '/user/analytics/logs', soon: true },
+            { label: 'Real-time', icon: 'stopwatch', href: '/user/analytics/realtime', soon: true },
+            { label: 'Export Data', icon: 'outbox-tray', href: '/user/analytics/export', soon: true },
+        ],
+    },
+    {
+        id: 'security',
+        title: 'Security',
+        icon: 'shield',
+        accent: '#dc3545',
+        tools: [
+            { label: 'IP Whitelist', icon: 'check-mark-button', href: '/user/iplists/whitelist' },
+            { label: 'IP Blocklist', icon: 'stop-sign', href: '/user/iplists/blocklist' },
+            { label: 'Threat Log', icon: 'warning', href: '/user/iplists/threats', soon: true },
+        ],
+    },
+    {
+        id: 'account',
+        title: 'Account',
+        icon: 'bust-in-silhouette',
+        accent: '#6f42c1',
+        tools: [
+            { label: 'Settings', icon: 'gear', href: '/user/settings' },
+            { label: 'Subscription', icon: 'gem-stone', href: '/user/subscription' },
+            { label: 'Deposit', icon: 'money-with-wings', href: '/user/payments' },
+            { label: 'Transactions', icon: 'receipt', href: '/user/payments/transactions' },
+            { label: 'Referrals', icon: 'handshake', href: '/user/referrals' },
+            { label: 'API Keys', icon: 'old-key', href: '/user/settings/api-keys', soon: true },
+            { label: 'Two-Factor', icon: 'locked-with-pen', href: '/user/twofactor' },
+        ],
+    },
+    {
+        id: 'support',
+        title: 'Support',
+        icon: 'ring-buoy',
+        accent: '#d63384',
+        tools: [
+            { label: 'Tickets', icon: 'speech-balloon', href: '/user/support' },
+            { label: 'New Ticket', icon: 'envelope', href: '/user/support/new' },
+            { label: 'Knowledge Base', icon: 'books', href: '/user/help' },
+            { label: 'Announcements', icon: 'megaphone', href: '/user/announcements' },
+            { label: 'API Docs', icon: 'ledger', href: '/user/help/api', soon: true },
+        ],
+    },
+];
+
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+function iconUrl(name) {
+    return ICON_PATH + encodeURIComponent(name) + '.svg';
+}
+
+function renderToolGroups(container, groups) {
+    container.innerHTML = groups.map(group => `
+        <div class="card cpanel-group mb-4" data-group-id="${escapeHtml(group.id)}" style="--cpanel-accent: ${escapeHtml(group.accent)}">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <img class="cpanel-group-icon" src="${iconUrl(group.icon)}" alt="">${escapeHtml(group.title)}
+                </h3>
+                <div class="card-tools">
+                    <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse">
+                        <i data-lte-icon="expand" class="bi bi-chevron-down"></i>
+                        <i data-lte-icon="collapse" class="bi bi-chevron-up"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="cpanel-grid">
+                    ${group.tools.map(tool => `
+                        <a class="cpanel-tile${tool.soon ? ' cpanel-soon' : ''}"
+                           href="${tool.soon ? '#' : escapeHtml(tool.href)}"
+                           data-label="${escapeHtml(tool.label)}"
+                           ${tool.soon ? 'onclick="return false;"' : ''}>
+                            <img class="cpanel-icon" src="${iconUrl(tool.icon)}" alt="" loading="lazy">
+                            <span class="cpanel-label">${escapeHtml(tool.label)}</span>
+                            ${tool.soon ? '<span class="cpanel-badge">Soon</span>' : ''}
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    const input = document.getElementById('referral-link');
-    const code = input.dataset.code;
-    input.value = window.location.origin + '/auth/signup?ref=' + code;
+    renderToolGroups(document.getElementById('tool-groups'), TOOL_GROUPS);
+
+    // Referral link
+    const refInput = document.getElementById('referral-link');
+    if (refInput) {
+        refInput.value = window.location.origin + '/auth/signup?ref=' + refInput.dataset.code;
+    }
 });
 
-// Copy referral link
 function copyReferral() {
     const input = document.getElementById('referral-link');
     input.select();

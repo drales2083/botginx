@@ -105,6 +105,9 @@ func (m *Module) Routes() chi.Router {
 		// Impersonation
 		r.Post("/{id}/impersonate", m.handler.APIImpersonate)
 		r.Post("/impersonate/exit", m.handler.APIExitImpersonation)
+
+		// Two-Factor Auth
+		r.Delete("/{id}/twofactor", m.handler.APIResetTwoFactor)
 	})
 
 	return r

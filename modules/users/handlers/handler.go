@@ -85,10 +85,13 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	twoFactorEnabled := h.service.IsTwoFactorEnabled(id)
+
 	module.Render(w, r, h.templates, "users:show.html", map[string]interface{}{
 		"Title":            user.Name,
 		"TargetUser":       user,
 		"SubscriptionInfo": h.subscriptions.StateFor(user.ID),
+		"TwoFactorEnabled": twoFactorEnabled,
 	})
 }
 
@@ -358,6 +361,27 @@ func (h *Handler) APIImpersonate(w http.ResponseWriter, r *http.Request) {
 		"success":     true,
 		"message":     "Now impersonating " + targetUser.Email,
 		"redirectUrl": "/user/dashboard",
+	})
+}
+
+// APIResetTwoFactor disables 2FA for a user (admin action for locked out users)
+func (h *Handler) APIResetTwoFactor(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "id")
+
+	user, err := h.service.Get(userID)
+	if err != nil {
+		h.jsonError(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	if err := h.service.ResetTwoFactor(userID); err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Two-factor authentication disabled for " + user.Email,
 	})
 }
 

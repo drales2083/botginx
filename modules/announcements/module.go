@@ -44,7 +44,24 @@ func (m *Module) Migrate() error {
 }
 
 func (m *Module) Routes() chi.Router {
-	return nil
+	r := chi.NewRouter()
+	r.Get("/", m.handleUserList)
+	return r
+}
+
+func (m *Module) handleUserList(w http.ResponseWriter, r *http.Request) {
+	var items []announcement
+	m.DB().Select(&items, `
+		SELECT id, title, body, badge, is_pinned, published_at
+		FROM announcements
+		ORDER BY is_pinned DESC, published_at DESC
+		LIMIT 50
+	`)
+
+	module.RenderUserSection(w, r, m.templates, "announcements:user.html", map[string]interface{}{
+		"Title":         "Announcements",
+		"Announcements": items,
+	})
 }
 
 func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
@@ -57,11 +74,24 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 		r.Delete("/api/{id}", m.apiDelete)
 		return r
 	}
+	if section == module.MenuSectionUser {
+		r := chi.NewRouter()
+		r.Get("/", m.handleUserList)
+		return r
+	}
 	return nil
 }
 
 func (m *Module) MenuItems() []module.MenuItem {
 	return []module.MenuItem{
+		{
+			Title:   "Announcements",
+			Icon:    "bi-megaphone",
+			Path:    "/user/announcements",
+			Order:   60,
+			Section: module.MenuSectionUser,
+			Group:   "Support",
+		},
 		{
 			Title:   "Announcements",
 			Icon:    "bi-megaphone",

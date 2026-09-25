@@ -1,0 +1,340 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Status Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title"><i class="bi bi-shield-lock me-2"></i>Two-Factor Authentication</h3>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center me-3 {{if .Enabled}}bg-success{{else}}bg-secondary{{end}} bg-opacity-10" style="width:64px;height:64px">
+                        <i class="bi {{if .Enabled}}bi-shield-check{{else}}bi-shield{{end}} fs-2 {{if .Enabled}}text-success{{else}}text-secondary{{end}}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-1">{{if .Enabled}}2FA is Enabled{{else}}2FA is Disabled{{end}}</h5>
+                        <p class="text-muted mb-0">
+                            {{if .Enabled}}
+                            Your account is protected with two-factor authentication.
+                            {{else}}
+                            Add an extra layer of security to your account.
+                            {{end}}
+                        </p>
+                    </div>
+                    {{if .Enabled}}
+                    <span class="badge bg-success">Active</span>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+
+        {{if .Enabled}}
+        <!-- Enabled State -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-key me-2"></i>Backup Codes</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Backup codes can be used to access your account if you lose your authenticator device.</p>
+                <button class="btn btn-outline-primary" onclick="regenerateBackupCodes()">
+                    <i class="bi bi-arrow-repeat me-1"></i>Regenerate Backup Codes
+                </button>
+            </div>
+        </div>
+
+        <div class="card border-danger">
+            <div class="card-header bg-danger bg-opacity-10">
+                <h5 class="card-title mb-0 text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Disable 2FA</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Disabling 2FA will make your account less secure.</p>
+                <button class="btn btn-outline-danger" onclick="showDisableModal()">
+                    <i class="bi bi-shield-x me-1"></i>Disable Two-Factor Authentication
+                </button>
+            </div>
+        </div>
+
+        {{else}}
+        <!-- Setup State -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-gear me-2"></i>Set Up 2FA</h5>
+            </div>
+            <div class="card-body">
+                <div id="setup-step-1">
+                    <h6 class="mb-3">Step 1: Install an Authenticator App</h6>
+                    <p class="text-muted">Download and install an authenticator app on your phone:</p>
+                    <ul class="text-muted">
+                        <li>Google Authenticator</li>
+                        <li>Authy</li>
+                        <li>Microsoft Authenticator</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="startSetup()">
+                        <i class="bi bi-qr-code me-1"></i>Continue to QR Code
+                    </button>
+                </div>
+
+                <div id="setup-step-2" class="d-none">
+                    <h6 class="mb-3">Step 2: Scan the QR Code</h6>
+                    <p class="text-muted">Open your authenticator app and scan this QR code:</p>
+                    <div class="text-center my-4">
+                        <div id="qr-code" class="d-inline-block p-3 bg-white rounded"></div>
+                    </div>
+                    <div class="alert alert-secondary">
+                        <strong>Manual entry:</strong> <code id="secret-code" class="user-select-all"></code>
+                    </div>
+                    <button class="btn btn-primary" onclick="showVerifyStep()">
+                        <i class="bi bi-arrow-right me-1"></i>Continue
+                    </button>
+                </div>
+
+                <div id="setup-step-3" class="d-none">
+                    <h6 class="mb-3">Step 3: Verify Code</h6>
+                    <p class="text-muted">Enter the 6-digit code from your authenticator app:</p>
+                    <div class="row justify-content-center">
+                        <div class="col-md-6">
+                            <div class="input-group input-group-lg mb-3">
+                                <input type="text" class="form-control text-center" id="verify-code"
+                                    placeholder="000000" maxlength="6" pattern="[0-9]{6}" autocomplete="off">
+                                <button class="btn btn-success" onclick="enableTwoFactor()">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="setup-complete" class="d-none text-center">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle text-success" style="font-size:4rem"></i>
+                    </div>
+                    <h5 class="text-success mb-3">Two-Factor Authentication Enabled!</h5>
+                    <p class="text-muted mb-4">Save these backup codes in a safe place. You can use them to access your account if you lose your phone.</p>
+                    <div class="card bg-dark mb-4">
+                        <div class="card-body">
+                            <div id="backup-codes" class="row g-2 text-center"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="window.location.reload()">
+                        <i class="bi bi-check me-1"></i>Done
+                    </button>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<!-- Disable Modal -->
+<div class="modal fade" id="disableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Disable Two-Factor Authentication</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Enter your current 2FA code to disable two-factor authentication:</p>
+                <input type="text" class="form-control text-center" id="disable-code"
+                    placeholder="000000" maxlength="6" pattern="[0-9]{6}" autocomplete="off">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="disableTwoFactor()">Disable 2FA</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Regenerate Modal -->
+<div class="modal fade" id="regenerateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Regenerate Backup Codes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="regenerate-form">
+                    <p>Enter your current 2FA code to regenerate backup codes:</p>
+                    <input type="text" class="form-control text-center" id="regenerate-code"
+                        placeholder="000000" maxlength="6" pattern="[0-9]{6}" autocomplete="off">
+                </div>
+                <div id="regenerate-result" class="d-none">
+                    <p class="text-success mb-3"><i class="bi bi-check-circle me-1"></i>New backup codes generated!</p>
+                    <div class="card bg-dark">
+                        <div class="card-body">
+                            <div id="new-backup-codes" class="row g-2 text-center"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="regenerate-btn" onclick="doRegenerateBackup()">Regenerate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+let setupSecret = '';
+
+async function startSetup() {
+    try {
+        const res = await fetch('/user/twofactor/api/setup', { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) {
+            showToast(data.error || 'Failed to start setup', 'danger');
+            return;
+        }
+
+        setupSecret = data.secret;
+        document.getElementById('secret-code').textContent = data.secret;
+
+        // Generate QR code
+        const qrDiv = document.getElementById('qr-code');
+        qrDiv.innerHTML = '';
+        QRCode.toCanvas(data.qr_url, { width: 200, margin: 2 }, (err, canvas) => {
+            if (!err) qrDiv.appendChild(canvas);
+        });
+
+        document.getElementById('setup-step-1').classList.add('d-none');
+        document.getElementById('setup-step-2').classList.remove('d-none');
+    } catch (e) {
+        showToast('Failed to start setup', 'danger');
+    }
+}
+
+function showVerifyStep() {
+    document.getElementById('setup-step-2').classList.add('d-none');
+    document.getElementById('setup-step-3').classList.remove('d-none');
+    document.getElementById('verify-code').focus();
+}
+
+async function enableTwoFactor() {
+    const code = document.getElementById('verify-code').value.trim();
+    if (code.length !== 6) {
+        showToast('Please enter a 6-digit code', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch('/user/twofactor/api/enable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            showToast(data.error || 'Failed to enable 2FA', 'danger');
+            return;
+        }
+
+        // Show backup codes
+        const codesDiv = document.getElementById('backup-codes');
+        codesDiv.innerHTML = data.backup_codes.map(c =>
+            `<div class="col-6 col-md-3"><code class="fs-6">${c}</code></div>`
+        ).join('');
+
+        document.getElementById('setup-step-3').classList.add('d-none');
+        document.getElementById('setup-complete').classList.remove('d-none');
+
+        showToast('Two-factor authentication enabled!', 'success');
+    } catch (e) {
+        showToast('Failed to enable 2FA', 'danger');
+    }
+}
+
+function showDisableModal() {
+    document.getElementById('disable-code').value = '';
+    new bootstrap.Modal(document.getElementById('disableModal')).show();
+}
+
+async function disableTwoFactor() {
+    const code = document.getElementById('disable-code').value.trim();
+    if (code.length !== 6) {
+        showToast('Please enter a 6-digit code', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch('/user/twofactor/api/disable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            showToast(data.error || 'Failed to disable 2FA', 'danger');
+            return;
+        }
+
+        showToast('Two-factor authentication disabled', 'success');
+        window.location.reload();
+    } catch (e) {
+        showToast('Failed to disable 2FA', 'danger');
+    }
+}
+
+function regenerateBackupCodes() {
+    document.getElementById('regenerate-code').value = '';
+    document.getElementById('regenerate-form').classList.remove('d-none');
+    document.getElementById('regenerate-result').classList.add('d-none');
+    document.getElementById('regenerate-btn').classList.remove('d-none');
+    new bootstrap.Modal(document.getElementById('regenerateModal')).show();
+}
+
+async function doRegenerateBackup() {
+    const code = document.getElementById('regenerate-code').value.trim();
+    if (code.length !== 6) {
+        showToast('Please enter a 6-digit code', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch('/user/twofactor/api/regenerate-backup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            showToast(data.error || 'Failed to regenerate codes', 'danger');
+            return;
+        }
+
+        // Show new codes
+        const codesDiv = document.getElementById('new-backup-codes');
+        codesDiv.innerHTML = data.backup_codes.map(c =>
+            `<div class="col-6 col-md-3"><code class="fs-6">${c}</code></div>`
+        ).join('');
+
+        document.getElementById('regenerate-form').classList.add('d-none');
+        document.getElementById('regenerate-result').classList.remove('d-none');
+        document.getElementById('regenerate-btn').classList.add('d-none');
+
+        showToast('Backup codes regenerated!', 'success');
+    } catch (e) {
+        showToast('Failed to regenerate codes', 'danger');
+    }
+}
+
+// Auto-focus and submit on 6 digits
+document.addEventListener('DOMContentLoaded', () => {
+    ['verify-code', 'disable-code', 'regenerate-code'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+            });
+        }
+    });
+});
+</script>
+{{end}}

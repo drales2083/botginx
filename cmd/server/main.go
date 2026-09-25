@@ -36,6 +36,7 @@ import (
 	"github.com/botginx/botginx/modules/settings"
 	"github.com/botginx/botginx/modules/support"
 	"github.com/botginx/botginx/modules/telegram"
+	"github.com/botginx/botginx/modules/twofactor"
 	"github.com/botginx/botginx/modules/users"
 	"github.com/botginx/botginx/pkg/buildinfo"
 	"github.com/botginx/botginx/pkg/ctx"
@@ -305,6 +306,7 @@ func main() {
 	registry.Register(admindash.New())           // Admin dashboard (stats)
 	registry.Register(announcements.New())       // News announcements (admin)
 	registry.Register(referralsModule)           // Referral commission system
+	registry.Register(twofactor.New())           // Two-factor authentication
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
 
 	// Initialize all modules
@@ -440,11 +442,17 @@ func main() {
 		// Impersonation exit: must be accessible by impersonated user (not admin-only)
 		r.Post("/impersonate/exit", usersModule.Handler().APIExitImpersonation)
 
+		// Two-factor auth: available to all users regardless of subscription.
+		// Security features should never be paywalled.
+		if tfMod, ok := registry.Get("twofactor"); ok {
+			r.Mount("/twofactor", tfMod.Routes())
+		}
+
 		// Product routes: writes require an active subscription.
 		// Unsubscribed users can browse but cannot create, edit, or delete.
 		r.Group(func(r chi.Router) {
 			r.Use(subscriptions.Enforce)
-			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth", "payments")
+			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth", "payments", "twofactor")
 		})
 
 		// Registered on the section rather than inside the group above: chi

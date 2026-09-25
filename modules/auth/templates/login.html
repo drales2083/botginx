@@ -59,7 +59,13 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         const data = await res.json();
 
         if (res.ok) {
-            window.location.href = '/user/dashboard';
+            if (data.requires_2fa) {
+                // Store pending token and redirect to 2FA page
+                sessionStorage.setItem('2fa_pending_token', data.pending_token);
+                window.location.href = '/auth/2fa-verify';
+            } else {
+                window.location.href = '/user/dashboard';
+            }
         } else {
             errorAlert.textContent = data.error || 'Login failed';
             errorAlert.classList.remove('d-none');

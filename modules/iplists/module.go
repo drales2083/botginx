@@ -86,12 +86,20 @@ func (m *Module) Templates() fs.FS {
 func (m *Module) MenuItems() []module.MenuItem {
 	return []module.MenuItem{
 		{
-			Title:   "IP Lists",
-			Icon:    "bi-shield-lock",
+			Title:   "IP Whitelist",
+			Icon:    "bi-shield-check",
 			Path:    "/user/iplists/whitelist",
 			Order:   35,
 			Section: module.MenuSectionUser,
-			Group:   "Infrastructure",
+			Group:   "Security",
+		},
+		{
+			Title:   "IP Blocklist",
+			Icon:    "bi-shield-x",
+			Path:    "/user/iplists/blocklist",
+			Order:   36,
+			Section: module.MenuSectionUser,
+			Group:   "Security",
 		},
 	}
 }

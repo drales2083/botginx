@@ -3,6 +3,7 @@ package module
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
@@ -99,6 +100,51 @@ func defaultFuncs() template.FuncMap {
 				return 0
 			}
 			return *p
+		},
+		// Slice a string (for initials, etc)
+		"slice": func(s string, start, end int) string {
+			if start < 0 {
+				start = 0
+			}
+			if end > len(s) {
+				end = len(s)
+			}
+			if start >= end {
+				return ""
+			}
+			return s[start:end]
+		},
+		// Percentage calculation for progress bars
+		"percent": func(value, max any) int {
+			v := toFloat(value)
+			m := toFloat(max)
+			if m == 0 {
+				return 0
+			}
+			pct := int((v / m) * 100)
+			if pct > 100 {
+				pct = 100
+			}
+			return pct
+		},
+		// Format large numbers (1000 -> 1K, 1000000 -> 1M)
+		"formatNumber": func(n any) string {
+			v := toFloat(n)
+			if v >= 1000000 {
+				m := v / 1000000
+				if m == float64(int64(m)) {
+					return fmt.Sprintf("%dM", int64(m))
+				}
+				return strings.TrimSuffix(fmt.Sprintf("%.1fM", m), ".0M")
+			}
+			if v >= 1000 {
+				k := v / 1000
+				if k == float64(int64(k)) {
+					return fmt.Sprintf("%dK", int64(k))
+				}
+				return strings.TrimSuffix(fmt.Sprintf("%.1fK", k), ".0K")
+			}
+			return fmt.Sprintf("%d", int64(v))
 		},
 	}
 }

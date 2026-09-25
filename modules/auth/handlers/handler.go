@@ -58,6 +58,12 @@ func (h *Handler) SignupPage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) TwoFactorVerifyPage(w http.ResponseWriter, r *http.Request) {
+	module.RenderAuth(w, r, h.templates, "auth:2fa-verify.html", map[string]interface{}{
+		"Title": "Two-Factor Verification",
+	})
+}
+
 // SettingsPage is the signed-in user's own account page, mounted under
 // /user/settings rather than /auth so it sits inside the app chrome.
 func (h *Handler) SettingsPage(w http.ResponseWriter, r *http.Request) {
@@ -346,6 +352,23 @@ func (h *Handler) APILogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if 2FA is enabled for this user
+	if h.service.IsTwoFactorEnabled(user.ID) {
+		// Create a pending 2FA token instead of a full session
+		pendingToken, err := h.service.CreatePending2FASession(user.ID)
+		if err != nil {
+			h.jsonError(w, "Failed to create 2FA session", http.StatusInternalServerError)
+			return
+		}
+
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"success":       true,
+			"requires_2fa":  true,
+			"pending_token": pendingToken,
+		})
+		return
+	}
+
 	// Set cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
@@ -380,6 +403,69 @@ func (h *Handler) APILogout(w http.ResponseWriter, r *http.Request) {
 	})
 
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
+func (h *Handler) API2FAVerify(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		PendingToken string `json:"pending_token"`
+		Code         string `json:"code"`
+		BackupCode   string `json:"backup_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if input.PendingToken == "" {
+		h.jsonError(w, "Missing pending token", http.StatusBadRequest)
+		return
+	}
+
+	// Validate pending session and get user ID
+	userID, err := h.service.ValidatePending2FASession(input.PendingToken)
+	if err != nil {
+		h.jsonError(w, "Invalid or expired session", http.StatusUnauthorized)
+		return
+	}
+
+	// Verify TOTP code or backup code
+	var valid bool
+	if input.Code != "" {
+		valid = h.service.VerifyTOTP(userID, input.Code)
+	} else if input.BackupCode != "" {
+		valid = h.service.VerifyBackupCode(userID, input.BackupCode)
+	}
+
+	if !valid {
+		h.jsonError(w, "Invalid code", http.StatusUnauthorized)
+		return
+	}
+
+	// Create full session
+	token, err := h.service.CreateSessionForUser(userID)
+	if err != nil {
+		h.jsonError(w, "Failed to create session", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete pending session
+	h.service.DeletePending2FASession(input.PendingToken)
+
+	// Set cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   7 * 24 * 60 * 60, // 7 days
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"token":   token,
+	})
 }
 
 func (h *Handler) APIMe(w http.ResponseWriter, r *http.Request) {

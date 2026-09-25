@@ -4,10 +4,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/botginx/botginx/modules/auth/models"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -227,5 +230,94 @@ func (s *AuthService) CreateImpersonationSession(targetUserID string) (string, e
 		return "", err
 	}
 
+	return session.Token, nil
+}
+
+// IsTwoFactorEnabled checks if 2FA is enabled for a user
+func (s *AuthService) IsTwoFactorEnabled(userID string) bool {
+	var enabled bool
+	s.db.Get(&enabled, `SELECT COALESCE(totp_enabled, false) FROM users WHERE id = $1`, userID)
+	return enabled
+}
+
+// CreatePending2FASession creates a temporary session for 2FA verification
+func (s *AuthService) CreatePending2FASession(userID string) (string, error) {
+	token := s.generateToken()
+	_, err := s.db.Exec(`
+		INSERT INTO pending_2fa_sessions (token, user_id, expires_at, created_at)
+		VALUES ($1, $2, $3, $4)
+	`, token, userID, time.Now().Add(5*time.Minute), time.Now())
+	return token, err
+}
+
+// ValidatePending2FASession validates a pending 2FA session and returns the user ID
+func (s *AuthService) ValidatePending2FASession(token string) (string, error) {
+	var session struct {
+		UserID    string    `db:"user_id"`
+		ExpiresAt time.Time `db:"expires_at"`
+	}
+	err := s.db.Get(&session, `SELECT user_id, expires_at FROM pending_2fa_sessions WHERE token = $1`, token)
+	if err != nil {
+		return "", errors.New("invalid session")
+	}
+	if time.Now().After(session.ExpiresAt) {
+		s.db.Exec(`DELETE FROM pending_2fa_sessions WHERE token = $1`, token)
+		return "", errors.New("session expired")
+	}
+	return session.UserID, nil
+}
+
+// DeletePending2FASession removes a pending 2FA session
+func (s *AuthService) DeletePending2FASession(token string) {
+	s.db.Exec(`DELETE FROM pending_2fa_sessions WHERE token = $1`, token)
+}
+
+// VerifyTOTP verifies a TOTP code for a user
+func (s *AuthService) VerifyTOTP(userID, code string) bool {
+	var secret string
+	err := s.db.Get(&secret, `SELECT COALESCE(totp_secret, '') FROM users WHERE id = $1 AND totp_enabled = true`, userID)
+	if err != nil || secret == "" {
+		return false
+	}
+	return totp.Validate(code, secret)
+}
+
+// VerifyBackupCode verifies and consumes a backup code
+func (s *AuthService) VerifyBackupCode(userID, code string) bool {
+	code = strings.ToUpper(strings.TrimSpace(code))
+
+	var backupCodes pq.StringArray
+	err := s.db.Get(&backupCodes, `SELECT COALESCE(totp_backup_codes, '{}') FROM users WHERE id = $1`, userID)
+	if err != nil {
+		return false
+	}
+
+	for i, bc := range backupCodes {
+		if bc == code {
+			newCodes := append(backupCodes[:i], backupCodes[i+1:]...)
+			s.db.Exec(`UPDATE users SET totp_backup_codes = $1 WHERE id = $2`, pq.Array(newCodes), userID)
+			return true
+		}
+	}
+	return false
+}
+
+// CreateSessionForUser creates a new session for a user (after 2FA verification)
+func (s *AuthService) CreateSessionForUser(userID string) (string, error) {
+	session := &models.Session{
+		ID:        s.generateID(),
+		UserID:    userID,
+		Token:     s.generateToken(),
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		CreatedAt: time.Now(),
+	}
+
+	_, err := s.db.NamedExec(`
+		INSERT INTO sessions (id, user_id, token, expires_at, created_at)
+		VALUES (:id, :user_id, :token, :expires_at, :created_at)
+	`, session)
+	if err != nil {
+		return "", err
+	}
 	return session.Token, nil
 }

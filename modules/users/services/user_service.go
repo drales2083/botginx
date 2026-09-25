@@ -170,3 +170,23 @@ func (s *UserService) TopUpBalance(userID string, amount float64, description st
 
 	return tx.Commit()
 }
+
+// IsTwoFactorEnabled checks if 2FA is enabled for a user
+func (s *UserService) IsTwoFactorEnabled(userID string) bool {
+	var enabled bool
+	s.db.Get(&enabled, `SELECT COALESCE(totp_enabled, false) FROM users WHERE id = $1`, userID)
+	return enabled
+}
+
+// ResetTwoFactor disables 2FA for a user (admin action for locked out users)
+func (s *UserService) ResetTwoFactor(userID string) error {
+	_, err := s.db.Exec(`
+		UPDATE users SET
+			totp_enabled = false,
+			totp_secret = NULL,
+			totp_backup_codes = NULL,
+			totp_enabled_at = NULL
+		WHERE id = $1
+	`, userID)
+	return err
+}

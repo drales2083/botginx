@@ -110,6 +110,31 @@
                 {{end}}
             </div>
         </div>
+
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Two-Factor Authentication</h5>
+                {{if .TwoFactorEnabled}}
+                <span class="badge bg-success">Enabled</span>
+                {{else}}
+                <span class="badge bg-secondary">Disabled</span>
+                {{end}}
+            </div>
+            <div class="card-body">
+                {{if .TwoFactorEnabled}}
+                <p class="text-muted small mb-3">
+                    This user has two-factor authentication enabled. If they are locked out and cannot access their authenticator app or backup codes, you can reset their 2FA.
+                </p>
+                <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#reset2faModal">
+                    <i class="bi bi-shield-x me-1"></i> Reset 2FA
+                </button>
+                {{else}}
+                <p class="text-muted small mb-0">
+                    This user has not enabled two-factor authentication.
+                </p>
+                {{end}}
+            </div>
+        </div>
     </div>
 </div>
 
@@ -217,6 +242,30 @@ document.getElementById('impersonateBtn').addEventListener('click', async () => 
     }
 });
 
+document.getElementById('confirmReset2faBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('confirmReset2faBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Resetting...';
+
+    try {
+        const res = await fetch('/admin/users/api/{{.TargetUser.ID}}/twofactor', { method: 'DELETE' });
+        const data = await res.json();
+
+        if (res.ok) {
+            reloadWithToast('Two-factor authentication disabled for this user', 'success');
+        } else {
+            showToast(data.error || 'Failed to reset 2FA', 'danger');
+            bootstrap.Modal.getInstance(document.getElementById('reset2faModal')).hide();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-shield-x me-1"></i>Reset 2FA';
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-shield-x me-1"></i>Reset 2FA';
+    }
+});
+
 document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
     const btn = document.getElementById('confirmDeleteBtn');
     btn.disabled = true;
@@ -251,6 +300,28 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', async () =
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
                     <i class="bi bi-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset 2FA Modal -->
+<div class="modal fade" id="reset2faModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-warning">
+                <h5 class="modal-title"><i class="bi bi-shield-x text-warning me-2"></i>Reset Two-Factor Authentication</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>This will disable two-factor authentication for <strong>{{.TargetUser.Email}}</strong>.</p>
+                <p class="text-muted small mb-0">The user will need to set up 2FA again if they want to re-enable it.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmReset2faBtn">
+                    <i class="bi bi-shield-x me-1"></i>Reset 2FA
                 </button>
             </div>
         </div>

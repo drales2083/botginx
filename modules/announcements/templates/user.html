@@ -1,0 +1,46 @@
+{{define "content"}}
+{{if .Announcements}}
+<!-- The time line -->
+<div class="timeline">
+    {{$prevDate := ""}}
+    {{range .Announcements}}
+    {{$currentDate := .PublishedAt.Format "2 Jan. 2006"}}
+    {{if ne $currentDate $prevDate}}
+    <!-- timeline time label -->
+    <div class="time-label">
+        <span class="text-bg-danger">{{$currentDate}}</span>
+    </div>
+    <!-- /.timeline-label -->
+    {{end}}
+    <!-- timeline item -->
+    <div>
+        <i class="timeline-icon bi bi-megaphone text-bg-primary"> </i>
+        <div class="timeline-item">
+            <span class="time"><i class="bi bi-clock-fill"></i> {{.PublishedAt.Format "15:04"}}</span>
+            <h3 class="timeline-header">
+                <a href="#">{{.Title}}</a>
+                {{if .Badge}}<span class="badge bg-success ms-2">{{.Badge}}</span>{{end}}
+                {{if .IsPinned}}<span class="badge bg-warning ms-1">Pinned</span>{{end}}
+            </h3>
+            <div class="timeline-body">
+                {{safeHTML .Body}}
+            </div>
+        </div>
+    </div>
+    <!-- END timeline item -->
+    {{$prevDate = $currentDate}}
+    {{end}}
+    <div>
+        <i class="timeline-icon bi bi-clock-fill text-bg-secondary"> </i>
+    </div>
+</div>
+<!-- /.timeline -->
+{{else}}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+        <p class="mb-0">No announcements yet</p>
+    </div>
+</div>
+{{end}}
+{{end}}
