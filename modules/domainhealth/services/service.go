@@ -1,13 +1,11 @@
 package services
 
 import (
-	"crypto/tls"
 	"fmt"
-	"net"
-	"net/http"
 	"strings"
 	"time"
 
+	"github.com/botginx/botginx/pkg/sshexec"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -64,7 +62,27 @@ func (s *HealthService) GetDomain(id, userID string) (*Domain, error) {
 	return &domain, nil
 }
 
-// stripWildcard removes the *. prefix from wildcard domains for health checks
+// getDeployServer gets deploy VPS credentials from database
+func (s *HealthService) getDeployServer() (ip string, port int, user string, password string, err error) {
+	var server struct {
+		IP       string `db:"ip"`
+		Port     int    `db:"port"`
+		User     string `db:"ssh_user"`
+		Password string `db:"ssh_password"`
+	}
+	err = s.db.Get(&server, `
+		SELECT ip, port, ssh_user, ssh_password
+		FROM servers
+		WHERE status = 'ready'
+		ORDER BY created_at LIMIT 1
+	`)
+	if err != nil {
+		return "", 0, "", "", err
+	}
+	return server.IP, server.Port, server.User, server.Password, nil
+}
+
+// stripWildcard removes the *. prefix from wildcard domains
 func stripWildcard(domain string) string {
 	if strings.HasPrefix(domain, "*.") {
 		return domain[2:]
@@ -75,108 +93,120 @@ func stripWildcard(domain string) string {
 func (s *HealthService) CheckDomain(domain Domain) HealthStatus {
 	status := HealthStatus{Domain: domain}
 
-	// Strip wildcard prefix for actual health checks
-	checkName := stripWildcard(domain.Name)
+	// Use database values for DNS and SSL status (already verified by the system)
+	if domain.DNSVerified {
+		status.DNSStatus = "ok"
+		status.DNSMessage = "Verified"
+	} else {
+		status.DNSStatus = "warning"
+		status.DNSMessage = "Pending verification"
+	}
 
-	// Check DNS
-	status.DNSStatus, status.DNSMessage = checkDNS(checkName)
+	// Check SSL on VPS (same method as verification_service.go)
+	status.SSLStatus, status.SSLMessage, status.SSLExpiry = s.checkSSLOnVPS(domain.Name)
 
-	// Check SSL
-	status.SSLStatus, status.SSLMessage, status.SSLExpiry = checkSSL(checkName)
-
-	// Check HTTP
-	status.HTTPStatus, status.HTTPMessage, status.ResponseTime = checkHTTP(checkName)
+	// HTTP check - simple connectivity test
+	status.HTTPStatus, status.HTTPMessage, status.ResponseTime = s.checkHTTP(domain.Name)
 
 	return status
 }
 
-func checkDNS(domain string) (string, string) {
-	ips, err := net.LookupIP(domain)
+// checkSSLOnVPS checks SSL certificate on the deploy VPS (same as VerificationService.CheckSSL)
+func (s *HealthService) checkSSLOnVPS(domain string) (string, string, *time.Time) {
+	ip, port, user, password, err := s.getDeployServer()
 	if err != nil {
-		return "error", fmt.Sprintf("DNS lookup failed: %v", err)
-	}
-	if len(ips) == 0 {
-		return "error", "No DNS records found"
+		return "error", "No deploy server", nil
 	}
 
-	var ipList string
-	for i, ip := range ips {
-		if i > 0 {
-			ipList += ", "
-		}
-		ipList += ip.String()
-		if i >= 2 {
-			ipList += "..."
-			break
+	portStr := fmt.Sprintf("%d", port)
+	if port == 0 {
+		portStr = "22"
+	}
+
+	client, err := sshexec.NewClient(ip, portStr, user, password)
+	if err != nil {
+		return "error", "Server connection failed", nil
+	}
+	defer client.Close()
+
+	// Check if cert exists (same path as verification service)
+	certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", domain)
+	checkCmd := fmt.Sprintf("test -f %s && echo EXISTS || echo MISSING", certPath)
+
+	output, err := client.Run(checkCmd)
+	if err != nil {
+		return "error", "Check failed", nil
+	}
+
+	if strings.TrimSpace(output) != "EXISTS" {
+		return "error", "Certificate not found", nil
+	}
+
+	// Get expiry date
+	infoCmd := fmt.Sprintf(`openssl x509 -in %s -noout -enddate 2>/dev/null | cut -d= -f2`, certPath)
+	info, _ := client.Run(infoCmd)
+	info = strings.TrimSpace(info)
+
+	if info != "" {
+		// Parse expiry: "Mar 15 12:00:00 2025 GMT"
+		expiry, err := time.Parse("Jan 2 15:04:05 2006 MST", info)
+		if err == nil {
+			daysLeft := int(time.Until(expiry).Hours() / 24)
+			if daysLeft < 0 {
+				return "error", "Expired", &expiry
+			}
+			if daysLeft < 14 {
+				return "warning", fmt.Sprintf("Expires in %d days", daysLeft), &expiry
+			}
+			return "ok", fmt.Sprintf("Valid (%d days)", daysLeft), &expiry
 		}
 	}
-	return "ok", fmt.Sprintf("Resolves to %s", ipList)
+
+	return "ok", "Certificate exists", nil
 }
 
-func checkSSL(domain string) (string, string, *time.Time) {
-	conn, err := tls.DialWithDialer(
-		&net.Dialer{Timeout: 10 * time.Second},
-		"tcp",
-		domain+":443",
-		&tls.Config{InsecureSkipVerify: true},
-	)
+// checkHTTP tests if domain responds to HTTP/HTTPS
+func (s *HealthService) checkHTTP(domain string) (string, string, int64) {
+	baseDomain := stripWildcard(domain)
+
+	// Use dig or curl on the VPS to check connectivity
+	ip, port, user, password, err := s.getDeployServer()
 	if err != nil {
-		return "error", fmt.Sprintf("SSL connection failed: %v", err), nil
-	}
-	defer conn.Close()
-
-	certs := conn.ConnectionState().PeerCertificates
-	if len(certs) == 0 {
-		return "error", "No SSL certificate found", nil
+		return "error", "No deploy server", 0
 	}
 
-	cert := certs[0]
-	expiry := cert.NotAfter
-
-	daysUntilExpiry := int(time.Until(expiry).Hours() / 24)
-
-	if daysUntilExpiry < 0 {
-		return "error", "Certificate expired", &expiry
-	}
-	if daysUntilExpiry < 7 {
-		return "warning", fmt.Sprintf("Expires in %d days", daysUntilExpiry), &expiry
-	}
-	if daysUntilExpiry < 30 {
-		return "warning", fmt.Sprintf("Expires in %d days", daysUntilExpiry), &expiry
+	portStr := fmt.Sprintf("%d", port)
+	if port == 0 {
+		portStr = "22"
 	}
 
-	return "ok", fmt.Sprintf("Valid, expires in %d days", daysUntilExpiry), &expiry
-}
-
-func checkHTTP(domain string) (string, string, int64) {
-	client := &http.Client{
-		Timeout: 15 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+	client, err := sshexec.NewClient(ip, portStr, user, password)
+	if err != nil {
+		return "error", "Server connection failed", 0
 	}
+	defer client.Close()
 
+	// Check nginx config exists and test with curl
 	start := time.Now()
-	resp, err := client.Get("https://" + domain)
+	cmd := fmt.Sprintf(`curl -sS -o /dev/null -w "%%{http_code}" --max-time 10 -k https://%s 2>/dev/null || echo "000"`, baseDomain)
+	output, err := client.Run(cmd)
 	elapsed := time.Since(start).Milliseconds()
 
 	if err != nil {
-		// Try HTTP if HTTPS fails
-		start = time.Now()
-		resp, err = client.Get("http://" + domain)
-		elapsed = time.Since(start).Milliseconds()
-		if err != nil {
-			return "error", fmt.Sprintf("Connection failed: %v", err), elapsed
-		}
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 500 {
-		return "error", fmt.Sprintf("Server error: %d", resp.StatusCode), elapsed
-	}
-	if resp.StatusCode >= 400 {
-		return "warning", fmt.Sprintf("Client error: %d", resp.StatusCode), elapsed
+		return "error", "Check failed", elapsed
 	}
 
-	return "ok", fmt.Sprintf("HTTP %d (%dms)", resp.StatusCode, elapsed), elapsed
+	code := strings.TrimSpace(output)
+	switch {
+	case code == "000":
+		return "error", "Connection failed", elapsed
+	case code == "200", code == "301", code == "302", code == "304":
+		return "ok", fmt.Sprintf("HTTP %s", code), elapsed
+	case strings.HasPrefix(code, "4"):
+		return "warning", fmt.Sprintf("HTTP %s", code), elapsed
+	case strings.HasPrefix(code, "5"):
+		return "error", fmt.Sprintf("HTTP %s", code), elapsed
+	default:
+		return "ok", fmt.Sprintf("HTTP %s", code), elapsed
+	}
 }
