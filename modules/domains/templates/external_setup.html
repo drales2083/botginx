@@ -809,8 +809,8 @@ async function manualCheck() {
                 sslErrorEl.classList.add('d-none');
             }
 
-            // Build feedback message from rich status
-            const statuses = [status.aRecord, status.verifyTxt].filter(s => s && s.status);
+            // Build feedback message from rich status (all 3 steps: A record, TXT verify, SSL)
+            const statuses = [status.aRecord, status.verifyTxt, status.cnameOrTxt].filter(s => s && s.status);
             const verified = statuses.filter(s => s.status === 'verified').length;
             const mismatched = statuses.filter(s => s.status === 'mismatch').length;
             let msg = `${verified}/${statuses.length} verified`;
