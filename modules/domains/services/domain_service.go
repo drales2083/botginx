@@ -26,6 +26,11 @@ func NewDomainService(db *sqlx.DB) *DomainService {
 	return &DomainService{db: db}
 }
 
+// DB returns the database connection for direct queries
+func (s *DomainService) DB() *sqlx.DB {
+	return s.db
+}
+
 func (s *DomainService) generateID() string {
 	b := make([]byte, 12)
 	rand.Read(b)

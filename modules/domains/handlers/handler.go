@@ -1579,6 +1579,62 @@ func (h *Handler) APICancelSSLChallenge(w http.ResponseWriter, r *http.Request) 
 
 // Helpers
 
+// APIDeleteCpanelConnection deletes a cPanel connection and all associated data
+// This includes: domains, redirect links, analytics, VPS files, DNS records
+func (h *Handler) APIDeleteCpanelConnection(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	connID := chi.URLParam(r, "id")
+
+	// Get all domains using this connection
+	var domains []models.Domain
+	h.service.DB().Select(&domains, `
+		SELECT * FROM domains WHERE cpanel_connection_id = $1 AND user_id = $2
+	`, connID, userID)
+
+	log.Printf("[cpanel] Deleting connection %s with %d domains", connID, len(domains))
+
+	// Clean up each domain (VPS files, DNS, redirect links)
+	go func() {
+		for _, domain := range domains {
+			log.Printf("[cpanel] Cleaning up domain %s", domain.Name)
+
+			// Clean up VPS files
+			if cleanupErr := h.verification.CleanupDomain(domain.Name); cleanupErr != nil {
+				log.Printf("[cpanel] VPS cleanup failed for %s: %v", domain.Name, cleanupErr)
+			}
+
+			// Clean up redirect link botection settings
+			if linkIDs, err := h.service.GetRedirectLinkIDs(domain.ID); err == nil && len(linkIDs) > 0 {
+				h.verification.CleanupRedirectLinkSettings(linkIDs)
+			}
+		}
+
+		// Clean up DNS records via cPanel
+		if len(domains) > 0 && h.cpanelService != nil {
+			for _, domain := range domains {
+				h.cpanelService.CleanupDomainDNS(connID, domain.Name)
+			}
+		}
+	}()
+
+	// Delete domains (cascade deletes redirect_links and analytics)
+	for _, domain := range domains {
+		h.service.Delete(domain.ID)
+	}
+
+	// Delete the cPanel connection itself
+	if err := h.cpanelService.DeleteConnection(userID, connID); err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success":         true,
+		"deleted":         true,
+		"domains_deleted": len(domains),
+	})
+}
+
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

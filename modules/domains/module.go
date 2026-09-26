@@ -125,7 +125,7 @@ func (m *Module) Routes() chi.Router {
 		r.Post("/test", m.cpanelHandler.TestNewConnection) // Test before saving
 		r.Get("/{id}", m.cpanelHandler.GetConnection)
 		r.Put("/{id}", m.cpanelHandler.UpdateConnection)
-		r.Delete("/{id}", m.cpanelHandler.DeleteConnection)
+		r.Delete("/{id}", m.handler.APIDeleteCpanelConnection) // Full cleanup: domains, links, VPS files
 		r.Post("/{id}/test", m.cpanelHandler.TestConnection)
 		r.Get("/{id}/domains", m.cpanelHandler.ListDomains)
 	})
