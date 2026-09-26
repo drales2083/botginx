@@ -146,10 +146,25 @@
                         </div>
                     </div>
 
-                    <div id="prog-complete" class="setup-step" data-status="pending">
+                    <div id="prog-ssl" class="setup-step" data-status="pending">
                         <div class="step-indicator">
                             <div class="step-circle">
                                 <span class="step-number">4</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Generate SSL</div>
+                            <div class="step-desc text-muted small">Issuing wildcard certificate</div>
+                        </div>
+                    </div>
+
+                    <div id="prog-complete" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">5</span>
                                 <span class="step-check"><i class="bi bi-check2"></i></span>
                                 <span class="step-spinner spinner-border spinner-border-sm"></span>
                             </div>
@@ -661,26 +676,11 @@ async function pollVerification(domainId) {
 
             if (data.domain && data.domain.dnsVerified) {
                 updateProgress('verify', 'done');
-                updateProgress('complete', 'done');
 
-                // Show success with action button
-                document.getElementById('progress-message').innerHTML = `
-                    <div class="text-success mb-3">
-                        <i class="bi bi-check-circle-fill me-1"></i>
-                        <strong>Domain setup complete!</strong>
-                    </div>
-                    <a href="/user/domains/${domainId}" class="btn btn-primary">
-                        <i class="bi bi-arrow-right me-1"></i>View Domain
-                    </a>
-                    <a href="/user/domains" class="btn btn-outline-secondary ms-2">
-                        Back to Domains
-                    </a>
-                `;
-
-                // Also try auto-redirect after 3s
-                setTimeout(() => {
-                    window.location.href = '/user/domains/' + domainId;
-                }, 3000);
+                // Now poll for SSL
+                updateProgress('ssl', 'loading');
+                document.getElementById('progress-message').textContent = 'Generating SSL certificate...';
+                pollSSL(domainId);
                 return;
             }
 
@@ -707,6 +707,73 @@ async function pollVerification(domainId) {
             }
         } catch (err) {
             console.error('Poll error:', err);
+            setTimeout(check, 6000);
+        }
+    };
+
+    setTimeout(check, 3000); // First check after 3s
+}
+
+// Poll for SSL certificate generation
+async function pollSSL(domainId) {
+    let attempts = 0;
+    const maxAttempts = 30; // ~3 minutes with 6s intervals (SSL can take longer)
+
+    const check = async () => {
+        attempts++;
+        try {
+            const res = await fetch(`/user/domains/api/${domainId}/ssl`);
+            const data = await res.json();
+
+            if (data.ssl && data.ssl.exists && data.ssl.isWildcard) {
+                updateProgress('ssl', 'done');
+                updateProgress('complete', 'done');
+
+                // Show success with action button
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-success mb-3">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        <strong>Domain setup complete!</strong>
+                    </div>
+                    <a href="/user/domains/${domainId}" class="btn btn-primary">
+                        <i class="bi bi-arrow-right me-1"></i>View Domain
+                    </a>
+                    <a href="/user/domains" class="btn btn-outline-secondary ms-2">
+                        Back to Domains
+                    </a>
+                `;
+
+                // Auto-redirect after 3s
+                setTimeout(() => {
+                    window.location.href = '/user/domains/' + domainId;
+                }, 3000);
+                return;
+            }
+
+            if (attempts < maxAttempts) {
+                document.getElementById('progress-message').textContent =
+                    `Generating SSL certificate... (${attempts}/${maxAttempts})`;
+                setTimeout(check, 6000);
+            } else {
+                // SSL timeout - still show success but note SSL is pending
+                updateProgress('ssl', 'pending');
+                updateProgress('complete', 'done');
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-warning mb-3">
+                        <i class="bi bi-clock me-1"></i>
+                        SSL certificate generation in progress
+                    </div>
+                    <p class="small text-muted mb-3">Domain is ready. SSL will be available shortly.</p>
+                    <a href="/user/domains/${domainId}" class="btn btn-primary">
+                        <i class="bi bi-arrow-right me-1"></i>View Domain
+                    </a>
+                    <a href="/user/domains" class="btn btn-outline-secondary ms-2">
+                        Back to Domains
+                    </a>
+                `;
+            }
+        } catch (err) {
+            console.error('SSL poll error:', err);
             setTimeout(check, 6000);
         }
     };

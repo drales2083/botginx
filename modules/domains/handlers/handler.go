@@ -682,18 +682,43 @@ func (h *Handler) APIVerifyDNS(w http.ResponseWriter, r *http.Request) {
 	// Auto-setup SSL and nginx after successful verification
 	if verified && !domain.SSLEnabled {
 		go func() {
-			// Generate SSL
-			if err := h.verification.GenerateSSL(domain.Name); err != nil {
+			var sslErr error
+
+			// Check if domain has acme-dns credentials for wildcard SSL
+			if domain.AcmeSubdomain != nil && domain.AcmeUsername != nil && domain.AcmePassword != nil {
+				// Use acme-dns for wildcard SSL (cPanel and external domains)
+				log.Printf("[domains] generating wildcard SSL via acme-dns for %s", domain.Name)
+				sslErr = h.verification.GenerateWildcardSSLWithAcmeDNS(
+					domain.Name,
+					*domain.AcmeSubdomain,
+					*domain.AcmeUsername,
+					*domain.AcmePassword,
+				)
+			} else {
+				// Fallback to basic SSL (direct domains)
+				log.Printf("[domains] generating basic SSL for %s", domain.Name)
+				sslErr = h.verification.GenerateSSL(domain.Name)
+			}
+
+			if sslErr != nil {
+				log.Printf("[domains] SSL generation failed for %s: %v", domain.Name, sslErr)
+				// Store error for UI display
+				errStr := sslErr.Error()
+				h.service.Update(id, models.UpdateDomainInput{SSLError: &errStr})
 				return
 			}
+
 			// Setup nginx
 			if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+				log.Printf("[domains] nginx setup failed for %s: %v", domain.Name, err)
 				return
 			}
+
 			// Mark SSL enabled and assign server
 			t := true
 			serverID := h.service.GetDeployServerID()
 			h.service.Update(id, models.UpdateDomainInput{SSLEnabled: &t, ServerID: &serverID})
+			log.Printf("[domains] SSL and nginx setup complete for %s", domain.Name)
 		}()
 		result["setup_started"] = true
 	}
@@ -827,7 +852,9 @@ func (h *Handler) ExternalSetup(w http.ResponseWriter, r *http.Request) {
 
 	// Build setup info
 	baseDomain := services.GetBaseDomain(domain.Name)
-	isWildcard := domain.IsWildcard || len(domain.Name) > 2 && domain.Name[:2] == "*."
+	// cPanel domains are treated as wildcard - we only care about *.domain.com, not the root @
+	isCpanel := domain.CpanelConnectionID != nil && *domain.CpanelConnectionID != ""
+	isWildcard := domain.IsWildcard || len(domain.Name) > 2 && domain.Name[:2] == "*." || isCpanel
 
 	setupInfo := models.ExternalSetupInfo{
 		Domain:        domain.Name,
