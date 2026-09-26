@@ -83,6 +83,20 @@ func (m *Module) Routes() chi.Router {
 	// Pages
 	r.Get("/", m.handler.List)
 	r.Get("/new", m.handler.New)
+
+	// cPanel connections API (must be before /{id} wildcard)
+	r.Route("/cpanel", func(r chi.Router) {
+		r.Get("/connect", m.handler.CpanelConnect) // Page: connect cPanel account
+		r.Get("/", m.cpanelHandler.ListConnections)
+		r.Post("/", m.cpanelHandler.CreateConnection)
+		r.Post("/test", m.cpanelHandler.TestNewConnection) // Test before saving
+		r.Get("/{id}", m.cpanelHandler.GetConnection)
+		r.Put("/{id}", m.cpanelHandler.UpdateConnection)
+		r.Delete("/{id}", m.handler.APIDeleteCpanelConnection) // Full cleanup: domains, links, VPS files
+		r.Post("/{id}/test", m.cpanelHandler.TestConnection)
+		r.Get("/{id}/domains", m.cpanelHandler.ListDomains)
+	})
+
 	r.Get("/{id}", m.handler.Show)
 	r.Get("/{id}/settings", m.handler.Settings)   // Domain settings (Turnstile, etc.)
 	r.Get("/{id}/setup", m.handler.ExternalSetup) // External domain setup wizard
@@ -115,19 +129,6 @@ func (m *Module) Routes() chi.Router {
 		// Domain settings (Turnstile, etc.)
 		r.Put("/{id}/settings", m.handler.APIUpdateSettings)
 		r.Get("/{id}/turnstile", m.handler.APIGetTurnstileStatus)
-	})
-
-	// cPanel connections API
-	r.Route("/cpanel", func(r chi.Router) {
-		r.Get("/connect", m.handler.CpanelConnect) // Page: connect cPanel account
-		r.Get("/", m.cpanelHandler.ListConnections)
-		r.Post("/", m.cpanelHandler.CreateConnection)
-		r.Post("/test", m.cpanelHandler.TestNewConnection) // Test before saving
-		r.Get("/{id}", m.cpanelHandler.GetConnection)
-		r.Put("/{id}", m.cpanelHandler.UpdateConnection)
-		r.Delete("/{id}", m.handler.APIDeleteCpanelConnection) // Full cleanup: domains, links, VPS files
-		r.Post("/{id}/test", m.cpanelHandler.TestConnection)
-		r.Get("/{id}/domains", m.cpanelHandler.ListDomains)
 	})
 
 	return r
