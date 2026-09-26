@@ -22,7 +22,7 @@
                 <tbody>
                     {{range .Whitelist}}
                     <tr>
-                        <td><code>{{.IP}}</code></td>
+                        <td><a href="https://json.geoiplookup.io/{{.IP}}" target="_blank" class="text-decoration-none"><code>{{.IP}}</code></a></td>
                         <td class="text-muted">{{if .Note}}{{.Note}}{{else}}-{{end}}</td>
                         <td>{{.CreatedAt.Format "2006-01-02"}}</td>
                         <td>

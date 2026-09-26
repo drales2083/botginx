@@ -171,7 +171,7 @@
                                 <tbody id="whitelist-table">
                                     {{range .GlobalWhitelist}}
                                     <tr data-id="{{.ID}}">
-                                        <td><code>{{.IP}}</code></td>
+                                        <td><a href="https://json.geoiplookup.io/{{.IP}}" target="_blank" class="text-decoration-none"><code>{{.IP}}</code></a></td>
                                         <td class="text-muted">{{.CreatedAt.Format "2006-01-02"}}</td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-danger btn-remove-ip" data-id="{{.ID}}">

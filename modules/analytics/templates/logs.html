@@ -178,7 +178,7 @@ function renderLogs(logs) {
                     ${log.domain}${log.path || '/'}
                 </div>
             </td>
-            <td><code class="small">${log.ip}</code></td>
+            <td><a href="https://json.geoiplookup.io/${log.ip}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation()"><code class="small">${log.ip}</code></a></td>
             <td>${FLAGS[log.country] || ''} ${log.country || '-'}</td>
             <td><i class="${DEVICE_ICONS[log.device] || 'bi-pc-display'}"></i> ${log.device}</td>
             <td>
@@ -230,7 +230,7 @@ function showDetail(idx) {
     const html = `
         <div class="log-detail-row"><span class="log-detail-label">Time</span><span class="log-detail-value">${new Date(log.createdAt).toLocaleString()}</span></div>
         <div class="log-detail-row"><span class="log-detail-label">Link</span><span class="log-detail-value">${log.domain}${log.path}</span></div>
-        <div class="log-detail-row"><span class="log-detail-label">IP</span><span class="log-detail-value">${log.ip}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">IP</span><span class="log-detail-value"><a href="https://json.geoiplookup.io/${log.ip}" target="_blank">${log.ip}</a></span></div>
         <div class="log-detail-row"><span class="log-detail-label">Country</span><span class="log-detail-value">${FLAGS[log.country] || ''} ${log.country || '-'}</span></div>
         <div class="log-detail-row"><span class="log-detail-label">Device</span><span class="log-detail-value">${log.device}</span></div>
         <div class="log-detail-row"><span class="log-detail-label">Browser</span><span class="log-detail-value">${log.browser || '-'}</span></div>
