@@ -767,7 +767,7 @@ func (s *AnalyticsService) GetVisitLogs(userID, linkID, country, botFilter, sear
 			v.id, v.created_at,
 			COALESCE(d.name, '') as domain,
 			COALESCE(rl.path, '') as path,
-			COALESCE(CONCAT(LEFT(v.ip, POSITION('.' IN v.ip) + 3), 'xxx'), '') as ip,
+			COALESCE(v.ip, '') as ip,
 			COALESCE(v.country, '') as country,
 			COALESCE(v.device, 'desktop') as device,
 			COALESCE(v.browser, '') as browser,
