@@ -84,17 +84,22 @@ func (m *Module) Routes() chi.Router {
 	r.Get("/", m.handler.List)
 	r.Get("/new", m.handler.New)
 
-	// cPanel connections API (must be before /{id} wildcard)
+	// cPanel connections (pages and API)
 	r.Route("/cpanel", func(r chi.Router) {
-		r.Get("/connect", m.handler.CpanelConnect) // Page: connect cPanel account
-		r.Get("/", m.cpanelHandler.ListConnections)
-		r.Post("/", m.cpanelHandler.CreateConnection)
-		r.Post("/test", m.cpanelHandler.TestNewConnection) // Test before saving
-		r.Get("/{id}", m.cpanelHandler.GetConnection)
-		r.Put("/{id}", m.cpanelHandler.UpdateConnection)
-		r.Delete("/{id}", m.handler.APIDeleteCpanelConnection) // Full cleanup: domains, links, VPS files
-		r.Post("/{id}/test", m.cpanelHandler.TestConnection)
-		r.Get("/{id}/domains", m.cpanelHandler.ListDomains)
+		// Pages
+		r.Get("/", m.handler.CpanelList)            // Page: list all connections
+		r.Get("/connect", m.handler.CpanelConnect)  // Page: add new connection form
+		r.Get("/{id}/domains", m.handler.CpanelDomains) // Page: select domain from connection
+
+		// API (for AJAX calls from pages)
+		r.Get("/api", m.cpanelHandler.ListConnections)
+		r.Post("/api", m.cpanelHandler.CreateConnection)
+		r.Post("/api/test", m.cpanelHandler.TestNewConnection)
+		r.Get("/api/{id}", m.cpanelHandler.GetConnection)
+		r.Put("/api/{id}", m.cpanelHandler.UpdateConnection)
+		r.Delete("/api/{id}", m.handler.APIDeleteCpanelConnection)
+		r.Post("/api/{id}/test", m.cpanelHandler.TestConnection)
+		r.Get("/api/{id}/domains", m.cpanelHandler.ListDomains)
 	})
 
 	r.Get("/{id}", m.handler.Show)

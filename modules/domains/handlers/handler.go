@@ -78,8 +78,22 @@ func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CpanelConnect(w http.ResponseWriter, r *http.Request) {
-	module.RenderUserSection(w, r, h.templates, "domains:cpanel_connect.html", map[string]interface{}{
-		"Title": "Connect cPanel",
+	module.RenderUserSection(w, r, h.templates, "domains:cpanel_connect_new.html", map[string]interface{}{
+		"Title": "Add cPanel Connection",
+	})
+}
+
+func (h *Handler) CpanelList(w http.ResponseWriter, r *http.Request) {
+	module.RenderUserSection(w, r, h.templates, "domains:cpanel_list.html", map[string]interface{}{
+		"Title": "cPanel Connections",
+	})
+}
+
+func (h *Handler) CpanelDomains(w http.ResponseWriter, r *http.Request) {
+	connID := chi.URLParam(r, "id")
+	module.RenderUserSection(w, r, h.templates, "domains:cpanel_domains.html", map[string]interface{}{
+		"Title":        "Add Domain from cPanel",
+		"ConnectionID": connID,
 	})
 }
 

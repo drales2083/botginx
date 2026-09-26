@@ -1,0 +1,626 @@
+{{define "content"}}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <a href="/user/domains/cpanel/" class="btn btn-sm btn-outline-secondary me-3">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <div>
+                    <h3 class="card-title mb-0">Add Domain from cPanel</h3>
+                    <small class="text-muted" id="conn-info"></small>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="loading" class="text-center py-5">
+                    <span class="spinner-border spinner-border-sm me-2"></span>Loading domains...
+                </div>
+
+                <div id="error" class="alert alert-danger d-none"></div>
+
+                <div id="domains-section" class="d-none">
+                    <p class="text-muted mb-3">Select a domain to add. Subdomains will be available automatically via wildcard.</p>
+
+                    <div id="domains-list" class="mb-4"></div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Or add a specific subdomain:</label>
+                        <div class="input-group" style="max-width: 400px;">
+                            <input type="text" class="form-control" id="custom-subdomain" placeholder="promo">
+                            <span class="input-group-text" id="base-domain-suffix">.example.com</span>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" id="add-domain-btn">
+                        <i class="bi bi-plus-lg me-1"></i>Add Domain
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Card (hidden initially) -->
+        <div id="progress-card" class="card mt-4 d-none">
+            <div class="card-body py-5">
+                <div class="text-center mb-4">
+                    <div class="mb-3">
+                        <svg width='160' height='86' viewBox='0 0 241 129' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M139.5 32H101.5C94.0442 32 88 38.0442 88 45.5V83.5C88 90.9558 94.0442 97 101.5 97H139.5C146.956 97 153 90.9558 153 83.5V45.5C153 38.0442 146.956 32 139.5 32Z' stroke='currentColor' class='text-secondary'/><path d='M129.624 64.9376C129.624 69.942 125.566 73.9989 120.562 73.9989C115.558 73.9989 111.5 69.942 111.5 64.9376C111.5 59.9331 115.558 55.8762 120.562 55.8762C125.566 55.8762 129.624 59.9331 129.624 64.9376Z' stroke='#FD6A2B' stroke-width='1.125' stroke-linecap='square'/><path d='M120.562 73.754C118.398 73.754 116.644 69.8068 116.644 64.9375C116.644 60.0684 118.398 56.1211 120.562 56.1211C122.726 56.1211 124.48 60.0684 124.48 64.9375C124.48 69.8068 122.726 73.754 120.562 73.754Z' stroke='#FD6A2B' stroke-width='1.125' stroke-linecap='square'/><path d='M129.378 64.9375H111.746' stroke='#FD6A2B' stroke-width='1.125' stroke-linecap='square'/><path d='M60.5 42H38.5C32.1487 42 27 47.1487 27 53.5V75.5C27 81.8513 32.1487 87 38.5 87H60.5C66.8513 87 72 81.8513 72 75.5V53.5C72 47.1487 66.8513 42 60.5 42Z' stroke='currentColor' class='text-secondary' stroke-dasharray='2 2'/><g opacity='0.6'><path d='M47.287 69.3697L43.4993 64.322L47.2662 59.418L46.5389 58.4292L42.2944 63.9609L42.2886 64.6683L46.5534 70.3585L47.287 69.3697Z' fill='currentColor'/><path d='M48.6092 57.2732H47.1514L52.4086 64.4339L47.275 71.3596H48.7419L53.8726 64.4366L48.6092 57.2732Z' fill='currentColor'/><path d='M51.428 57.2732H49.9521L55.2923 64.3485L49.9521 71.3596H51.4307L56.4999 64.7038V63.9964L51.428 57.2732Z' fill='currentColor'/></g><path d='M72 65.5H88' stroke='currentColor' class='text-secondary'/><path d='M153 65.5H169' stroke='currentColor' class='text-secondary'/><g opacity='0.6'><path d='M189.998 68.87L186.211 63.8223L189.978 58.9182L189.25 57.9294L185.006 63.4611L185 64.1686L189.265 69.8587L189.998 68.87Z' fill='currentColor'/><path d='M191.321 56.7732H189.863L195.12 63.9339L189.986 70.8596H191.453L196.584 63.9366L191.321 56.7732Z' fill='currentColor'/><path d='M194.139 56.7732H192.664L198.004 63.8485L192.664 70.8596H194.142L199.211 64.2038V63.4964L194.139 56.7732Z' fill='currentColor'/></g><path d='M202.5 42H180.5C174.149 42 169 47.1487 169 53.5V75.5C169 81.8513 174.149 87 180.5 87H202.5C208.851 87 214 81.8513 214 75.5V53.5C214 47.1487 208.851 42 202.5 42Z' stroke='currentColor' class='text-secondary' stroke-dasharray='2 2'/></svg>
+                    </div>
+                    <h4 class="mb-1">Setting up your domain</h4>
+                    <div id="progress-domain" class="text-muted"></div>
+                </div>
+
+                <div class="setup-stepper mx-auto" style="max-width:420px">
+                    <div id="prog-connect" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">1</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Connecting to cPanel</div>
+                            <div class="step-desc text-muted small">Establishing secure connection</div>
+                        </div>
+                    </div>
+
+                    <div id="prog-dns" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">2</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Adding DNS Records</div>
+                            <div class="step-desc text-muted small">Configuring domain records</div>
+                            <div id="dns-substeps" class="substeps mt-2 d-none">
+                                <div id="sub-txt" class="substep" data-status="pending">
+                                    <i class="bi bi-circle substep-pending"></i>
+                                    <i class="bi bi-check-circle-fill substep-done text-success"></i>
+                                    <span class="spinner-border spinner-border-sm substep-loading"></span>
+                                    <span class="substep-label">TXT record <code class="small">_guardbot-verify</code></span>
+                                </div>
+                                <div id="sub-a" class="substep" data-status="pending">
+                                    <i class="bi bi-circle substep-pending"></i>
+                                    <i class="bi bi-check-circle-fill substep-done text-success"></i>
+                                    <span class="spinner-border spinner-border-sm substep-loading"></span>
+                                    <span class="substep-label">A record <code class="small">*</code></span>
+                                </div>
+                                <div id="sub-cname" class="substep" data-status="pending">
+                                    <i class="bi bi-circle substep-pending"></i>
+                                    <i class="bi bi-check-circle-fill substep-done text-success"></i>
+                                    <span class="spinner-border spinner-border-sm substep-loading"></span>
+                                    <span class="substep-label">CNAME record <code class="small">_acme-challenge</code></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="prog-verify" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">3</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Verifying DNS Propagation</div>
+                            <div class="step-desc text-muted small">Checking record availability</div>
+                            <div id="verify-substeps" class="substeps mt-2 d-none">
+                                <div id="verify-txt" class="substep" data-status="pending">
+                                    <i class="bi bi-circle substep-pending"></i>
+                                    <i class="bi bi-check-circle-fill substep-done text-success"></i>
+                                    <span class="spinner-border spinner-border-sm substep-loading"></span>
+                                    <span class="substep-label">TXT record verified</span>
+                                </div>
+                                <div id="verify-a" class="substep" data-status="pending">
+                                    <i class="bi bi-circle substep-pending"></i>
+                                    <i class="bi bi-check-circle-fill substep-done text-success"></i>
+                                    <span class="spinner-border spinner-border-sm substep-loading"></span>
+                                    <span class="substep-label">A record verified</span>
+                                </div>
+                                <div id="verify-cname" class="substep" data-status="pending">
+                                    <i class="bi bi-circle substep-pending"></i>
+                                    <i class="bi bi-check-circle-fill substep-done text-success"></i>
+                                    <span class="spinner-border spinner-border-sm substep-loading"></span>
+                                    <span class="substep-label">CNAME record verified</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="prog-ssl" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">4</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Generating SSL Certificate</div>
+                            <div class="step-desc text-muted small">Issuing wildcard certificate</div>
+                        </div>
+                    </div>
+
+                    <div id="prog-complete" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">5</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Completing Setup</div>
+                            <div class="step-desc text-muted small">Domain ready to use</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="progress-message" class="text-center mt-4 pt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.setup-stepper { position: relative; }
+.setup-step {
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+    padding-bottom: 24px;
+    opacity: 0.4;
+    transition: opacity 0.3s ease;
+}
+.setup-step:last-child { padding-bottom: 0; }
+.setup-step[data-status="loading"],
+.setup-step[data-status="done"] { opacity: 1; }
+
+.step-indicator {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-right: 16px;
+}
+.step-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+.step-number {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+}
+.step-check, .step-spinner { display: none; }
+
+.step-line {
+    width: 2px;
+    flex: 1;
+    background: var(--bs-border-color);
+    margin-top: 4px;
+    min-height: 24px;
+    transition: background 0.3s ease;
+}
+.setup-step:last-child .step-line { display: none; }
+
+.step-content { padding-top: 4px; flex: 1; }
+.step-title { font-weight: 500; line-height: 1.3; }
+.step-desc { line-height: 1.4; margin-top: 2px; }
+
+.setup-step[data-status="loading"] .step-circle {
+    border-color: var(--bs-primary);
+    background: var(--bs-primary);
+}
+.setup-step[data-status="loading"] .step-number { display: none; }
+.setup-step[data-status="loading"] .step-spinner {
+    display: block;
+    color: #fff;
+    width: 16px;
+    height: 16px;
+}
+.setup-step[data-status="loading"] .step-title { color: var(--bs-primary); }
+
+.setup-step[data-status="done"] .step-circle {
+    border-color: #198754;
+    background: #198754;
+}
+.setup-step[data-status="done"] .step-number { display: none; }
+.setup-step[data-status="done"] .step-check {
+    display: block;
+    color: #fff;
+    font-size: 1rem;
+}
+.setup-step[data-status="done"] .step-line { background: #198754; }
+.setup-step[data-status="done"] .step-title { color: #198754; }
+
+.setup-step[data-status="error"] .step-circle {
+    border-color: var(--bs-danger);
+    background: var(--bs-danger);
+}
+.setup-step[data-status="error"] .step-number { display: none; }
+.setup-step[data-status="error"] .step-check {
+    display: block;
+    color: #fff;
+}
+.setup-step[data-status="error"] .step-check i:before { content: "\F62A"; }
+.setup-step[data-status="error"] .step-title { color: var(--bs-danger); }
+
+.substeps {
+    padding-left: 4px;
+    border-left: 2px solid var(--bs-border-color);
+    margin-left: 2px;
+}
+.substep {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0 4px 12px;
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+    transition: color 0.2s ease;
+}
+.substep .substep-done,
+.substep .substep-loading { display: none; }
+.substep .substep-pending { font-size: 0.6rem; opacity: 0.5; }
+.substep[data-status="loading"] .substep-pending { display: none; }
+.substep[data-status="loading"] .substep-loading {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    color: var(--bs-primary);
+}
+.substep[data-status="loading"] { color: var(--bs-body-color); }
+.substep[data-status="done"] .substep-pending { display: none; }
+.substep[data-status="done"] .substep-done { display: inline-block; }
+.substep[data-status="done"] { color: var(--bs-body-color); }
+.substep code {
+    background: var(--bs-tertiary-bg);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+</style>
+
+<script>
+const connId = '{{.ConnectionID}}';
+let cpanelDomains = null;
+let selectedDomain = null;
+let currentDomainId = null;
+
+async function loadConnection() {
+    try {
+        const res = await fetch('/user/domains/cpanel/api/' + connId);
+        const data = await res.json();
+        if (data.success && data.data) {
+            document.getElementById('conn-info').textContent = data.data.username + '@' + data.data.host;
+        }
+    } catch (err) {
+        console.error('Failed to load connection:', err);
+    }
+}
+
+async function loadDomains() {
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    const section = document.getElementById('domains-section');
+
+    try {
+        const res = await fetch('/user/domains/cpanel/api/' + connId + '/domains');
+        const data = await res.json();
+
+        loading.classList.add('d-none');
+
+        if (!data.success) {
+            error.textContent = data.error || 'Failed to load domains';
+            error.classList.remove('d-none');
+            return;
+        }
+
+        cpanelDomains = data.data;
+        renderDomains();
+        section.classList.remove('d-none');
+
+    } catch (err) {
+        loading.classList.add('d-none');
+        error.textContent = 'Network error: ' + err.message;
+        error.classList.remove('d-none');
+    }
+}
+
+function renderDomains() {
+    const container = document.getElementById('domains-list');
+    const existing = cpanelDomains.existingDomains || [];
+    let html = '';
+
+    // Main domain
+    if (cpanelDomains.mainDomain) {
+        const isExisting = existing.includes(cpanelDomains.mainDomain);
+        if (isExisting) {
+            html += `
+                <div class="card bg-secondary bg-opacity-10 border-secondary mb-2">
+                    <div class="card-body py-2">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="radio" name="domain" disabled>
+                            <label class="form-check-label text-muted">
+                                <strong>${cpanelDomains.mainDomain}</strong>
+                                <span class="badge bg-success ms-2">Already Added</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>`;
+        } else {
+            html += `
+                <div class="card bg-primary bg-opacity-10 border-primary mb-2">
+                    <div class="card-body py-2">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="radio" name="domain" value="${cpanelDomains.mainDomain}" checked onchange="selectDomain(this.value)">
+                            <label class="form-check-label">
+                                <strong>${cpanelDomains.mainDomain}</strong>
+                                <span class="badge bg-primary ms-2">Recommended</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>`;
+            selectedDomain = cpanelDomains.mainDomain;
+        }
+    }
+
+    // Addon domains
+    if (cpanelDomains.addonDomains && cpanelDomains.addonDomains.length > 0) {
+        cpanelDomains.addonDomains.forEach(d => {
+            const isExisting = existing.includes(d);
+            if (isExisting) {
+                html += `
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="domain" disabled>
+                        <label class="form-check-label text-muted">
+                            ${d} <span class="badge bg-success ms-1">Already Added</span>
+                        </label>
+                    </div>`;
+            } else {
+                html += `
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="domain" value="${d}" onchange="selectDomain(this.value)">
+                        <label class="form-check-label">${d}</label>
+                    </div>`;
+            }
+        });
+    }
+
+    // Parked domains
+    if (cpanelDomains.parkedDomains && cpanelDomains.parkedDomains.length > 0) {
+        cpanelDomains.parkedDomains.forEach(d => {
+            const isExisting = existing.includes(d);
+            if (!isExisting) {
+                html += `
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="domain" value="${d}" onchange="selectDomain(this.value)">
+                        <label class="form-check-label">${d} <span class="badge bg-secondary ms-1">Parked</span></label>
+                    </div>`;
+            }
+        });
+    }
+
+    container.innerHTML = html;
+
+    if (cpanelDomains.mainDomain) {
+        document.getElementById('base-domain-suffix').textContent = '.' + cpanelDomains.mainDomain;
+    }
+}
+
+function selectDomain(domain) {
+    selectedDomain = domain;
+    document.getElementById('custom-subdomain').value = '';
+}
+
+document.getElementById('add-domain-btn').addEventListener('click', async function() {
+    const btn = this;
+    const error = document.getElementById('error');
+
+    let domainName = selectedDomain;
+    const customSub = document.getElementById('custom-subdomain').value.trim();
+    if (customSub && cpanelDomains.mainDomain) {
+        domainName = customSub + '.' + cpanelDomains.mainDomain;
+    }
+
+    if (!domainName) {
+        error.textContent = 'Please select a domain';
+        error.classList.remove('d-none');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Setting up...';
+    error.classList.add('d-none');
+
+    // Show progress card
+    document.getElementById('domains-section').classList.add('d-none');
+    document.getElementById('progress-card').classList.remove('d-none');
+    document.getElementById('progress-domain').textContent = domainName;
+    updateProgress('connect', 'loading');
+    document.getElementById('progress-message').textContent = 'Creating domain...';
+
+    try {
+        const res = await fetch('/user/domains/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: domainName,
+                cpanelConnectionId: connId
+            })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.domain) {
+            currentDomainId = data.domain.id;
+            updateProgress('connect', 'done');
+
+            if (data.cpanelAutoDNS) {
+                updateProgress('dns', 'done');
+                document.getElementById('dns-substeps').classList.remove('d-none');
+                updateSubstep('sub-txt', 'done');
+                updateSubstep('sub-a', 'done');
+                updateSubstep('sub-cname', 'done');
+
+                updateProgress('verify', 'loading');
+                document.getElementById('verify-substeps').classList.remove('d-none');
+                document.getElementById('progress-message').textContent = 'Verifying DNS propagation...';
+                pollVerification(data.domain.id);
+            } else {
+                updateProgress('dns', 'error');
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-warning mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Auto-DNS not available
+                    </div>
+                    <a href="/user/domains/${data.domain.id}/setup" class="btn btn-warning">
+                        <i class="bi bi-gear me-1"></i>Continue Manual Setup
+                    </a>
+                `;
+            }
+        } else {
+            updateProgress('connect', 'error');
+            document.getElementById('progress-message').innerHTML = `
+                <div class="text-danger">${data.error || 'Failed to create domain'}</div>
+            `;
+        }
+    } catch (err) {
+        updateProgress('connect', 'error');
+        document.getElementById('progress-message').innerHTML = `
+            <div class="text-danger">Network error: ${err.message}</div>
+        `;
+    }
+});
+
+function updateProgress(step, status) {
+    const el = document.getElementById('prog-' + step);
+    if (el) el.setAttribute('data-status', status);
+}
+
+function updateSubstep(id, status) {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('data-status', status);
+}
+
+async function pollVerification(domainId) {
+    let attempts = 0;
+    const maxAttempts = 60;
+    let txtVerified = false, aVerified = false, cnameVerified = false;
+
+    const check = async () => {
+        attempts++;
+        try {
+            const res = await fetch('/user/domains/api/' + domainId + '/dns-status');
+            const data = await res.json();
+
+            if (data.txtVerified && !txtVerified) { txtVerified = true; updateSubstep('verify-txt', 'done'); }
+            else if (!txtVerified) updateSubstep('verify-txt', 'loading');
+
+            if (data.aRecordVerified && !aVerified) { aVerified = true; updateSubstep('verify-a', 'done'); }
+            else if (!aVerified) updateSubstep('verify-a', txtVerified ? 'loading' : 'pending');
+
+            if (data.cnameVerified && !cnameVerified) { cnameVerified = true; updateSubstep('verify-cname', 'done'); }
+            else if (!cnameVerified) updateSubstep('verify-cname', aVerified ? 'loading' : 'pending');
+
+            const verified = [txtVerified, aVerified, cnameVerified].filter(v => v).length;
+
+            if (txtVerified && aVerified && cnameVerified) {
+                updateProgress('verify', 'done');
+                updateProgress('ssl', 'loading');
+                document.getElementById('progress-message').textContent = 'Starting SSL generation...';
+                try { await fetch('/user/domains/api/' + domainId + '/verify', { method: 'POST' }); } catch(e) {}
+                document.getElementById('progress-message').textContent = 'Generating SSL certificate...';
+                pollSSL(domainId);
+                return;
+            }
+
+            if (attempts < maxAttempts) {
+                document.getElementById('progress-message').textContent = `Verifying DNS records... (${verified}/3 verified)`;
+                setTimeout(check, 6000);
+            } else {
+                updateProgress('verify', 'pending');
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-warning mb-3"><i class="bi bi-clock me-1"></i>DNS propagation taking longer than expected.</div>
+                    <a href="/user/domains/${domainId}/setup" class="btn btn-warning"><i class="bi bi-gear me-1"></i>Continue Setup</a>
+                `;
+            }
+        } catch (err) {
+            setTimeout(check, 6000);
+        }
+    };
+    setTimeout(check, 3000);
+}
+
+async function pollSSL(domainId) {
+    let attempts = 0;
+    const maxAttempts = 30;
+
+    const check = async () => {
+        attempts++;
+        try {
+            const res = await fetch('/user/domains/api/' + domainId + '/ssl');
+            const data = await res.json();
+
+            if (data.sslError) {
+                updateProgress('ssl', 'error');
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-danger mb-3"><i class="bi bi-exclamation-triangle me-1"></i>SSL generation failed</div>
+                    <p class="small text-muted mb-3">${data.sslError}</p>
+                    <a href="/user/domains/${domainId}/setup" class="btn btn-warning"><i class="bi bi-arrow-repeat me-1"></i>Retry Setup</a>
+                `;
+                return;
+            }
+
+            if (data.ssl && data.ssl.exists && data.ssl.isWildcard) {
+                updateProgress('ssl', 'done');
+                updateProgress('complete', 'done');
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-success mb-3"><i class="bi bi-check-circle-fill me-1"></i><strong>Domain setup complete!</strong></div>
+                    <a href="/user/domains/${domainId}" class="btn btn-primary"><i class="bi bi-arrow-right me-1"></i>View Domain</a>
+                `;
+                setTimeout(() => { window.location.href = '/user/domains/' + domainId; }, 3000);
+                return;
+            }
+
+            if (attempts < maxAttempts) {
+                document.getElementById('progress-message').textContent = `Generating SSL certificate... (${attempts}/${maxAttempts})`;
+                setTimeout(check, 6000);
+            } else {
+                updateProgress('ssl', 'pending');
+                updateProgress('complete', 'done');
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-warning mb-3"><i class="bi bi-clock me-1"></i>SSL certificate generation in progress</div>
+                    <p class="small text-muted mb-3">Domain is ready. SSL will be available shortly.</p>
+                    <a href="/user/domains/${domainId}" class="btn btn-primary"><i class="bi bi-arrow-right me-1"></i>View Domain</a>
+                `;
+            }
+        } catch (err) {
+            setTimeout(check, 6000);
+        }
+    };
+    setTimeout(check, 3000);
+}
+
+loadConnection();
+loadDomains();
+</script>
+{{end}}

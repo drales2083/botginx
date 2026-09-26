@@ -1,0 +1,123 @@
+{{define "content"}}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <a href="/user/domains/cpanel/" class="btn btn-sm btn-outline-secondary me-3">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h3 class="card-title mb-0">Add cPanel Connection</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Connect your cPanel hosting account to automatically configure DNS for your domains.</p>
+
+                <div id="error" class="alert alert-danger d-none"></div>
+
+                <form id="connect-form">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Connection Name</label>
+                        <input type="text" class="form-control" id="name" placeholder="My Hosting Account" required>
+                        <div class="form-text">A name to identify this cPanel account</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="host" class="form-label">cPanel Host</label>
+                        <input type="text" class="form-control" id="host" placeholder="example.com:2083" required>
+                        <div class="form-text">Your cPanel URL with port (usually :2083)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" placeholder="cpanel_user" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="token" class="form-label">API Token</label>
+                        <input type="password" class="form-control" id="token" placeholder="Your cPanel API token" required>
+                        <div class="form-text">
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#token-help-modal">How to get an API token?</a>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a href="/user/domains/cpanel/" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submit-btn">
+                            <i class="bi bi-plug me-1"></i>Connect
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Token Help Modal -->
+<div class="modal fade" id="token-help-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">How to Get a cPanel API Token</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ol class="mb-0">
+                    <li class="mb-2">Log in to your cPanel account</li>
+                    <li class="mb-2">Go to <strong>Security → Manage API Tokens</strong></li>
+                    <li class="mb-2">Click <strong>Create</strong></li>
+                    <li class="mb-2">Enter a token name (e.g., "GuardBot")</li>
+                    <li class="mb-2">Copy the generated token and paste it above</li>
+                </ol>
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    The token only needs <strong>Zone Editor</strong> permissions to manage DNS records.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('connect-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const btn = document.getElementById('submit-btn');
+    const error = document.getElementById('error');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Connecting...';
+    error.classList.add('d-none');
+
+    const payload = {
+        name: document.getElementById('name').value,
+        host: document.getElementById('host').value,
+        username: document.getElementById('username').value,
+        apiToken: document.getElementById('token').value
+    };
+
+    try {
+        const res = await fetch('/user/domains/cpanel/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success && data.data) {
+            flashToast('cPanel connected successfully', 'success');
+            window.location.href = '/user/domains/cpanel/' + data.data.id + '/domains';
+        } else {
+            error.textContent = data.error || 'Connection failed';
+            error.classList.remove('d-none');
+        }
+    } catch (err) {
+        error.textContent = 'Network error';
+        error.classList.remove('d-none');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plug me-1"></i>Connect';
+});
+</script>
+{{end}}
