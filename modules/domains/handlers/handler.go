@@ -785,10 +785,15 @@ func (h *Handler) APICheckSSL(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	h.json(w, http.StatusOK, map[string]interface{}{
+	response := map[string]interface{}{
 		"domain": domain.Name,
 		"ssl":    status,
-	})
+	}
+	// Include ssl_error if present so frontend can show it
+	if domain.SSLError != nil && *domain.SSLError != "" {
+		response["sslError"] = *domain.SSLError
+	}
+	h.json(w, http.StatusOK, response)
 }
 
 // APISetupDomain generates SSL and creates nginx config for the domain on the VPS

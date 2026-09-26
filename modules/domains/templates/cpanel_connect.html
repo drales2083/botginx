@@ -1044,6 +1044,25 @@ async function pollSSL(domainId) {
             const res = await fetch(`/user/domains/api/${domainId}/ssl`);
             const data = await res.json();
 
+            // Check for SSL generation error
+            if (data.sslError) {
+                updateProgress('ssl', 'error');
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-danger mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        SSL generation failed
+                    </div>
+                    <p class="small text-muted mb-3">${data.sslError}</p>
+                    <a href="/user/domains/${domainId}/setup" class="btn btn-warning">
+                        <i class="bi bi-arrow-repeat me-1"></i>Retry Setup
+                    </a>
+                    <a href="/user/domains" class="btn btn-outline-secondary ms-2">
+                        Back to Domains
+                    </a>
+                `;
+                return;
+            }
+
             if (data.ssl && data.ssl.exists && data.ssl.isWildcard) {
                 updateProgress('ssl', 'done');
                 updateProgress('complete', 'done');
