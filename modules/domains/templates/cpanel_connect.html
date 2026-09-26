@@ -294,11 +294,46 @@
     </div>
 </div>
 
+<!-- Delete Connection Modal -->
+<div class="modal fade" id="delete-conn-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete cPanel Connection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="delete-conn-modal-body">
+                <div class="alert alert-danger mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Destructive Action</strong>
+                </div>
+                <p>This will permanently delete:</p>
+                <ul class="mb-3">
+                    <li>The cPanel connection</li>
+                    <li>All domains added through this connection</li>
+                    <li>All redirect links on those domains</li>
+                    <li>All analytics data for those links</li>
+                    <li>Server files (nginx config, SSL certificates)</li>
+                </ul>
+                <p class="text-danger fw-bold mb-0">This cannot be undone!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-conn-btn">
+                    <i class="bi bi-trash me-1"></i> Delete Everything
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // State
 let cpanelConnectionId = null;
 let cpanelDomains = null;
 let selectedDomain = null;
+let pendingDeleteConnId = null;
+let pendingDeleteBtn = null;
 
 // Show a specific step
 function showStep(stepId) {
@@ -353,54 +388,14 @@ async function loadExistingConnections() {
                 });
             });
 
-            // Add click handlers - delete connection
+            // Add click handlers - delete connection (show modal)
             container.querySelectorAll('.conn-delete').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
+                btn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const connId = btn.dataset.connId;
-                    if (!confirm('Delete this cPanel connection and ALL domains added through it? This cannot be undone.')) return;
-
-                    btn.disabled = true;
-                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-                    try {
-                        const res = await fetch(`/user/domains/cpanel/${connId}`, { method: 'DELETE' });
-
-                        // Handle session expiry (redirect to login)
-                        if (res.redirected || res.url.includes('/auth/login')) {
-                            window.location.href = '/auth/login';
-                            return;
-                        }
-
-                        const text = await res.text();
-                        let data;
-                        try {
-                            data = JSON.parse(text);
-                        } catch (e) {
-                            // If response is HTML (like login page), redirect
-                            if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-                                window.location.href = '/auth/login';
-                                return;
-                            }
-                            throw new Error('Invalid response');
-                        }
-
-                        if (data.success || data.deleted) {
-                            const msg = data.domains_deleted > 0
-                                ? `Connection and ${data.domains_deleted} domain(s) deleted`
-                                : 'Connection deleted';
-                            showToast(msg, 'success');
-                            await loadExistingConnections();
-                        } else {
-                            showToast(data.error || 'Failed to delete', 'danger');
-                            btn.disabled = false;
-                            btn.innerHTML = '<i class="bi bi-trash"></i>';
-                        }
-                    } catch (err) {
-                        showToast('Error: ' + err.message, 'danger');
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="bi bi-trash"></i>';
-                    }
+                    pendingDeleteConnId = btn.dataset.connId;
+                    pendingDeleteBtn = btn;
+                    const modal = new bootstrap.Modal(document.getElementById('delete-conn-modal'));
+                    modal.show();
                 });
             });
 
@@ -718,5 +713,74 @@ async function pollVerification(domainId) {
 
     setTimeout(check, 3000); // First check after 3s
 }
+
+// Delete connection modal confirm handler
+document.getElementById('confirm-delete-conn-btn').addEventListener('click', async function() {
+    const btn = this;
+    const connId = pendingDeleteConnId;
+    const originalBtn = pendingDeleteBtn;
+
+    if (!connId) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+
+    if (originalBtn) {
+        originalBtn.disabled = true;
+        originalBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    }
+
+    try {
+        const res = await fetch(`/user/domains/cpanel/${connId}`, { method: 'DELETE' });
+
+        // Handle session expiry
+        if (res.redirected || res.url.includes('/auth/login')) {
+            window.location.href = '/auth/login';
+            return;
+        }
+
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+                window.location.href = '/auth/login';
+                return;
+            }
+            throw new Error('Invalid response');
+        }
+
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('delete-conn-modal')).hide();
+
+        if (data.success || data.deleted) {
+            const msg = data.domains_deleted > 0
+                ? `Connection and ${data.domains_deleted} domain(s) deleted`
+                : 'Connection deleted';
+            showToast(msg, 'success');
+            await loadExistingConnections();
+        } else {
+            showToast(data.error || 'Failed to delete', 'danger');
+            if (originalBtn) {
+                originalBtn.disabled = false;
+                originalBtn.innerHTML = '<i class="bi bi-trash"></i>';
+            }
+        }
+    } catch (err) {
+        bootstrap.Modal.getInstance(document.getElementById('delete-conn-modal')).hide();
+        showToast('Error: ' + err.message, 'danger');
+        if (originalBtn) {
+            originalBtn.disabled = false;
+            originalBtn.innerHTML = '<i class="bi bi-trash"></i>';
+        }
+    }
+
+    // Reset modal button
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-trash me-1"></i> Delete Everything';
+    pendingDeleteConnId = null;
+    pendingDeleteBtn = null;
+});
 </script>
 {{end}}
