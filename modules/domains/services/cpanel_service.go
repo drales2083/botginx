@@ -432,7 +432,8 @@ func (s *CpanelService) TriggerAutoDNS(domainID, domainName, verifyToken, cpanel
 	return true
 }
 
-// AddWildcardARecord adds a wildcard A record (*.domain.com) via cPanel
+// AddWildcardARecord adds or updates a wildcard A record (*.domain.com) via cPanel
+// If wildcard already exists with different IP, it will be updated
 func (s *CpanelService) AddWildcardARecord(connectionID, domain, ip string) error {
 	conn, err := s.GetByID(connectionID)
 	if err != nil {
@@ -441,7 +442,7 @@ func (s *CpanelService) AddWildcardARecord(connectionID, domain, ip string) erro
 
 	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
 
-	log.Printf("[cpanel] Adding wildcard A record *.%s → %s via %s", domain, ip, conn.Host)
+	log.Printf("[cpanel] Setting wildcard A record *.%s → %s via %s", domain, ip, conn.Host)
 
 	// Get base domain for DNS zone
 	baseDomain, err := client.GetBaseDomain(domain)
@@ -449,8 +450,9 @@ func (s *CpanelService) AddWildcardARecord(connectionID, domain, ip string) erro
 		return fmt.Errorf("failed to get base domain: %w", err)
 	}
 
-	// Add wildcard A record: name="*", domain=baseDomain
-	if err := client.AddARecord(baseDomain, "*", ip); err != nil {
+	// Update or add wildcard A record: name="*", domain=baseDomain
+	// This will update existing record if it has different IP
+	if err := client.UpdateOrAddARecord(baseDomain, "*", ip); err != nil {
 		// Update last_error
 		errStr := err.Error()
 		s.db.Exec(`UPDATE cpanel_connections SET last_error = $1 WHERE id = $2`, errStr, connectionID)
@@ -464,7 +466,8 @@ func (s *CpanelService) AddWildcardARecord(connectionID, domain, ip string) erro
 	return nil
 }
 
-// AddAcmeCNAME adds a CNAME record for acme-dns SSL verification
+// AddAcmeCNAME adds or updates a CNAME record for acme-dns SSL verification
+// If CNAME already exists with different target, it will be updated
 func (s *CpanelService) AddAcmeCNAME(connectionID, domain, target string) error {
 	conn, err := s.GetByID(connectionID)
 	if err != nil {
@@ -473,15 +476,15 @@ func (s *CpanelService) AddAcmeCNAME(connectionID, domain, target string) error 
 
 	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
 
-	log.Printf("[cpanel] Adding ACME CNAME _acme-challenge.%s → %s", domain, target)
+	log.Printf("[cpanel] Setting ACME CNAME _acme-challenge.%s → %s", domain, target)
 
 	baseDomain, err := client.GetBaseDomain(domain)
 	if err != nil {
 		return fmt.Errorf("failed to get base domain: %w", err)
 	}
 
-	// Add CNAME for _acme-challenge
-	if err := client.AddCNAMERecord(baseDomain, "_acme-challenge", target); err != nil {
+	// Update or add CNAME for _acme-challenge
+	if err := client.UpdateOrAddCNAMERecord(baseDomain, "_acme-challenge", target); err != nil {
 		errStr := err.Error()
 		s.db.Exec(`UPDATE cpanel_connections SET last_error = $1 WHERE id = $2`, errStr, connectionID)
 		return err

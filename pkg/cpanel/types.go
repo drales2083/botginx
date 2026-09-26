@@ -52,6 +52,13 @@ type ARecord struct {
 	Line    int    `json:"line,omitempty"`
 }
 
+// CNAMERecord is a simplified CNAME record
+type CNAMERecord struct {
+	Name   string `json:"name"`
+	Target string `json:"target"`
+	Line   int    `json:"line,omitempty"`
+}
+
 // AddRecordResult from ZoneEdit::add_zone_record
 type AddRecordResult struct {
 	Result    int    `json:"result"`

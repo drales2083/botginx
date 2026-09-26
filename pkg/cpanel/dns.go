@@ -142,6 +142,72 @@ func (c *Client) GetARecords(domain string) ([]ARecord, error) {
 	return aRecords, nil
 }
 
+// FindARecord finds an A record by name
+// e.g., FindARecord("example.com", "*") finds "*.example.com"
+func (c *Client) FindARecord(domain, name string) (*ARecord, error) {
+	records, err := c.GetARecords(domain)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build the full name we're looking for
+	var fullName string
+	if name == "*" {
+		fullName = "*." + strings.ToLower(domain)
+	} else if name == "" || name == "@" {
+		fullName = strings.ToLower(domain)
+	} else {
+		fullName = strings.ToLower(name + "." + domain)
+	}
+
+	for _, r := range records {
+		if strings.ToLower(r.Name) == fullName {
+			return &r, nil
+		}
+	}
+
+	return nil, nil // Not found, but not an error
+}
+
+// GetCNAMERecords returns all CNAME records for a domain
+func (c *Client) GetCNAMERecords(domain string) ([]CNAMERecord, error) {
+	records, err := c.GetZone(domain)
+	if err != nil {
+		return nil, err
+	}
+
+	cnameRecords := make([]CNAMERecord, 0)
+	for _, r := range records {
+		if r.Type == "CNAME" {
+			cnameRecords = append(cnameRecords, CNAMERecord{
+				Name:   r.Name,
+				Target: r.CName,
+				Line:   r.Line,
+			})
+		}
+	}
+
+	return cnameRecords, nil
+}
+
+// FindCNAMERecord finds a CNAME record by name
+func (c *Client) FindCNAMERecord(domain, name string) (*CNAMERecord, error) {
+	records, err := c.GetCNAMERecords(domain)
+	if err != nil {
+		return nil, err
+	}
+
+	fullName := strings.ToLower(name + "." + domain)
+
+	for _, r := range records {
+		if strings.ToLower(r.Name) == fullName {
+			return &r, nil
+		}
+	}
+
+	return nil, nil
+}
+
 // FindTXTRecord finds a TXT record by name prefix
 // e.g., FindTXTRecord("example.com", "_guardbot-verify") finds "_guardbot-verify.example.com"
 func (c *Client) FindTXTRecord(domain, namePrefix string) (*TXTRecord, error) {
@@ -336,6 +402,27 @@ func (c *Client) AddARecord(domain, name, ip string) error {
 	return nil
 }
 
+// UpdateOrAddARecord updates an A record if it exists with different IP, or adds it if not
+func (c *Client) UpdateOrAddARecord(domain, name, ip string) error {
+	existing, err := c.FindARecord(domain, name)
+	if err != nil {
+		return err
+	}
+
+	if existing != nil {
+		if existing.Address == ip {
+			return nil // Already correct
+		}
+		// Remove old record first
+		if err := c.removeRecordByLine(domain, existing.Line); err != nil {
+			return fmt.Errorf("failed to remove old A record: %w", err)
+		}
+	}
+
+	// Add new record
+	return c.AddARecord(domain, name, ip)
+}
+
 // UpdateOrAddTXTRecord updates a TXT record if it exists, or adds it if not
 func (c *Client) UpdateOrAddTXTRecord(domain, name, value string) error {
 	existing, err := c.FindTXTRecord(domain, name)
@@ -446,6 +533,27 @@ func (c *Client) AddCNAMERecord(domain, name, target string) error {
 	}
 
 	return nil
+}
+
+// UpdateOrAddCNAMERecord updates a CNAME record if it exists with different target, or adds it if not
+func (c *Client) UpdateOrAddCNAMERecord(domain, name, target string) error {
+	existing, err := c.FindCNAMERecord(domain, name)
+	if err != nil {
+		return err
+	}
+
+	if existing != nil {
+		if existing.Target == target {
+			return nil // Already correct
+		}
+		// Remove old record first
+		if err := c.removeRecordByLine(domain, existing.Line); err != nil {
+			return fmt.Errorf("failed to remove old CNAME record: %w", err)
+		}
+	}
+
+	// Add new record
+	return c.AddCNAMERecord(domain, name, target)
 }
 
 // DebugZone prints all DNS records for debugging
