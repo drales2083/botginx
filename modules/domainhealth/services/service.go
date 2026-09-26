@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -63,17 +64,28 @@ func (s *HealthService) GetDomain(id, userID string) (*Domain, error) {
 	return &domain, nil
 }
 
+// stripWildcard removes the *. prefix from wildcard domains for health checks
+func stripWildcard(domain string) string {
+	if strings.HasPrefix(domain, "*.") {
+		return domain[2:]
+	}
+	return domain
+}
+
 func (s *HealthService) CheckDomain(domain Domain) HealthStatus {
 	status := HealthStatus{Domain: domain}
 
+	// Strip wildcard prefix for actual health checks
+	checkName := stripWildcard(domain.Name)
+
 	// Check DNS
-	status.DNSStatus, status.DNSMessage = checkDNS(domain.Name)
+	status.DNSStatus, status.DNSMessage = checkDNS(checkName)
 
 	// Check SSL
-	status.SSLStatus, status.SSLMessage, status.SSLExpiry = checkSSL(domain.Name)
+	status.SSLStatus, status.SSLMessage, status.SSLExpiry = checkSSL(checkName)
 
 	// Check HTTP
-	status.HTTPStatus, status.HTTPMessage, status.ResponseTime = checkHTTP(domain.Name)
+	status.HTTPStatus, status.HTTPMessage, status.ResponseTime = checkHTTP(checkName)
 
 	return status
 }
