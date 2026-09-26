@@ -77,6 +77,12 @@ func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) CpanelConnect(w http.ResponseWriter, r *http.Request) {
+	module.RenderUserSection(w, r, h.templates, "domains:cpanel_connect.html", map[string]interface{}{
+		"Title": "Connect cPanel",
+	})
+}
+
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	domain, err := h.service.Get(id)

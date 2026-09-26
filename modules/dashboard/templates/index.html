@@ -13,11 +13,11 @@
                 <div class="cpanel-avatar mx-auto mb-3">{{slice .User.Name 0 2 | upper}}</div>
                 <div class="fw-semibold mb-2">{{.User.Email}}</div>
                 <div class="d-flex justify-content-center gap-2 flex-wrap">
-                    <span class="badge text-bg-primary"><i class="bi bi-gem me-1"></i>{{.Account.plan}}</span>
+                    <span class="badge text-bg-primary"><svg class="ui-icon me-1" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#gem"/></svg>{{.Account.plan}}</span>
                     {{if .Subscription.Active}}
-                    <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                    <span class="badge text-bg-success"><svg class="ui-icon me-1" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#circle-check"/></svg>Active</span>
                     {{else}}
-                    <span class="badge text-bg-warning"><i class="bi bi-exclamation-triangle me-1"></i>Inactive</span>
+                    <span class="badge text-bg-warning"><svg class="ui-icon me-1" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#triangle-alert"/></svg>Inactive</span>
                     {{end}}
                 </div>
             </div>
@@ -30,14 +30,14 @@
                     </div>
                 </div>
                 <div class="list-group-item d-flex align-items-center gap-3">
-                    <span class="cpanel-info-icon text-bg-warning"><i class="bi bi-calendar-check"></i></span>
+                    <span class="cpanel-info-icon text-bg-warning"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#calendar-check"/></svg></span>
                     <div class="flex-grow-1">
                         <div class="cpanel-info-label">Days Left</div>
                         <div class="cpanel-info-value">{{.KPI.subDaysLeft}}</div>
                     </div>
                 </div>
                 <div class="list-group-item d-flex align-items-center gap-3">
-                    <span class="cpanel-info-icon text-bg-info"><i class="bi bi-calendar-event"></i></span>
+                    <span class="cpanel-info-icon text-bg-info"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#history"/></svg></span>
                     <div class="flex-grow-1">
                         <div class="cpanel-info-label">Member Since</div>
                         <div class="cpanel-info-value">{{.Account.memberSince}}</div>
@@ -49,19 +49,19 @@
         <!-- Statistics -->
         <div class="card mb-4">
             <div class="card-header">
-                <h3 class="card-title"><i class="bi bi-bar-chart-fill me-2"></i>Statistics</h3>
+                <h3 class="card-title"><svg class="ui-icon me-2" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#chart-column"/></svg>Statistics</h3>
             </div>
             <div class="card-body p-0">
                 <!-- This Month -->
                 <div class="cpanel-stat-section">
                     <div class="cpanel-stat-title">This Month</div>
                     <div class="cpanel-stat-row">
-                        <span class="cpanel-stat-icon text-bg-danger"><i class="bi bi-robot"></i></span>
+                        <span class="cpanel-stat-icon text-bg-danger"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#bot"/></svg></span>
                         <span class="cpanel-stat-label">Bots Blocked</span>
                         <span class="cpanel-stat-count">{{formatNumber .KPI.botsDetected}}</span>
                     </div>
                     <div class="cpanel-stat-row">
-                        <span class="cpanel-stat-icon text-bg-success"><i class="bi bi-person-check-fill"></i></span>
+                        <span class="cpanel-stat-icon text-bg-success"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#user-check"/></svg></span>
                         <span class="cpanel-stat-label">Humans Verified</span>
                         <span class="cpanel-stat-count">{{formatNumber .KPI.humansVerified}}</span>
                     </div>
@@ -70,12 +70,12 @@
                 <div class="cpanel-stat-section">
                     <div class="cpanel-stat-title">Resources</div>
                     <div class="cpanel-stat-row">
-                        <span class="cpanel-stat-icon text-bg-primary"><i class="bi bi-globe2"></i></span>
+                        <span class="cpanel-stat-icon text-bg-primary"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#globe"/></svg></span>
                         <span class="cpanel-stat-label">Domains</span>
                         <span class="cpanel-stat-count">{{.KPI.domains}} / ∞</span>
                     </div>
                     <div class="cpanel-stat-row">
-                        <span class="cpanel-stat-icon text-bg-info"><i class="bi bi-link-45deg"></i></span>
+                        <span class="cpanel-stat-icon text-bg-info"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#link"/></svg></span>
                         <span class="cpanel-stat-label">Redirect Links</span>
                         <span class="cpanel-stat-count">{{.KPI.redirectLinks}} / ∞</span>
                     </div>
@@ -107,6 +107,14 @@
 <style>
 /* cPanel Tool Grid */
 .cpanel-group > .card-header { border-left: 4px solid var(--cpanel-accent); }
+
+/* Line icons (cp: and gb:) */
+.cp-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--bs-emphasis-color); }
+.cp-icon svg { width: 100%; height: 100%; }
+
+/* Small glyphs (ui:) */
+.ui-icon { width: 1em; height: 1em; vertical-align: -0.125em; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.ui-icon.d-none { display: none !important; }
 .cpanel-group-icon { width: 1.4rem; height: 1.4rem; vertical-align: -0.25rem; margin-right: 0.5rem; }
 
 .cpanel-grid {
@@ -138,9 +146,13 @@
 }
 
 .cpanel-tile .cpanel-icon {
-    width: 2.4rem;
-    height: 2.4rem;
+    width: 2.6rem;
+    height: 2.6rem;
     transition: transform 0.15s;
+}
+.cpanel-tile .cpanel-icon svg {
+    width: 100%;
+    height: 100%;
 }
 
 .cpanel-tile:hover .cpanel-icon { transform: scale(1.1); }
@@ -219,87 +231,93 @@
 </style>
 
 <script>
-const ICON_PATH = '/static/img/fluent-emoji-flat/';
+// Line icon sets: cp = cPanel Jupiter, gb = GuardBot custom
+const LINE_ICON_SETS = {
+    'cp': '/static/icons/cpanel-jupiter/',
+    'gb': '/static/icons/guardbot/'
+};
+const lineIconCache = {};
 
 const TOOL_GROUPS = [
     {
         id: 'traffic',
         title: 'Traffic',
-        icon: 'rocket',
+        icon: 'cp:change_style',
         accent: '#0d6efd',
         tools: [
-            { label: 'Redirect Links', icon: 'link', href: '/user/redirectlinks' },
-            { label: 'Create Link', icon: 'plus', href: '/user/redirectlinks/new' },
-            { label: 'Link Wizard', icon: 'magic-wand', href: '/user/redirectlinks/wizard' },
-            { label: 'Short URLs', icon: 'scissors', href: '/user/shortener' },
-            { label: 'Create Short URL', icon: 'plus', href: '/user/shortener/new' },
-            { label: 'QR Codes', icon: 'mobile-phone-with-arrow', href: '/user/qrcodes' },
-            { label: 'Antibot Control', icon: 'shield', href: '/user/antibotcontrol' },
-            { label: 'Reports', icon: 'page-facing-up', href: '/user/reports' },
+            { label: 'Redirect Links', icon: 'cp:redirects', href: '/user/redirectlinks' },
+            { label: 'Create Link', icon: 'gb:link-create', href: '/user/redirectlinks/new' },
+            { label: 'Link Wizard', icon: 'cp:tls_wizard', href: '/user/redirectlinks/wizard' },
+            { label: 'Short URLs', icon: 'cp:hotlink_protection', href: '/user/shortener' },
+            { label: 'Create Short URL', icon: 'cp:hotlink_protection_add', href: '/user/shortener/new' },
+            { label: 'QR Codes', icon: 'gb:qr-codes', href: '/user/qrcodes' },
+            { label: 'Antibot Control', icon: 'cp:mod_security', href: '/user/antibotcontrol' },
+            { label: 'Reports', icon: 'cp:indexes', href: '/user/reports' },
         ],
     },
     {
         id: 'domains',
         title: 'Domains',
-        icon: 'globe-with-meridians',
+        icon: 'cp:group_domains',
         accent: '#20c997',
         tools: [
-            { label: 'My Domains', icon: 'globe-showing-americas', href: '/user/domains' },
-            { label: 'Add Domain', icon: 'plus', href: '/user/domains/new' },
-            { label: 'Domain Store', icon: 'shopping-cart', href: '/user/marketplace' },
-            { label: 'Domain Health', icon: 'stethoscope', href: '/user/domains/health' },
+            { label: 'My Domains', icon: 'cp:domains', href: '/user/domains' },
+            { label: 'Add Domain', icon: 'gb:domain-add', href: '/user/domains/new' },
+            { label: 'Connect cPanel', icon: 'cp:api_shell', href: '/user/domains/cpanel/connect' },
+            { label: 'Domain Store', icon: 'gb:domain-store', href: '/user/marketplace' },
+            { label: 'Domain Health', icon: 'cp:cpanel-koality-plugin', href: '/user/domains/health' },
         ],
     },
     {
         id: 'metrics',
         title: 'Metrics',
-        icon: 'bar-chart',
+        icon: 'cp:group_metrics',
         accent: '#0dcaf0',
         tools: [
-            { label: 'Analytics', icon: 'chart-increasing', href: '/user/analytics' },
-            { label: 'Click Logs', icon: 'page-facing-up', href: '/user/analytics/logs' },
-            { label: 'Real-time', icon: 'stopwatch', href: '/user/analytics/realtime' },
-            { label: 'Analog Stats', icon: 'bar-chart', href: '/user/analogstats' },
-            { label: 'AWStats', icon: 'chart-increasing', href: '/user/awstats' },
+            { label: 'Analytics', icon: 'cp:visitors', href: '/user/analytics' },
+            { label: 'Click Logs', icon: 'cp:raw_access', href: '/user/analytics/logs' },
+            { label: 'Real-time', icon: 'cp:bandwidth', href: '/user/analytics/realtime' },
+            { label: 'Analog Stats', icon: 'cp:analog_stats', href: '/user/analogstats' },
+            { label: 'AWStats', icon: 'cp:awstats', href: '/user/awstats' },
         ],
     },
     {
         id: 'security',
         title: 'Security',
-        icon: 'shield',
+        icon: 'cp:group_security',
         accent: '#dc3545',
         tools: [
-            { label: 'Threat Log', icon: 'warning', href: '/user/threatlog' },
-            { label: 'IP Whitelist', icon: 'check-mark-button', href: '/user/iplists/whitelist' },
-            { label: 'IP Blocklist', icon: 'stop-sign', href: '/user/iplists/blocklist' },
+            { label: 'Threat Log', icon: 'cp:errors', href: '/user/threatlog' },
+            { label: 'IP Whitelist', icon: 'cp:security_policy', href: '/user/iplists/whitelist' },
+            { label: 'IP Blocklist', icon: 'cp:ip_blocker', href: '/user/iplists/blocklist' },
         ],
     },
     {
         id: 'account',
         title: 'Account',
-        icon: 'bust-in-silhouette',
+        icon: 'cp:group_preferences',
         accent: '#6f42c1',
         tools: [
-            { label: 'Settings', icon: 'gear', href: '/user/settings' },
-            { label: 'Subscription', icon: 'gem-stone', href: '/user/subscription' },
-            { label: 'Deposit', icon: 'money-with-wings', href: '/user/payments' },
-            { label: 'Transactions', icon: 'receipt', href: '/user/payments/transactions' },
-            { label: 'Referrals', icon: 'handshake', href: '/user/referrals' },
-            { label: 'API Keys', icon: 'old-key', href: '/user/apikeys' },
-            { label: 'Two-Factor', icon: 'locked-with-pen', href: '/user/twofactor' },
+            { label: 'Settings', icon: 'cp:group_advanced', href: '/user/settings' },
+            { label: 'Subscription', icon: 'gb:subscription', href: '/user/subscription' },
+            { label: 'Deposit', icon: 'gb:deposit', href: '/user/payments' },
+            { label: 'Transactions', icon: 'gb:transactions', href: '/user/payments/transactions' },
+            { label: 'Referrals', icon: 'cp:team_manager', href: '/user/referrals' },
+            { label: 'API Keys', icon: 'cp:api_tokens', href: '/user/apikeys' },
+            { label: 'Two-Factor', icon: 'cp:two_factor_authentication', href: '/user/twofactor' },
         ],
     },
     {
         id: 'support',
         title: 'Support',
-        icon: 'ring-buoy',
+        icon: 'cp:group_sitepad_div',
         accent: '#d63384',
         tools: [
-            { label: 'Tickets', icon: 'speech-balloon', href: '/user/support' },
-            { label: 'New Ticket', icon: 'envelope', href: '/user/support/new' },
-            { label: 'Knowledge Base', icon: 'books', href: '/user/help' },
-            { label: 'Announcements', icon: 'megaphone', href: '/user/announcements' },
-            { label: 'API Docs', icon: 'ledger', href: '/user/apikeys/docs' },
+            { label: 'Tickets', icon: 'gb:tickets', href: '/user/support' },
+            { label: 'New Ticket', icon: 'gb:ticket-new', href: '/user/support/new' },
+            { label: 'Knowledge Base', icon: 'cp:solr_search_index', href: '/user/help' },
+            { label: 'Announcements', icon: 'cp:mailing_lists', href: '/user/announcements' },
+            { label: 'API Docs', icon: 'cp:site_software', href: '/user/apikeys/docs' },
         ],
     },
 ];
@@ -308,8 +326,41 @@ function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 }
 
-function iconUrl(name) {
-    return ICON_PATH + encodeURIComponent(name) + '.svg';
+function lineIconUrl(icon) {
+    const [prefix, name] = icon.split(':');
+    const base = LINE_ICON_SETS[prefix];
+    return base ? base + name + '.svg' : null;
+}
+
+function iconHtml(icon, extraClass = '') {
+    const cls = 'cp-icon' + (extraClass ? ' ' + extraClass : '');
+    return `<span class="${cls}" data-line-icon="${escapeHtml(icon)}"></span>`;
+}
+
+function uiIcon(name, extraClass = '', attrs = '') {
+    const cls = 'ui-icon' + (extraClass ? ' ' + extraClass : '');
+    return `<svg class="${cls}" aria-hidden="true"${attrs ? ' ' + attrs : ''}><use href="/static/icons/ui/sprite.svg#${escapeHtml(name)}"/></svg>`;
+}
+
+async function loadLineIcons(container) {
+    const placeholders = container.querySelectorAll('[data-line-icon]');
+    for (const el of placeholders) {
+        const icon = el.dataset.lineIcon;
+        const url = lineIconUrl(icon);
+        if (!url) continue;
+
+        if (!lineIconCache[url]) {
+            try {
+                const res = await fetch(url);
+                if (res.ok) lineIconCache[url] = await res.text();
+            } catch {}
+        }
+
+        if (lineIconCache[url]) {
+            el.innerHTML = lineIconCache[url];
+            delete el.dataset.lineIcon;
+        }
+    }
 }
 
 function renderToolGroups(container, groups) {
@@ -317,12 +368,12 @@ function renderToolGroups(container, groups) {
         <div class="card cpanel-group mb-4" data-group-id="${escapeHtml(group.id)}" style="--cpanel-accent: ${escapeHtml(group.accent)}">
             <div class="card-header">
                 <h3 class="card-title">
-                    <img class="cpanel-group-icon" src="${iconUrl(group.icon)}" alt="">${escapeHtml(group.title)}
+                    ${iconHtml(group.icon, 'cpanel-group-icon')}${escapeHtml(group.title)}
                 </h3>
                 <div class="card-tools">
                     <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse">
-                        <i data-lte-icon="expand" class="bi bi-chevron-down"></i>
-                        <i data-lte-icon="collapse" class="bi bi-chevron-up"></i>
+                        <svg class="ui-icon" data-lte-icon="expand" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#chevron-down"/></svg>
+                        <svg class="ui-icon d-none" data-lte-icon="collapse" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#chevron-up"/></svg>
                     </button>
                 </div>
             </div>
@@ -333,7 +384,7 @@ function renderToolGroups(container, groups) {
                            href="${tool.soon ? '#' : escapeHtml(tool.href)}"
                            data-label="${escapeHtml(tool.label)}"
                            ${tool.soon ? 'onclick="return false;"' : ''}>
-                            <img class="cpanel-icon" src="${iconUrl(tool.icon)}" alt="" loading="lazy">
+                            ${iconHtml(tool.icon, 'cpanel-icon')}
                             <span class="cpanel-label">${escapeHtml(tool.label)}</span>
                             ${tool.soon ? '<span class="cpanel-badge">Soon</span>' : ''}
                         </a>
@@ -342,6 +393,8 @@ function renderToolGroups(container, groups) {
             </div>
         </div>
     `).join('');
+
+    loadLineIcons(container);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

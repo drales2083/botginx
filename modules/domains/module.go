@@ -118,6 +118,7 @@ func (m *Module) Routes() chi.Router {
 
 	// cPanel connections API
 	r.Route("/cpanel", func(r chi.Router) {
+		r.Get("/connect", m.handler.CpanelConnect) // Page: connect cPanel account
 		r.Get("/", m.cpanelHandler.ListConnections)
 		r.Post("/", m.cpanelHandler.CreateConnection)
 		r.Post("/test", m.cpanelHandler.TestNewConnection) // Test before saving
