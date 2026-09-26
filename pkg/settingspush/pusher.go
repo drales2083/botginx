@@ -13,7 +13,7 @@ type LinkSettings struct {
 	LinkID           string   `json:"link_id"`
 	UserID           string   `json:"user_id"`
 	Host             string   `json:"host"`
-	Template         string   `json:"template"`    // Challenge template: cloudflare, humancheck, humansecurity, slidepuzzle, smartpuzzle, simple, lobby, foyer, latch, interstitial
+	Template         string   `json:"template"`    // Challenge template: transit, cloudflare, humancheck, humansecurity, slidepuzzle, smartpuzzle, simple, lobby, foyer, latch, interstitial
 	PuzzleMode       string   `json:"puzzle_mode"` // Puzzle type: auto, slider, drag, rotate, icon, text, strip, gobang, match3
 	ThemeMode        string   `json:"theme_mode"`  // Theme: auto, light, dark
 	BlockBots        bool     `json:"block_bots"`

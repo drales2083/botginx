@@ -363,6 +363,7 @@
                     <div class="col-auto">
                         <select class="form-select" id="prot-template" style="min-width: 250px;" onchange="protUpdateTemplatePreview()">
                             <option value="">Use Global Default</option>
+                            <option value="transit">Transit (Silent Pass)</option>
                             <option value="cloudflare">Cloudflare Style</option>
                             <option value="humancheck">Human Check</option>
                             <option value="humansecurity">Human Security (Press & Hold)</option>
@@ -598,7 +599,7 @@
         if (!select || !previewCol || !previewImg) return;
 
         const value = select.value;
-        if (value && ['cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle', 'smartpuzzle', 'simple', 'lobby', 'foyer', 'latch', 'interstitial'].includes(value)) {
+        if (value && ['transit', 'cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle', 'smartpuzzle', 'simple', 'lobby', 'foyer', 'latch', 'interstitial'].includes(value)) {
             const imgUrl = '/static/img/templates/' + value + '.gif';
             previewImg.src = imgUrl;
             if (previewLink) previewLink.href = imgUrl;
@@ -609,15 +610,15 @@
             if (previewLink) previewLink.href = '';
         }
 
-        // Show theme mode for templates that support theming (simple, smartpuzzle, interstitial, latch)
+        // Show theme mode for templates that support theming (transit, simple, smartpuzzle, interstitial, latch)
         if (themeModeSection) {
-            themeModeSection.style.display = (value === 'simple' || value === 'smartpuzzle' || value === 'interstitial' || value === 'latch') ? '' : 'none';
+            themeModeSection.style.display = (value === 'transit' || value === 'simple' || value === 'smartpuzzle' || value === 'interstitial' || value === 'latch') ? '' : 'none';
         }
 
-        // Show puzzle mode for templates that support it (wave, latch)
+        // Show puzzle mode for templates that support it (transit, wave, latch)
         const puzzleModeSection = document.getElementById('prot-puzzle-mode-section');
         if (puzzleModeSection) {
-            puzzleModeSection.style.display = (value === 'wave' || value === 'latch') ? '' : 'none';
+            puzzleModeSection.style.display = (value === 'transit' || value === 'wave' || value === 'latch') ? '' : 'none';
         }
 
         // Check Turnstile status when cloudflare template is selected
