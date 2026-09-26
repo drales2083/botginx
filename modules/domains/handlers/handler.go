@@ -603,10 +603,11 @@ func (h *Handler) APIGetDNSStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check each record type independently
-	txtVerified := h.verification.CheckTXTRecord(domain.Name, domain.VerifyToken)
-	aRecordVerified := h.verification.CheckWildcardARecord(domain.Name)
-	cnameVerified := h.verification.CheckAcmeCNAME(domain.Name)
+	// Trust database if already verified (DNS cache can return stale negatives)
+	// Only do live check if not yet verified in database
+	txtVerified := domain.DNSVerified || h.verification.CheckTXTRecord(domain.Name, domain.VerifyToken)
+	aRecordVerified := domain.DNSVerified || h.verification.CheckWildcardARecord(domain.Name)
+	cnameVerified := domain.AcmeCnameVerified || h.verification.CheckAcmeCNAME(domain.Name)
 
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"txtVerified":     txtVerified,
