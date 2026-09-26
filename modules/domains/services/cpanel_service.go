@@ -256,8 +256,18 @@ func (s *CpanelService) Update(userID, connectionID string, input models.UpdateC
 	return conn, nil
 }
 
-// Delete deletes a cPanel connection
+// Delete deletes a cPanel connection and clears it from any domains using it
 func (s *CpanelService) Delete(userID, connectionID string) error {
+	// First clear the connection from any domains using it
+	_, err := s.db.Exec(`
+		UPDATE domains SET cpanel_connection_id = NULL, cpanel_auto_dns = false
+		WHERE cpanel_connection_id = $1
+	`, connectionID)
+	if err != nil {
+		log.Printf("[cpanel] Failed to clear connection %s from domains: %v", connectionID, err)
+	}
+
+	// Delete the connection
 	result, err := s.db.Exec(`
 		DELETE FROM cpanel_connections WHERE id = $1 AND user_id = $2
 	`, connectionID, userID)
