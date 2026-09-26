@@ -93,7 +93,18 @@ func (b *BackgroundVerifier) checkAllDomains() {
 
 func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 	isCloudflare := b.verifyService.IsCloudflare(domainName)
-	isWildcard := strings.HasPrefix(domainName, "*.")
+
+	// Get domain to check for acme-dns credentials (cPanel domains have these)
+	domain, err := b.domainService.Get(domainID)
+	if err != nil {
+		log.Printf("[domains] %s failed to get domain for SSL setup: %v", domainName, err)
+		return
+	}
+
+	// Domain is "wildcard-capable" if: name starts with *. OR has acme-dns credentials OR is cPanel
+	hasAcmeDns := domain.AcmeSubdomain != nil && domain.AcmeUsername != nil && domain.AcmePassword != nil
+	isCpanel := domain.CpanelConnectionID != nil && *domain.CpanelConnectionID != ""
+	isWildcard := strings.HasPrefix(domainName, "*.") || hasAcmeDns || isCpanel
 
 	if isCloudflare {
 		log.Printf("[domains] %s is behind Cloudflare - setting up origin SSL", domainName)
@@ -117,17 +128,8 @@ func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 
 	// For non-Cloudflare: generate SSL FIRST, then nginx config
 	if isWildcard {
-		// Check if domain has acme-dns configured with verified CNAME
-		domain, err := b.domainService.Get(domainID)
-		if err != nil {
-			log.Printf("[domains] %s failed to get domain: %v", domainName, err)
-			return
-		}
-
 		// If acme-dns is configured and CNAME is verified, generate SSL automatically
-		if domain.AcmeSubdomain != nil && *domain.AcmeSubdomain != "" &&
-			domain.AcmeUsername != nil && domain.AcmePassword != nil &&
-			domain.AcmeCnameVerified {
+		if hasAcmeDns && domain.AcmeCnameVerified {
 			log.Printf("[domains] %s generating wildcard SSL via acme-dns", domainName)
 			if err := b.verifyService.GenerateWildcardSSLWithAcmeDNS(
 				domainName,
