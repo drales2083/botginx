@@ -133,46 +133,6 @@ func (s *CpanelService) Create(userID string, input models.CreateCpanelConnectio
 	return conn, nil
 }
 
-// CreateWithoutTest creates a cPanel connection without server-side testing
-// Used when the browser has already verified the credentials
-func (s *CpanelService) CreateWithoutTest(userID string, input models.CreateCpanelConnectionInput) (*models.CpanelConnection, error) {
-	// Encrypt the API token
-	encryptedToken, err := s.encrypt(input.APIToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt token: %w", err)
-	}
-
-	// Generate random ID
-	idBytes := make([]byte, 13)
-	rand.Read(idBytes)
-	id := "cpc_" + hex.EncodeToString(idBytes)
-	now := time.Now()
-
-	conn := &models.CpanelConnection{
-		ID:                id,
-		UserID:            userID,
-		Name:              input.Name,
-		Host:              input.Host,
-		Username:          input.Username,
-		APITokenEncrypted: encryptedToken,
-		IsActive:          true,
-		CreatedAt:         now,
-		UpdatedAt:         now,
-	}
-
-	_, err = s.db.Exec(`
-		INSERT INTO cpanel_connections (id, user_id, name, host, username, api_token_encrypted, is_active, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, conn.ID, conn.UserID, conn.Name, conn.Host, conn.Username, conn.APITokenEncrypted, conn.IsActive, conn.CreatedAt, conn.UpdatedAt)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create connection: %w", err)
-	}
-
-	log.Printf("[cPanel] Created connection %s without server test (browser verified)", conn.ID)
-	return conn, nil
-}
-
 // List returns all cPanel connections for a user
 func (s *CpanelService) List(userID string) ([]models.CpanelConnection, error) {
 	var connections []models.CpanelConnection
