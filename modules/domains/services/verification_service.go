@@ -137,7 +137,7 @@ func (s *VerificationService) VerifyDNS(domain, expectedToken string) (bool, err
 // SSLStatus represents the SSL certificate status for a domain
 type SSLStatus struct {
 	Exists      bool   `json:"exists"`
-	IsWildcard  bool   `json:"is_wildcard"`
+	IsWildcard  bool   `json:"isWildcard"`
 	ExpiresAt   string `json:"expires_at,omitempty"`
 	Domains     string `json:"domains,omitempty"`
 	Error       string `json:"error,omitempty"`
