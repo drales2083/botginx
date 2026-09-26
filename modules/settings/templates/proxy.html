@@ -1,0 +1,244 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="/admin/settings">Settings</a></li>
+                    <li class="breadcrumb-item active">Proxy</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-shield-lock me-2"></i>Proxy Settings</h2>
+            <p class="text-muted">Configure proxy for cPanel API connections when server IP is blocked.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">711proxy Configuration</h6>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="proxyEnabled"
+                               {{if .Config.Enabled}}checked{{end}}>
+                        <label class="form-check-label" for="proxyEnabled">Enable Proxy</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form id="proxyForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username"
+                                       value="{{.Config.Username}}" placeholder="USER966219">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password"
+                                           value="{{.Config.Password}}" placeholder="ca546c">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                        <i class="bi bi-eye" id="pwdIcon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Host</label>
+                                <input type="text" class="form-control" id="host"
+                                       value="{{if .Config.Host}}{{.Config.Host}}{{else}}global.rotgb.711proxy.com{{end}}"
+                                       placeholder="global.rotgb.711proxy.com">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Port</label>
+                                <input type="number" class="form-control" id="port"
+                                       value="{{if .Config.Port}}{{.Config.Port}}{{else}}10000{{end}}"
+                                       placeholder="10000">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Zone</label>
+                                <input type="text" class="form-control" id="zone"
+                                       value="{{if .Config.Zone}}{{.Config.Zone}}{{else}}custom{{end}}"
+                                       placeholder="custom">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Session Minutes</label>
+                                <input type="number" class="form-control" id="sessionMinutes"
+                                       value="{{if .Config.SessionMinutes}}{{.Config.SessionMinutes}}{{else}}10{{end}}"
+                                       placeholder="10">
+                                <small class="text-muted">Sticky session duration</small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer d-flex justify-content-between">
+                    <button class="btn btn-outline-secondary" onclick="testProxy()" id="testBtn">
+                        <i class="bi bi-lightning me-1"></i>Test Connection
+                    </button>
+                    <button class="btn btn-primary" onclick="saveProxy()" id="saveBtn">
+                        <i class="bi bi-check-lg me-1"></i>Save Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>About Proxy</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        When your server's IP is blocked by a cPanel hosting server (e.g., due to geographic restrictions),
+                        proxy routing allows cPanel API calls to go through an unblocked IP.
+                    </p>
+                    <p class="small text-muted mb-0">
+                        <strong>Connection String Format:</strong><br>
+                        <code class="small">http://USER-zone-custom-session-xxx-sessTime-10:pass@host:port</code>
+                    </p>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-check2-circle me-2"></i>Status</h6>
+                </div>
+                <div class="card-body">
+                    <div id="statusCard">
+                        {{if .Config.Enabled}}
+                        <span class="badge bg-success">Enabled</span>
+                        {{else}}
+                        <span class="badge bg-secondary">Disabled</span>
+                        {{end}}
+                        {{if and .Config.Enabled .Config.Username}}
+                        <p class="small text-muted mt-2 mb-0">
+                            Proxy will be used for cPanel API calls.
+                        </p>
+                        {{else if .Config.Enabled}}
+                        <p class="small text-warning mt-2 mb-0">
+                            Proxy enabled but not configured.
+                        </p>
+                        {{else}}
+                        <p class="small text-muted mt-2 mb-0">
+                            cPanel API calls use direct connection.
+                        </p>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_BASE = '/admin/settings/proxy/api';
+
+function togglePassword() {
+    const pwd = document.getElementById('password');
+    const icon = document.getElementById('pwdIcon');
+    if (pwd.type === 'password') {
+        pwd.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        pwd.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+}
+
+function getFormData() {
+    return {
+        enabled: document.getElementById('proxyEnabled').checked,
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        host: document.getElementById('host').value || 'global.rotgb.711proxy.com',
+        port: parseInt(document.getElementById('port').value) || 10000,
+        zone: document.getElementById('zone').value || 'custom',
+        session_minutes: parseInt(document.getElementById('sessionMinutes').value) || 10
+    };
+}
+
+async function saveProxy() {
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    try {
+        const resp = await fetch(API_BASE + '/config', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(getFormData())
+        });
+        const result = await resp.json();
+
+        if (resp.ok && result.success) {
+            window.showToast?.('Settings saved', 'success');
+            updateStatusCard();
+        } else {
+            window.showToast?.(result.error || 'Failed to save', 'danger');
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Settings';
+    }
+}
+
+async function testProxy() {
+    const btn = document.getElementById('testBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Testing...';
+
+    // Save first
+    const saveResp = await fetch(API_BASE + '/config', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(getFormData())
+    });
+
+    if (!saveResp.ok) {
+        window.showToast?.('Failed to save before testing', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-lightning me-1"></i>Test Connection';
+        return;
+    }
+
+    try {
+        const resp = await fetch(API_BASE + '/test', {method: 'POST'});
+        const result = await resp.json();
+
+        if (resp.ok && result.success) {
+            window.showToast?.('Proxy connection successful!', 'success');
+        } else {
+            window.showToast?.(result.error || 'Connection failed', 'danger');
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-lightning me-1"></i>Test Connection';
+    }
+}
+
+function updateStatusCard() {
+    const enabled = document.getElementById('proxyEnabled').checked;
+    const username = document.getElementById('username').value;
+    const statusCard = document.getElementById('statusCard');
+
+    let html = '';
+    if (enabled) {
+        html += '<span class="badge bg-success">Enabled</span>';
+        if (username) {
+            html += '<p class="small text-muted mt-2 mb-0">Proxy will be used for cPanel API calls.</p>';
+        } else {
+            html += '<p class="small text-warning mt-2 mb-0">Proxy enabled but not configured.</p>';
+        }
+    } else {
+        html += '<span class="badge bg-secondary">Disabled</span>';
+        html += '<p class="small text-muted mt-2 mb-0">cPanel API calls use direct connection.</p>';
+    }
+    statusCard.innerHTML = html;
+}
+
+document.getElementById('proxyEnabled').addEventListener('change', updateStatusCard);
+</script>
+{{end}}

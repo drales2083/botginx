@@ -7,6 +7,7 @@ import (
 	"github.com/botginx/botginx/modules/settings/handlers"
 	"github.com/botginx/botginx/modules/telegram"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/botginx/botginx/pkg/proxy"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -17,6 +18,7 @@ type Module struct {
 	*module.BaseModule
 	handler        *handlers.Handler
 	telegramModule *telegram.Module
+	ProxyService   *proxy.Service
 }
 
 func New(telegramModule *telegram.Module) *Module {
@@ -33,7 +35,10 @@ func New(telegramModule *telegram.Module) *Module {
 func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 
-	m.handler = handlers.NewHandler(deps.DB, deps.Templates, m.telegramModule)
+	// Initialize proxy service
+	m.ProxyService = proxy.NewService(deps.DB)
+
+	m.handler = handlers.NewHandler(deps.DB, deps.Templates, m.telegramModule, m.ProxyService)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -42,8 +47,8 @@ func (m *Module) Init(deps *module.Dependencies) error {
 }
 
 func (m *Module) Migrate() error {
-	// No migrations - settings module uses other modules' tables
-	return nil
+	// Ensure proxy table exists
+	return m.ProxyService.EnsureTable()
 }
 
 func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
@@ -63,6 +68,14 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 			r.Post("/api/bots/{id}/test", m.telegramModule.Handler.APITestBot)
 			r.Post("/api/bots/{id}/webhook", m.telegramModule.Handler.APISetupWebhook)
 			r.Get("/api/bots/{id}/chats", m.telegramModule.Handler.APIGetChats)
+		})
+
+		// Proxy settings section
+		r.Route("/proxy", func(r chi.Router) {
+			r.Get("/", m.handler.Proxy)
+			r.Get("/api/config", m.handler.APIGetProxy)
+			r.Put("/api/config", m.handler.APIUpdateProxy)
+			r.Post("/api/test", m.handler.APITestProxy)
 		})
 
 		return r

@@ -23,10 +23,27 @@ func NewClient(config Config) *Client {
 		config.Timeout = 30
 	}
 
-	transport := &http.Transport{}
-	if config.SkipTLS {
-		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
+	var transport *http.Transport
+
+	// Try to get proxy transport if proxy is enabled
+	if config.UseProxy && config.ProxyService != nil && config.ProxyService.IsEnabled() {
+		var err error
+		transport, err = config.ProxyService.GetTransport(config.SkipTLS)
+		if err != nil {
+			// Fallback to direct connection if proxy fails
+			transport = &http.Transport{}
+			if config.SkipTLS {
+				transport.TLSClientConfig = &tls.Config{
+					InsecureSkipVerify: true,
+				}
+			}
+		}
+	} else {
+		transport = &http.Transport{}
+		if config.SkipTLS {
+			transport.TLSClientConfig = &tls.Config{
+				InsecureSkipVerify: true,
+			}
 		}
 	}
 
@@ -39,13 +56,25 @@ func NewClient(config Config) *Client {
 	}
 }
 
-// NewClientSimple creates a client with minimal config
+// NewClientSimple creates a client with minimal config (no proxy)
 func NewClientSimple(host, username, apiToken string) *Client {
 	return NewClient(Config{
 		Host:     host,
 		Username: username,
 		APIToken: apiToken,
 		SkipTLS:  true, // cPanel often uses self-signed certs
+	})
+}
+
+// NewClientWithProxy creates a client that uses proxy if enabled
+func NewClientWithProxy(host, username, apiToken string, proxyService ProxyTransportProvider) *Client {
+	return NewClient(Config{
+		Host:         host,
+		Username:     username,
+		APIToken:     apiToken,
+		SkipTLS:      true,
+		UseProxy:     true,
+		ProxyService: proxyService,
 	})
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/domains/services"
 	"github.com/botginx/botginx/pkg/module"
+	"github.com/botginx/botginx/pkg/proxy"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -202,6 +203,11 @@ func (m *Module) MenuItems() []module.MenuItem {
 // Service exposes the domain service to other modules (deploy target lookup).
 func (m *Module) Service() *services.DomainService {
 	return m.service
+}
+
+// SetProxyService sets the proxy service for cPanel API calls
+func (m *Module) SetProxyService(ps *proxy.Service) {
+	m.cpanelService.SetProxyService(ps)
 }
 
 // ListAvailable returns every domain a user may deploy to. Delegated so other

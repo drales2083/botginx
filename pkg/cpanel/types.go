@@ -1,5 +1,7 @@
 package cpanel
 
+import "net/http"
+
 // API response wrappers
 
 // UAPIResponse is the standard UAPI response format
@@ -67,9 +69,17 @@ type RemoveRecordResult struct {
 
 // Config holds cPanel connection settings
 type Config struct {
-	Host      string // hostname:port (e.g., "example.com:2083")
-	Username  string
-	APIToken  string
-	Timeout   int  // seconds, default 30
-	SkipTLS   bool // allow self-signed certs
+	Host         string // hostname:port (e.g., "example.com:2083")
+	Username     string
+	APIToken     string
+	Timeout      int  // seconds, default 30
+	SkipTLS      bool // allow self-signed certs
+	UseProxy     bool // use proxy if configured
+	ProxyService ProxyTransportProvider
+}
+
+// ProxyTransportProvider gets an HTTP transport with optional proxy
+type ProxyTransportProvider interface {
+	GetTransport(skipTLS bool) (*http.Transport, error)
+	IsEnabled() bool
 }

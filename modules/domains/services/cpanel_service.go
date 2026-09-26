@@ -15,6 +15,7 @@ import (
 
 	"github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/pkg/cpanel"
+	"github.com/botginx/botginx/pkg/proxy"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -22,6 +23,7 @@ import (
 type CpanelService struct {
 	db            *sqlx.DB
 	encryptionKey []byte
+	proxyService  *proxy.Service
 }
 
 // NewCpanelService creates a new cPanel service
@@ -36,6 +38,19 @@ func NewCpanelService(db *sqlx.DB) *CpanelService {
 		db:            db,
 		encryptionKey: []byte(key[:32]),
 	}
+}
+
+// SetProxyService sets the proxy service for cPanel API calls
+func (s *CpanelService) SetProxyService(ps *proxy.Service) {
+	s.proxyService = ps
+}
+
+// newClient creates a cPanel client, using proxy if configured
+func (s *CpanelService) newClient(host, username, apiToken string) *cpanel.Client {
+	if s.proxyService != nil {
+		return cpanel.NewClientWithProxy(host, username, apiToken, s.proxyService)
+	}
+	return cpanel.NewClientSimple(host, username, apiToken)
 }
 
 // encrypt encrypts a string using AES-GCM
@@ -92,7 +107,7 @@ func (s *CpanelService) decrypt(ciphertext string) (string, error) {
 // Create creates a new cPanel connection
 func (s *CpanelService) Create(userID string, input models.CreateCpanelConnectionInput) (*models.CpanelConnection, error) {
 	// Test connection first
-	client := cpanel.NewClientSimple(input.Host, input.Username, input.APIToken)
+	client := s.newClient(input.Host, input.Username, input.APIToken)
 	if err := client.TestConnection(); err != nil {
 		return nil, fmt.Errorf("connection test failed: %w", err)
 	}
@@ -213,7 +228,7 @@ func (s *CpanelService) Update(userID, connectionID string, input models.UpdateC
 
 	// If new token provided, test and encrypt
 	if input.APIToken != nil && *input.APIToken != "" {
-		client := cpanel.NewClientSimple(conn.Host, conn.Username, *input.APIToken)
+		client := s.newClient(conn.Host, conn.Username, *input.APIToken)
 		if err := client.TestConnection(); err != nil {
 			return nil, fmt.Errorf("connection test failed: %w", err)
 		}
@@ -265,7 +280,7 @@ func (s *CpanelService) TestConnection(userID, connectionID string) error {
 		return err
 	}
 
-	client := cpanel.NewClientSimple(conn.Host, conn.Username, conn.APIToken)
+	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
 	if err := client.TestConnection(); err != nil {
 		// Update last_error
 		errStr := err.Error()
@@ -287,7 +302,7 @@ func (s *CpanelService) ListDomains(userID, connectionID string) (*models.Cpanel
 		return nil, err
 	}
 
-	client := cpanel.NewClientSimple(conn.Host, conn.Username, conn.APIToken)
+	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
 	domains, err := client.GetDomains()
 	if err != nil {
 		return nil, err
@@ -308,7 +323,7 @@ func (s *CpanelService) AddVerificationTXT(connectionID, domain, token string) e
 		return fmt.Errorf("failed to get connection: %w", err)
 	}
 
-	client := cpanel.NewClientSimple(conn.Host, conn.Username, conn.APIToken)
+	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
 
 	log.Printf("[cpanel] Adding verification TXT for %s via %s", domain, conn.Host)
 
@@ -334,7 +349,7 @@ func (s *CpanelService) RemoveVerificationTXT(connectionID, domain string) error
 		return err
 	}
 
-	client := cpanel.NewClientSimple(conn.Host, conn.Username, conn.APIToken)
+	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
 	return client.RemoveVerificationTXT(domain)
 }
 
@@ -345,7 +360,7 @@ func (s *CpanelService) AddAcmeChallengeTXT(connectionID, domain, token string) 
 		return err
 	}
 
-	client := cpanel.NewClientSimple(conn.Host, conn.Username, conn.APIToken)
+	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
 	return client.AddAcmeChallengeTXT(domain, token)
 }
 
@@ -356,7 +371,7 @@ func (s *CpanelService) RemoveAcmeChallengeTXT(connectionID, domain string) erro
 		return err
 	}
 
-	client := cpanel.NewClientSimple(conn.Host, conn.Username, conn.APIToken)
+	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
 	return client.RemoveAcmeChallengeTXT(domain)
 }
 
@@ -367,7 +382,16 @@ func (s *CpanelService) GetClient(connectionID string) (*cpanel.Client, error) {
 		return nil, err
 	}
 
-	return cpanel.NewClientSimple(conn.Host, conn.Username, conn.APIToken), nil
+	return s.newClient(conn.Host, conn.Username, conn.APIToken), nil
+}
+
+// TestNewConnection tests a cPanel connection before saving (uses proxy if configured)
+func (s *CpanelService) TestNewConnection(host, username, apiToken string) (*cpanel.DomainInfo, error) {
+	client := s.newClient(host, username, apiToken)
+	if err := client.TestConnection(); err != nil {
+		return nil, err
+	}
+	return client.GetDomains()
 }
 
 // TriggerAutoDNS adds the verification TXT record for a domain using its cPanel connection

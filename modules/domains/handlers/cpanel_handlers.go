@@ -6,7 +6,6 @@ import (
 
 	"github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/domains/services"
-	"github.com/botginx/botginx/pkg/cpanel"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/go-chi/chi/v5"
 )
@@ -161,15 +160,12 @@ func (h *CpanelHandler) TestNewConnection(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Test connection directly
-	client := cpanel.NewClientSimple(input.Host, input.Username, input.APIToken)
-	if err := client.TestConnection(); err != nil {
+	// Test connection (uses proxy if configured)
+	domains, err := h.cpanelService.TestNewConnection(input.Host, input.Username, input.APIToken)
+	if err != nil {
 		h.jsonError(w, "Connection failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	// Also get domains to show what's available
-	domains, _ := client.GetDomains()
 
 	h.jsonSuccess(w, map[string]interface{}{
 		"message": "Connection successful",
