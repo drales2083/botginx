@@ -57,7 +57,10 @@ func (h *CpanelHandler) ListConnections(w http.ResponseWriter, r *http.Request) 
 func (h *CpanelHandler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 	userID := ctx.GetUserID(r)
 
-	var input models.CreateCpanelConnectionInput
+	var input struct {
+		models.CreateCpanelConnectionInput
+		SkipTest bool `json:"skipTest"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -68,7 +71,16 @@ func (h *CpanelHandler) CreateConnection(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	conn, err := h.cpanelService.Create(userID, input)
+	var conn *models.CpanelConnection
+	var err error
+
+	if input.SkipTest {
+		// Browser already verified - save without server-side test
+		conn, err = h.cpanelService.CreateWithoutTest(userID, input.CreateCpanelConnectionInput)
+	} else {
+		conn, err = h.cpanelService.Create(userID, input.CreateCpanelConnectionInput)
+	}
+
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return

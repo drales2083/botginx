@@ -277,6 +277,43 @@ function renderCpanelDomains() {
     });
 }
 
+// Build cPanel base URL
+function cpanelBaseUrl(host) {
+    let url = host.trim();
+    if (!url.includes(':')) url += ':2083';
+    if (!url.startsWith('https://')) url = 'https://' + url;
+    return url;
+}
+
+// Test cPanel connection from browser (client-side)
+async function testCpanelFromBrowser(host, username, token) {
+    const baseUrl = cpanelBaseUrl(host);
+    const apiUrl = `${baseUrl}/execute/DomainInfo/list_domains`;
+
+    try {
+        const res = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `cpanel ${username}:${token}`
+            }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data.status === 1) {
+                return { success: true, domains: data.data };
+            }
+        }
+        return { success: false, error: 'Invalid credentials or API error' };
+    } catch (err) {
+        // CORS error or network error
+        if (err.name === 'TypeError' && err.message.includes('fetch')) {
+            return { success: false, error: 'cors', message: 'CORS blocked - try opening cPanel directly' };
+        }
+        return { success: false, error: err.message };
+    }
+}
+
 // cPanel connection form submit
 document.getElementById('cpanel-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -284,36 +321,94 @@ document.getElementById('cpanel-form').addEventListener('submit', async (e) => {
     const errorEl = document.getElementById('cpanel-error');
 
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Connecting...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Testing from your browser...';
     errorEl.classList.add('d-none');
 
-    const payload = {
-        name: document.getElementById('cpanel-name').value,
-        host: document.getElementById('cpanel-host').value,
-        username: document.getElementById('cpanel-username').value,
-        apiToken: document.getElementById('cpanel-token').value
-    };
+    const name = document.getElementById('cpanel-name').value;
+    const host = document.getElementById('cpanel-host').value;
+    const username = document.getElementById('cpanel-username').value;
+    const token = document.getElementById('cpanel-token').value;
 
-    try {
-        // Create connection (tests automatically)
-        const res = await fetch('/user/domains/cpanel/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
+    // First test from browser (client-side)
+    const clientTest = await testCpanelFromBrowser(host, username, token);
 
-        if (res.ok && data.success && data.data) {
-            cpanelConnectionId = data.data.id;
-            flashToast('cPanel connected successfully', 'success');
-            await loadCpanelDomains(cpanelConnectionId);
-            showStep('select-domain');
-        } else {
-            errorEl.textContent = data.error || 'Connection failed';
+    if (clientTest.success) {
+        // Browser test passed - save to server (skip server-side test)
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+        try {
+            const res = await fetch('/user/domains/cpanel/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    host: host,
+                    username: username,
+                    apiToken: token,
+                    skipTest: true  // Tell server to skip test since browser already verified
+                })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success && data.data) {
+                cpanelConnectionId = data.data.id;
+
+                // Use domains from browser test
+                cpanelDomains = {
+                    mainDomain: clientTest.domains.main_domain,
+                    addonDomains: clientTest.domains.addon_domains || [],
+                    subDomains: clientTest.domains.sub_domains || [],
+                    parkedDomains: clientTest.domains.parked_domains || []
+                };
+
+                flashToast('cPanel connected successfully (verified from your browser)', 'success');
+                renderCpanelDomains();
+                showStep('select-domain');
+            } else {
+                errorEl.textContent = data.error || 'Failed to save connection';
+                errorEl.classList.remove('d-none');
+            }
+        } catch (err) {
+            errorEl.textContent = 'Network error saving connection';
             errorEl.classList.remove('d-none');
         }
-    } catch (err) {
-        errorEl.textContent = 'Network error';
+    } else if (clientTest.error === 'cors') {
+        // CORS blocked - fall back to server-side test
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Testing from server...';
+
+        try {
+            const res = await fetch('/user/domains/cpanel/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    host: host,
+                    username: username,
+                    apiToken: token
+                })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success && data.data) {
+                cpanelConnectionId = data.data.id;
+                flashToast('cPanel connected successfully', 'success');
+                await loadCpanelDomains(cpanelConnectionId);
+                showStep('select-domain');
+            } else {
+                errorEl.innerHTML = `
+                    <strong>Connection failed from server.</strong><br>
+                    <small>The server cannot reach your cPanel. You can verify your credentials work by
+                    <a href="${cpanelBaseUrl(host)}" target="_blank">opening cPanel directly</a>.</small>
+                `;
+                errorEl.classList.remove('d-none');
+            }
+        } catch (err) {
+            errorEl.textContent = 'Network error';
+            errorEl.classList.remove('d-none');
+        }
+    } else {
+        // Browser test failed (bad credentials, etc)
+        errorEl.textContent = clientTest.error || 'Connection test failed';
         errorEl.classList.remove('d-none');
     }
 
