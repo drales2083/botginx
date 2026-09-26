@@ -1,76 +1,565 @@
 {{define "content"}}
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-8">
+        <!-- Step 1: Choose Method -->
+        <div id="step-method" class="card">
             <div class="card-header">
-                <h3 class="card-title">{{t "domains.add"}}</h3>
+                <h3 class="card-title mb-0">Add New Domain</h3>
             </div>
             <div class="card-body">
-                <div id="error-alert" class="alert alert-danger d-none"></div>
+                <p class="text-muted mb-4">How would you like to set up DNS for your domain?</p>
 
-                <form id="create-form">
+                <div class="row g-3">
+                    <!-- Manual Setup Option -->
+                    <div class="col-md-6">
+                        <div class="card card-outline card-secondary h-100 method-card" data-method="manual" style="cursor: pointer;">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-pencil-square fs-1 text-secondary mb-3 d-block"></i>
+                                <h5 class="mb-2">Manual Setup</h5>
+                                <p class="text-muted small mb-0">
+                                    Add DNS records yourself at your domain registrar or DNS provider
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- cPanel Auto Setup Option -->
+                    <div class="col-md-6">
+                        <div class="card card-outline card-primary h-100 method-card" data-method="cpanel" style="cursor: pointer;">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-link-45deg fs-1 text-primary mb-3 d-block"></i>
+                                <h5 class="mb-2">Connect cPanel</h5>
+                                <p class="text-muted small mb-0">
+                                    Auto-configure DNS via your cPanel account — no manual setup needed
+                                </p>
+                                <span class="badge bg-success mt-2">Recommended</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <a href="/user/domains" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2a: Manual Setup Form -->
+        <div id="step-manual" class="card d-none">
+            <div class="card-header d-flex align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-3 back-btn" data-step="method">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+                <h3 class="card-title mb-0">Add Domain — Manual Setup</h3>
+            </div>
+            <div class="card-body">
+                <div id="manual-error" class="alert alert-danger d-none"></div>
+
+                <form id="manual-form">
                     <div class="mb-3">
-                        <label for="name" class="form-label">Domain Name</label>
-                        <input type="text" class="form-control" id="name" name="name" placeholder="example.com" required>
+                        <label for="manual-name" class="form-label">Domain Name</label>
+                        <input type="text" class="form-control" id="manual-name" name="name" placeholder="example.com" required>
                         <div class="form-text">Enter your domain without http:// or www</div>
                     </div>
 
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-1"></i>
-                        <strong>Using cPanel?</strong> Add with wildcard prefix: <code>*.example.com</code><br>
-                        This lets you create unlimited subdomains without adding each one in cPanel.
+                        <strong>Tip:</strong> Add with wildcard prefix <code>*.example.com</code> to create unlimited subdomains.
                     </div>
 
-                    <p class="text-muted small mb-3">You'll get the DNS records to add at your registrar after submitting.</p>
+                    <p class="text-muted small mb-3">After adding, you'll receive DNS records to configure at your registrar.</p>
 
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-plus-lg me-1"></i> {{t "add"}}
-                        </button>
-                        <a href="/user/domains" class="btn btn-secondary">{{t "cancel"}}</a>
-                    </div>
+                    <button type="submit" class="btn btn-primary" id="manual-submit">
+                        <i class="bi bi-plus-lg me-1"></i> Add Domain
+                    </button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Step 2b: cPanel Connection -->
+        <div id="step-cpanel" class="card d-none">
+            <div class="card-header d-flex align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-3 back-btn" data-step="method">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+                <h3 class="card-title mb-0">Connect cPanel Account</h3>
+            </div>
+            <div class="card-body">
+                <div id="cpanel-error" class="alert alert-danger d-none"></div>
+
+                <!-- Existing Connections -->
+                <div id="existing-connections" class="mb-4 d-none">
+                    <label class="form-label">Select cPanel Account</label>
+                    <div id="connections-list" class="mb-3"></div>
+                    <hr>
+                    <p class="text-muted small mb-2">Or add a new connection:</p>
+                </div>
+
+                <!-- New Connection Form -->
+                <form id="cpanel-form">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cpanel-name" class="form-label">Connection Name</label>
+                            <input type="text" class="form-control" id="cpanel-name" placeholder="My Hosting Account" required>
+                            <div class="form-text">A name to identify this cPanel account</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="cpanel-host" class="form-label">cPanel Host</label>
+                            <input type="text" class="form-control" id="cpanel-host" placeholder="example.com:2083" required>
+                            <div class="form-text">Your cPanel URL with port (usually :2083)</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cpanel-username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="cpanel-username" placeholder="cpanel_user" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="cpanel-token" class="form-label">API Token</label>
+                            <input type="password" class="form-control" id="cpanel-token" placeholder="Your cPanel API token" required>
+                            <div class="form-text">
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#token-help-modal">How to get an API token?</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="cpanel-connect-btn">
+                        <i class="bi bi-plug me-1"></i> Connect & Continue
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Step 3: Select Domain from cPanel -->
+        <div id="step-select-domain" class="card d-none">
+            <div class="card-header d-flex align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-3 back-btn" data-step="cpanel">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+                <h3 class="card-title mb-0">Select Domain</h3>
+            </div>
+            <div class="card-body">
+                <div id="select-error" class="alert alert-danger d-none"></div>
+
+                <p class="text-muted mb-3">Domains found on your cPanel account:</p>
+
+                <div id="cpanel-domains-list" class="mb-4"></div>
+
+                <div class="mb-3">
+                    <label class="form-label">Or enter a subdomain:</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="custom-subdomain" placeholder="promo">
+                        <span class="input-group-text" id="base-domain-suffix">.example.com</span>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-primary" id="add-cpanel-domain-btn">
+                    <i class="bi bi-plus-lg me-1"></i> Add & Auto-Configure DNS
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 4: Auto-Setup Progress -->
+        <div id="step-progress" class="card d-none">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Setting Up Domain</h3>
+            </div>
+            <div class="card-body text-center py-5">
+                <div id="progress-domain" class="h5 mb-4"></div>
+
+                <div class="mb-4">
+                    <div id="progress-steps">
+                        <div class="d-flex align-items-center justify-content-start mb-2" data-step="connect">
+                            <i class="bi bi-check-circle-fill text-success me-2 step-icon d-none"></i>
+                            <i class="bi bi-circle text-muted me-2 step-pending"></i>
+                            <span class="spinner-border spinner-border-sm me-2 step-loading d-none"></span>
+                            <span>Connected to cPanel</span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-start mb-2" data-step="txt">
+                            <i class="bi bi-check-circle-fill text-success me-2 step-icon d-none"></i>
+                            <i class="bi bi-circle text-muted me-2 step-pending"></i>
+                            <span class="spinner-border spinner-border-sm me-2 step-loading d-none"></span>
+                            <span>Added verification TXT record</span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-start mb-2" data-step="verify">
+                            <i class="bi bi-check-circle-fill text-success me-2 step-icon d-none"></i>
+                            <i class="bi bi-circle text-muted me-2 step-pending"></i>
+                            <span class="spinner-border spinner-border-sm me-2 step-loading d-none"></span>
+                            <span>DNS verified</span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-start" data-step="complete">
+                            <i class="bi bi-check-circle-fill text-success me-2 step-icon d-none"></i>
+                            <i class="bi bi-circle text-muted me-2 step-pending"></i>
+                            <span class="spinner-border spinner-border-sm me-2 step-loading d-none"></span>
+                            <span>Setup complete</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="progress-message" class="text-muted small"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Token Help Modal -->
+<div class="modal fade" id="token-help-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">How to Get a cPanel API Token</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ol class="mb-0">
+                    <li class="mb-2">Log in to your cPanel account</li>
+                    <li class="mb-2">Go to <strong>Security → Manage API Tokens</strong></li>
+                    <li class="mb-2">Click <strong>Create</strong></li>
+                    <li class="mb-2">Enter a name (e.g., "GuardBot DNS")</li>
+                    <li class="mb-2">Click <strong>Create</strong></li>
+                    <li class="mb-2">Copy the token shown — you won't be able to see it again</li>
+                    <li>Paste the token in the form above</li>
+                </ol>
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    The API token allows us to add DNS records for domain verification and SSL certificates.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-document.getElementById('create-form').addEventListener('submit', async (e) => {
+// State
+let selectedMethod = null;
+let cpanelConnectionId = null;
+let cpanelDomains = null;
+let selectedDomain = null;
+
+// Show a specific step
+function showStep(stepId) {
+    document.querySelectorAll('[id^="step-"]').forEach(el => el.classList.add('d-none'));
+    document.getElementById('step-' + stepId).classList.remove('d-none');
+}
+
+// Method selection
+document.querySelectorAll('.method-card').forEach(card => {
+    card.addEventListener('click', () => {
+        selectedMethod = card.dataset.method;
+        if (selectedMethod === 'manual') {
+            showStep('manual');
+        } else {
+            loadExistingConnections();
+            showStep('cpanel');
+        }
+    });
+});
+
+// Back buttons
+document.querySelectorAll('.back-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        showStep(btn.dataset.step);
+    });
+});
+
+// Load existing cPanel connections
+async function loadExistingConnections() {
+    try {
+        const res = await fetch('/user/domains/cpanel/');
+        const data = await res.json();
+
+        if (data.success && data.data && data.data.length > 0) {
+            const container = document.getElementById('connections-list');
+            container.innerHTML = data.data.map(conn => `
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="existing-conn"
+                           id="conn-${conn.id}" value="${conn.id}">
+                    <label class="form-check-label" for="conn-${conn.id}">
+                        <strong>${conn.name}</strong>
+                        <span class="text-muted">(${conn.username}@${conn.host})</span>
+                        ${conn.domainCount > 0 ? `<span class="badge bg-secondary ms-1">${conn.domainCount} domains</span>` : ''}
+                    </label>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            container.querySelectorAll('input[name="existing-conn"]').forEach(radio => {
+                radio.addEventListener('change', async () => {
+                    cpanelConnectionId = radio.value;
+                    await loadCpanelDomains(cpanelConnectionId);
+                    showStep('select-domain');
+                });
+            });
+
+            document.getElementById('existing-connections').classList.remove('d-none');
+        }
+    } catch (err) {
+        console.error('Failed to load connections:', err);
+    }
+}
+
+// Load domains from cPanel connection
+async function loadCpanelDomains(connId) {
+    try {
+        const res = await fetch(`/user/domains/cpanel/${connId}/domains`);
+        const data = await res.json();
+
+        if (data.success && data.data) {
+            cpanelDomains = data.data;
+            renderCpanelDomains();
+        }
+    } catch (err) {
+        console.error('Failed to load cPanel domains:', err);
+    }
+}
+
+// Render domain selection
+function renderCpanelDomains() {
+    const container = document.getElementById('cpanel-domains-list');
+    const domains = [];
+
+    if (cpanelDomains.mainDomain) {
+        domains.push({ name: cpanelDomains.mainDomain, type: 'Main Domain' });
+    }
+    if (cpanelDomains.addonDomains) {
+        cpanelDomains.addonDomains.forEach(d => domains.push({ name: d, type: 'Addon' }));
+    }
+    if (cpanelDomains.subDomains) {
+        cpanelDomains.subDomains.forEach(d => domains.push({ name: d, type: 'Subdomain' }));
+    }
+    if (cpanelDomains.parkedDomains) {
+        cpanelDomains.parkedDomains.forEach(d => domains.push({ name: d, type: 'Parked' }));
+    }
+
+    container.innerHTML = domains.map(d => `
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="cpanel-domain"
+                   id="domain-${d.name.replace(/\./g, '-')}" value="${d.name}">
+            <label class="form-check-label" for="domain-${d.name.replace(/\./g, '-')}">
+                <strong>${d.name}</strong>
+                <span class="badge bg-secondary ms-1">${d.type}</span>
+            </label>
+        </div>
+    `).join('');
+
+    // Set base domain for subdomain input
+    if (cpanelDomains.mainDomain) {
+        document.getElementById('base-domain-suffix').textContent = '.' + cpanelDomains.mainDomain;
+    }
+
+    // Add handlers
+    container.querySelectorAll('input[name="cpanel-domain"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            selectedDomain = radio.value;
+            document.getElementById('custom-subdomain').value = '';
+        });
+    });
+}
+
+// Manual form submit
+document.getElementById('manual-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const form = e.target;
-    const btn = form.querySelector('button[type="submit"]');
-    const errorAlert = document.getElementById('error-alert');
+    const btn = document.getElementById('manual-submit');
+    const errorEl = document.getElementById('manual-error');
 
     btn.disabled = true;
-    errorAlert.classList.add('d-none');
+    errorEl.classList.add('d-none');
 
     try {
         const res = await fetch('/user/domains/api/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: form.name.value
-            })
+            body: JSON.stringify({ name: document.getElementById('manual-name').value })
         });
         const data = await res.json();
+
         if (res.ok && data.domain) {
-            if (data.needsSetupWizard) {
-                flashToast('Wildcard domain — follow the setup wizard', 'success');
-                window.location.href = '/user/domains/' + data.domain.id + '/setup';
-            } else {
-                flashToast('Domain added — configure DNS records below', 'success');
-                window.location.href = '/user/domains/' + data.domain.id;
-            }
+            flashToast('Domain added — configure DNS records', 'success');
+            window.location.href = '/user/domains/' + data.domain.id + '/setup';
         } else {
-            errorAlert.textContent = data.error || 'Failed to add domain';
-            errorAlert.classList.remove('d-none');
+            errorEl.textContent = data.error || 'Failed to add domain';
+            errorEl.classList.remove('d-none');
         }
     } catch (err) {
-        errorAlert.textContent = 'Network error';
-        errorAlert.classList.remove('d-none');
+        errorEl.textContent = 'Network error';
+        errorEl.classList.remove('d-none');
     }
     btn.disabled = false;
 });
+
+// cPanel connection form submit
+document.getElementById('cpanel-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('cpanel-connect-btn');
+    const errorEl = document.getElementById('cpanel-error');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Connecting...';
+    errorEl.classList.add('d-none');
+
+    const payload = {
+        name: document.getElementById('cpanel-name').value,
+        host: document.getElementById('cpanel-host').value,
+        username: document.getElementById('cpanel-username').value,
+        apiToken: document.getElementById('cpanel-token').value
+    };
+
+    try {
+        // Create connection (tests automatically)
+        const res = await fetch('/user/domains/cpanel/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success && data.data) {
+            cpanelConnectionId = data.data.id;
+            flashToast('cPanel connected successfully', 'success');
+            await loadCpanelDomains(cpanelConnectionId);
+            showStep('select-domain');
+        } else {
+            errorEl.textContent = data.error || 'Connection failed';
+            errorEl.classList.remove('d-none');
+        }
+    } catch (err) {
+        errorEl.textContent = 'Network error';
+        errorEl.classList.remove('d-none');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plug me-1"></i> Connect & Continue';
+});
+
+// Add domain with cPanel
+document.getElementById('add-cpanel-domain-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('add-cpanel-domain-btn');
+    const errorEl = document.getElementById('select-error');
+
+    // Determine domain name
+    let domainName = selectedDomain;
+    const customSub = document.getElementById('custom-subdomain').value.trim();
+    if (customSub && cpanelDomains.mainDomain) {
+        domainName = customSub + '.' + cpanelDomains.mainDomain;
+    }
+
+    if (!domainName) {
+        errorEl.textContent = 'Please select a domain or enter a subdomain';
+        errorEl.classList.remove('d-none');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Setting up...';
+    errorEl.classList.add('d-none');
+
+    // Show progress
+    showStep('progress');
+    document.getElementById('progress-domain').textContent = domainName;
+    updateProgress('connect', 'loading');
+
+    try {
+        // Create domain with cPanel connection
+        const res = await fetch('/user/domains/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: domainName,
+                cpanelConnectionId: cpanelConnectionId
+            })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.domain) {
+            updateProgress('connect', 'done');
+
+            if (data.cpanelAutoDNS) {
+                updateProgress('txt', 'done');
+                updateProgress('verify', 'loading');
+                document.getElementById('progress-message').textContent = 'Waiting for DNS verification...';
+
+                // Poll for verification
+                pollVerification(data.domain.id);
+            } else {
+                // cPanel auto-DNS failed, redirect to manual setup
+                updateProgress('txt', 'error');
+                document.getElementById('progress-message').textContent = 'Auto-DNS failed. Redirecting to manual setup...';
+                setTimeout(() => {
+                    window.location.href = '/user/domains/' + data.domain.id + '/setup';
+                }, 2000);
+            }
+        } else {
+            showStep('select-domain');
+            errorEl.textContent = data.error || 'Failed to add domain';
+            errorEl.classList.remove('d-none');
+        }
+    } catch (err) {
+        showStep('select-domain');
+        errorEl.textContent = 'Network error';
+        errorEl.classList.remove('d-none');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i> Add & Auto-Configure DNS';
+});
+
+// Update progress step
+function updateProgress(step, status) {
+    const stepEl = document.querySelector(`[data-step="${step}"]`);
+    if (!stepEl) return;
+
+    stepEl.querySelector('.step-icon').classList.toggle('d-none', status !== 'done');
+    stepEl.querySelector('.step-pending').classList.toggle('d-none', status !== 'pending');
+    stepEl.querySelector('.step-loading').classList.toggle('d-none', status !== 'loading');
+}
+
+// Poll for DNS verification
+async function pollVerification(domainId) {
+    let attempts = 0;
+    const maxAttempts = 20; // ~2 minutes with 6s intervals
+
+    const check = async () => {
+        attempts++;
+        try {
+            const res = await fetch(`/user/domains/api/${domainId}`);
+            const data = await res.json();
+
+            if (data.domain && data.domain.dnsVerified) {
+                updateProgress('verify', 'done');
+                updateProgress('complete', 'done');
+                document.getElementById('progress-message').textContent = 'Domain setup complete!';
+
+                setTimeout(() => {
+                    flashToast('Domain added and verified automatically!', 'success');
+                    window.location.href = '/user/domains/' + domainId;
+                }, 1500);
+                return;
+            }
+
+            if (attempts < maxAttempts) {
+                document.getElementById('progress-message').textContent =
+                    `Waiting for DNS verification... (${attempts}/${maxAttempts})`;
+                setTimeout(check, 6000);
+            } else {
+                // Timeout - redirect to setup page
+                document.getElementById('progress-message').textContent =
+                    'DNS propagation taking longer than expected. Redirecting...';
+                setTimeout(() => {
+                    window.location.href = '/user/domains/' + domainId + '/setup';
+                }, 2000);
+            }
+        } catch (err) {
+            console.error('Poll error:', err);
+            setTimeout(check, 6000);
+        }
+    };
+
+    setTimeout(check, 3000); // First check after 3s
+}
 </script>
 {{end}}
