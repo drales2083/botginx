@@ -182,11 +182,27 @@ func (s *Service) TestConnection() error {
 		return err
 	}
 
-	if !config.Enabled || config.Username == "" {
-		return fmt.Errorf("proxy not configured")
+	if config.Username == "" || config.Password == "" {
+		return fmt.Errorf("proxy credentials not configured")
 	}
 
-	transport, err := s.GetTransport(true)
+	// Build transport directly for testing (ignore enabled flag)
+	proxyURL := config.BuildProxyURL()
+	if proxyURL == "" {
+		return fmt.Errorf("invalid proxy configuration")
+	}
+
+	parsedURL, err := url.Parse(proxyURL)
+	if err != nil {
+		return fmt.Errorf("invalid proxy URL: %w", err)
+	}
+
+	transport := &http.Transport{
+		Proxy: http.ProxyURL(parsedURL),
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
 	if err != nil {
 		return err
 	}
