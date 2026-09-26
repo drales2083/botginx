@@ -444,6 +444,21 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 	} else {
 		cnameTarget = reg.Fulldomain
 		log.Printf("[domains] auto-registered %s with acme-dns: %s", domain.Name, cnameTarget)
+
+		// For cPanel domains, auto-add the CNAME record
+		if cpanelAutoDNS && domain.CpanelConnectionID != nil && h.cpanelService != nil {
+			if err := h.cpanelService.AddAcmeCNAME(*domain.CpanelConnectionID, domain.Name, cnameTarget); err != nil {
+				log.Printf("[domains] cPanel auto-CNAME failed for %s: %v", domain.Name, err)
+			} else {
+				log.Printf("[domains] cPanel auto-CNAME added for %s → %s", domain.Name, cnameTarget)
+				// Mark CNAME as verified since we added it ourselves
+				verified := true
+				h.service.Update(domain.ID, models.UpdateDomainInput{
+					AcmeCnameVerified: &verified,
+				})
+				needsSetupWizard = false // All DNS is auto-configured
+			}
+		}
 	}
 
 	resp := map[string]interface{}{

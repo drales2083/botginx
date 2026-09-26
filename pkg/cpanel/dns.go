@@ -400,6 +400,54 @@ func (c *Client) RemoveAcmeChallengeTXT(domain string) error {
 	return c.RemoveTXTRecord(baseDomain, "_acme-challenge")
 }
 
+// AddCNAMERecord adds a CNAME record to the domain's DNS zone
+func (c *Client) AddCNAMERecord(domain, name, target string) error {
+	params := url.Values{}
+	params.Set("cpanel_jsonapi_apiversion", "2")
+	params.Set("cpanel_jsonapi_module", "ZoneEdit")
+	params.Set("cpanel_jsonapi_func", "add_zone_record")
+	params.Set("domain", domain)
+	params.Set("name", name)
+	params.Set("type", "CNAME")
+	params.Set("cname", target)
+	params.Set("ttl", "300")
+
+	body, err := c.doRequest(http.MethodGet, "/json-api/cpanel", params)
+	if err != nil {
+		return err
+	}
+
+	var resp struct {
+		CPanelResult struct {
+			Data []struct {
+				Result struct {
+					Status    int    `json:"status"`
+					StatusMsg string `json:"statusmsg"`
+				} `json:"result"`
+			} `json:"data"`
+			Error string `json:"error,omitempty"`
+		} `json:"cpanelresult"`
+	}
+
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return NewAPIError("parse", "failed to parse add_zone_record response", err)
+	}
+
+	if resp.CPanelResult.Error != "" {
+		return NewAPIError("add_zone_record", resp.CPanelResult.Error, ErrZoneEditFailed)
+	}
+
+	if len(resp.CPanelResult.Data) > 0 && resp.CPanelResult.Data[0].Result.Status != 1 {
+		errMsg := resp.CPanelResult.Data[0].Result.StatusMsg
+		if errMsg == "" {
+			errMsg = "failed to add CNAME record"
+		}
+		return NewAPIError("add_zone_record", errMsg, ErrZoneEditFailed)
+	}
+
+	return nil
+}
+
 // DebugZone prints all DNS records for debugging
 func (c *Client) DebugZone(domain string) (string, error) {
 	records, err := c.GetZone(domain)

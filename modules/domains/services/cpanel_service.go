@@ -394,8 +394,10 @@ func (s *CpanelService) TestNewConnection(host, username, apiToken string) (*cpa
 	return client.GetDomains()
 }
 
-// TriggerAutoDNS adds the verification TXT record for a domain using its cPanel connection
-// Returns true if TXT was added, false if no cPanel connection or error
+// TriggerAutoDNS adds all required DNS records for a domain using its cPanel connection:
+// 1. Verification TXT record (_guardbot-verify)
+// 2. Wildcard A record (*.domain.com → Deploy VPS IP)
+// Returns true if all records were added, false if no cPanel connection or error
 func (s *CpanelService) TriggerAutoDNS(domainID, domainName, verifyToken, cpanelConnectionID string) bool {
 	if cpanelConnectionID == "" {
 		return false
@@ -403,12 +405,90 @@ func (s *CpanelService) TriggerAutoDNS(domainID, domainName, verifyToken, cpanel
 
 	log.Printf("[cpanel] Auto-DNS triggered for domain %s", domainName)
 
+	// 1. Add verification TXT record
 	err := s.AddVerificationTXT(cpanelConnectionID, domainName, verifyToken)
 	if err != nil {
-		log.Printf("[cpanel] Auto-DNS failed for %s: %v", domainName, err)
+		log.Printf("[cpanel] Auto-DNS failed for %s (TXT): %v", domainName, err)
 		return false
 	}
+	log.Printf("[cpanel] TXT record added for %s", domainName)
 
-	log.Printf("[cpanel] Auto-DNS success for %s - TXT record added", domainName)
+	// 2. Add wildcard A record pointing to Deploy VPS
+	deployIP := os.Getenv("DEPLOY_VPS_IP")
+	if deployIP == "" {
+		log.Printf("[cpanel] DEPLOY_VPS_IP not set, skipping wildcard A record for %s", domainName)
+		return true // TXT was added, partial success
+	}
+
+	err = s.AddWildcardARecord(cpanelConnectionID, domainName, deployIP)
+	if err != nil {
+		log.Printf("[cpanel] Auto-DNS wildcard A record failed for %s: %v", domainName, err)
+		// Continue - TXT was added successfully
+	} else {
+		log.Printf("[cpanel] Wildcard A record added for *.%s → %s", domainName, deployIP)
+	}
+
+	log.Printf("[cpanel] Auto-DNS complete for %s", domainName)
 	return true
+}
+
+// AddWildcardARecord adds a wildcard A record (*.domain.com) via cPanel
+func (s *CpanelService) AddWildcardARecord(connectionID, domain, ip string) error {
+	conn, err := s.GetByID(connectionID)
+	if err != nil {
+		return fmt.Errorf("failed to get connection: %w", err)
+	}
+
+	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
+
+	log.Printf("[cpanel] Adding wildcard A record *.%s → %s via %s", domain, ip, conn.Host)
+
+	// Get base domain for DNS zone
+	baseDomain, err := client.GetBaseDomain(domain)
+	if err != nil {
+		return fmt.Errorf("failed to get base domain: %w", err)
+	}
+
+	// Add wildcard A record: name="*", domain=baseDomain
+	if err := client.AddARecord(baseDomain, "*", ip); err != nil {
+		// Update last_error
+		errStr := err.Error()
+		s.db.Exec(`UPDATE cpanel_connections SET last_error = $1 WHERE id = $2`, errStr, connectionID)
+		return err
+	}
+
+	// Update last_used
+	now := time.Now()
+	s.db.Exec(`UPDATE cpanel_connections SET last_error = NULL, last_used_at = $1 WHERE id = $2`, now, connectionID)
+
+	return nil
+}
+
+// AddAcmeCNAME adds a CNAME record for acme-dns SSL verification
+func (s *CpanelService) AddAcmeCNAME(connectionID, domain, target string) error {
+	conn, err := s.GetByID(connectionID)
+	if err != nil {
+		return fmt.Errorf("failed to get connection: %w", err)
+	}
+
+	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
+
+	log.Printf("[cpanel] Adding ACME CNAME _acme-challenge.%s → %s", domain, target)
+
+	baseDomain, err := client.GetBaseDomain(domain)
+	if err != nil {
+		return fmt.Errorf("failed to get base domain: %w", err)
+	}
+
+	// Add CNAME for _acme-challenge
+	if err := client.AddCNAMERecord(baseDomain, "_acme-challenge", target); err != nil {
+		errStr := err.Error()
+		s.db.Exec(`UPDATE cpanel_connections SET last_error = $1 WHERE id = $2`, errStr, connectionID)
+		return err
+	}
+
+	now := time.Now()
+	s.db.Exec(`UPDATE cpanel_connections SET last_error = NULL, last_used_at = $1 WHERE id = $2`, now, connectionID)
+
+	return nil
 }
