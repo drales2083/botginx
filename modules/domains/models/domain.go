@@ -64,6 +64,10 @@ type Domain struct {
 	LastSyncError *string    `db:"last_sync_error" json:"lastSyncError,omitempty"`
 	SyncStatus    string     `db:"sync_status" json:"syncStatus"` // pending, syncing, dns_waiting, ssl_generating, active, error
 
+	// cPanel auto-DNS fields
+	CpanelConnectionID *string `db:"cpanel_connection_id" json:"cpanelConnectionId,omitempty"`
+	CpanelAutoDNS      bool    `db:"cpanel_auto_dns" json:"cpanelAutoDns"`
+
 	// Joined fields
 	ServerName string `db:"server_name" json:"serverName,omitempty"`
 }
@@ -119,8 +123,9 @@ type ExternalSetupInfo struct {
 }
 
 type CreateDomainInput struct {
-	Name     string `json:"name" validate:"required"`
-	ServerID string `json:"serverId"`
+	Name               string  `json:"name" validate:"required"`
+	ServerID           string  `json:"serverId"`
+	CpanelConnectionID *string `json:"cpanelConnectionId"` // Optional: use cPanel for auto-DNS
 }
 
 type UpdateDomainInput struct {
@@ -138,4 +143,8 @@ type UpdateDomainInput struct {
 	AcmePassword      *string `json:"acmePassword"`
 	AcmeFulldomain    *string `json:"acmeFulldomain"`
 	AcmeCnameVerified *bool   `json:"acmeCnameVerified"`
+
+	// cPanel auto-DNS fields
+	CpanelConnectionID *string `json:"cpanelConnectionId"`
+	CpanelAutoDNS      *bool   `json:"cpanelAutoDns"`
 }

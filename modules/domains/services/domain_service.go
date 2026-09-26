@@ -220,6 +220,12 @@ func (s *DomainService) create(userID string, input models.CreateDomainInput, sh
 		domain.ServerID = &input.ServerID
 	}
 
+	// cPanel connection for auto-DNS
+	if input.CpanelConnectionID != nil && *input.CpanelConnectionID != "" {
+		domain.CpanelConnectionID = input.CpanelConnectionID
+		domain.CpanelAutoDNS = true
+	}
+
 	// Detect if wildcard domain
 	if len(domain.Name) > 2 && domain.Name[:2] == "*." {
 		domain.IsWildcard = true
@@ -235,9 +241,9 @@ func (s *DomainService) create(userID string, input models.CreateDomainInput, sh
 
 	_, err := s.db.NamedExec(`
 		INSERT INTO domains (id, user_id, name, verify_token, server_id, dns_verified, ssl_enabled, is_shared,
-			setup_type, setup_step, is_wildcard, created_at, updated_at)
+			setup_type, setup_step, is_wildcard, cpanel_connection_id, cpanel_auto_dns, created_at, updated_at)
 		VALUES (:id, :user_id, :name, :verify_token, :server_id, :dns_verified, :ssl_enabled, :is_shared,
-			:setup_type, :setup_step, :is_wildcard, :created_at, :updated_at)
+			:setup_type, :setup_step, :is_wildcard, :cpanel_connection_id, :cpanel_auto_dns, :created_at, :updated_at)
 	`, domain)
 
 	return domain, err
@@ -286,6 +292,13 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 	if input.AcmeCnameVerified != nil {
 		domain.AcmeCnameVerified = *input.AcmeCnameVerified
 	}
+	// cPanel fields
+	if input.CpanelConnectionID != nil {
+		domain.CpanelConnectionID = input.CpanelConnectionID
+	}
+	if input.CpanelAutoDNS != nil {
+		domain.CpanelAutoDNS = *input.CpanelAutoDNS
+	}
 	domain.UpdatedAt = time.Now()
 
 	_, err = s.db.NamedExec(`
@@ -302,6 +315,8 @@ func (s *DomainService) Update(id string, input models.UpdateDomainInput) (*mode
 			acme_password = :acme_password,
 			acme_fulldomain = :acme_fulldomain,
 			acme_cname_verified = :acme_cname_verified,
+			cpanel_connection_id = :cpanel_connection_id,
+			cpanel_auto_dns = :cpanel_auto_dns,
 			updated_at = :updated_at
 		WHERE id = :id
 	`, domain)
