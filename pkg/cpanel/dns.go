@@ -536,7 +536,22 @@ func (c *Client) AddCNAMERecord(domain, name, target string) error {
 }
 
 // UpdateOrAddCNAMERecord updates a CNAME record if it exists with different target, or adds it if not
+// IMPORTANT: CNAME cannot coexist with any other record type at the same hostname.
+// This function removes conflicting TXT/A records before adding the CNAME.
 func (c *Client) UpdateOrAddCNAMERecord(domain, name, target string) error {
+	// First, remove any conflicting TXT record at this hostname
+	// (DNS rule: CNAME cannot coexist with other record types)
+	existingTXT, err := c.FindTXTRecord(domain, name)
+	if err != nil {
+		return err
+	}
+	if existingTXT != nil {
+		if err := c.removeRecordByLine(domain, existingTXT.Line); err != nil {
+			return fmt.Errorf("failed to remove conflicting TXT record: %w", err)
+		}
+	}
+
+	// Check for existing CNAME
 	existing, err := c.FindCNAMERecord(domain, name)
 	if err != nil {
 		return err
