@@ -73,7 +73,16 @@ func (h *Handler) Telegram(w http.ResponseWriter, r *http.Request) {
 
 // Proxy shows the proxy settings page
 func (h *Handler) Proxy(w http.ResponseWriter, r *http.Request) {
-	config, _ := h.proxyService.Get()
+	config, err := h.proxyService.Get()
+	if err != nil || config == nil {
+		// Return empty config if not found
+		config = &proxy.Config{
+			Host:           "global.rotgb.711proxy.com",
+			Port:           10000,
+			Zone:           "custom",
+			SessionMinutes: 10,
+		}
+	}
 
 	module.Render(w, r, h.templates, "settings:proxy.html", map[string]interface{}{
 		"Title":  "Proxy Settings",
