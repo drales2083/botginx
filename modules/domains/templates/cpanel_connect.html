@@ -363,15 +363,15 @@ async function loadExistingConnections() {
                         const res = await fetch(`/user/domains/cpanel/${connId}`, { method: 'DELETE' });
                         const data = await res.json();
                         if (data.success) {
-                            flashToast('Connection deleted', 'success');
+                            showToast('Connection deleted', 'success');
                             loadExistingConnections();
                         } else {
-                            flashToast(data.error || 'Failed to delete', 'danger');
+                            showToast(data.error || 'Failed to delete', 'danger');
                             btn.disabled = false;
                             btn.innerHTML = '<i class="bi bi-trash"></i>';
                         }
                     } catch (err) {
-                        flashToast('Network error', 'danger');
+                        showToast('Network error', 'danger');
                         btn.disabled = false;
                         btn.innerHTML = '<i class="bi bi-trash"></i>';
                     }

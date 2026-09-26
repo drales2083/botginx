@@ -192,6 +192,17 @@ func (s *DomainService) create(userID string, input models.CreateDomainInput, sh
 	// Check if domain exists for this user
 	existing, _ := s.GetByName(userID, input.Name)
 	if existing != nil {
+		// If cPanel connection is provided and domain exists, update it with cPanel connection
+		if input.CpanelConnectionID != nil && *input.CpanelConnectionID != "" {
+			existing.CpanelConnectionID = input.CpanelConnectionID
+			existing.CpanelAutoDNS = true
+			existing.UpdatedAt = time.Now()
+			s.db.Exec(`
+				UPDATE domains SET cpanel_connection_id = $1, cpanel_auto_dns = true, updated_at = NOW()
+				WHERE id = $2
+			`, *input.CpanelConnectionID, existing.ID)
+			return existing, nil
+		}
 		return nil, ErrDomainExists
 	}
 
