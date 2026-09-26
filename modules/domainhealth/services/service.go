@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ type Domain struct {
 	DNSVerified bool      `db:"dns_verified"`
 	SSLEnabled  bool      `db:"ssl_enabled"`
 	ServerID    *string   `db:"server_id"`
+	VerifyToken string    `db:"verify_token"`
 	CreatedAt   time.Time `db:"created_at"`
 }
 
@@ -41,9 +43,11 @@ type HealthStatus struct {
 func (s *HealthService) GetUserDomains(userID string) ([]Domain, error) {
 	var domains []Domain
 	err := s.db.Select(&domains, `
-		SELECT id, name, dns_verified, ssl_enabled, server_id, created_at
+		SELECT id, name, dns_verified, ssl_enabled, server_id, verify_token, created_at
 		FROM domains
 		WHERE user_id = $1
+		  AND COALESCE(is_marketplace, FALSE) = FALSE
+		  AND is_shared = FALSE
 		ORDER BY name
 	`, userID)
 	return domains, err
@@ -52,7 +56,7 @@ func (s *HealthService) GetUserDomains(userID string) ([]Domain, error) {
 func (s *HealthService) GetDomain(id, userID string) (*Domain, error) {
 	var domain Domain
 	err := s.db.Get(&domain, `
-		SELECT id, name, dns_verified, ssl_enabled, server_id, created_at
+		SELECT id, name, dns_verified, ssl_enabled, server_id, verify_token, created_at
 		FROM domains
 		WHERE id = $1 AND user_id = $2
 	`, id, userID)
@@ -93,22 +97,41 @@ func stripWildcard(domain string) string {
 func (s *HealthService) CheckDomain(domain Domain) HealthStatus {
 	status := HealthStatus{Domain: domain}
 
-	// Use database values for DNS and SSL status (already verified by the system)
-	if domain.DNSVerified {
-		status.DNSStatus = "ok"
-		status.DNSMessage = "Verified"
-	} else {
-		status.DNSStatus = "warning"
-		status.DNSMessage = "Pending verification"
-	}
+	// Check DNS: verify our TXT record is still present
+	status.DNSStatus, status.DNSMessage = s.checkDNS(domain.Name, domain.VerifyToken)
 
-	// Check SSL on VPS (same method as verification_service.go)
+	// Check SSL: verify certificate exists on our VPS
 	status.SSLStatus, status.SSLMessage, status.SSLExpiry = s.checkSSLOnVPS(domain.Name)
 
-	// HTTP check - simple connectivity test
+	// Check HTTP: verify domain is accessible via our VPS
 	status.HTTPStatus, status.HTTPMessage, status.ResponseTime = s.checkHTTP(domain.Name)
 
 	return status
+}
+
+// checkDNS verifies our TXT record is still present (same method as VerificationService.VerifyDNS)
+func (s *HealthService) checkDNS(domain, expectedToken string) (string, string) {
+	// For wildcard domains, use the base domain
+	baseDomain := stripWildcard(domain)
+
+	// Look up TXT record at _guardbot-verify.domain.com
+	txtHost := "_guardbot-verify." + baseDomain
+
+	records, err := net.LookupTXT(txtHost)
+	if err != nil {
+		return "error", "TXT lookup failed"
+	}
+
+	for _, record := range records {
+		if strings.TrimSpace(record) == expectedToken {
+			return "ok", "Verified"
+		}
+	}
+
+	if len(records) > 0 {
+		return "warning", "TXT mismatch"
+	}
+	return "error", "TXT not found"
 }
 
 // checkSSLOnVPS checks SSL certificate on the deploy VPS (same as VerificationService.CheckSSL)
