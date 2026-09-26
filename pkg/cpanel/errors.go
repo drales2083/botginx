@@ -27,7 +27,7 @@ type APIError struct {
 
 func (e *APIError) Error() string {
 	if e.Err != nil {
-		return fmt.Sprintf("cpanel %s: %s (%w)", e.Operation, e.Message, e.Err)
+		return fmt.Sprintf("cpanel %s: %s (%v)", e.Operation, e.Message, e.Err)
 	}
 	return fmt.Sprintf("cpanel %s: %s", e.Operation, e.Message)
 }
