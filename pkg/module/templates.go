@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/botginx/botginx/pkg/buildinfo"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/domainstats"
 	"github.com/botginx/botginx/pkg/protection"
@@ -365,6 +366,10 @@ func (te *TemplateEngine) renderWithLayout(w io.Writer, r *http.Request, name, l
 	if _, set := data["DomainStats"]; !set && r != nil {
 		data["DomainStats"] = domainstats.FromRequest(r)
 	}
+
+	// Build info for footer
+	data["appVersion"] = buildinfo.Version()
+	data["appBuild"] = buildinfo.Build()
 
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, layout, data); err != nil {
