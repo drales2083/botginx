@@ -2,7 +2,7 @@
 -- Each user can have multiple cPanel connections (different hosting accounts)
 
 CREATE TABLE IF NOT EXISTS cpanel_connections (
-    id VARCHAR(26) PRIMARY KEY,
+    id VARCHAR(50) PRIMARY KEY,
     user_id VARCHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,                     -- Display name (e.g., "My Hosting Account")
     host VARCHAR(255) NOT NULL,                     -- cPanel host:port (e.g., "example.com:2083")
@@ -21,7 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_cpanel_connections_user ON cpanel_connections(use
 CREATE INDEX IF NOT EXISTS idx_cpanel_connections_active ON cpanel_connections(user_id, is_active);
 
 -- Add cpanel_connection_id to domains table
-ALTER TABLE domains ADD COLUMN IF NOT EXISTS cpanel_connection_id VARCHAR(26) REFERENCES cpanel_connections(id) ON DELETE SET NULL;
+ALTER TABLE domains ADD COLUMN IF NOT EXISTS cpanel_connection_id VARCHAR(50) REFERENCES cpanel_connections(id) ON DELETE SET NULL;
 ALTER TABLE domains ADD COLUMN IF NOT EXISTS cpanel_auto_dns BOOLEAN DEFAULT false;
 
 -- Index for finding domains by cpanel connection
