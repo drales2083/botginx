@@ -98,20 +98,20 @@
                 <div id="progress-domain" class="h5 mb-4 text-center"></div>
 
                 <div class="mb-4" style="max-width: 400px; margin: 0 auto;">
-                    <div id="step-connect" class="d-flex align-items-center mb-3">
-                        <span class="step-status me-3" style="width:24px">○</span>
+                    <div id="prog-connect" class="d-flex align-items-center mb-3">
+                        <span class="prog-status me-3" style="width:24px">○</span>
                         <span>Connecting to cPanel...</span>
                     </div>
-                    <div id="step-txt" class="d-flex align-items-center mb-3">
-                        <span class="step-status me-3" style="width:24px">○</span>
+                    <div id="prog-txt" class="d-flex align-items-center mb-3">
+                        <span class="prog-status me-3" style="width:24px">○</span>
                         <span>Adding TXT record...</span>
                     </div>
-                    <div id="step-verify" class="d-flex align-items-center mb-3">
-                        <span class="step-status me-3" style="width:24px">○</span>
+                    <div id="prog-verify" class="d-flex align-items-center mb-3">
+                        <span class="prog-status me-3" style="width:24px">○</span>
                         <span>Verifying DNS...</span>
                     </div>
-                    <div id="step-complete" class="d-flex align-items-center">
-                        <span class="step-status me-3" style="width:24px">○</span>
+                    <div id="prog-complete" class="d-flex align-items-center">
+                        <span class="prog-status me-3" style="width:24px">○</span>
                         <span>Setup complete</span>
                     </div>
                 </div>
@@ -434,23 +434,29 @@ document.getElementById('add-cpanel-domain-btn').addEventListener('click', async
 
 // Update progress step with simple icons
 function updateProgress(step, status) {
-    const stepEl = document.getElementById('step-' + step);
-    if (!stepEl) return;
+    const stepEl = document.getElementById('prog-' + step);
+    if (!stepEl) {
+        console.error('Progress element not found: prog-' + step);
+        return;
+    }
 
-    const statusEl = stepEl.querySelector('.step-status');
-    if (!statusEl) return;
+    const statusEl = stepEl.querySelector('.prog-status');
+    if (!statusEl) {
+        console.error('Status element not found in prog-' + step);
+        return;
+    }
 
     if (status === 'done') {
-        statusEl.innerHTML = '<span style="color:#198754;font-size:18px">✓</span>';
+        statusEl.innerHTML = '<span style="color:#198754;font-size:20px;font-weight:bold">✓</span>';
         stepEl.style.opacity = '1';
     } else if (status === 'loading') {
         statusEl.innerHTML = '<div class="spinner-border spinner-border-sm text-primary"></div>';
         stepEl.style.opacity = '1';
     } else if (status === 'pending') {
-        statusEl.innerHTML = '○';
+        statusEl.innerHTML = '<span style="color:#6c757d">○</span>';
         stepEl.style.opacity = '0.5';
     } else {
-        statusEl.innerHTML = '○';
+        statusEl.innerHTML = '<span style="color:#6c757d">○</span>';
         stepEl.style.opacity = '0.5';
     }
 }
