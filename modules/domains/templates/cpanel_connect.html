@@ -608,6 +608,13 @@ async function initPage() {
                         `;
                     } else {
                         updateProgress('ssl', 'loading');
+                        document.getElementById('progress-message').textContent = 'Starting SSL generation...';
+                        // Trigger SSL generation via verify endpoint
+                        try {
+                            await fetch(`/user/domains/api/${params.domain}/verify`, { method: 'POST' });
+                        } catch (e) {
+                            console.log('Verify trigger sent');
+                        }
                         document.getElementById('progress-message').textContent = 'Generating SSL certificate...';
                         pollSSL(params.domain);
                     }
@@ -978,10 +985,19 @@ async function pollVerification(domainId) {
 
             const verified = [txtVerified, aVerified, cnameVerified].filter(v => v).length;
 
-            // All verified - move to SSL
+            // All verified - trigger SSL generation then poll
             if (txtVerified && aVerified && cnameVerified) {
                 updateProgress('verify', 'done');
                 updateProgress('ssl', 'loading');
+                document.getElementById('progress-message').textContent = 'Starting SSL generation...';
+
+                // Trigger SSL generation via verify endpoint
+                try {
+                    await fetch(`/user/domains/api/${domainId}/verify`, { method: 'POST' });
+                } catch (e) {
+                    console.log('Verify trigger sent');
+                }
+
                 document.getElementById('progress-message').textContent = 'Generating SSL certificate...';
                 pollSSL(domainId);
                 return;
