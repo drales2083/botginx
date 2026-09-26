@@ -1,0 +1,1642 @@
+openapi: 3.0.3
+info:
+  title: Botginx API
+  version: 1.0.0
+  description: |
+    REST API for managing redirect links, domains, analytics, QR codes, short links, and IP lists.
+
+    ## Authentication
+    All endpoints require Bearer token authentication using an API key.
+    API keys can be created in the panel under Settings > API Keys.
+
+    Keys have the format `bg_live_*` (production) or `bg_test_*` (testing).
+
+servers:
+  - url: '{baseUrl}/api/v1'
+    variables:
+      baseUrl:
+        default: https://guardbot.sbs
+        description: Base URL of the Botginx panel
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Links
+    description: Manage redirect links
+  - name: Domains
+    description: Manage domains
+  - name: Analytics
+    description: View analytics and statistics
+  - name: QR Codes
+    description: Manage QR codes
+  - name: Shortener
+    description: Manage short links
+  - name: IP Lists
+    description: Manage IP whitelist
+  - name: Account
+    description: Account information and usage
+
+paths:
+  # Links
+  /links:
+    get:
+      tags: [Links]
+      summary: List all links
+      operationId: listLinks
+      security:
+        - bearerAuth: [links:read]
+      responses:
+        '200':
+          description: List of links
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Link'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Links]
+      summary: Create a new link
+      operationId: createLink
+      security:
+        - bearerAuth: [links:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLinkRequest'
+      responses:
+        '201':
+          description: Link created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Link'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /links/{id}:
+    get:
+      tags: [Links]
+      summary: Get a link by ID
+      operationId: getLink
+      security:
+        - bearerAuth: [links:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Link details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Link'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Links]
+      summary: Update a link
+      operationId: updateLink
+      security:
+        - bearerAuth: [links:write]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLinkRequest'
+      responses:
+        '200':
+          description: Link updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Link'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Links]
+      summary: Delete a link
+      operationId: deleteLink
+      security:
+        - bearerAuth: [links:delete]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: Link deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Domains
+  /domains:
+    get:
+      tags: [Domains]
+      summary: List all domains
+      operationId: listDomains
+      security:
+        - bearerAuth: [domains:read]
+      responses:
+        '200':
+          description: List of domains
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Domain'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Domains]
+      summary: Create a new domain
+      operationId: createDomain
+      security:
+        - bearerAuth: [domains:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDomainRequest'
+      responses:
+        '201':
+          description: Domain created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Domain'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Domain already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /domains/{id}:
+    get:
+      tags: [Domains]
+      summary: Get a domain by ID
+      operationId: getDomain
+      security:
+        - bearerAuth: [domains:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Domain details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Domain'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Domains]
+      summary: Update a domain
+      operationId: updateDomain
+      security:
+        - bearerAuth: [domains:manage]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDomainRequest'
+      responses:
+        '200':
+          description: Domain updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Domain'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Domains]
+      summary: Delete a domain
+      operationId: deleteDomain
+      security:
+        - bearerAuth: [domains:manage]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: Domain deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Cannot delete domain with active links
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /domains/{id}/verify:
+    post:
+      tags: [Domains]
+      summary: Get domain verification instructions
+      operationId: verifyDomain
+      security:
+        - bearerAuth: [domains:manage]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Verification instructions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DomainVerification'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Analytics
+  /analytics/overview:
+    get:
+      tags: [Analytics]
+      summary: Get analytics overview
+      operationId: getAnalyticsOverview
+      security:
+        - bearerAuth: [analytics:read]
+      responses:
+        '200':
+          description: Analytics overview
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AnalyticsOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/links/{id}:
+    get:
+      tags: [Analytics]
+      summary: Get link statistics
+      operationId: getLinkStats
+      security:
+        - bearerAuth: [analytics:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Link statistics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LinkStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/links/{id}/timeline:
+    get:
+      tags: [Analytics]
+      summary: Get link visit timeline
+      operationId: getLinkTimeline
+      security:
+        - bearerAuth: [analytics:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+        - name: interval
+          in: query
+          description: Time interval for aggregation
+          schema:
+            type: string
+            enum: [hourly, daily, weekly]
+            default: daily
+      responses:
+        '200':
+          description: Link timeline
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TimelinePoint'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/links/{id}/countries:
+    get:
+      tags: [Analytics]
+      summary: Get link visits by country
+      operationId: getLinkCountries
+      security:
+        - bearerAuth: [analytics:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+        - name: limit
+          in: query
+          description: Maximum number of countries to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Country statistics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/CountryStat'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/links/{id}/devices:
+    get:
+      tags: [Analytics]
+      summary: Get link visits by device
+      operationId: getLinkDevices
+      security:
+        - bearerAuth: [analytics:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Device statistics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DeviceStat'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analytics/links/{id}/referrers:
+    get:
+      tags: [Analytics]
+      summary: Get link visits by referrer
+      operationId: getLinkReferrers
+      security:
+        - bearerAuth: [analytics:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+        - name: limit
+          in: query
+          description: Maximum number of referrers to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Referrer statistics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ReferrerStat'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # QR Codes
+  /qrcodes:
+    get:
+      tags: [QR Codes]
+      summary: List all QR codes
+      operationId: listQRCodes
+      security:
+        - bearerAuth: [qrcodes:read]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Paginated list of QR codes
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/QRCode'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [QR Codes]
+      summary: Create a new QR code
+      operationId: createQRCode
+      security:
+        - bearerAuth: [qrcodes:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQRCodeRequest'
+      responses:
+        '201':
+          description: QR code created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/QRCode'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /qrcodes/{id}:
+    get:
+      tags: [QR Codes]
+      summary: Get a QR code by ID
+      operationId: getQRCode
+      security:
+        - bearerAuth: [qrcodes:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: QR code details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/QRCode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [QR Codes]
+      summary: Delete a QR code
+      operationId: deleteQRCode
+      security:
+        - bearerAuth: [qrcodes:write]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: QR code deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /qrcodes/{id}/download:
+    get:
+      tags: [QR Codes]
+      summary: Download QR code image
+      operationId: downloadQRCode
+      security:
+        - bearerAuth: [qrcodes:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+        - name: format
+          in: query
+          description: Image format
+          schema:
+            type: string
+            enum: [png, svg]
+            default: png
+        - name: size
+          in: query
+          description: Image size in pixels
+          schema:
+            type: integer
+            minimum: 64
+            maximum: 2048
+            default: 512
+      responses:
+        '200':
+          description: QR code image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/svg+xml:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Shortener
+  /shortener:
+    get:
+      tags: [Shortener]
+      summary: List all short links
+      operationId: listShortLinks
+      security:
+        - bearerAuth: [shortener:read]
+      responses:
+        '200':
+          description: List of short links
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ShortLink'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Shortener]
+      summary: Create a new short link
+      operationId: createShortLink
+      security:
+        - bearerAuth: [shortener:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShortLinkRequest'
+      responses:
+        '201':
+          description: Short link created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ShortLink'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /shortener/{id}:
+    get:
+      tags: [Shortener]
+      summary: Get a short link by ID
+      operationId: getShortLink
+      security:
+        - bearerAuth: [shortener:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Short link details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ShortLink'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Shortener]
+      summary: Update a short link
+      operationId: updateShortLink
+      security:
+        - bearerAuth: [shortener:write]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShortLinkRequest'
+      responses:
+        '200':
+          description: Short link updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ShortLink'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Shortener]
+      summary: Delete a short link
+      operationId: deleteShortLink
+      security:
+        - bearerAuth: [shortener:write]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: Short link deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /shortener/{id}/stats:
+    get:
+      tags: [Shortener]
+      summary: Get short link statistics
+      operationId: getShortLinkStats
+      security:
+        - bearerAuth: [shortener:read]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+        - name: days
+          in: query
+          description: Number of days for statistics
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 7
+      responses:
+        '200':
+          description: Short link statistics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ShortLinkStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # IP Lists
+  /iplists/whitelist:
+    get:
+      tags: [IP Lists]
+      summary: List whitelisted IPs
+      operationId: listWhitelist
+      security:
+        - bearerAuth: [iplists:read]
+      responses:
+        '200':
+          description: List of whitelisted IPs
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/WhitelistEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [IP Lists]
+      summary: Add IP to whitelist
+      operationId: addWhitelist
+      security:
+        - bearerAuth: [iplists:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddIPRequest'
+      responses:
+        '201':
+          description: IP added to whitelist
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/WhitelistEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /iplists/whitelist/{id}:
+    delete:
+      tags: [IP Lists]
+      summary: Remove IP from whitelist
+      operationId: removeWhitelist
+      security:
+        - bearerAuth: [iplists:write]
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: IP removed from whitelist
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Account
+  /account:
+    get:
+      tags: [Account]
+      summary: Get account information
+      operationId: getAccountInfo
+      security:
+        - bearerAuth: [account:read]
+      responses:
+        '200':
+          description: Account information
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AccountInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /account/usage:
+    get:
+      tags: [Account]
+      summary: Get API usage statistics
+      operationId: getAccountUsage
+      security:
+        - bearerAuth: [account:read]
+      responses:
+        '200':
+          description: API usage statistics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AccountUsage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        API key authentication. Include your API key in the Authorization header:
+        `Authorization: Bearer bg_live_xxxx`
+
+        Available scopes:
+        - `links:read` - Read redirect links
+        - `links:write` - Create and update redirect links
+        - `links:delete` - Delete redirect links
+        - `domains:read` - Read domains
+        - `domains:manage` - Add, remove, and configure domains
+        - `analytics:read` - Read analytics data
+        - `qrcodes:read` - Read QR codes
+        - `qrcodes:write` - Create and update QR codes
+        - `shortener:read` - Read short links
+        - `shortener:write` - Create and update short links
+        - `iplists:read` - Read IP whitelist/blocklist
+        - `iplists:write` - Manage IP whitelist/blocklist
+        - `webhooks:manage` - Manage webhook endpoints
+        - `account:read` - Read account information
+
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      description: Resource ID
+      schema:
+        type: string
+
+  responses:
+    Unauthorized:
+      description: API key required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: unauthorized
+              message: API key required
+
+    Forbidden:
+      description: Missing required scope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: forbidden
+              message: "Missing scope: links:read"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: not_found
+              message: Resource not found
+
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: validation_error
+              message: Field is required
+
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+      required:
+        - success
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Error code
+            message:
+              type: string
+              description: Human-readable error message
+          required:
+            - code
+            - message
+      required:
+        - success
+        - error
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    # Links
+    Link:
+      type: object
+      properties:
+        id:
+          type: string
+        domainId:
+          type: string
+        domainName:
+          type: string
+        subdomain:
+          type: string
+        path:
+          type: string
+        type:
+          type: string
+          enum: [redirect, html, rotation]
+        destinationUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+        botProtection:
+          type: boolean
+        passParams:
+          type: boolean
+        deployStatus:
+          type: string
+          enum: [pending, deployed, failed]
+        deployedUrl:
+          type: string
+          format: uri
+        viewCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateLinkRequest:
+      type: object
+      required:
+        - domainId
+      properties:
+        domainId:
+          type: string
+          description: ID of the domain to use
+        subdomain:
+          type: string
+          description: Subdomain for the link
+        path:
+          type: string
+          description: Path for the link
+        type:
+          type: string
+          enum: [redirect, html, rotation]
+          default: redirect
+        destinationUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Destination URLs (required for redirect/rotation types)
+        htmlContent:
+          type: string
+          description: HTML content (required for html type)
+        botProtection:
+          type: boolean
+          default: false
+        passParams:
+          type: boolean
+          default: false
+
+    UpdateLinkRequest:
+      type: object
+      properties:
+        destinationUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+        htmlContent:
+          type: string
+        botProtection:
+          type: boolean
+        passParams:
+          type: boolean
+
+    # Domains
+    Domain:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        dnsVerified:
+          type: boolean
+        sslEnabled:
+          type: boolean
+        isWildcard:
+          type: boolean
+        setupType:
+          type: string
+          enum: [standard, wildcard, cloudpanel]
+        setupStep:
+          type: string
+        verifyToken:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateDomainRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Domain name (e.g., example.com)
+        serverId:
+          type: string
+          description: Optional server ID for hosting
+
+    UpdateDomainRequest:
+      type: object
+      properties:
+        serverId:
+          type: string
+
+    DomainVerification:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        verified:
+          type: boolean
+        verifyToken:
+          type: string
+        instructions:
+          type: object
+          properties:
+            type:
+              type: string
+              example: TXT
+            record:
+              type: string
+              description: DNS record name
+            value:
+              type: string
+              description: DNS record value
+            aRecord:
+              type: object
+              properties:
+                type:
+                  type: string
+                  example: A
+                value:
+                  type: string
+                  description: IP address for A record
+
+    # Analytics
+    AnalyticsOverview:
+      type: object
+      properties:
+        totalVisits:
+          type: integer
+        uniqueVisits:
+          type: integer
+        botVisits:
+          type: integer
+        blockedVisits:
+          type: integer
+        todayVisits:
+          type: integer
+        conversions:
+          type: integer
+        conversionRate:
+          type: number
+          format: float
+
+    LinkStats:
+      type: object
+      properties:
+        linkId:
+          type: string
+        totalVisits:
+          type: integer
+        uniqueVisits:
+          type: integer
+        botVisits:
+          type: integer
+        blockedVisits:
+          type: integer
+        todayVisits:
+          type: integer
+        conversions:
+          type: integer
+        conversionRate:
+          type: number
+          format: float
+        torVisits:
+          type: integer
+        proxyVisits:
+          type: integer
+        avgBehaviorScore:
+          type: number
+          format: float
+
+    TimelinePoint:
+      type: object
+      properties:
+        time:
+          type: string
+          format: date-time
+        count:
+          type: integer
+
+    CountryStat:
+      type: object
+      properties:
+        country:
+          type: string
+          description: ISO country code
+        count:
+          type: integer
+
+    DeviceStat:
+      type: object
+      properties:
+        device:
+          type: string
+          enum: [desktop, mobile, tablet, unknown]
+        count:
+          type: integer
+
+    ReferrerStat:
+      type: object
+      properties:
+        referrer:
+          type: string
+        count:
+          type: integer
+
+    # QR Codes
+    QRCode:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+        redirectLinkId:
+          type: string
+          nullable: true
+        fgColor:
+          type: string
+          description: Foreground color (hex)
+        bgColor:
+          type: string
+          description: Background color (hex)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateQRCodeRequest:
+      type: object
+      required:
+        - title
+        - url
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+        redirectLinkId:
+          type: string
+          description: Optional link to associate with
+        fgColor:
+          type: string
+          default: '#000000'
+        bgColor:
+          type: string
+          default: '#FFFFFF'
+
+    # Shortener
+    ShortLink:
+      type: object
+      properties:
+        id:
+          type: string
+        domainId:
+          type: string
+        domainName:
+          type: string
+        subdomain:
+          type: string
+        path:
+          type: string
+        destinations:
+          type: array
+          items:
+            type: string
+            format: uri
+        rotationMode:
+          type: string
+          enum: [sequential, random, weighted]
+        botError:
+          type: integer
+          description: HTTP error code for bots (0 to pass through)
+        qrEnabled:
+          type: boolean
+        clickCount:
+          type: integer
+        humanCount:
+          type: integer
+        botCount:
+          type: integer
+        deployStatus:
+          type: string
+          enum: [pending, deployed, failed]
+        deployedUrl:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateShortLinkRequest:
+      type: object
+      required:
+        - domainId
+        - destinations
+      properties:
+        domainId:
+          type: string
+        subdomain:
+          type: string
+          description: Auto-generated if not provided
+        path:
+          type: string
+          description: Auto-generated if not provided
+        destinations:
+          type: array
+          items:
+            type: string
+            format: uri
+          minItems: 1
+        rotationMode:
+          type: string
+          enum: [sequential, random, weighted]
+          default: sequential
+        botError:
+          type: integer
+          description: HTTP error code for bots
+          default: 0
+        qrEnabled:
+          type: boolean
+          default: false
+        protectionSettings:
+          $ref: '#/components/schemas/ProtectionSettings'
+
+    UpdateShortLinkRequest:
+      type: object
+      properties:
+        destinations:
+          type: array
+          items:
+            type: string
+            format: uri
+        rotationMode:
+          type: string
+          enum: [sequential, random, weighted]
+        botError:
+          type: integer
+        qrEnabled:
+          type: boolean
+        protectionSettings:
+          $ref: '#/components/schemas/ProtectionSettings'
+
+    ProtectionSettings:
+      type: object
+      description: Bot protection settings
+      properties:
+        blockTor:
+          type: boolean
+        blockProxy:
+          type: boolean
+        blockVPN:
+          type: boolean
+        blockDatacenter:
+          type: boolean
+        minBehaviorScore:
+          type: number
+          format: float
+
+    ShortLinkStats:
+      type: object
+      properties:
+        totalClicks:
+          type: integer
+        humanClicks:
+          type: integer
+        botClicks:
+          type: integer
+        byCountry:
+          type: array
+          items:
+            $ref: '#/components/schemas/CountryStat'
+        byDevice:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceStat'
+        byDay:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              count:
+                type: integer
+
+    # IP Lists
+    WhitelistEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        ip:
+          type: string
+          description: IP address or CIDR range
+        createdAt:
+          type: string
+          format: date-time
+
+    AddIPRequest:
+      type: object
+      required:
+        - ip
+      properties:
+        ip:
+          type: string
+          description: IP address or CIDR range
+
+    # Account
+    AccountInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        subscriptionEnds:
+          type: string
+          format: date-time
+          nullable: true
+        subscriptionValid:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    AccountUsage:
+      type: object
+      properties:
+        totalRequests:
+          type: integer
+        activeKeys:
+          type: integer
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              apiKeyId:
+                type: string
+              keyName:
+                type: string
+              requestsCount:
+                type: integer
+              rateLimit:
+                type: integer
+              lastUsedAt:
+                type: string
+                format: date-time

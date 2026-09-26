@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"github.com/botginx/botginx/modules/apikeys/services"
 	"github.com/botginx/botginx/pkg/ctx"
@@ -45,6 +46,33 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 		"Keys":         keys,
 		"Scopes":       services.ValidScopes,
 		"ScopePresets": services.ScopePresets,
+	})
+}
+
+func (h *Handler) Docs(w http.ResponseWriter, r *http.Request) {
+	// Use PANEL_URL env var, fallback to request host
+	baseURL := os.Getenv("PANEL_URL")
+	if baseURL == "" {
+		scheme := "https"
+		if r.TLS == nil {
+			scheme = "http"
+		}
+		baseURL = scheme + "://" + r.Host
+	} else if baseURL[0] != 'h' {
+		// Add https:// if just a hostname
+		baseURL = "https://" + baseURL
+	}
+
+	appName := os.Getenv("UI_APP_NAME")
+	if appName == "" {
+		appName = "GuardBot"
+	}
+
+	module.RenderUserSection(w, r, h.templates, "apikeys:docs.html", map[string]interface{}{
+		"Title":   "API Documentation",
+		"Scopes":  services.ValidScopes,
+		"BaseURL": baseURL,
+		"AppName": appName,
 	})
 }
 

@@ -68,6 +68,7 @@ func (m *Module) Routes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", m.handler.Index)
+	r.Get("/docs", m.handler.Docs)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/keys", m.handler.APIList)
