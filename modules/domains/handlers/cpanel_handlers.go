@@ -70,7 +70,16 @@ func (h *CpanelHandler) CreateConnection(w http.ResponseWriter, r *http.Request)
 
 	conn, err := h.cpanelService.Create(userID, input)
 	if err != nil {
-		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "duplicate key") || strings.Contains(errMsg, "unique constraint") {
+			h.jsonError(w, "This cPanel account is already connected", http.StatusConflict)
+		} else if strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "timeout") {
+			h.jsonError(w, "Unable to connect to cPanel server", http.StatusBadGateway)
+		} else if strings.Contains(errMsg, "unauthorized") || strings.Contains(errMsg, "forbidden") || strings.Contains(errMsg, "invalid credentials") {
+			h.jsonError(w, "Invalid cPanel credentials", http.StatusUnauthorized)
+		} else {
+			h.jsonError(w, "Failed to connect cPanel account", http.StatusBadRequest)
+		}
 		return
 	}
 
