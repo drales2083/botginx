@@ -70,12 +70,12 @@
             <div class="card-body">
                 <div id="select-error" class="alert alert-danger d-none"></div>
 
-                <p class="text-muted mb-3">Domains found on your cPanel account:</p>
+                <p class="text-muted mb-3">Select a root domain. Subdomains will be available automatically.</p>
 
                 <div id="cpanel-domains-list" class="mb-4"></div>
 
                 <div class="mb-3">
-                    <label class="form-label">Or enter a custom subdomain:</label>
+                    <label class="form-label">Or add a specific subdomain now:</label>
                     <div class="input-group">
                         <input type="text" class="form-control" id="custom-subdomain" placeholder="promo">
                         <span class="input-group-text" id="base-domain-suffix">.example.com</span>
@@ -237,31 +237,61 @@ async function loadCpanelDomains(connId) {
 // Render domain selection
 function renderCpanelDomains() {
     const container = document.getElementById('cpanel-domains-list');
-    const domains = [];
+    let html = '';
 
+    // Main domain - recommended, show prominently
     if (cpanelDomains.mainDomain) {
-        domains.push({ name: cpanelDomains.mainDomain, type: 'Main Domain' });
-    }
-    if (cpanelDomains.addonDomains) {
-        cpanelDomains.addonDomains.forEach(d => domains.push({ name: d, type: 'Addon' }));
-    }
-    if (cpanelDomains.subDomains) {
-        cpanelDomains.subDomains.forEach(d => domains.push({ name: d, type: 'Subdomain' }));
-    }
-    if (cpanelDomains.parkedDomains) {
-        cpanelDomains.parkedDomains.forEach(d => domains.push({ name: d, type: 'Parked' }));
+        html += `
+            <div class="card bg-primary bg-opacity-10 border-primary mb-3">
+                <div class="card-body py-2">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="radio" name="cpanel-domain"
+                               id="domain-main" value="${cpanelDomains.mainDomain}" checked>
+                        <label class="form-check-label" for="domain-main">
+                            <strong>${cpanelDomains.mainDomain}</strong>
+                            <span class="badge bg-primary ms-2">Recommended</span>
+                        </label>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-check2 text-success"></i> Includes wildcard support (*.${cpanelDomains.mainDomain})
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        selectedDomain = cpanelDomains.mainDomain;
     }
 
-    container.innerHTML = domains.map(d => `
-        <div class="form-check mb-2">
-            <input class="form-check-input" type="radio" name="cpanel-domain"
-                   id="domain-${d.name.replace(/\./g, '-')}" value="${d.name}">
-            <label class="form-check-label" for="domain-${d.name.replace(/\./g, '-')}">
-                <strong>${d.name}</strong>
-                <span class="badge bg-secondary ms-1">${d.type}</span>
-            </label>
-        </div>
-    `).join('');
+    // Addon domains - also root domains
+    if (cpanelDomains.addonDomains && cpanelDomains.addonDomains.length > 0) {
+        html += `<p class="text-muted small mb-2">Other domains on this account:</p>`;
+        cpanelDomains.addonDomains.forEach(d => {
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="cpanel-domain"
+                           id="domain-${d.replace(/\./g, '-')}" value="${d}">
+                    <label class="form-check-label" for="domain-${d.replace(/\./g, '-')}">
+                        ${d} <span class="badge bg-secondary ms-1">Addon</span>
+                    </label>
+                </div>`;
+        });
+    }
+
+    // Parked domains
+    if (cpanelDomains.parkedDomains && cpanelDomains.parkedDomains.length > 0) {
+        cpanelDomains.parkedDomains.forEach(d => {
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="cpanel-domain"
+                           id="domain-${d.replace(/\./g, '-')}" value="${d}">
+                    <label class="form-check-label" for="domain-${d.replace(/\./g, '-')}">
+                        ${d} <span class="badge bg-secondary ms-1">Parked</span>
+                    </label>
+                </div>`;
+        });
+    }
+
+    // Note: Don't show existing subdomains - they're included via wildcard
+
+    container.innerHTML = html;
 
     // Set base domain for subdomain input
     if (cpanelDomains.mainDomain) {
