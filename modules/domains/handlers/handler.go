@@ -16,9 +16,10 @@ import (
 )
 
 type Handler struct {
-	service      *services.DomainService
-	verification *services.VerificationService
-	templates    *module.TemplateEngine
+	service       *services.DomainService
+	cpanelService *services.CpanelService
+	verification  *services.VerificationService
+	templates     *module.TemplateEngine
 }
 
 // canAccessDomain checks if the user owns a domain or is admin accessing a shared domain
@@ -38,7 +39,7 @@ func (h *Handler) canAccessDomain(r *http.Request, domain *models.Domain) bool {
 	return false
 }
 
-func NewHandler(service *services.DomainService, templates *module.TemplateEngine) *Handler {
+func NewHandler(service *services.DomainService, cpanelService *services.CpanelService, templates *module.TemplateEngine) *Handler {
 	vs := services.NewVerificationService()
 
 	// Set server provider to get credentials from database
@@ -51,9 +52,10 @@ func NewHandler(service *services.DomainService, templates *module.TemplateEngin
 	})
 
 	return &Handler{
-		service:      service,
-		verification: vs,
-		templates:    templates,
+		service:       service,
+		cpanelService: cpanelService,
+		verification:  vs,
+		templates:     templates,
 	}
 }
 
@@ -407,6 +409,15 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If cPanel connection provided, auto-add verification TXT record
+	cpanelAutoDNS := false
+	if domain.CpanelConnectionID != nil && *domain.CpanelConnectionID != "" && h.cpanelService != nil {
+		if h.cpanelService.TriggerAutoDNS(domain.ID, domain.Name, domain.VerifyToken, *domain.CpanelConnectionID) {
+			cpanelAutoDNS = true
+			log.Printf("[domains] cPanel auto-DNS triggered for %s", domain.Name)
+		}
+	}
+
 	// All domains use DNS-01 challenge via acme-dns for wildcard SSL
 	// This ensures subdomains work for all domain types (cPanel-style)
 	needsSetupWizard := true
@@ -432,6 +443,7 @@ func (h *Handler) APICreate(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]interface{}{
 		"domain":           domain,
 		"needsSetupWizard": needsSetupWizard,
+		"cpanelAutoDNS":    cpanelAutoDNS,
 	}
 	if cnameTarget != "" {
 		resp["cnameTarget"] = cnameTarget

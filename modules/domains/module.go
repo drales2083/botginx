@@ -21,9 +21,11 @@ var migrationsFS embed.FS
 
 type Module struct {
 	*module.BaseModule
-	service    *services.DomainService
-	handler    *handlers.Handler
-	background *services.BackgroundVerifier
+	service       *services.DomainService
+	cpanelService *services.CpanelService
+	handler       *handlers.Handler
+	cpanelHandler *handlers.CpanelHandler
+	background    *services.BackgroundVerifier
 }
 
 func New() *Module {
@@ -40,7 +42,9 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 
 	m.service = services.NewDomainService(deps.DB)
-	m.handler = handlers.NewHandler(m.service, deps.Templates)
+	m.cpanelService = services.NewCpanelService(deps.DB)
+	m.handler = handlers.NewHandler(m.service, m.cpanelService, deps.Templates)
+	m.cpanelHandler = handlers.NewCpanelHandler(m.cpanelService)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -110,6 +114,18 @@ func (m *Module) Routes() chi.Router {
 		// Domain settings (Turnstile, etc.)
 		r.Put("/{id}/settings", m.handler.APIUpdateSettings)
 		r.Get("/{id}/turnstile", m.handler.APIGetTurnstileStatus)
+	})
+
+	// cPanel connections API
+	r.Route("/cpanel", func(r chi.Router) {
+		r.Get("/", m.cpanelHandler.ListConnections)
+		r.Post("/", m.cpanelHandler.CreateConnection)
+		r.Post("/test", m.cpanelHandler.TestNewConnection) // Test before saving
+		r.Get("/{id}", m.cpanelHandler.GetConnection)
+		r.Put("/{id}", m.cpanelHandler.UpdateConnection)
+		r.Delete("/{id}", m.cpanelHandler.DeleteConnection)
+		r.Post("/{id}/test", m.cpanelHandler.TestConnection)
+		r.Get("/{id}/domains", m.cpanelHandler.ListDomains)
 	})
 
 	return r
