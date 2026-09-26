@@ -91,7 +91,9 @@ func (s *Service) Get() (*Config, error) {
 // Update updates the proxy configuration
 func (s *Service) Update(config *Config) error {
 	_, err := s.db.Exec(`
-		UPDATE proxy_config SET
+		INSERT INTO proxy_config (id, enabled, username, password, host, port, zone, session_minutes, updated_at)
+		VALUES (1, $1, $2, $3, $4, $5, $6, $7, NOW())
+		ON CONFLICT (id) DO UPDATE SET
 			enabled = $1,
 			username = $2,
 			password = $3,
@@ -100,7 +102,6 @@ func (s *Service) Update(config *Config) error {
 			zone = $6,
 			session_minutes = $7,
 			updated_at = NOW()
-		WHERE id = 1
 	`, config.Enabled, config.Username, config.Password, config.Host, config.Port, config.Zone, config.SessionMinutes)
 
 	if err != nil {
