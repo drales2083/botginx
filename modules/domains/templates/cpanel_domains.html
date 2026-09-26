@@ -306,6 +306,10 @@ let cpanelDomains = null;
 let selectedDomain = null;
 let currentDomainId = null;
 
+// Check URL for domain in progress
+const urlParams = new URLSearchParams(window.location.search);
+const resumeDomainId = urlParams.get('domain');
+
 async function loadConnection() {
     try {
         const res = await fetch('/user/domains/cpanel/api/' + connId);
@@ -472,6 +476,7 @@ document.getElementById('add-domain-btn').addEventListener('click', async functi
 
         if (res.ok && data.domain) {
             currentDomainId = data.domain.id;
+            setUrlState(data.domain.id); // Persist to URL for reload
             updateProgress('connect', 'done');
 
             if (data.cpanelAutoDNS) {
@@ -620,7 +625,109 @@ async function pollSSL(domainId) {
     setTimeout(check, 3000);
 }
 
+// Resume progress for a domain - fetch current status and continue
+async function resumeProgress(domainId) {
+    currentDomainId = domainId;
+
+    // Hide domain selection, show progress
+    document.getElementById('loading').classList.add('d-none');
+    document.getElementById('domains-section').classList.add('d-none');
+    document.getElementById('progress-card').classList.remove('d-none');
+
+    try {
+        // Fetch domain info
+        const res = await fetch('/user/domains/api/' + domainId);
+        const data = await res.json();
+
+        if (!res.ok || !data.domain) {
+            document.getElementById('progress-message').innerHTML = `
+                <div class="text-danger">Domain not found</div>
+                <a href="/user/domains/cpanel/${connId}/domains" class="btn btn-secondary mt-2">Back to Domains</a>
+            `;
+            return;
+        }
+
+        const domain = data.domain;
+        document.getElementById('progress-domain').textContent = domain.name;
+
+        // Mark connect step as done (domain exists)
+        updateProgress('connect', 'done');
+
+        // Check DNS status
+        const dnsRes = await fetch('/user/domains/api/' + domainId + '/dns-status');
+        const dnsData = await dnsRes.json();
+
+        // DNS records added (cPanel auto-dns)
+        if (domain.cpanelAutoDNS) {
+            updateProgress('dns', 'done');
+            document.getElementById('dns-substeps').classList.remove('d-none');
+            updateSubstep('sub-txt', 'done');
+            updateSubstep('sub-a', 'done');
+            updateSubstep('sub-cname', 'done');
+        }
+
+        // Check verification status
+        document.getElementById('verify-substeps').classList.remove('d-none');
+        const allVerified = dnsData.txtVerified && dnsData.aRecordVerified && dnsData.cnameVerified;
+
+        if (dnsData.txtVerified) updateSubstep('verify-txt', 'done');
+        if (dnsData.aRecordVerified) updateSubstep('verify-a', 'done');
+        if (dnsData.cnameVerified) updateSubstep('verify-cname', 'done');
+
+        if (allVerified) {
+            updateProgress('verify', 'done');
+
+            // Check SSL status
+            const sslRes = await fetch('/user/domains/api/' + domainId + '/ssl');
+            const sslData = await sslRes.json();
+
+            if (sslData.ssl && sslData.ssl.exists && sslData.ssl.isWildcard) {
+                updateProgress('ssl', 'done');
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-success mb-3"><i class="bi bi-check-circle me-1"></i>Setup Complete!</div>
+                    <a href="/user/domains/${domainId}" class="btn btn-primary"><i class="bi bi-arrow-right me-1"></i>View Domain</a>
+                `;
+            } else if (sslData.sslError) {
+                updateProgress('ssl', 'error');
+                document.getElementById('progress-message').innerHTML = `
+                    <div class="text-danger mb-3"><i class="bi bi-exclamation-triangle me-1"></i>SSL generation failed</div>
+                    <p class="small text-muted mb-3">${sslData.sslError}</p>
+                    <a href="/user/domains/${domainId}/setup" class="btn btn-warning"><i class="bi bi-arrow-repeat me-1"></i>Retry Setup</a>
+                `;
+            } else {
+                // SSL in progress
+                updateProgress('ssl', 'loading');
+                document.getElementById('progress-message').textContent = 'Generating SSL certificate...';
+                pollSSL(domainId);
+            }
+        } else {
+            // Still verifying
+            updateProgress('verify', 'loading');
+            document.getElementById('progress-message').textContent = 'Verifying DNS propagation...';
+            pollVerification(domainId);
+        }
+
+    } catch (err) {
+        document.getElementById('progress-message').innerHTML = `
+            <div class="text-danger">Error loading status: ${err.message}</div>
+        `;
+    }
+}
+
+// Update URL when progress starts
+function setUrlState(domainId) {
+    const url = new URL(window.location);
+    url.searchParams.set('domain', domainId);
+    history.replaceState({}, '', url);
+}
+
 loadConnection();
-loadDomains();
+
+// If resuming a domain in progress, skip to progress view
+if (resumeDomainId) {
+    resumeProgress(resumeDomainId);
+} else {
+    loadDomains();
+}
 </script>
 {{end}}

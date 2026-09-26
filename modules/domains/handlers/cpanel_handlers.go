@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/domains/services"
@@ -180,7 +181,17 @@ func (h *CpanelHandler) ListDomains(w http.ResponseWriter, r *http.Request) {
 
 	domains, err := h.cpanelService.ListDomains(userID, connID)
 	if err != nil {
-		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		// User-friendly error messages
+		errMsg := err.Error()
+		if errMsg == "sql: no rows in result set" {
+			h.jsonError(w, "Connection not found or was deleted", http.StatusNotFound)
+		} else if strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "timeout") {
+			h.jsonError(w, "Unable to connect to cPanel server", http.StatusBadGateway)
+		} else if strings.Contains(errMsg, "unauthorized") || strings.Contains(errMsg, "forbidden") {
+			h.jsonError(w, "Invalid cPanel credentials", http.StatusUnauthorized)
+		} else {
+			h.jsonError(w, "Failed to load domains from cPanel", http.StatusBadRequest)
+		}
 		return
 	}
 
