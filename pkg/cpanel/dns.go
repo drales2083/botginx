@@ -258,13 +258,14 @@ func (c *Client) AddTXTRecord(domain, name, value string) error {
 	}
 
 	// Parse response: {"cpanelresult":{"data":[{"result":{"status":1,"statusmsg":"","newserial":123}}],...}}
+	// Note: newserial can be int or string depending on cPanel version
 	var resp struct {
 		CPanelResult struct {
 			Data []struct {
 				Result struct {
-					Status    int    `json:"status"`
-					StatusMsg string `json:"statusmsg"`
-					NewSerial int    `json:"newserial"`
+					Status    int         `json:"status"`
+					StatusMsg string      `json:"statusmsg"`
+					NewSerial interface{} `json:"newserial"`
 				} `json:"result"`
 			} `json:"data"`
 			Error string `json:"error,omitempty"`

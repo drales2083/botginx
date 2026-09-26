@@ -61,9 +61,9 @@ type CNAMERecord struct {
 
 // AddRecordResult from ZoneEdit::add_zone_record
 type AddRecordResult struct {
-	Result    int    `json:"result"`
-	StatusMsg string `json:"statusmsg,omitempty"`
-	NewSerial int    `json:"newserial,omitempty"`
+	Result    int         `json:"result"`
+	StatusMsg string      `json:"statusmsg,omitempty"`
+	NewSerial interface{} `json:"newserial,omitempty"`
 }
 
 // RemoveRecordResult from ZoneEdit::remove_zone_record
