@@ -102,9 +102,15 @@
                         <i class="bi bi-link-45deg me-1"></i> Create Redirect Link
                     </a>
                     {{if or (eq .Domain.SetupType "external") (and .Domain.IsWildcard (not .Domain.SSLEnabled))}}
+                    {{if .Domain.CpanelConnectionID}}
+                    <a href="/user/domains/cpanel/{{.Domain.CpanelConnectionID}}/domains?domain={{.Domain.ID}}" class="btn btn-primary">
+                        <i class="bi bi-gear me-1"></i> Setup Status
+                    </a>
+                    {{else}}
                     <a href="/user/domains/{{.Domain.ID}}/setup" class="btn btn-primary">
                         <i class="bi bi-gear me-1"></i> Setup Wizard
                     </a>
+                    {{end}}
                     {{end}}
                     {{if .Users}}
                     <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#assignModal">
@@ -211,7 +217,11 @@
 <script>
 // Auto-redirect to setup wizard for wildcard domains that need setup
 {{if and .Domain.IsWildcard (not .Domain.SSLEnabled) (ne .Domain.SetupStep "complete")}}
+{{if .Domain.CpanelConnectionID}}
+window.location.href = '/user/domains/cpanel/{{.Domain.CpanelConnectionID}}/domains?domain={{.Domain.ID}}';
+{{else}}
 window.location.href = '/user/domains/{{.Domain.ID}}/setup';
+{{end}}
 {{end}}
 
 function copyText(id) {
