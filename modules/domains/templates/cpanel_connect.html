@@ -91,34 +91,176 @@
 
         <!-- Step 3: Auto-Setup Progress -->
         <div id="step-progress" class="card d-none">
-            <div class="card-header">
-                <h3 class="card-title mb-0">Setting Up Domain</h3>
-            </div>
-            <div class="card-body py-4">
-                <div id="progress-domain" class="h5 mb-4 text-center"></div>
+            <div class="card-body py-5">
+                <div class="text-center mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 mb-3" style="width:56px;height:56px">
+                        <i class="bi bi-globe2 text-primary" style="font-size:1.5rem"></i>
+                    </div>
+                    <h4 class="mb-1">Setting up your domain</h4>
+                    <div id="progress-domain" class="text-muted"></div>
+                </div>
 
-                <div class="mb-4" style="max-width: 400px; margin: 0 auto;">
-                    <div id="prog-connect" class="d-flex align-items-center mb-3">
-                        <span class="prog-status me-3" style="width:24px">○</span>
-                        <span>Connecting to cPanel...</span>
+                <div class="setup-stepper mx-auto" style="max-width:380px">
+                    <div id="prog-connect" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">1</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Connect to cPanel</div>
+                            <div class="step-desc text-muted small">Establishing secure connection</div>
+                        </div>
                     </div>
-                    <div id="prog-txt" class="d-flex align-items-center mb-3">
-                        <span class="prog-status me-3" style="width:24px">○</span>
-                        <span>Adding TXT record...</span>
+
+                    <div id="prog-txt" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">2</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Add DNS record</div>
+                            <div class="step-desc text-muted small">Creating TXT verification record</div>
+                        </div>
                     </div>
-                    <div id="prog-verify" class="d-flex align-items-center mb-3">
-                        <span class="prog-status me-3" style="width:24px">○</span>
-                        <span>Verifying DNS...</span>
+
+                    <div id="prog-verify" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">3</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Verify DNS</div>
+                            <div class="step-desc text-muted small">Confirming record propagation</div>
+                        </div>
                     </div>
-                    <div id="prog-complete" class="d-flex align-items-center">
-                        <span class="prog-status me-3" style="width:24px">○</span>
-                        <span>Setup complete</span>
+
+                    <div id="prog-complete" class="setup-step" data-status="pending">
+                        <div class="step-indicator">
+                            <div class="step-circle">
+                                <span class="step-number">4</span>
+                                <span class="step-check"><i class="bi bi-check2"></i></span>
+                                <span class="step-spinner spinner-border spinner-border-sm"></span>
+                            </div>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Setup complete</div>
+                            <div class="step-desc text-muted small">Domain ready to use</div>
+                        </div>
                     </div>
                 </div>
 
-                <div id="progress-message" class="text-center"></div>
+                <div id="progress-message" class="text-center mt-4 pt-3"></div>
             </div>
         </div>
+
+        <style>
+        .setup-stepper { position: relative; }
+        .setup-step {
+            display: flex;
+            align-items: flex-start;
+            position: relative;
+            padding-bottom: 24px;
+            opacity: 0.4;
+            transition: opacity 0.3s ease;
+        }
+        .setup-step:last-child { padding-bottom: 0; }
+        .setup-step[data-status="loading"],
+        .setup-step[data-status="done"] { opacity: 1; }
+
+        .step-indicator {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 16px;
+        }
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--bs-border-color);
+            background: var(--bs-body-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s ease;
+        }
+        .step-number {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--bs-secondary);
+        }
+        .step-check, .step-spinner { display: none; }
+
+        .step-line {
+            width: 2px;
+            flex: 1;
+            background: var(--bs-border-color);
+            margin-top: 4px;
+            min-height: 24px;
+            transition: background 0.3s ease;
+        }
+        .setup-step:last-child .step-line { display: none; }
+
+        .step-content { padding-top: 4px; flex: 1; }
+        .step-title { font-weight: 500; line-height: 1.3; }
+        .step-desc { line-height: 1.4; margin-top: 2px; }
+
+        /* Loading state */
+        .setup-step[data-status="loading"] .step-circle {
+            border-color: var(--bs-primary);
+            background: var(--bs-primary);
+        }
+        .setup-step[data-status="loading"] .step-number { display: none; }
+        .setup-step[data-status="loading"] .step-spinner {
+            display: block;
+            color: #fff;
+            width: 16px;
+            height: 16px;
+        }
+        .setup-step[data-status="loading"] .step-title { color: var(--bs-primary); }
+
+        /* Done state */
+        .setup-step[data-status="done"] .step-circle {
+            border-color: #198754;
+            background: #198754;
+        }
+        .setup-step[data-status="done"] .step-number { display: none; }
+        .setup-step[data-status="done"] .step-check {
+            display: block;
+            color: #fff;
+            font-size: 1rem;
+        }
+        .setup-step[data-status="done"] .step-line { background: #198754; }
+        .setup-step[data-status="done"] .step-title { color: #198754; }
+
+        /* Error state */
+        .setup-step[data-status="error"] .step-circle {
+            border-color: var(--bs-danger);
+            background: var(--bs-danger);
+        }
+        .setup-step[data-status="error"] .step-number { display: none; }
+        .setup-step[data-status="error"] .step-check {
+            display: block;
+            color: #fff;
+        }
+        .setup-step[data-status="error"] .step-check i:before { content: "\F62A"; }
+        .setup-step[data-status="error"] .step-title { color: var(--bs-danger); }
+        </style>
     </div>
 </div>
 
@@ -432,33 +574,14 @@ document.getElementById('add-cpanel-domain-btn').addEventListener('click', async
     }
 });
 
-// Update progress step with simple icons
+// Update progress step with data-status attribute
 function updateProgress(step, status) {
     const stepEl = document.getElementById('prog-' + step);
     if (!stepEl) {
         console.error('Progress element not found: prog-' + step);
         return;
     }
-
-    const statusEl = stepEl.querySelector('.prog-status');
-    if (!statusEl) {
-        console.error('Status element not found in prog-' + step);
-        return;
-    }
-
-    if (status === 'done') {
-        statusEl.innerHTML = '<span style="color:#198754;font-size:20px;font-weight:bold">✓</span>';
-        stepEl.style.opacity = '1';
-    } else if (status === 'loading') {
-        statusEl.innerHTML = '<div class="spinner-border spinner-border-sm text-primary"></div>';
-        stepEl.style.opacity = '1';
-    } else if (status === 'pending') {
-        statusEl.innerHTML = '<span style="color:#6c757d">○</span>';
-        stepEl.style.opacity = '0.5';
-    } else {
-        statusEl.innerHTML = '<span style="color:#6c757d">○</span>';
-        stepEl.style.opacity = '0.5';
-    }
+    stepEl.setAttribute('data-status', status);
 }
 
 // Poll for DNS verification
