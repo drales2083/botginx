@@ -42,8 +42,9 @@ type UpdateCpanelConnectionInput struct {
 
 // CpanelDomainInfo is returned when listing domains from a cPanel account
 type CpanelDomainInfo struct {
-	MainDomain    string   `json:"mainDomain"`
-	AddonDomains  []string `json:"addonDomains"`
-	SubDomains    []string `json:"subDomains"`
-	ParkedDomains []string `json:"parkedDomains"`
+	MainDomain      string   `json:"mainDomain"`
+	AddonDomains    []string `json:"addonDomains"`
+	SubDomains      []string `json:"subDomains"`
+	ParkedDomains   []string `json:"parkedDomains"`
+	ExistingDomains []string `json:"existingDomains"` // domains already added to our system
 }

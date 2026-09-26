@@ -313,11 +313,21 @@ func (s *CpanelService) ListDomains(userID, connectionID string) (*models.Cpanel
 		return nil, err
 	}
 
+	// Query which domains from this cPanel connection are already in our system
+	var existingDomains []string
+	err = s.db.Select(&existingDomains,
+		`SELECT name FROM domains WHERE cpanel_connection_id = $1`, connectionID)
+	if err != nil {
+		log.Printf("[cpanel] error querying existing domains: %v", err)
+		existingDomains = []string{}
+	}
+
 	return &models.CpanelDomainInfo{
-		MainDomain:    domains.MainDomain,
-		AddonDomains:  domains.AddonDomains,
-		SubDomains:    domains.SubDomains,
-		ParkedDomains: domains.ParkedDomains,
+		MainDomain:      domains.MainDomain,
+		AddonDomains:    domains.AddonDomains,
+		SubDomains:      domains.SubDomains,
+		ParkedDomains:   domains.ParkedDomains,
+		ExistingDomains: existingDomains,
 	}, nil
 }
 
