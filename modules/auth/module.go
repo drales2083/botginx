@@ -60,6 +60,11 @@ func (m *Module) AuthService() *services.AuthService {
 	return m.service
 }
 
+// GlobalWhitelistService returns the global whitelist service for API use
+func (m *Module) GlobalWhitelistService() *services.GlobalWhitelistService {
+	return m.globalWhitelist
+}
+
 func (m *Module) Migrate() error {
 	migrations := []string{
 		"migrations/001_create_tables.sql",

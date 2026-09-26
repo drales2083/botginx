@@ -664,3 +664,321 @@ func (s *AnalyticsService) GetUserVisitorPoints(userID string, limit int) ([]mod
 	`, userID, limit)
 	return points, err
 }
+
+// LinkInfo represents a redirect link for filtering
+type LinkInfo struct {
+	ID     string `db:"id" json:"id"`
+	Domain string `db:"domain" json:"domain"`
+	Path   string `db:"path" json:"path"`
+}
+
+// GetUserLinks returns a list of user's redirect links for filter dropdown
+func (s *AnalyticsService) GetUserLinks(userID string) ([]LinkInfo, error) {
+	var links []LinkInfo
+	err := s.db.Select(&links, `
+		SELECT rl.id, d.name as domain, rl.path
+		FROM redirect_links rl
+		INNER JOIN domains d ON d.id = rl.domain_id
+		WHERE rl.user_id = $1
+		ORDER BY d.name, rl.path
+	`, userID)
+	return links, err
+}
+
+// VisitLog represents a single visit log entry
+type VisitLog struct {
+	ID             string    `db:"id" json:"id"`
+	CreatedAt      time.Time `db:"created_at" json:"createdAt"`
+	Domain         string    `db:"domain" json:"domain"`
+	Path           string    `db:"path" json:"path"`
+	IP             string    `db:"ip" json:"ip"`
+	Country        string    `db:"country" json:"country"`
+	Device         string    `db:"device" json:"device"`
+	Browser        string    `db:"browser" json:"browser"`
+	OS             string    `db:"os" json:"os"`
+	Referrer       string    `db:"referrer" json:"referrer"`
+	ReferrerDomain string    `db:"referrer_domain" json:"referrerDomain"`
+	IsBot          bool      `db:"is_bot" json:"isBot"`
+	BotScore       float64   `db:"bot_score" json:"botScore"`
+	Blocked        bool      `db:"blocked" json:"blocked"`
+	BlockReason    string    `db:"block_reason" json:"blockReason"`
+	UserAgent      string    `db:"user_agent" json:"userAgent"`
+	UTMSource      string    `db:"utm_source" json:"utmSource"`
+	UTMMedium      string    `db:"utm_medium" json:"utmMedium"`
+	UTMCampaign    string    `db:"utm_campaign" json:"utmCampaign"`
+}
+
+// GetVisitLogs returns paginated and filtered visit logs
+func (s *AnalyticsService) GetVisitLogs(userID, linkID, country, botFilter, search, startDate, endDate string, page, limit int) ([]VisitLog, int, error) {
+	args := []interface{}{userID}
+	argIdx := 2
+
+	whereClause := "WHERE v.user_id = $1"
+
+	if linkID != "" {
+		whereClause += " AND v.link_id = $" + itoa(argIdx)
+		args = append(args, linkID)
+		argIdx++
+	}
+
+	if country != "" {
+		whereClause += " AND v.country = $" + itoa(argIdx)
+		args = append(args, country)
+		argIdx++
+	}
+
+	if botFilter == "bots" {
+		whereClause += " AND v.is_bot = true"
+	} else if botFilter == "humans" {
+		whereClause += " AND (v.is_bot = false OR v.is_bot IS NULL)"
+	}
+
+	if search != "" {
+		whereClause += " AND (v.ip ILIKE $" + itoa(argIdx) + " OR v.referrer ILIKE $" + itoa(argIdx) + " OR v.user_agent ILIKE $" + itoa(argIdx) + ")"
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	if startDate != "" {
+		whereClause += " AND v.created_at >= $" + itoa(argIdx)
+		args = append(args, startDate)
+		argIdx++
+	}
+
+	if endDate != "" {
+		whereClause += " AND v.created_at <= $" + itoa(argIdx) + "::date + INTERVAL '1 day'"
+		args = append(args, endDate)
+		argIdx++
+	}
+
+	// Count total
+	var total int
+	countQuery := "SELECT COUNT(*) FROM visits v " + whereClause
+	if err := s.db.Get(&total, countQuery, args...); err != nil {
+		return nil, 0, err
+	}
+
+	// Get page
+	offset := (page - 1) * limit
+	args = append(args, limit, offset)
+
+	query := `
+		SELECT
+			v.id, v.created_at,
+			COALESCE(d.name, '') as domain,
+			COALESCE(rl.path, '') as path,
+			COALESCE(CONCAT(LEFT(v.ip, POSITION('.' IN v.ip) + 3), 'xxx'), '') as ip,
+			COALESCE(v.country, '') as country,
+			COALESCE(v.device, 'desktop') as device,
+			COALESCE(v.browser, '') as browser,
+			COALESCE(v.os, '') as os,
+			COALESCE(v.referrer, '') as referrer,
+			COALESCE(v.referrer_domain, '') as referrer_domain,
+			COALESCE(v.is_bot, false) as is_bot,
+			COALESCE(v.bot_score, 0) as bot_score,
+			COALESCE(v.blocked, false) as blocked,
+			COALESCE(v.block_reason, '') as block_reason,
+			COALESCE(v.user_agent, '') as user_agent,
+			COALESCE(v.utm_source, '') as utm_source,
+			COALESCE(v.utm_medium, '') as utm_medium,
+			COALESCE(v.utm_campaign, '') as utm_campaign
+		FROM visits v
+		LEFT JOIN redirect_links rl ON rl.id = v.link_id
+		LEFT JOIN domains d ON d.id = rl.domain_id
+		` + whereClause + `
+		ORDER BY v.created_at DESC
+		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+
+	var logs []VisitLog
+	if err := s.db.Select(&logs, query, args...); err != nil {
+		return nil, 0, err
+	}
+
+	return logs, total, nil
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var buf [20]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+	return string(buf[i:])
+}
+
+// RealtimeData contains all real-time analytics data
+type RealtimeData struct {
+	ActiveCount  int              `json:"activeCount"`
+	RecentVisits []RecentVisit    `json:"recentVisits"`
+	LastHour     int              `json:"lastHour"`
+	Today        int              `json:"today"`
+	TopCountry   string           `json:"topCountry"`
+	TopLink      *TopLinkInfo     `json:"topLink"`
+	HumanPercent int              `json:"humanPercent"`
+	HumanCount   int              `json:"humanCount"`
+	BotCount     int              `json:"botCount"`
+	TopCountries []CountryCount   `json:"topCountries"`
+	TopLinks     []TopLinkInfo    `json:"topLinks"`
+	Timeline     []TimelinePoint  `json:"timeline"`
+}
+
+type CountryCount struct {
+	Country string `db:"country" json:"country"`
+	Count   int    `db:"count" json:"count"`
+}
+
+type RecentVisit struct {
+	Country   string    `db:"country" json:"country"`
+	Device    string    `db:"device" json:"device"`
+	Domain    string    `db:"domain" json:"domain"`
+	Path      string    `db:"path" json:"path"`
+	IsBot     bool      `db:"is_bot" json:"isBot"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+}
+
+type TopLinkInfo struct {
+	Domain string `json:"domain"`
+	Path   string `json:"path"`
+	Count  int    `json:"count"`
+}
+
+type TimelinePoint struct {
+	Minute string `db:"minute" json:"minute"`
+	Count  int    `db:"count" json:"count"`
+}
+
+// GetRealtimeData returns all real-time analytics data for dashboard
+func (s *AnalyticsService) GetRealtimeData(userID string) (*RealtimeData, error) {
+	data := &RealtimeData{}
+
+	// Active count (last 5 minutes)
+	s.db.Get(&data.ActiveCount, `
+		SELECT COUNT(*) FROM visits
+		WHERE user_id = $1 AND created_at > NOW() - INTERVAL '5 minutes'
+	`, userID)
+
+	// Last hour count
+	s.db.Get(&data.LastHour, `
+		SELECT COUNT(*) FROM visits
+		WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 hour'
+	`, userID)
+
+	// Today count
+	s.db.Get(&data.Today, `
+		SELECT COUNT(*) FROM visits
+		WHERE user_id = $1 AND created_at > NOW()::date
+	`, userID)
+
+	// Recent visits (last 20)
+	s.db.Select(&data.RecentVisits, `
+		SELECT
+			COALESCE(v.country, '') as country,
+			COALESCE(v.device, 'desktop') as device,
+			COALESCE(d.name, '') as domain,
+			COALESCE(rl.path, '') as path,
+			COALESCE(v.is_bot, false) as is_bot,
+			v.created_at
+		FROM visits v
+		LEFT JOIN redirect_links rl ON rl.id = v.link_id
+		LEFT JOIN domains d ON d.id = rl.domain_id
+		WHERE v.user_id = $1
+		ORDER BY v.created_at DESC
+		LIMIT 20
+	`, userID)
+
+	// Top country (last hour)
+	s.db.Get(&data.TopCountry, `
+		SELECT COALESCE(country, 'Unknown')
+		FROM visits
+		WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 hour' AND country != ''
+		GROUP BY country
+		ORDER BY COUNT(*) DESC
+		LIMIT 1
+	`, userID)
+
+	// Top link (last hour)
+	var topLink struct {
+		Domain string `db:"domain"`
+		Path   string `db:"path"`
+		Count  int    `db:"count"`
+	}
+	err := s.db.Get(&topLink, `
+		SELECT
+			COALESCE(d.name, '') as domain,
+			COALESCE(rl.path, '') as path,
+			COUNT(*) as count
+		FROM visits v
+		LEFT JOIN redirect_links rl ON rl.id = v.link_id
+		LEFT JOIN domains d ON d.id = rl.domain_id
+		WHERE v.user_id = $1 AND v.created_at > NOW() - INTERVAL '1 hour'
+		GROUP BY d.name, rl.path
+		ORDER BY count DESC
+		LIMIT 1
+	`, userID)
+	if err == nil && topLink.Domain != "" {
+		data.TopLink = &TopLinkInfo{
+			Domain: topLink.Domain,
+			Path:   topLink.Path,
+			Count:  topLink.Count,
+		}
+	}
+
+	// Human vs Bot counts (last hour)
+	s.db.Get(&data.HumanCount, `
+		SELECT COUNT(*) FROM visits
+		WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 hour' AND (is_bot = false OR is_bot IS NULL)
+	`, userID)
+	s.db.Get(&data.BotCount, `
+		SELECT COUNT(*) FROM visits
+		WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 hour' AND is_bot = true
+	`, userID)
+	total := data.HumanCount + data.BotCount
+	if total > 0 {
+		data.HumanPercent = (data.HumanCount * 100) / total
+	} else {
+		data.HumanPercent = 100
+	}
+
+	// Top countries (last hour)
+	s.db.Select(&data.TopCountries, `
+		SELECT COALESCE(country, 'Unknown') as country, COUNT(*) as count
+		FROM visits
+		WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 hour'
+		GROUP BY country
+		ORDER BY count DESC
+		LIMIT 10
+	`, userID)
+
+	// Top links (last hour)
+	s.db.Select(&data.TopLinks, `
+		SELECT
+			COALESCE(d.name, '') as domain,
+			COALESCE(rl.path, '/') as path,
+			COUNT(*) as count
+		FROM visits v
+		LEFT JOIN redirect_links rl ON rl.id = v.link_id
+		LEFT JOIN domains d ON d.id = rl.domain_id
+		WHERE v.user_id = $1 AND v.created_at > NOW() - INTERVAL '1 hour'
+		GROUP BY d.name, rl.path
+		ORDER BY count DESC
+		LIMIT 8
+	`, userID)
+
+	// Timeline (last 30 minutes, per minute)
+	s.db.Select(&data.Timeline, `
+		SELECT
+			TO_CHAR(created_at, 'HH24:MI') as minute,
+			COUNT(*) as count
+		FROM visits
+		WHERE user_id = $1 AND created_at > NOW() - INTERVAL '30 minutes'
+		GROUP BY TO_CHAR(created_at, 'HH24:MI')
+		ORDER BY minute
+	`, userID)
+
+	return data, nil
+}

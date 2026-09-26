@@ -1,0 +1,80 @@
+{{define "content"}}
+<div class="antibot-control">
+    <div class="alert alert-info d-flex align-items-center mb-4">
+        <i class="bi bi-info-circle me-2"></i>
+        <div>These settings will be pre-filled when you create new redirect links. You can still customize each link individually.</div>
+    </div>
+
+    <!-- Reuse the protection-settings component -->
+    {{template "protection-settings" .}}
+
+    <!-- Action buttons at bottom right -->
+    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+        <button class="btn btn-outline-secondary" onclick="resetDefaults()">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset
+        </button>
+        <button class="btn btn-primary" onclick="saveDefaults()">
+            <i class="bi bi-check-lg"></i> Save Defaults
+        </button>
+    </div>
+</div>
+
+<script>
+// Initialize protection settings with current defaults
+document.addEventListener('DOMContentLoaded', function() {
+    // Wait a tick for the protection component to initialize
+    setTimeout(function() {
+        if (window.protectionSettings && window.protectionSettings.init) {
+            const defaults = JSON.parse('{{.DefaultsJSON}}');
+            window.protectionSettings.init(defaults);
+        }
+    }, 100);
+});
+
+async function saveDefaults() {
+    // Get settings from the protection component
+    let settings = {};
+    if (window.protectionSettings && window.protectionSettings.getSettings) {
+        settings = window.protectionSettings.getSettings();
+    }
+
+    try {
+        const res = await fetch('/user/antibotcontrol/api/defaults', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            showToast('Default settings saved successfully', 'success');
+        } else {
+            showToast(data.error || 'Failed to save settings', 'danger');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Failed to save settings');
+    }
+}
+
+async function resetDefaults() {
+    if (!confirm('Reset all settings to system defaults?')) return;
+
+    try {
+        const res = await fetch('/user/antibotcontrol/api/defaults', {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            location.reload();
+        } else {
+            alert('Failed to reset settings');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Failed to reset settings');
+    }
+}
+</script>
+{{end}}

@@ -1,0 +1,755 @@
+{{define "content"}}
+<div class="realtime-dashboard">
+    <!-- Top Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="rt-stat-card">
+                <div class="rt-stat-label">Active Now</div>
+                <div class="rt-stat-value" id="activeNow">0</div>
+                <div class="rt-stat-sub">visitors in last 5 min</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="rt-stat-card">
+                <div class="rt-stat-label">Requests / min</div>
+                <div class="rt-stat-value" id="reqPerMin">0</div>
+                <div class="rt-stat-trend" id="reqTrend"></div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="rt-stat-card">
+                <div class="rt-stat-label">Last Hour</div>
+                <div class="rt-stat-value" id="lastHour">0</div>
+                <div class="rt-stat-sub">total requests</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="rt-stat-card">
+                <div class="rt-stat-label">Human Traffic</div>
+                <div class="rt-stat-value"><span id="humanPct">0</span><span class="rt-stat-unit">%</span></div>
+                <div class="rt-stat-sub">verified humans</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row g-4">
+        <!-- Traffic Graph -->
+        <div class="col-lg-8">
+            <div class="card rt-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="card-title mb-0">Traffic</h3>
+                        <small class="text-muted">Requests per minute, last 30 minutes</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rt-refresh-status" id="refreshStatus">
+                            <span class="rt-refresh-icon"><i class="bi bi-arrow-repeat"></i></span>
+                            <span class="rt-refresh-text">Updated <span id="lastRefresh">just now</span></span>
+                        </div>
+                        <div class="rt-live-indicator">
+                            <span class="rt-pulse"></span> Live
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="rt-chart-container">
+                        <canvas id="trafficChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Request Stream -->
+            <div class="card rt-card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="card-title mb-0">Request Stream</h3>
+                        <small class="text-muted">Live traffic feed</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" id="toggleStream">
+                        <i class="bi bi-pause-fill"></i> Pause
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="rt-stream" id="requestStream"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Top Countries -->
+            <div class="card rt-card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title mb-0">Top Countries</h3>
+                        <small class="text-muted">Last hour</small>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="rt-countries" id="topCountries"></div>
+                </div>
+            </div>
+
+            <!-- Top Links -->
+            <div class="card rt-card mt-4">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title mb-0">Top Links</h3>
+                        <small class="text-muted">Last hour</small>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="rt-links" id="topLinks"></div>
+                </div>
+            </div>
+
+            <!-- Traffic Split -->
+            <div class="card rt-card mt-4">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title mb-0">Traffic Type</h3>
+                        <small class="text-muted">Last hour breakdown</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="rt-split">
+                        <div class="rt-split-bar">
+                            <div class="rt-split-human" id="splitHuman" style="width: 0%"></div>
+                        </div>
+                        <div class="rt-split-legend">
+                            <div class="rt-split-item">
+                                <span class="rt-split-dot rt-split-dot-human"></span>
+                                <span>Human</span>
+                                <span class="ms-auto fw-semibold" id="humanCount">0</span>
+                            </div>
+                            <div class="rt-split-item">
+                                <span class="rt-split-dot rt-split-dot-bot"></span>
+                                <span>Bot</span>
+                                <span class="ms-auto fw-semibold" id="botCount">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.realtime-dashboard {
+    --rt-green: #30d158;
+    --rt-orange: #ff9f0a;
+    --rt-red: #ff453a;
+    --rt-blue: #0a84ff;
+    --rt-purple: #bf5af2;
+}
+
+/* Stat Cards */
+.rt-stat-card {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    height: 100%;
+}
+.rt-stat-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bs-secondary-color);
+    margin-bottom: 0.5rem;
+}
+.rt-stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--bs-emphasis-color);
+}
+.rt-stat-unit {
+    font-size: 1.5rem;
+    font-weight: 500;
+    opacity: 0.7;
+}
+.rt-stat-sub {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    margin-top: 0.25rem;
+}
+.rt-stat-trend {
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
+}
+.rt-stat-trend.up { color: var(--rt-green); }
+.rt-stat-trend.down { color: var(--rt-red); }
+
+/* Value change flash */
+.rt-stat-value.flash {
+    animation: valueFlash 0.6s ease;
+}
+@keyframes valueFlash {
+    0% { color: var(--rt-blue); transform: scale(1.05); }
+    100% { color: var(--bs-emphasis-color); transform: scale(1); }
+}
+.rt-stat-card.updated {
+    animation: cardPulse 0.5s ease;
+}
+@keyframes cardPulse {
+    0% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2); }
+    100% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0); }
+}
+
+/* Refresh Status */
+.rt-refresh-status {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    padding: 0.25rem 0.6rem;
+    background: var(--bs-tertiary-bg);
+    border-radius: 20px;
+}
+.rt-refresh-icon {
+    display: flex;
+    transition: transform 0.3s;
+}
+.rt-refresh-status.refreshing .rt-refresh-icon {
+    animation: spinRefresh 0.6s linear;
+}
+@keyframes spinRefresh {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.rt-refresh-status.refreshing {
+    color: var(--rt-blue);
+}
+
+/* Cards */
+.rt-card {
+    border-radius: 12px;
+    border: 1px solid var(--bs-border-color);
+    overflow: hidden;
+}
+.rt-card .card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--bs-border-color);
+    padding: 1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.rt-card .card-header > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.rt-card .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.2;
+}
+.rt-card .card-header small {
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+/* Live Indicator */
+.rt-live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--rt-green);
+}
+.rt-pulse {
+    width: 8px;
+    height: 8px;
+    background: var(--rt-green);
+    border-radius: 50%;
+    animation: rtPulse 2s infinite;
+}
+@keyframes rtPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* Chart */
+.rt-chart-container {
+    height: 220px;
+    padding: 1rem;
+}
+
+/* Request Stream */
+.rt-stream {
+    max-height: 320px;
+    overflow-y: auto;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-size: 0.8rem;
+}
+.rt-stream-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    animation: rtSlideIn 0.3s ease;
+}
+.rt-stream-item:last-child { border-bottom: 0; }
+@keyframes rtSlideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.rt-stream-time {
+    color: var(--bs-secondary-color);
+    font-size: 0.7rem;
+    width: 50px;
+    flex-shrink: 0;
+}
+.rt-stream-method {
+    font-weight: 600;
+    width: 32px;
+    flex-shrink: 0;
+}
+.rt-stream-method.GET { color: var(--rt-green); }
+.rt-stream-method.POST { color: var(--rt-blue); }
+.rt-stream-path {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--bs-body-color);
+}
+.rt-stream-country {
+    font-size: 1rem;
+    width: 24px;
+    text-align: center;
+}
+.rt-stream-status {
+    font-weight: 600;
+    width: 28px;
+    text-align: right;
+}
+.rt-stream-status.s2xx { color: var(--rt-green); }
+.rt-stream-status.s3xx { color: var(--rt-orange); }
+.rt-stream-status.s4xx { color: var(--rt-red); }
+.rt-stream-bot {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--rt-red);
+    color: #fff;
+}
+.rt-stream-empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--bs-secondary-color);
+}
+
+/* Countries */
+.rt-countries, .rt-links {
+    max-height: 240px;
+    overflow-y: auto;
+}
+.rt-country-item, .rt-link-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.rt-country-item:last-child, .rt-link-item:last-child { border-bottom: 0; }
+.rt-country-flag {
+    font-size: 1.25rem;
+    width: 28px;
+    text-align: center;
+}
+.rt-country-name, .rt-link-name {
+    flex: 1;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.rt-country-count, .rt-link-count {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--bs-emphasis-color);
+}
+.rt-country-bar, .rt-link-bar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--rt-blue);
+    opacity: 0.5;
+    transition: width 0.3s;
+}
+.rt-country-item, .rt-link-item { position: relative; }
+
+/* Traffic Split */
+.rt-split-bar {
+    height: 12px;
+    background: var(--bs-tertiary-bg);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+.rt-split-human {
+    height: 100%;
+    background: linear-gradient(90deg, var(--rt-green), #28cd50);
+    border-radius: 6px;
+    transition: width 0.5s ease;
+}
+.rt-split-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.rt-split-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+.rt-split-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.rt-split-dot-human { background: var(--rt-green); }
+.rt-split-dot-bot { background: var(--rt-red); }
+
+/* Scrollbar */
+.rt-stream::-webkit-scrollbar,
+.rt-countries::-webkit-scrollbar,
+.rt-links::-webkit-scrollbar {
+    width: 6px;
+}
+.rt-stream::-webkit-scrollbar-thumb,
+.rt-countries::-webkit-scrollbar-thumb,
+.rt-links::-webkit-scrollbar-thumb {
+    background: var(--bs-border-color);
+    border-radius: 3px;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+    .rt-stat-value { font-size: 2rem; }
+}
+@media (max-width: 575.98px) {
+    .rt-stat-value { font-size: 1.5rem; }
+    .rt-stat-card { padding: 1rem; }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const FLAGS = {
+    'US': '🇺🇸', 'GB': '🇬🇧', 'DE': '🇩🇪', 'FR': '🇫🇷', 'CA': '🇨🇦', 'AU': '🇦🇺',
+    'JP': '🇯🇵', 'CN': '🇨🇳', 'IN': '🇮🇳', 'BR': '🇧🇷', 'RU': '🇷🇺', 'KR': '🇰🇷',
+    'MX': '🇲🇽', 'ES': '🇪🇸', 'IT': '🇮🇹', 'NL': '🇳🇱', 'PL': '🇵🇱', 'SE': '🇸🇪',
+    'TR': '🇹🇷', 'ID': '🇮🇩', 'TH': '🇹🇭', 'VN': '🇻🇳', 'PH': '🇵🇭', 'MY': '🇲🇾',
+    'SG': '🇸🇬', 'AE': '🇦🇪', 'SA': '🇸🇦', 'ZA': '🇿🇦', 'NG': '🇳🇬', 'EG': '🇪🇬',
+    'AR': '🇦🇷', 'CO': '🇨🇴', 'CL': '🇨🇱', 'PE': '🇵🇪', 'UA': '🇺🇦', 'PK': '🇵🇰',
+    'BD': '🇧🇩', 'IL': '🇮🇱', 'CH': '🇨🇭', 'AT': '🇦🇹', 'BE': '🇧🇪', 'PT': '🇵🇹',
+    'CZ': '🇨🇿', 'GR': '🇬🇷', 'RO': '🇷🇴', 'HU': '🇭🇺', 'IE': '🇮🇪', 'DK': '🇩🇰',
+    'FI': '🇫🇮', 'NO': '🇳🇴', 'NZ': '🇳🇿', 'HK': '🇭🇰', 'TW': '🇹🇼'
+};
+
+let trafficChart;
+let streamPaused = false;
+let prevReqPerMin = 0;
+let animationFrames = {};
+
+// Animated counter
+function animateValue(el, start, end, duration = 500) {
+    if (animationFrames[el.id]) cancelAnimationFrame(animationFrames[el.id]);
+    const startTime = performance.now();
+    const diff = end - start;
+
+    function tick(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        const current = Math.round(start + diff * eased);
+        el.textContent = current.toLocaleString();
+
+        if (progress < 1) {
+            animationFrames[el.id] = requestAnimationFrame(tick);
+        }
+    }
+    requestAnimationFrame(tick);
+}
+
+function initChart() {
+    const ctx = document.getElementById('trafficChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, 'rgba(10, 132, 255, 0.3)');
+    gradient.addColorStop(1, 'rgba(10, 132, 255, 0)');
+
+    trafficChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Requests',
+                data: [],
+                borderColor: '#0a84ff',
+                backgroundColor: gradient,
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: '#0a84ff',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: 12,
+                    titleFont: { size: 12 },
+                    bodyFont: { size: 14, weight: 'bold' },
+                    displayColors: false,
+                    callbacks: {
+                        title: (items) => items[0].label,
+                        label: (item) => item.raw.toLocaleString() + ' requests'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        color: 'rgba(150,150,150,0.8)',
+                        maxTicksLimit: 6,
+                        font: { size: 11 }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(150,150,150,0.1)' },
+                    ticks: {
+                        color: 'rgba(150,150,150,0.8)',
+                        font: { size: 11 },
+                        callback: (v) => v >= 1000 ? (v/1000).toFixed(1) + 'k' : v
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateChart(timeline) {
+    if (!timeline || !timeline.length) return;
+
+    trafficChart.data.labels = timeline.map(t => t.minute);
+    trafficChart.data.datasets[0].data = timeline.map(t => t.count);
+    trafficChart.update('none');
+}
+
+function renderStream(visits) {
+    const container = document.getElementById('requestStream');
+    if (!visits || !visits.length) {
+        container.innerHTML = '<div class="rt-stream-empty">No recent requests</div>';
+        return;
+    }
+
+    container.innerHTML = visits.map(v => {
+        const time = new Date(v.createdAt);
+        const timeStr = time.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const statusClass = v.status >= 400 ? 's4xx' : v.status >= 300 ? 's3xx' : 's2xx';
+
+        return `
+            <div class="rt-stream-item">
+                <span class="rt-stream-time">${timeStr}</span>
+                <span class="rt-stream-method GET">GET</span>
+                <span class="rt-stream-path">${v.domain}${v.path || '/'}</span>
+                <span class="rt-stream-country">${FLAGS[v.country] || '🌍'}</span>
+                ${v.isBot ? '<span class="rt-stream-bot">Bot</span>' : ''}
+                <span class="rt-stream-status ${statusClass}">${v.status || 200}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderCountries(countries) {
+    const container = document.getElementById('topCountries');
+    if (!countries || !countries.length) {
+        container.innerHTML = '<div class="rt-stream-empty">No data</div>';
+        return;
+    }
+
+    const max = countries[0]?.count || 1;
+    container.innerHTML = countries.slice(0, 8).map(c => `
+        <div class="rt-country-item">
+            <span class="rt-country-flag">${FLAGS[c.country] || '🌍'}</span>
+            <span class="rt-country-name">${c.country || 'Unknown'}</span>
+            <span class="rt-country-count">${c.count.toLocaleString()}</span>
+            <div class="rt-country-bar" style="width: ${(c.count / max * 100).toFixed(1)}%"></div>
+        </div>
+    `).join('');
+}
+
+function renderLinks(links) {
+    const container = document.getElementById('topLinks');
+    if (!links || !links.length) {
+        container.innerHTML = '<div class="rt-stream-empty">No data</div>';
+        return;
+    }
+
+    const max = links[0]?.count || 1;
+    container.innerHTML = links.slice(0, 6).map(l => `
+        <div class="rt-link-item">
+            <span class="rt-link-name">${l.domain}${l.path || '/'}</span>
+            <span class="rt-link-count">${l.count.toLocaleString()}</span>
+            <div class="rt-link-bar" style="width: ${(l.count / max * 100).toFixed(1)}%"></div>
+        </div>
+    `).join('');
+}
+
+let lastRefreshTime = Date.now();
+let prevValues = {};
+
+function flashValue(el, changed) {
+    if (!changed) return;
+    el.classList.remove('flash');
+    void el.offsetWidth; // trigger reflow
+    el.classList.add('flash');
+
+    // Flash the parent card too
+    const card = el.closest('.rt-stat-card');
+    if (card) {
+        card.classList.remove('updated');
+        void card.offsetWidth;
+        card.classList.add('updated');
+    }
+}
+
+function updateRefreshStatus(loading) {
+    const status = document.getElementById('refreshStatus');
+    const lastRefresh = document.getElementById('lastRefresh');
+
+    if (loading) {
+        status.classList.add('refreshing');
+    } else {
+        status.classList.remove('refreshing');
+        lastRefreshTime = Date.now();
+    }
+}
+
+function updateLastRefreshText() {
+    const el = document.getElementById('lastRefresh');
+    const seconds = Math.floor((Date.now() - lastRefreshTime) / 1000);
+    if (seconds < 3) el.textContent = 'just now';
+    else if (seconds < 60) el.textContent = seconds + 's ago';
+    else el.textContent = Math.floor(seconds / 60) + 'm ago';
+}
+
+async function loadRealtime() {
+    updateRefreshStatus(true);
+
+    try {
+        const res = await fetch('/user/analytics/api/realtime');
+        const data = await res.json();
+
+        // Animated counters with flash
+        const activeEl = document.getElementById('activeNow');
+        const hourEl = document.getElementById('lastHour');
+        const humanEl = document.getElementById('humanPct');
+        const reqEl = document.getElementById('reqPerMin');
+
+        const oldActive = parseInt(activeEl.textContent.replace(/,/g, '')) || 0;
+        const oldHour = parseInt(hourEl.textContent.replace(/,/g, '')) || 0;
+        const oldHuman = parseInt(humanEl.textContent) || 0;
+        const oldReq = parseInt(reqEl.textContent.replace(/,/g, '')) || 0;
+
+        const newActive = data.activeCount || 0;
+        const newHour = data.lastHour || 0;
+        const newHuman = data.humanPercent || 0;
+        const reqPerMin = data.timeline?.length > 0 ? data.timeline[data.timeline.length - 1].count : 0;
+
+        animateValue(activeEl, oldActive, newActive);
+        animateValue(hourEl, oldHour, newHour);
+        animateValue(humanEl, oldHuman, newHuman, 300);
+        animateValue(reqEl, oldReq, reqPerMin);
+
+        // Flash on change
+        flashValue(activeEl, oldActive !== newActive);
+        flashValue(hourEl, oldHour !== newHour);
+        flashValue(humanEl, oldHuman !== newHuman);
+        flashValue(reqEl, oldReq !== reqPerMin);
+
+        // Trend indicator
+        const trendEl = document.getElementById('reqTrend');
+        if (reqPerMin > prevReqPerMin) {
+            trendEl.innerHTML = '<i class="bi bi-arrow-up"></i> +' + (reqPerMin - prevReqPerMin);
+            trendEl.className = 'rt-stat-trend up';
+        } else if (reqPerMin < prevReqPerMin) {
+            trendEl.innerHTML = '<i class="bi bi-arrow-down"></i> -' + (prevReqPerMin - reqPerMin);
+            trendEl.className = 'rt-stat-trend down';
+        } else {
+            trendEl.innerHTML = '<span style="opacity:0.5">—</span>';
+            trendEl.className = 'rt-stat-trend';
+        }
+        prevReqPerMin = reqPerMin;
+
+        // Traffic split
+        const humanCount = data.humanCount || 0;
+        const botCount = data.botCount || 0;
+        const total = humanCount + botCount || 1;
+        document.getElementById('splitHuman').style.width = ((humanCount / total) * 100).toFixed(1) + '%';
+        document.getElementById('humanCount').textContent = humanCount.toLocaleString();
+        document.getElementById('botCount').textContent = botCount.toLocaleString();
+
+        // Chart
+        updateChart(data.timeline);
+
+        // Stream
+        if (!streamPaused) {
+            renderStream(data.recentVisits);
+        }
+
+        // Sidebar
+        renderCountries(data.topCountries);
+        renderLinks(data.topLinks);
+
+        updateRefreshStatus(false);
+
+    } catch (e) {
+        console.error('Failed to load realtime data:', e);
+        updateRefreshStatus(false);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initChart();
+    loadRealtime();
+    setInterval(loadRealtime, 3000); // 3 second refresh
+    setInterval(updateLastRefreshText, 1000); // update "X seconds ago" every second
+
+    // Pause/resume stream
+    document.getElementById('toggleStream').addEventListener('click', function() {
+        streamPaused = !streamPaused;
+        this.innerHTML = streamPaused
+            ? '<i class="bi bi-play-fill"></i> Resume'
+            : '<i class="bi bi-pause-fill"></i> Pause';
+    });
+});
+</script>
+{{end}}

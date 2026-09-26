@@ -1,0 +1,636 @@
+{{define "content"}}
+<div class="api-keys">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="text-muted">Manage API keys for external integrations and automation</div>
+        <button class="btn btn-primary" onclick="showCreateModal()">
+            <i class="bi bi-plus-lg me-1"></i> Create API Key
+        </button>
+    </div>
+
+    <!-- Bulk Actions Bar (hidden by default) -->
+    <div class="bulk-actions-bar card mb-3 d-none" id="bulkActionsBar">
+        <div class="card-body py-2 d-flex align-items-center gap-3">
+            <span class="text-muted"><strong id="selectedCount">0</strong> selected</span>
+            <button class="btn btn-sm btn-outline-danger" onclick="showBulkDeleteModal()">
+                <i class="bi bi-trash me-1"></i> Delete Selected
+            </button>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="clearSelection()">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    <!-- Keys Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleSelectAll()">
+                            </th>
+                            <th>Name</th>
+                            <th>Key</th>
+                            <th>Scopes</th>
+                            <th>Rate Limit</th>
+                            <th>Last Used</th>
+                            <th>Requests</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keysTable">
+                        {{if .Keys}}
+                        {{range .Keys}}
+                        <tr data-id="{{.ID}}" data-name="{{.Name}}">
+                            <td>
+                                <input type="checkbox" class="form-check-input key-checkbox" value="{{.ID}}" onchange="updateSelection()">
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{.Name}}</div>
+                                <small class="text-muted">Created {{.CreatedAt.Format "Jan 2, 2006"}}</small>
+                            </td>
+                            <td>
+                                <code class="key-display {{if .IsTest}}test{{else}}live{{end}}">{{.KeyPrefix}}</code>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{len .Scopes}} scopes</span>
+                            </td>
+                            <td>{{.RateLimit}}/hr</td>
+                            <td>
+                                {{if .LastUsedAt}}
+                                {{.LastUsedAt.Format "Jan 2, 15:04"}}
+                                {{else}}
+                                <span class="text-muted">Never</span>
+                                {{end}}
+                            </td>
+                            <td>{{.RequestsCount}}</td>
+                            <td>
+                                {{if .IsActive}}
+                                <span class="badge bg-success">Active</span>
+                                {{else}}
+                                <span class="badge bg-danger">Revoked</span>
+                                {{end}}
+                                {{if .IsTest}}
+                                <span class="badge bg-warning">Test</span>
+                                {{end}}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {{if .IsActive}}
+                                    <button class="btn btn-outline-secondary" onclick="rotateKey('{{.ID}}')" title="Rotate">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="showRevokeModal('{{.ID}}', '{{.Name}}')" title="Revoke">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                    {{end}}
+                                    <button class="btn btn-outline-danger" onclick="showDeleteModal('{{.ID}}', '{{.Name}}')" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {{end}}
+                        {{else}}
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted">
+                                <i class="bi bi-key fs-1 d-block mb-2"></i>
+                                No API keys yet. Create one to get started.
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Documentation Link -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                    <i class="bi bi-book text-primary fs-4"></i>
+                </div>
+                <div>
+                    <h6 class="mb-1">API Documentation</h6>
+                    <p class="text-muted mb-0 small">Learn how to use the API with authentication, endpoints, and examples.</p>
+                </div>
+                <a href="/docs/api" class="btn btn-outline-primary ms-auto">View Docs</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Key Modal -->
+<div class="modal fade" id="createModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create API Key</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Key Name</label>
+                    <input type="text" id="keyName" class="form-control" placeholder="e.g., Production Server, Zapier Integration">
+                    <div class="form-text">A descriptive name to identify this key</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Environment</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="keyEnv" id="envLive" value="live" checked>
+                        <label class="btn btn-outline-success" for="envLive">
+                            <i class="bi bi-check-circle me-1"></i> Production
+                        </label>
+                        <input type="radio" class="btn-check" name="keyEnv" id="envTest" value="test">
+                        <label class="btn btn-outline-warning" for="envTest">
+                            <i class="bi bi-bug me-1"></i> Test / Sandbox
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Permissions</label>
+                    <div class="btn-group mb-2" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPreset('readonly')">Read Only</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPreset('standard')">Standard</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPreset('full')">Full Access</button>
+                    </div>
+                    <div class="scopes-grid">
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="links:read">
+                            <span class="scope-name">links:read</span>
+                            <span class="scope-desc">Read redirect links</span>
+                        </label>
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="links:write">
+                            <span class="scope-name">links:write</span>
+                            <span class="scope-desc">Create/update links</span>
+                        </label>
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="links:delete">
+                            <span class="scope-name">links:delete</span>
+                            <span class="scope-desc">Delete links</span>
+                        </label>
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="domains:read">
+                            <span class="scope-name">domains:read</span>
+                            <span class="scope-desc">Read domains</span>
+                        </label>
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="domains:manage">
+                            <span class="scope-name">domains:manage</span>
+                            <span class="scope-desc">Manage domains</span>
+                        </label>
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="analytics:read">
+                            <span class="scope-name">analytics:read</span>
+                            <span class="scope-desc">Read analytics</span>
+                        </label>
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="qrcodes:read">
+                            <span class="scope-name">qrcodes:read</span>
+                            <span class="scope-desc">Read QR codes</span>
+                        </label>
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="qrcodes:write">
+                            <span class="scope-name">qrcodes:write</span>
+                            <span class="scope-desc">Create QR codes</span>
+                        </label>
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="webhooks:manage">
+                            <span class="scope-name">webhooks:manage</span>
+                            <span class="scope-desc">Manage webhooks</span>
+                        </label>
+                        <label class="scope-item">
+                            <input type="checkbox" class="scope-checkbox" value="account:read">
+                            <span class="scope-name">account:read</span>
+                            <span class="scope-desc">Read account info</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Rate Limit</label>
+                        <div class="input-group">
+                            <input type="number" id="rateLimit" class="form-control" value="1000" min="100" max="10000">
+                            <span class="input-group-text">requests/hour</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Expiration</label>
+                        <input type="date" id="expiresAt" class="form-control" placeholder="Never">
+                        <div class="form-text">Leave empty for no expiration</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createKey()">
+                    <i class="bi bi-key me-1"></i> Create Key
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Created Modal -->
+<div class="modal fade" id="keyCreatedModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>API Key Created</h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning mb-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Copy your key now!</strong> It won't be shown again.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Your API Key</label>
+                    <div class="input-group">
+                        <input type="text" id="newKeyDisplay" class="form-control font-monospace" readonly>
+                        <button class="btn btn-outline-secondary" onclick="copyKey()">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-muted small">
+                    Use this key in the <code>Authorization</code> header:<br>
+                    <code>Authorization: Bearer bg_live_xxxx...</code>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeKeyModal()">
+                    I've copied my key
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Delete API Key</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete this API key?</p>
+                <div class="alert alert-warning mb-0">
+                    <strong id="deleteKeyName"></strong>
+                    <div class="small text-muted">This action cannot be undone.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash me-1"></i> Delete Key
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Delete Confirmation Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Delete Multiple Keys</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete <strong id="bulkDeleteCount">0</strong> API keys?</p>
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-exclamation-circle me-2"></i>
+                    This action cannot be undone. All selected keys will stop working immediately.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmBulkDelete()">
+                    <i class="bi bi-trash me-1"></i> Delete All Selected
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revoke Confirmation Modal -->
+<div class="modal fade" id="revokeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>Revoke API Key</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to revoke this API key?</p>
+                <div class="alert alert-warning mb-0">
+                    <strong id="revokeKeyName"></strong>
+                    <div class="small">The key will stop working immediately but can be viewed in history.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmRevokeBtn">
+                    <i class="bi bi-x-circle me-1"></i> Revoke Key
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.key-display {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--bs-tertiary-bg);
+}
+.key-display.live { border-left: 3px solid var(--bs-success); }
+.key-display.test { border-left: 3px solid var(--bs-warning); }
+
+.scopes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+.scope-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px;
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.scope-item:hover {
+    border-color: var(--bs-primary);
+}
+.scope-item:has(input:checked) {
+    background: rgba(var(--bs-primary-rgb), 0.1);
+    border-color: var(--bs-primary);
+}
+.scope-item input {
+    margin-top: 2px;
+}
+.scope-name {
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 600;
+    display: block;
+}
+.scope-desc {
+    font-size: 11px;
+    color: var(--bs-secondary-color);
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .scopes-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bulk-actions-bar {
+    background: var(--bs-warning-bg-subtle);
+    border-color: var(--bs-warning-border-subtle);
+}
+</style>
+
+<script>
+const PRESETS = {
+    readonly: ['links:read', 'domains:read', 'analytics:read', 'qrcodes:read', 'account:read'],
+    standard: ['links:read', 'links:write', 'domains:read', 'analytics:read', 'qrcodes:read', 'qrcodes:write', 'account:read'],
+    full: ['links:read', 'links:write', 'links:delete', 'domains:read', 'domains:manage', 'analytics:read', 'qrcodes:read', 'qrcodes:write', 'webhooks:manage', 'account:read']
+};
+
+let createModal, keyCreatedModal, deleteModal, bulkDeleteModal, revokeModal;
+let pendingDeleteId = null;
+let pendingRevokeId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    createModal = new bootstrap.Modal(document.getElementById('createModal'));
+    keyCreatedModal = new bootstrap.Modal(document.getElementById('keyCreatedModal'));
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    bulkDeleteModal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+    revokeModal = new bootstrap.Modal(document.getElementById('revokeModal'));
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+    document.getElementById('confirmRevokeBtn').addEventListener('click', confirmRevoke);
+});
+
+// Selection functions
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll').checked;
+    document.querySelectorAll('.key-checkbox').forEach(cb => cb.checked = selectAll);
+    updateSelection();
+}
+
+function updateSelection() {
+    const selected = document.querySelectorAll('.key-checkbox:checked').length;
+    const total = document.querySelectorAll('.key-checkbox').length;
+
+    document.getElementById('selectAll').checked = selected === total && total > 0;
+    document.getElementById('selectAll').indeterminate = selected > 0 && selected < total;
+
+    const bar = document.getElementById('bulkActionsBar');
+    if (selected > 0) {
+        bar.classList.remove('d-none');
+        document.getElementById('selectedCount').textContent = selected;
+    } else {
+        bar.classList.add('d-none');
+    }
+}
+
+function clearSelection() {
+    document.getElementById('selectAll').checked = false;
+    document.querySelectorAll('.key-checkbox').forEach(cb => cb.checked = false);
+    updateSelection();
+}
+
+function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.key-checkbox:checked')).map(cb => cb.value);
+}
+
+function showCreateModal() {
+    document.getElementById('keyName').value = '';
+    document.querySelectorAll('.scope-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('rateLimit').value = 1000;
+    document.getElementById('expiresAt').value = '';
+    document.getElementById('envLive').checked = true;
+    createModal.show();
+}
+
+function setPreset(preset) {
+    const scopes = PRESETS[preset] || [];
+    document.querySelectorAll('.scope-checkbox').forEach(cb => {
+        cb.checked = scopes.includes(cb.value);
+    });
+}
+
+async function createKey() {
+    const name = document.getElementById('keyName').value.trim();
+    const isTest = document.getElementById('envTest').checked;
+    const scopes = Array.from(document.querySelectorAll('.scope-checkbox:checked')).map(cb => cb.value);
+    const rateLimit = parseInt(document.getElementById('rateLimit').value) || 1000;
+    const expiresAt = document.getElementById('expiresAt').value || null;
+
+    if (!name) {
+        showToast('Please enter a key name', 'danger');
+        return;
+    }
+    if (scopes.length === 0) {
+        showToast('Please select at least one permission', 'danger');
+        return;
+    }
+
+    try {
+        const res = await fetch('/user/apikeys/api/keys', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, scopes, rateLimit, isTest, expiresAt })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            createModal.hide();
+            document.getElementById('newKeyDisplay').value = data.secretKey;
+            keyCreatedModal.show();
+        } else {
+            showToast(data.error || 'Failed to create key', 'danger');
+        }
+    } catch (e) {
+        showToast('Failed to create key', 'danger');
+    }
+}
+
+function copyKey() {
+    const input = document.getElementById('newKeyDisplay');
+    input.select();
+    document.execCommand('copy');
+    showToast('API key copied to clipboard', 'success');
+}
+
+function closeKeyModal() {
+    keyCreatedModal.hide();
+    location.reload();
+}
+
+// Delete modal functions
+function showDeleteModal(id, name) {
+    pendingDeleteId = id;
+    document.getElementById('deleteKeyName').textContent = name;
+    deleteModal.show();
+}
+
+async function confirmDelete() {
+    if (!pendingDeleteId) return;
+
+    try {
+        const res = await fetch(`/user/apikeys/api/keys/${pendingDeleteId}`, { method: 'DELETE' });
+        if (res.ok) {
+            deleteModal.hide();
+            showToast('Key deleted', 'success');
+            location.reload();
+        } else {
+            showToast('Failed to delete key', 'danger');
+        }
+    } catch (e) {
+        showToast('Failed to delete key', 'danger');
+    }
+}
+
+// Bulk delete functions
+function showBulkDeleteModal() {
+    const count = getSelectedIds().length;
+    if (count === 0) return;
+
+    document.getElementById('bulkDeleteCount').textContent = count;
+    bulkDeleteModal.show();
+}
+
+async function confirmBulkDelete() {
+    const ids = getSelectedIds();
+    if (ids.length === 0) return;
+
+    let success = 0;
+    let failed = 0;
+
+    for (const id of ids) {
+        try {
+            const res = await fetch(`/user/apikeys/api/keys/${id}`, { method: 'DELETE' });
+            if (res.ok) success++;
+            else failed++;
+        } catch (e) {
+            failed++;
+        }
+    }
+
+    bulkDeleteModal.hide();
+
+    if (failed === 0) {
+        showToast(`${success} key(s) deleted`, 'success');
+    } else {
+        showToast(`${success} deleted, ${failed} failed`, 'warning');
+    }
+
+    location.reload();
+}
+
+// Revoke modal functions
+function showRevokeModal(id, name) {
+    pendingRevokeId = id;
+    document.getElementById('revokeKeyName').textContent = name;
+    revokeModal.show();
+}
+
+async function confirmRevoke() {
+    if (!pendingRevokeId) return;
+
+    try {
+        const res = await fetch(`/user/apikeys/api/keys/${pendingRevokeId}/revoke`, { method: 'POST' });
+        if (res.ok) {
+            revokeModal.hide();
+            showToast('Key revoked', 'success');
+            location.reload();
+        } else {
+            showToast('Failed to revoke key', 'danger');
+        }
+    } catch (e) {
+        showToast('Failed to revoke key', 'danger');
+    }
+}
+
+async function rotateKey(id) {
+    if (!confirm('Rotate this key? A new key will be created and the old one will be revoked.')) return;
+
+    try {
+        const res = await fetch(`/user/apikeys/api/keys/${id}/rotate`, { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok) {
+            document.getElementById('newKeyDisplay').value = data.secretKey;
+            keyCreatedModal.show();
+        } else {
+            showToast(data.error || 'Failed to rotate key', 'danger');
+        }
+    } catch (e) {
+        showToast('Failed to rotate key', 'danger');
+    }
+}
+</script>
+{{end}}

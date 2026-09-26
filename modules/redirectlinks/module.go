@@ -169,6 +169,11 @@ type LinkBasic struct {
 	Path      string `json:"path"`
 }
 
+// Service returns the redirect link service for external use
+func (m *Module) Service() *services.RedirectLinkService {
+	return m.service
+}
+
 // ListForUser returns basic link info for the given user (used by QR codes module)
 func (m *Module) ListForUser(userID string) ([]LinkBasic, error) {
 	links, err := m.service.List(userID)

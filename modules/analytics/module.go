@@ -68,6 +68,8 @@ func (m *Module) Routes() chi.Router {
 
 	// Pages
 	r.Get("/", m.handler.Overview)
+	r.Get("/logs", m.handler.Logs)
+	r.Get("/realtime", m.handler.Realtime)
 	r.Get("/link/{linkId}", m.handler.LinkAnalytics)
 	r.Get("/link/{linkId}/settings", m.handler.LinkSettings)
 
@@ -76,6 +78,8 @@ func (m *Module) Routes() chi.Router {
 		r.Get("/overview", m.handler.APIGetOverview)
 		r.Get("/visitors", m.handler.APIGetVisitors)
 		r.Get("/countries", m.handler.APIGetUserCountries)
+		r.Get("/logs", m.handler.APIGetLogs)
+		r.Get("/realtime", m.handler.APIGetRealtime)
 		r.Post("/record", m.handler.APIRecordVisit)
 
 		r.Route("/link/{linkId}", func(r chi.Router) {

@@ -14,10 +14,17 @@ import (
 	"time"
 
 	"github.com/botginx/botginx/modules/admindash"
+	"github.com/botginx/botginx/modules/analogstats"
 	"github.com/botginx/botginx/modules/analytics"
+	"github.com/botginx/botginx/modules/awstats"
 	"github.com/botginx/botginx/modules/announcements"
+	"github.com/botginx/botginx/modules/antibotcontrol"
+	"github.com/botginx/botginx/modules/apikeys"
 	"github.com/botginx/botginx/modules/backup"
 	"github.com/botginx/botginx/modules/referrals"
+	"github.com/botginx/botginx/modules/webhooks"
+	"github.com/botginx/botginx/pkg/api/v1"
+	"github.com/botginx/botginx/pkg/apiauth"
 	analyticshandlers "github.com/botginx/botginx/modules/analytics/handlers"
 	"github.com/botginx/botginx/modules/auth"
 	"github.com/botginx/botginx/modules/dashboard"
@@ -40,6 +47,7 @@ import (
 	"github.com/botginx/botginx/modules/settings"
 	"github.com/botginx/botginx/modules/support"
 	"github.com/botginx/botginx/modules/telegram"
+	"github.com/botginx/botginx/modules/threatlog"
 	"github.com/botginx/botginx/modules/twofactor"
 	"github.com/botginx/botginx/modules/users"
 	"github.com/botginx/botginx/pkg/buildinfo"
@@ -297,6 +305,12 @@ func main() {
 	registry.Register(reportsModule)             // Reports module (CSV export)
 	domainHealthModule := domainhealth.New()
 	registry.Register(domainHealthModule)        // Domain health checker
+	registry.Register(analogstats.New())         // Analog Stats (classic web stats)
+	registry.Register(awstats.New())             // AWStats (advanced web statistics)
+	registry.Register(threatlog.New())           // Threat Log (security monitoring)
+	registry.Register(antibotcontrol.New())      // Antibot Control (default settings)
+	registry.Register(apikeys.New())             // API Keys management
+	registry.Register(webhooks.New())            // Webhooks module
 	registry.Register(hostingModule)             // Bullet Proof Hosting module
 	registry.Register(marketplaceModule)         // Domain marketplace
 	registry.Register(paymentsModule)            // Crypto payments
@@ -443,6 +457,25 @@ func main() {
 	// POST /api/payments/webhook/bitgo - BitGo transaction callback
 	r.Mount("/api/payments", paymentsModule.PublicRoutes())
 
+	// Public API v1 (API key auth)
+	// External integrations use API keys created in /user/apikeys
+	apiAuthMiddleware := apiauth.NewMiddleware(db.DB)
+	apiRateLimiter := apiauth.NewRateLimiter()
+	apiDeps := &v1.APIDependencies{
+		DB:                     db.DB,
+		LinksService:           redirectLinksModule.Service(),
+		DomainsService:         domainsModule.Service(),
+		AnalyticsService:       analyticsModule.Service(),
+		QRCodesService:         qrcodesModule.Service(),
+		ShortenerService:       shortenerModule.Service(),
+		GlobalWhitelistService: authModule.GlobalWhitelistService(),
+	}
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(apiAuthMiddleware.Authenticate)
+		r.Use(apiRateLimiter.RateLimitMiddleware())
+		r.Mount("/", v1.NewRouter(apiDeps))
+	})
+
 	// Telegram webhook (no auth, secret verified in handler)
 	// POST /telegram/webhook/{botID}/{secret} - Telegram bot callback
 	r.Mount("/telegram", telegramModule.Routes())
@@ -491,11 +524,41 @@ func main() {
 			r.Mount("/domains/health", dhMod.Routes())
 		}
 
+		// Analog Stats: classic web server statistics.
+		if asMod, ok := registry.Get("analogstats"); ok {
+			r.Mount("/analogstats", asMod.Routes())
+		}
+
+		// AWStats: advanced web statistics.
+		if awMod, ok := registry.Get("awstats"); ok {
+			r.Mount("/awstats", awMod.Routes())
+		}
+
+		// Threat Log: security monitoring.
+		if tlMod, ok := registry.Get("threatlog"); ok {
+			r.Mount("/threatlog", tlMod.Routes())
+		}
+
+		// Antibot Control: default protection settings.
+		if abMod, ok := registry.Get("antibotcontrol"); ok {
+			r.Mount("/antibotcontrol", abMod.Routes())
+		}
+
+		// API Keys: manage API keys for external integrations.
+		if akMod, ok := registry.Get("apikeys"); ok {
+			r.Mount("/apikeys", akMod.Routes())
+		}
+
+		// Webhooks: event subscriptions for external integrations.
+		if whMod, ok := registry.Get("webhooks"); ok {
+			r.Mount("/webhooks", whMod.Routes())
+		}
+
 		// Product routes: writes require an active subscription.
 		// Unsubscribed users can browse but cannot create, edit, or delete.
 		r.Group(func(r chi.Router) {
 			r.Use(subscriptions.Enforce)
-			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth", "payments", "twofactor", "qrcodes", "reports", "domainhealth")
+			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth", "payments", "twofactor", "qrcodes", "reports", "domainhealth", "analogstats", "awstats", "threatlog", "antibotcontrol", "apikeys", "webhooks")
 		})
 
 		// Registered on the section rather than inside the group above: chi

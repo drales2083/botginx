@@ -80,6 +80,11 @@ func (m *Module) Templates() fs.FS {
 	return tmplFS
 }
 
+// Service returns the QR code service for external use
+func (m *Module) Service() *services.QRCodeService {
+	return m.service
+}
+
 func (m *Module) MenuItems() []module.MenuItem {
 	return []module.MenuItem{
 		{

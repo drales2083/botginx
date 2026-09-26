@@ -234,7 +234,7 @@ const TOOL_GROUPS = [
             { label: 'Short URLs', icon: 'scissors', href: '/user/shortener' },
             { label: 'Create Short URL', icon: 'plus', href: '/user/shortener/new' },
             { label: 'QR Codes', icon: 'mobile-phone-with-arrow', href: '/user/qrcodes' },
-            { label: 'Bulk Import', icon: 'inbox-tray', href: '/user/redirectlinks/import', soon: true },
+            { label: 'Antibot Control', icon: 'shield', href: '/user/antibotcontrol' },
             { label: 'Reports', icon: 'page-facing-up', href: '/user/reports' },
         ],
     },
@@ -257,9 +257,10 @@ const TOOL_GROUPS = [
         accent: '#0dcaf0',
         tools: [
             { label: 'Analytics', icon: 'chart-increasing', href: '/user/analytics' },
-            { label: 'Click Logs', icon: 'page-facing-up', href: '/user/analytics/logs', soon: true },
-            { label: 'Real-time', icon: 'stopwatch', href: '/user/analytics/realtime', soon: true },
-            { label: 'Export Data', icon: 'outbox-tray', href: '/user/analytics/export', soon: true },
+            { label: 'Click Logs', icon: 'page-facing-up', href: '/user/analytics/logs' },
+            { label: 'Real-time', icon: 'stopwatch', href: '/user/analytics/realtime' },
+            { label: 'Analog Stats', icon: 'bar-chart', href: '/user/analogstats' },
+            { label: 'AWStats', icon: 'chart-increasing', href: '/user/awstats' },
         ],
     },
     {
@@ -268,9 +269,9 @@ const TOOL_GROUPS = [
         icon: 'shield',
         accent: '#dc3545',
         tools: [
+            { label: 'Threat Log', icon: 'warning', href: '/user/threatlog' },
             { label: 'IP Whitelist', icon: 'check-mark-button', href: '/user/iplists/whitelist' },
             { label: 'IP Blocklist', icon: 'stop-sign', href: '/user/iplists/blocklist' },
-            { label: 'Threat Log', icon: 'warning', href: '/user/iplists/threats', soon: true },
         ],
     },
     {
@@ -284,7 +285,7 @@ const TOOL_GROUPS = [
             { label: 'Deposit', icon: 'money-with-wings', href: '/user/payments' },
             { label: 'Transactions', icon: 'receipt', href: '/user/payments/transactions' },
             { label: 'Referrals', icon: 'handshake', href: '/user/referrals' },
-            { label: 'API Keys', icon: 'old-key', href: '/user/settings/api-keys', soon: true },
+            { label: 'API Keys', icon: 'old-key', href: '/user/apikeys' },
             { label: 'Two-Factor', icon: 'locked-with-pen', href: '/user/twofactor' },
         ],
     },

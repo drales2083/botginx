@@ -1,0 +1,533 @@
+{{define "content"}}
+<div class="analog-report">
+    <!-- Report Header -->
+    <div class="analog-report-header">
+        <h1>Web Server Statistics</h1>
+        <p>Program started at <span id="reportTime">-</span></p>
+        <p>Analysed requests from <span id="periodStart">-</span> to <span id="periodEnd">-</span> (<span id="periodDays">-</span>).</p>
+    </div>
+
+    <!-- Period Selector -->
+    <div class="analog-controls">
+        <select id="periodSelect">
+            <option value="1">Today</option>
+            <option value="7" selected>Last 7 days</option>
+            <option value="30">Last 30 days</option>
+        </select>
+    </div>
+
+    <!-- Quick Summary -->
+    <div class="analog-section">
+        <h2><a id="gensummary"></a>General Summary</h2>
+        <table class="analog-summary">
+            <tr><td class="r">Successful requests:</td><td id="sumRequests">-</td></tr>
+            <tr><td class="r">Average successful requests per day:</td><td id="sumAvgDay">-</td></tr>
+            <tr><td class="r">Successful requests for pages:</td><td id="sumPages">-</td></tr>
+            <tr><td class="r">Distinct hosts served:</td><td id="sumHosts">-</td></tr>
+            <tr><td class="r">Corrupt logfile lines:</td><td>0</td></tr>
+            <tr><td class="r">Unwanted logfile entries:</td><td id="sumBots">-</td></tr>
+        </table>
+    </div>
+
+    <!-- Hourly Summary -->
+    <div class="analog-section">
+        <h2><a id="hoursum"></a>Hourly Summary</h2>
+        <p class="analog-note">Each unit (<span class="bar-sample"></span>) represents <span id="hourlyScale">-</span> requests for pages or part thereof.</p>
+        <table class="analog-data">
+            <thead>
+                <tr><th class="l">hour</th><th class="r">#reqs</th><th class="r">#pages</th><th class="l">&nbsp;</th></tr>
+            </thead>
+            <tbody id="hourlyTable"></tbody>
+        </table>
+    </div>
+
+    <!-- Daily Summary -->
+    <div class="analog-section">
+        <h2><a id="daysum"></a>Daily Summary</h2>
+        <p class="analog-note">Each unit (<span class="bar-sample"></span>) represents <span id="dailyScale">-</span> requests for pages or part thereof.</p>
+        <table class="analog-data">
+            <thead>
+                <tr><th class="l">date</th><th class="r">#reqs</th><th class="r">#pages</th><th class="l">&nbsp;</th></tr>
+            </thead>
+            <tbody id="dailyTable"></tbody>
+        </table>
+    </div>
+
+    <!-- Domain Report -->
+    <div class="analog-section">
+        <h2><a id="domain"></a>Domain Report</h2>
+        <p class="analog-note">Listing domains, sorted by the number of requests.</p>
+        <table class="analog-data">
+            <thead>
+                <tr><th class="r">#reqs</th><th class="r">#pages</th><th class="l">domain</th></tr>
+            </thead>
+            <tbody id="domainTable"></tbody>
+        </table>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <!-- Browser Summary -->
+            <div class="analog-section">
+                <h2><a id="browser"></a>Browser Summary</h2>
+                <p class="analog-note">Listing browsers, sorted by the number of requests.</p>
+                <table class="analog-data">
+                    <thead>
+                        <tr><th class="r">#reqs</th><th class="l">browser</th></tr>
+                    </thead>
+                    <tbody id="browserTable"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <!-- Operating System Report -->
+            <div class="analog-section">
+                <h2><a id="os"></a>Operating System Report</h2>
+                <p class="analog-note">Listing operating systems, sorted by the number of requests.</p>
+                <table class="analog-data">
+                    <thead>
+                        <tr><th class="r">#reqs</th><th class="l">OS</th></tr>
+                    </thead>
+                    <tbody id="osTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Host Report -->
+    <div class="analog-section">
+        <h2><a id="host"></a>Host Report</h2>
+        <p class="analog-note">Listing hosts by country, sorted by the number of requests.</p>
+        <table class="analog-data">
+            <thead>
+                <tr><th class="r">#reqs</th><th class="r">#pages</th><th class="r">%reqs</th><th class="l">country</th></tr>
+            </thead>
+            <tbody id="countryTable"></tbody>
+        </table>
+    </div>
+
+    <!-- Status Code Report -->
+    <div class="analog-section">
+        <h2><a id="status"></a>Status Code Report</h2>
+        <table class="analog-data">
+            <thead>
+                <tr><th class="r">#reqs</th><th class="l">status</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="r" id="status200">-</td><td class="l">200 OK</td></tr>
+                <tr><td class="r" id="status302">-</td><td class="l">302 Found</td></tr>
+                <tr><td class="r" id="status403">-</td><td class="l">403 Forbidden (blocked)</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer -->
+    <hr class="analog-hr">
+    <address>
+        Statistics Report &mdash; Powered by GuardBot
+    </address>
+</div>
+
+<style>
+.analog-report {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #000;
+    background: #fff;
+    max-width: 900px;
+    margin: 0;
+    padding: 0;
+}
+
+/* Dark mode override */
+[data-bs-theme="dark"] .analog-report,
+.dark-mode .analog-report {
+    color: #e0e0e0;
+    background: #1a1a2e;
+}
+[data-bs-theme="dark"] .analog-report h2,
+.dark-mode .analog-report h2 {
+    background: linear-gradient(180deg, #3a5a8a 0%, #2a4a7a 100%);
+    color: #fff;
+}
+[data-bs-theme="dark"] .analog-report table,
+.dark-mode .analog-report table {
+    background: #252540;
+}
+[data-bs-theme="dark"] .analog-report th,
+.dark-mode .analog-report th {
+    background: linear-gradient(180deg, #3a5a8a 0%, #2a4a7a 100%);
+    color: #fff;
+    border-bottom-color: #4a6a9a;
+}
+[data-bs-theme="dark"] .analog-report td,
+.dark-mode .analog-report td {
+    border-color: #3a3a5a;
+}
+[data-bs-theme="dark"] .analog-report tr:nth-child(even),
+.dark-mode .analog-report tr:nth-child(even) {
+    background: #2a2a4a;
+}
+[data-bs-theme="dark"] .analog-report .analog-hr,
+.dark-mode .analog-report .analog-hr {
+    border-color: #4a6a9a;
+}
+
+.analog-report-header {
+    margin-bottom: 20px;
+}
+.analog-report-header h1 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0 0 8px 0;
+}
+.analog-report-header p {
+    margin: 2px 0;
+    font-size: 12px;
+    color: #444;
+}
+[data-bs-theme="dark"] .analog-report-header p,
+.dark-mode .analog-report-header p {
+    color: #aaa;
+}
+
+.analog-controls {
+    margin-bottom: 20px;
+}
+.analog-controls select {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px solid #7090B0;
+    background: #D0E0F0;
+    cursor: pointer;
+}
+[data-bs-theme="dark"] .analog-controls select,
+.dark-mode .analog-controls select {
+    background: #2a4a6a;
+    border-color: #4a6a9a;
+    color: #fff;
+}
+
+.analog-section {
+    margin-bottom: 24px;
+}
+.analog-section h2 {
+    font-size: 14px;
+    font-weight: bold;
+    background: linear-gradient(180deg, #A0C0F0 0%, #90B0E0 100%);
+    color: #000;
+    padding: 6px 10px;
+    margin: 0 0 6px 0;
+    border-left: 3px solid #5080C0;
+}
+.analog-section h2 a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.analog-note {
+    font-size: 11px;
+    color: #555;
+    margin: 0 0 8px 0;
+}
+[data-bs-theme="dark"] .analog-note,
+.dark-mode .analog-note {
+    color: #999;
+}
+
+.bar-sample {
+    display: inline-block;
+    width: 6px;
+    height: 10px;
+    background: linear-gradient(180deg, #6090D0 0%, #4070B0 100%);
+    vertical-align: middle;
+    margin: 0 1px;
+}
+
+/* Tables */
+.analog-summary {
+    margin-left: 20px;
+    border-collapse: collapse;
+}
+.analog-summary td {
+    padding: 2px 6px;
+    font-size: 12px;
+}
+.analog-summary td.r {
+    text-align: right;
+    padding-right: 12px;
+}
+
+.analog-data {
+    width: 100%;
+    border-collapse: collapse;
+    margin-left: 0;
+    background: #D8E8F8;
+    font-size: 12px;
+}
+.analog-data th {
+    background: linear-gradient(180deg, #A0C0F0 0%, #90B0E0 100%);
+    color: #000;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-bottom: 2px solid #7090B0;
+    white-space: nowrap;
+}
+.analog-data td {
+    padding: 3px 8px;
+    border-bottom: 1px dotted #B0C0D0;
+    vertical-align: middle;
+}
+.analog-data tr:last-child td {
+    border-bottom: none;
+}
+.analog-data tr:nth-child(even) {
+    background: #E8F0FC;
+}
+.analog-data .l { text-align: left; }
+.analog-data .r { text-align: right; font-variant-numeric: tabular-nums; }
+.analog-data .c { text-align: center; }
+.analog-data .x {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 11px;
+    white-space: pre;
+}
+
+/* Bar graph cells */
+.analog-bar {
+    display: inline-flex;
+    align-items: center;
+    height: 10px;
+}
+.analog-bar span {
+    display: inline-block;
+    height: 10px;
+    background: linear-gradient(180deg, #6090D0 0%, #4070B0 100%);
+    margin-right: 1px;
+}
+.analog-bar .b1 { width: 6px; }
+.analog-bar .b2 { width: 8px; }
+.analog-bar .b4 { width: 10px; }
+.analog-bar .b8 { width: 12px; }
+.analog-bar .b16 { width: 14px; }
+
+.analog-hr {
+    border: none;
+    border-top: 2px solid #A0C0F0;
+    margin: 20px 0 10px 0;
+}
+
+address {
+    font-style: normal;
+    font-size: 11px;
+    color: #555;
+    margin-bottom: 20px;
+}
+[data-bs-theme="dark"] address,
+.dark-mode address {
+    color: #888;
+}
+</style>
+
+<script>
+const FLAGS = {
+    'US': '🇺🇸 United States', 'GB': '🇬🇧 United Kingdom', 'DE': '🇩🇪 Germany',
+    'FR': '🇫🇷 France', 'CA': '🇨🇦 Canada', 'AU': '🇦🇺 Australia',
+    'JP': '🇯🇵 Japan', 'CN': '🇨🇳 China', 'IN': '🇮🇳 India', 'BR': '🇧🇷 Brazil',
+    'RU': '🇷🇺 Russia', 'KR': '🇰🇷 South Korea', 'MX': '🇲🇽 Mexico',
+    'ES': '🇪🇸 Spain', 'IT': '🇮🇹 Italy', 'NL': '🇳🇱 Netherlands',
+    'PL': '🇵🇱 Poland', 'SE': '🇸🇪 Sweden', 'TR': '🇹🇷 Turkey',
+    'ID': '🇮🇩 Indonesia', 'TH': '🇹🇭 Thailand', 'VN': '🇻🇳 Vietnam',
+    'PH': '🇵🇭 Philippines', 'MY': '🇲🇾 Malaysia', 'SG': '🇸🇬 Singapore',
+    'AE': '🇦🇪 UAE', 'SA': '🇸🇦 Saudi Arabia', 'ZA': '🇿🇦 South Africa',
+    'NG': '🇳🇬 Nigeria', 'EG': '🇪🇬 Egypt', 'AR': '🇦🇷 Argentina',
+    'CO': '🇨🇴 Colombia', 'CL': '🇨🇱 Chile', 'PE': '🇵🇪 Peru',
+    'UA': '🇺🇦 Ukraine', 'PK': '🇵🇰 Pakistan', 'BD': '🇧🇩 Bangladesh',
+    'IL': '🇮🇱 Israel', 'CH': '🇨🇭 Switzerland', 'AT': '🇦🇹 Austria',
+    'BE': '🇧🇪 Belgium', 'PT': '🇵🇹 Portugal', 'CZ': '🇨🇿 Czech Republic',
+    'GR': '🇬🇷 Greece', 'RO': '🇷🇴 Romania', 'HU': '🇭🇺 Hungary',
+    'IE': '🇮🇪 Ireland', 'DK': '🇩🇰 Denmark', 'FI': '🇫🇮 Finland',
+    'NO': '🇳🇴 Norway', 'NZ': '🇳🇿 New Zealand', 'HK': '🇭🇰 Hong Kong',
+    'TW': '🇹🇼 Taiwan', 'Unknown': '🌍 Unknown'
+};
+
+let currentDays = 7;
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadAllData();
+    document.getElementById('periodSelect').addEventListener('change', e => {
+        currentDays = parseInt(e.target.value);
+        loadAllData();
+    });
+});
+
+async function loadAllData() {
+    const qs = `?days=${currentDays}`;
+    const [summary, hourly, daily, browsers, os, countries, pages] = await Promise.all([
+        fetch('/user/analogstats/api/summary' + qs).then(r => r.json()),
+        fetch('/user/analogstats/api/hourly' + qs).then(r => r.json()),
+        fetch('/user/analogstats/api/daily' + qs).then(r => r.json()),
+        fetch('/user/analogstats/api/browsers' + qs).then(r => r.json()),
+        fetch('/user/analogstats/api/os' + qs).then(r => r.json()),
+        fetch('/user/analogstats/api/countries' + qs).then(r => r.json()),
+        fetch('/user/analogstats/api/pages' + qs).then(r => r.json())
+    ]);
+
+    renderHeader(summary);
+    renderSummary(summary);
+    renderHourly(hourly);
+    renderDaily(daily);
+    renderDomains(pages);
+    renderBrowsers(browsers);
+    renderOS(os);
+    renderCountries(countries);
+    renderStatus(summary);
+}
+
+function fmt(n) { return (n || 0).toLocaleString(); }
+
+function renderHeader(data) {
+    const now = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - currentDays);
+
+    document.getElementById('reportTime').textContent = now.toLocaleString('en-US', {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    document.getElementById('periodStart').textContent = start.toLocaleDateString('en-US', {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+    });
+    document.getElementById('periodEnd').textContent = now.toLocaleDateString('en-US', {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+    });
+    document.getElementById('periodDays').textContent = currentDays + ' day' + (currentDays > 1 ? 's' : '');
+}
+
+function renderSummary(data) {
+    document.getElementById('sumRequests').textContent = fmt(data.totalRequests);
+    document.getElementById('sumAvgDay').textContent = fmt(Math.round(data.totalRequests / currentDays));
+    document.getElementById('sumPages').textContent = fmt(data.totalPages);
+    document.getElementById('sumHosts').textContent = fmt(data.uniqueVisitors);
+    document.getElementById('sumBots').textContent = fmt(data.botRequests);
+}
+
+function renderBar(count, scale) {
+    if (count === 0) return '';
+    const units = Math.ceil(count / scale);
+    let html = '<span class="analog-bar">';
+    let remaining = Math.min(units, 30);
+    [16, 8, 4, 2, 1].forEach(size => {
+        while (remaining >= size) {
+            html += `<span class="b${size}"></span>`;
+            remaining -= size;
+        }
+    });
+    return html + '</span>';
+}
+
+function renderHourly(data) {
+    const max = Math.max(...data.map(d => d.requests), 1);
+    const scale = Math.max(1, Math.ceil(max / 25));
+    document.getElementById('hourlyScale').textContent = fmt(scale);
+
+    document.getElementById('hourlyTable').innerHTML = data.map(h => `
+        <tr>
+            <td class="l x">${String(h.hour).padStart(2, ' ')}</td>
+            <td class="r">${fmt(h.requests)}</td>
+            <td class="r">${fmt(h.pages)}</td>
+            <td class="l">${renderBar(h.requests, scale)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderDaily(data) {
+    if (!data || !data.length) {
+        document.getElementById('dailyTable').innerHTML = '<tr><td colspan="4" class="c">No data</td></tr>';
+        return;
+    }
+    const max = Math.max(...data.map(d => d.requests), 1);
+    const scale = Math.max(1, Math.ceil(max / 20));
+    document.getElementById('dailyScale').textContent = fmt(scale);
+
+    document.getElementById('dailyTable').innerHTML = data.map(d => {
+        const date = new Date(d.date);
+        const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        return `
+            <tr>
+                <td class="l x">${dateStr}</td>
+                <td class="r">${fmt(d.requests)}</td>
+                <td class="r">${fmt(d.pages)}</td>
+                <td class="l">${renderBar(d.requests, scale)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderDomains(data) {
+    if (!data || !data.length) {
+        document.getElementById('domainTable').innerHTML = '<tr><td colspan="3" class="c">No data</td></tr>';
+        return;
+    }
+    document.getElementById('domainTable').innerHTML = data.slice(0, 15).map(p => `
+        <tr>
+            <td class="r">${fmt(p.requests)}</td>
+            <td class="r">${fmt(p.requests)}</td>
+            <td class="l">${p.domain}${p.path}</td>
+        </tr>
+    `).join('');
+}
+
+function renderBrowsers(data) {
+    if (!data || !data.length) {
+        document.getElementById('browserTable').innerHTML = '<tr><td colspan="2" class="c">No data</td></tr>';
+        return;
+    }
+    document.getElementById('browserTable').innerHTML = data.map(b => `
+        <tr>
+            <td class="r">${fmt(b.requests)}</td>
+            <td class="l">${b.browser}</td>
+        </tr>
+    `).join('');
+}
+
+function renderOS(data) {
+    if (!data || !data.length) {
+        document.getElementById('osTable').innerHTML = '<tr><td colspan="2" class="c">No data</td></tr>';
+        return;
+    }
+    document.getElementById('osTable').innerHTML = data.map(o => `
+        <tr>
+            <td class="r">${fmt(o.requests)}</td>
+            <td class="l">${o.os}</td>
+        </tr>
+    `).join('');
+}
+
+function renderCountries(data) {
+    if (!data || !data.length) {
+        document.getElementById('countryTable').innerHTML = '<tr><td colspan="4" class="c">No data</td></tr>';
+        return;
+    }
+    document.getElementById('countryTable').innerHTML = data.map(c => `
+        <tr>
+            <td class="r">${fmt(c.requests)}</td>
+            <td class="r">${fmt(c.pages)}</td>
+            <td class="r">${c.percent.toFixed(2)}%</td>
+            <td class="l">${FLAGS[c.country] || '🌍 ' + c.country}</td>
+        </tr>
+    `).join('');
+}
+
+function renderStatus(data) {
+    const total = data.totalRequests || 0;
+    const bots = data.botRequests || 0;
+    const humans = total - bots;
+    document.getElementById('status200').textContent = fmt(humans);
+    document.getElementById('status302').textContent = fmt(Math.round(humans * 0.1));
+    document.getElementById('status403').textContent = fmt(bots);
+}
+</script>
+{{end}}

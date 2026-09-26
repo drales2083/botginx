@@ -1,0 +1,254 @@
+{{define "content"}}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-list-ul me-2"></i>Click Logs</h3>
+        <div class="card-tools">
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()" title="Refresh">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body pb-2">
+        <div class="row g-2 mb-3">
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="filterLink">
+                    <option value="">All Links</option>
+                    {{range .Links}}
+                    <option value="{{.ID}}">{{.Domain}}{{.Path}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterCountry">
+                    <option value="">All Countries</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterBot">
+                    <option value="">All Traffic</option>
+                    <option value="humans">Humans Only</option>
+                    <option value="bots">Bots Only</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control form-control-sm" id="filterStart" placeholder="From">
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control form-control-sm" id="filterEnd" placeholder="To">
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-primary btn-sm w-100" onclick="loadLogs()">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="mb-2">
+            <input type="text" class="form-control form-control-sm" id="searchBox" placeholder="Search by IP, referrer, or user agent..." style="max-width: 400px;">
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="logsTable">
+            <thead>
+                <tr>
+                    <th style="width: 140px;">Time</th>
+                    <th>Link</th>
+                    <th style="width: 130px;">IP</th>
+                    <th style="width: 80px;">Country</th>
+                    <th style="width: 80px;">Device</th>
+                    <th>Referrer</th>
+                    <th style="width: 70px;">Bot</th>
+                </tr>
+            </thead>
+            <tbody id="logsBody">
+                <tr><td colspan="7" class="text-center py-4 text-muted">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <small class="text-muted" id="logCount">-</small>
+        <nav id="pagination"></nav>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Visit Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailBody"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+#logsTable tbody tr { cursor: pointer; }
+#logsTable tbody tr:hover { background: var(--bs-tertiary-bg); }
+.log-detail-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--bs-border-color); }
+.log-detail-row:last-child { border-bottom: 0; }
+.log-detail-label { color: var(--bs-secondary-color); font-size: 0.85rem; }
+.log-detail-value { font-weight: 500; text-align: right; max-width: 250px; word-break: break-all; }
+</style>
+
+<script>
+let currentPage = 1;
+let logsData = [];
+
+const FLAGS = {
+    'US': '🇺🇸', 'GB': '🇬🇧', 'DE': '🇩🇪', 'FR': '🇫🇷', 'CA': '🇨🇦', 'AU': '🇦🇺',
+    'JP': '🇯🇵', 'CN': '🇨🇳', 'IN': '🇮🇳', 'BR': '🇧🇷', 'RU': '🇷🇺', 'KR': '🇰🇷',
+    'MX': '🇲🇽', 'ES': '🇪🇸', 'IT': '🇮🇹', 'NL': '🇳🇱', 'PL': '🇵🇱', 'SE': '🇸🇪',
+    'TR': '🇹🇷', 'ID': '🇮🇩', 'TH': '🇹🇭', 'VN': '🇻🇳', 'PH': '🇵🇭', 'MY': '🇲🇾',
+    'SG': '🇸🇬', 'AE': '🇦🇪', 'SA': '🇸🇦', 'ZA': '🇿🇦', 'NG': '🇳🇬', 'EG': '🇪🇬',
+    'AR': '🇦🇷', 'CO': '🇨🇴', 'CL': '🇨🇱', 'PE': '🇵🇪', 'UA': '🇺🇦', 'PK': '🇵🇰',
+    'BD': '🇧🇩', 'IL': '🇮🇱', 'CH': '🇨🇭', 'AT': '🇦🇹', 'BE': '🇧🇪', 'PT': '🇵🇹',
+    'CZ': '🇨🇿', 'GR': '🇬🇷', 'RO': '🇷🇴', 'HU': '🇭🇺', 'IE': '🇮🇪', 'DK': '🇩🇰',
+    'FI': '🇫🇮', 'NO': '🇳🇴', 'NZ': '🇳🇿', 'HK': '🇭🇰', 'TW': '🇹🇼'
+};
+
+const DEVICE_ICONS = {
+    'desktop': 'bi-pc-display',
+    'mobile': 'bi-phone',
+    'tablet': 'bi-tablet'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    document.getElementById('filterStart').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('filterEnd').value = today.toISOString().split('T')[0];
+
+    loadLogs();
+
+    let searchTimeout;
+    document.getElementById('searchBox').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => loadLogs(), 300);
+    });
+});
+
+async function loadLogs(page = 1) {
+    currentPage = page;
+
+    const params = new URLSearchParams({
+        page: page,
+        link: document.getElementById('filterLink').value,
+        country: document.getElementById('filterCountry').value,
+        bot: document.getElementById('filterBot').value,
+        start: document.getElementById('filterStart').value,
+        end: document.getElementById('filterEnd').value,
+        search: document.getElementById('searchBox').value
+    });
+
+    document.getElementById('logsBody').innerHTML = '<tr><td colspan="7" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading...</td></tr>';
+
+    try {
+        const res = await fetch('/user/analytics/api/logs?' + params);
+        const data = await res.json();
+
+        logsData = data.logs || [];
+        renderLogs(logsData);
+        renderPagination(data.page, data.totalPages, data.total);
+
+        document.getElementById('logCount').textContent = `Showing ${logsData.length} of ${data.total} visits`;
+    } catch (e) {
+        document.getElementById('logsBody').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Failed to load logs</td></tr>';
+    }
+}
+
+function renderLogs(logs) {
+    const tbody = document.getElementById('logsBody');
+
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No visits found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = logs.map((log, idx) => `
+        <tr onclick="showDetail(${idx})">
+            <td>
+                <div class="small">${formatTime(log.createdAt)}</div>
+            </td>
+            <td>
+                <div class="fw-semibold text-truncate" style="max-width: 200px;" title="${log.domain}${log.path}">
+                    ${log.domain}${log.path || '/'}
+                </div>
+            </td>
+            <td><code class="small">${log.ip}</code></td>
+            <td>${FLAGS[log.country] || ''} ${log.country || '-'}</td>
+            <td><i class="${DEVICE_ICONS[log.device] || 'bi-pc-display'}"></i> ${log.device}</td>
+            <td>
+                <div class="text-truncate small" style="max-width: 150px;" title="${log.referrerDomain || log.referrer || 'Direct'}">
+                    ${log.referrerDomain || 'Direct'}
+                </div>
+            </td>
+            <td>
+                ${log.isBot
+                    ? '<span class="badge text-bg-danger">Bot</span>'
+                    : '<span class="badge text-bg-success">Human</span>'}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderPagination(page, totalPages, total) {
+    const nav = document.getElementById('pagination');
+    if (totalPages <= 1) {
+        nav.innerHTML = '';
+        return;
+    }
+
+    nav.innerHTML = `
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item ${page === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadLogs(${page - 1}); return false;">Prev</a>
+            </li>
+            <li class="page-item active">
+                <span class="page-link">${page} / ${totalPages}</span>
+            </li>
+            <li class="page-item ${page === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadLogs(${page + 1}); return false;">Next</a>
+            </li>
+        </ul>
+    `;
+}
+
+function formatTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+           d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function showDetail(idx) {
+    const log = logsData[idx];
+    if (!log) return;
+
+    const html = `
+        <div class="log-detail-row"><span class="log-detail-label">Time</span><span class="log-detail-value">${new Date(log.createdAt).toLocaleString()}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">Link</span><span class="log-detail-value">${log.domain}${log.path}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">IP</span><span class="log-detail-value">${log.ip}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">Country</span><span class="log-detail-value">${FLAGS[log.country] || ''} ${log.country || '-'}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">Device</span><span class="log-detail-value">${log.device}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">Browser</span><span class="log-detail-value">${log.browser || '-'}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">OS</span><span class="log-detail-value">${log.os || '-'}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">Referrer</span><span class="log-detail-value">${log.referrer || 'Direct'}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">Bot Score</span><span class="log-detail-value">${log.botScore}</span></div>
+        <div class="log-detail-row"><span class="log-detail-label">Status</span><span class="log-detail-value">${log.isBot ? '<span class="badge text-bg-danger">Bot</span>' : '<span class="badge text-bg-success">Human</span>'}</span></div>
+        ${log.blocked ? `<div class="log-detail-row"><span class="log-detail-label">Block Reason</span><span class="log-detail-value">${log.blockReason}</span></div>` : ''}
+        ${log.utmSource ? `<div class="log-detail-row"><span class="log-detail-label">UTM Source</span><span class="log-detail-value">${log.utmSource}</span></div>` : ''}
+        ${log.utmMedium ? `<div class="log-detail-row"><span class="log-detail-label">UTM Medium</span><span class="log-detail-value">${log.utmMedium}</span></div>` : ''}
+        ${log.utmCampaign ? `<div class="log-detail-row"><span class="log-detail-label">UTM Campaign</span><span class="log-detail-value">${log.utmCampaign}</span></div>` : ''}
+        <div class="log-detail-row"><span class="log-detail-label">User Agent</span><span class="log-detail-value small">${log.userAgent || '-'}</span></div>
+    `;
+
+    document.getElementById('detailBody').innerHTML = html;
+
+    const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+    modal.show();
+}
+</script>
+{{end}}

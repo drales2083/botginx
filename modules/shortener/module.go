@@ -153,3 +153,8 @@ func (m *Module) OwnerOf(linkID string) (string, error) {
 func (m *Module) RecordClick(linkID, userID string, isBot bool, country, device, ip, userAgent string) error {
 	return m.service.RecordClick(linkID, userID, isBot, country, device, ip, userAgent)
 }
+
+// Service returns the shortener service for external use
+func (m *Module) Service() *services.ShortenerService {
+	return m.service
+}

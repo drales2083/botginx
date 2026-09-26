@@ -1470,6 +1470,90 @@ func (h *Handler) TrackingPixel(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Logs page handler
+func (h *Handler) Logs(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+
+	// Get user's links for filter dropdown
+	links, _ := h.service.GetUserLinks(userID)
+
+	module.RenderUserSection(w, r, h.templates, "analytics:logs.html", map[string]interface{}{
+		"Title": "Click Logs",
+		"Links": links,
+	})
+}
+
+// APIGetLogs returns paginated visit logs
+func (h *Handler) APIGetLogs(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+
+	// Parse filters
+	linkID := r.URL.Query().Get("link")
+	country := r.URL.Query().Get("country")
+	botFilter := r.URL.Query().Get("bot") // "all", "bots", "humans"
+	search := r.URL.Query().Get("search")
+	startDate := r.URL.Query().Get("start")
+	endDate := r.URL.Query().Get("end")
+
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if pInt, err := parseIntParam(p); err == nil && pInt > 0 {
+			page = pInt
+		}
+	}
+
+	limit := 50
+
+	logs, total, err := h.service.GetVisitLogs(userID, linkID, country, botFilter, search, startDate, endDate, page, limit)
+	if err != nil {
+		h.jsonError(w, "Failed to get logs", http.StatusInternalServerError)
+		return
+	}
+
+	totalPages := (total + limit - 1) / limit
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"logs":       logs,
+		"total":      total,
+		"page":       page,
+		"totalPages": totalPages,
+	})
+}
+
+func parseIntParam(s string) (int, error) {
+	var n int
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return 0, io.EOF
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n, nil
+}
+
+// Realtime page handler
+func (h *Handler) Realtime(w http.ResponseWriter, r *http.Request) {
+	module.RenderUserSection(w, r, h.templates, "analytics:realtime.html", map[string]interface{}{
+		"Title": "Real-time",
+	})
+}
+
+// APIGetRealtime returns real-time analytics data
+func (h *Handler) APIGetRealtime(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+
+	data, err := h.service.GetRealtimeData(userID)
+	if err != nil {
+		h.jsonError(w, "Failed to get realtime data", http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, data)
+}
+
 // Helpers
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {

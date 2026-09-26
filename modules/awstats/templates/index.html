@@ -1,0 +1,707 @@
+{{define "content"}}
+<div class="awstats">
+    <!-- Header -->
+    <div class="aws-header">
+        <div class="aws-title">
+            <span class="aws-logo">📊</span>
+            <h1>Statistics for <span id="siteName">Your Sites</span></h1>
+        </div>
+        <div class="aws-nav">
+            <select id="monthSelect" class="aws-select"></select>
+            <button class="aws-btn" onclick="loadStats()">🔄 Update</button>
+        </div>
+    </div>
+
+    <!-- Summary Box -->
+    <div class="aws-summary-box">
+        <div class="aws-summary-title">Summary</div>
+        <table class="aws-summary-table">
+            <tr>
+                <td class="aws-label">Reported period:</td>
+                <td class="aws-value" id="reportPeriod">-</td>
+            </tr>
+            <tr>
+                <td class="aws-label">First visit:</td>
+                <td class="aws-value" id="firstVisit">-</td>
+            </tr>
+            <tr>
+                <td class="aws-label">Last visit:</td>
+                <td class="aws-value" id="lastVisit">-</td>
+            </tr>
+        </table>
+        <table class="aws-stats-grid">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Unique visitors</th>
+                    <th>Number of visits</th>
+                    <th>Pages</th>
+                    <th>Hits</th>
+                    <th>Bandwidth</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr id="summaryRow">
+                    <td class="aws-label">Viewed traffic</td>
+                    <td id="sumVisitors">-</td>
+                    <td id="sumVisits">-</td>
+                    <td id="sumPages">-</td>
+                    <td id="sumHits">-</td>
+                    <td id="sumBandwidth">-</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Monthly History -->
+    <div class="aws-section">
+        <div class="aws-section-header" onclick="toggleSection('monthly')">
+            <span class="aws-icon">📅</span>
+            <span>Monthly history</span>
+            <span class="aws-toggle" id="monthlyToggle">▼</span>
+        </div>
+        <div class="aws-section-body" id="monthlyBody">
+            <table class="aws-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Unique visitors</th>
+                        <th>Number of visits</th>
+                        <th>Pages</th>
+                        <th>Hits</th>
+                        <th>Bandwidth</th>
+                    </tr>
+                </thead>
+                <tbody id="monthlyTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Days of Month -->
+    <div class="aws-section">
+        <div class="aws-section-header" onclick="toggleSection('daily')">
+            <span class="aws-icon">📆</span>
+            <span>Days of month</span>
+            <span class="aws-toggle" id="dailyToggle">▼</span>
+        </div>
+        <div class="aws-section-body" id="dailyBody">
+            <table class="aws-table">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Number of visits</th>
+                        <th>Pages</th>
+                        <th>Hits</th>
+                        <th>Bandwidth</th>
+                        <th class="aws-bar-col"></th>
+                    </tr>
+                </thead>
+                <tbody id="dailyTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Hours -->
+    <div class="aws-section">
+        <div class="aws-section-header" onclick="toggleSection('hours')">
+            <span class="aws-icon">🕐</span>
+            <span>Hours</span>
+            <span class="aws-toggle" id="hoursToggle">▼</span>
+        </div>
+        <div class="aws-section-body" id="hoursBody">
+            <div class="aws-hours-chart" id="hoursChart"></div>
+        </div>
+    </div>
+
+    <!-- Countries -->
+    <div class="aws-section">
+        <div class="aws-section-header" onclick="toggleSection('countries')">
+            <span class="aws-icon">🌍</span>
+            <span>Countries</span>
+            <span class="aws-toggle" id="countriesToggle">▼</span>
+        </div>
+        <div class="aws-section-body" id="countriesBody">
+            <table class="aws-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Country</th>
+                        <th>Pages</th>
+                        <th>Hits</th>
+                        <th>Bandwidth</th>
+                        <th class="aws-bar-col"></th>
+                    </tr>
+                </thead>
+                <tbody id="countriesTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <!-- Browsers -->
+            <div class="aws-section">
+                <div class="aws-section-header" onclick="toggleSection('browsers')">
+                    <span class="aws-icon">🌐</span>
+                    <span>Browsers</span>
+                    <span class="aws-toggle" id="browsersToggle">▼</span>
+                </div>
+                <div class="aws-section-body" id="browsersBody">
+                    <table class="aws-table">
+                        <thead>
+                            <tr>
+                                <th>Browser</th>
+                                <th>Hits</th>
+                                <th>Percent</th>
+                            </tr>
+                        </thead>
+                        <tbody id="browsersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <!-- Operating Systems -->
+            <div class="aws-section">
+                <div class="aws-section-header" onclick="toggleSection('os')">
+                    <span class="aws-icon">💻</span>
+                    <span>Operating Systems</span>
+                    <span class="aws-toggle" id="osToggle">▼</span>
+                </div>
+                <div class="aws-section-body" id="osBody">
+                    <table class="aws-table">
+                        <thead>
+                            <tr>
+                                <th>Operating System</th>
+                                <th>Hits</th>
+                                <th>Percent</th>
+                            </tr>
+                        </thead>
+                        <tbody id="osTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Robots/Spiders -->
+    <div class="aws-section">
+        <div class="aws-section-header" onclick="toggleSection('robots')">
+            <span class="aws-icon">🤖</span>
+            <span>Robots/Spiders visitors</span>
+            <span class="aws-toggle" id="robotsToggle">▼</span>
+        </div>
+        <div class="aws-section-body" id="robotsBody">
+            <table class="aws-table">
+                <thead>
+                    <tr>
+                        <th>Robot</th>
+                        <th>Hits</th>
+                        <th>Bandwidth</th>
+                    </tr>
+                </thead>
+                <tbody id="robotsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- HTTP Status -->
+    <div class="aws-section">
+        <div class="aws-section-header" onclick="toggleSection('status')">
+            <span class="aws-icon">📋</span>
+            <span>HTTP Status codes</span>
+            <span class="aws-toggle" id="statusToggle">▼</span>
+        </div>
+        <div class="aws-section-body" id="statusBody">
+            <table class="aws-table">
+                <thead>
+                    <tr>
+                        <th>HTTP Status</th>
+                        <th>Hits</th>
+                        <th>Percent</th>
+                        <th class="aws-bar-col"></th>
+                    </tr>
+                </thead>
+                <tbody id="statusTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="aws-footer">
+        Advanced Web Statistics — Powered by GuardBot
+    </div>
+</div>
+
+<style>
+.awstats {
+    --aws-text: #333;
+    --aws-bg: #fff;
+    --aws-border: #CCCCDD;
+    --aws-header-bg: linear-gradient(180deg, #CCCCDD 0%, #B0B0C0 100%);
+    --aws-header-text: #222;
+    --aws-table-header: #ECECEC;
+    --aws-table-even: #F8F8FA;
+    --aws-table-hover: #E8E8F0;
+    --aws-section-bg: #FAFAFA;
+    --aws-muted: #666;
+
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    color: var(--aws-text);
+    background: var(--aws-bg);
+    max-width: 1000px;
+    margin: 0;
+}
+
+/* Dark mode */
+[data-bs-theme="dark"] .awstats,
+.dark-mode .awstats {
+    --aws-text: #e0e0e0;
+    --aws-bg: #1a1a2e;
+    --aws-border: #3a3a5a;
+    --aws-header-bg: linear-gradient(180deg, #3a4a6a 0%, #2a3a5a 100%);
+    --aws-header-text: #fff;
+    --aws-table-header: #2a3a4a;
+    --aws-table-even: #1e2535;
+    --aws-table-hover: #2a3545;
+    --aws-section-bg: #1e2535;
+    --aws-muted: #aaa;
+}
+
+/* Header */
+.aws-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    margin-bottom: 15px;
+    border-bottom: 2px solid var(--aws-border);
+}
+.aws-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.aws-logo { font-size: 28px; }
+.aws-title h1 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0;
+    color: var(--aws-text);
+}
+.aws-nav {
+    display: flex;
+    gap: 8px;
+}
+.aws-select {
+    font-size: 11px;
+    padding: 4px 8px;
+    border: 1px solid var(--aws-border);
+    background: var(--aws-section-bg);
+    color: var(--aws-text);
+}
+.aws-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid var(--aws-border);
+    background: var(--aws-table-header);
+    color: var(--aws-text);
+    cursor: pointer;
+}
+.aws-btn:hover { opacity: 0.85; }
+
+/* Summary Box */
+.aws-summary-box {
+    border: 1px solid var(--aws-border);
+    margin-bottom: 15px;
+    background: var(--aws-section-bg);
+}
+.aws-summary-title {
+    background: var(--aws-header-bg);
+    color: var(--aws-header-text);
+    font-weight: bold;
+    padding: 6px 10px;
+    font-size: 13px;
+}
+.aws-summary-table {
+    padding: 10px;
+    font-size: 11px;
+}
+.aws-summary-table td { padding: 2px 8px; color: var(--aws-text); }
+.aws-summary-table .aws-label { font-weight: bold; }
+.aws-stats-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+.aws-stats-grid th {
+    background: var(--aws-table-header);
+    color: var(--aws-text);
+    padding: 6px 8px;
+    text-align: right;
+    font-weight: bold;
+    border: 1px solid var(--aws-border);
+}
+.aws-stats-grid th:first-child { text-align: left; }
+.aws-stats-grid td {
+    padding: 6px 8px;
+    text-align: right;
+    border: 1px solid var(--aws-border);
+    color: var(--aws-text);
+}
+.aws-stats-grid td:first-child { text-align: left; }
+
+/* Sections */
+.aws-section {
+    margin-bottom: 12px;
+    border: 1px solid var(--aws-border);
+}
+.aws-section-header {
+    background: var(--aws-header-bg);
+    color: var(--aws-header-text);
+    font-weight: bold;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.aws-section-header:hover { opacity: 0.9; }
+.aws-icon { font-size: 14px; }
+.aws-toggle { margin-left: auto; font-size: 10px; }
+.aws-section-body {
+    padding: 8px;
+    background: var(--aws-bg);
+}
+.aws-section-body.collapsed { display: none; }
+
+/* Tables */
+.aws-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+.aws-table th {
+    background: var(--aws-table-header);
+    color: var(--aws-text);
+    padding: 5px 8px;
+    text-align: left;
+    font-weight: bold;
+    border-bottom: 2px solid var(--aws-border);
+}
+.aws-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--aws-border);
+    vertical-align: middle;
+    color: var(--aws-text);
+}
+.aws-table tr:nth-child(even) { background: var(--aws-table-even); }
+.aws-table tr:hover { background: var(--aws-table-hover); }
+.aws-table tr:hover td { color: var(--aws-text); }
+.aws-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.aws-table .pct { text-align: right; color: var(--aws-muted); }
+.aws-bar-col { width: 120px; }
+
+/* Progress bars */
+.aws-bar {
+    height: 12px;
+    background: var(--aws-border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.aws-bar-fill {
+    height: 100%;
+    background: linear-gradient(180deg, #6688DD 0%, #4466BB 100%);
+    border-radius: 2px;
+}
+.aws-bar-fill.green { background: linear-gradient(180deg, #66BB66 0%, #449944 100%); }
+.aws-bar-fill.red { background: linear-gradient(180deg, #DD6666 0%, #BB4444 100%); }
+.aws-bar-fill.orange { background: linear-gradient(180deg, #DDAA44 0%, #BB8833 100%); }
+
+/* Hours chart */
+.aws-hours-chart {
+    display: flex;
+    align-items: flex-end;
+    height: 100px;
+    gap: 2px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--aws-border);
+}
+.aws-hour-bar {
+    flex: 1;
+    background: linear-gradient(180deg, #6688DD 0%, #4466BB 100%);
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+    position: relative;
+}
+.aws-hour-bar:hover { background: linear-gradient(180deg, #7799EE 0%, #5577CC 100%); }
+.aws-hour-label {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: var(--aws-muted);
+}
+
+/* Flag images */
+.aws-flag {
+    width: 28px;
+    text-align: center;
+    vertical-align: middle;
+}
+.aws-flag-img {
+    width: 20px;
+    height: 14px;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    vertical-align: middle;
+}
+.aws-flag-placeholder {
+    display: inline-block;
+    width: 20px;
+    text-align: center;
+    color: var(--aws-muted);
+    font-size: 10px;
+}
+
+/* Footer */
+.aws-footer {
+    margin-top: 20px;
+    padding: 10px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--aws-muted);
+    border-top: 1px solid var(--aws-border);
+}
+</style>
+
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function flagImg(code) {
+    if (!code || code === 'Unknown') {
+        return '<span class="aws-flag-placeholder">--</span>';
+    }
+    return `<img src="/static/flags/${code.toLowerCase()}.png" alt="${code}" class="aws-flag-img" onerror="this.outerHTML='<span class=aws-flag-placeholder>--</span>'">`;
+}
+
+let currentYear, currentMonth;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const now = new Date();
+    currentYear = now.getFullYear();
+    currentMonth = now.getMonth() + 1;
+
+    buildMonthSelector();
+    loadStats();
+});
+
+function buildMonthSelector() {
+    const select = document.getElementById('monthSelect');
+    const now = new Date();
+
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const opt = document.createElement('option');
+        opt.value = `${d.getFullYear()}-${d.getMonth() + 1}`;
+        opt.textContent = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+        if (i === 0) opt.selected = true;
+        select.appendChild(opt);
+    }
+
+    select.addEventListener('change', () => {
+        const [y, m] = select.value.split('-');
+        currentYear = parseInt(y);
+        currentMonth = parseInt(m);
+        loadStats();
+    });
+}
+
+async function loadStats() {
+    const qs = `?year=${currentYear}&month=${currentMonth}`;
+
+    const [summary, monthly, daily, hours, countries, browsers, os, robots, status] = await Promise.all([
+        fetch('/user/awstats/api/summary' + qs).then(r => r.json()),
+        fetch('/user/awstats/api/monthly').then(r => r.json()),
+        fetch('/user/awstats/api/daily' + qs).then(r => r.json()),
+        fetch('/user/awstats/api/hours' + qs).then(r => r.json()),
+        fetch('/user/awstats/api/countries' + qs).then(r => r.json()),
+        fetch('/user/awstats/api/browsers' + qs).then(r => r.json()),
+        fetch('/user/awstats/api/os' + qs).then(r => r.json()),
+        fetch('/user/awstats/api/robots' + qs).then(r => r.json()),
+        fetch('/user/awstats/api/status' + qs).then(r => r.json())
+    ]);
+
+    renderSummary(summary);
+    renderMonthly(monthly);
+    renderDaily(daily);
+    renderHours(hours);
+    renderCountries(countries);
+    renderBrowsers(browsers);
+    renderOS(os);
+    renderRobots(robots);
+    renderStatus(status);
+}
+
+function fmt(n) { return (n || 0).toLocaleString(); }
+function fmtBytes(b) {
+    if (!b) return '0';
+    if (b < 1024) return b + ' B';
+    if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+    if (b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
+    return (b/1024/1024/1024).toFixed(2) + ' GB';
+}
+
+function renderBar(pct, color = '') {
+    return `<div class="aws-bar"><div class="aws-bar-fill ${color}" style="width:${Math.min(100, pct)}%"></div></div>`;
+}
+
+function toggleSection(id) {
+    const body = document.getElementById(id + 'Body');
+    const toggle = document.getElementById(id + 'Toggle');
+    body.classList.toggle('collapsed');
+    toggle.textContent = body.classList.contains('collapsed') ? '▶' : '▼';
+}
+
+function renderSummary(data) {
+    document.getElementById('reportPeriod').textContent = `${data.month} ${data.year}`;
+    document.getElementById('firstVisit').textContent = `01 ${data.month} ${data.year}`;
+    document.getElementById('lastVisit').textContent = new Date().toLocaleDateString('en-US', {day:'2-digit', month:'short', year:'numeric'});
+    document.getElementById('sumVisitors').textContent = fmt(data.uniqueVisitors);
+    document.getElementById('sumVisits').textContent = fmt(data.numberOfVisits);
+    document.getElementById('sumPages').textContent = fmt(data.pages);
+    document.getElementById('sumHits').textContent = fmt(data.hits);
+    document.getElementById('sumBandwidth').textContent = fmtBytes(data.bandwidth);
+}
+
+function renderMonthly(data) {
+    if (!data?.length) {
+        document.getElementById('monthlyTable').innerHTML = '<tr><td colspan="6" style="text-align:center">No data</td></tr>';
+        return;
+    }
+    document.getElementById('monthlyTable').innerHTML = data.map(m => `
+        <tr>
+            <td>${m.month}</td>
+            <td class="num">${fmt(m.uniqueVisitors)}</td>
+            <td class="num">${fmt(m.visits)}</td>
+            <td class="num">${fmt(m.pages)}</td>
+            <td class="num">${fmt(m.hits)}</td>
+            <td class="num">${fmtBytes(m.bandwidth)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderDaily(data) {
+    if (!data?.length) {
+        document.getElementById('dailyTable').innerHTML = '<tr><td colspan="6" style="text-align:center">No data</td></tr>';
+        return;
+    }
+    const max = Math.max(...data.map(d => d.hits), 1);
+    document.getElementById('dailyTable').innerHTML = data.map(d => `
+        <tr>
+            <td>${d.day}</td>
+            <td class="num">${fmt(d.visits)}</td>
+            <td class="num">${fmt(d.pages)}</td>
+            <td class="num">${fmt(d.hits)}</td>
+            <td class="num">${fmtBytes(d.bandwidth)}</td>
+            <td>${renderBar(d.hits / max * 100)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderHours(data) {
+    if (!data?.length) return;
+    const max = Math.max(...data.map(h => h.hits), 1);
+    document.getElementById('hoursChart').innerHTML = data.map((h, i) => `
+        <div class="aws-hour-bar" style="height:${Math.max(2, h.hits / max * 100)}%" title="Hour ${h.hour}: ${fmt(h.hits)} hits">
+            ${i % 3 === 0 ? `<span class="aws-hour-label">${h.hour}</span>` : ''}
+        </div>
+    `).join('');
+}
+
+function renderCountries(data) {
+    if (!data?.length) {
+        document.getElementById('countriesTable').innerHTML = '<tr><td colspan="6" style="text-align:center">No data</td></tr>';
+        return;
+    }
+    const max = Math.max(...data.map(c => c.hits), 1);
+    document.getElementById('countriesTable').innerHTML = data.map(c => `
+        <tr>
+            <td class="aws-flag">${flagImg(c.country)}</td>
+            <td>${c.country}</td>
+            <td class="num">${fmt(c.pages)}</td>
+            <td class="num">${fmt(c.hits)}</td>
+            <td class="num">${fmtBytes(c.bandwidth)}</td>
+            <td>${renderBar(c.hits / max * 100)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderBrowsers(data) {
+    if (!data?.length) {
+        document.getElementById('browsersTable').innerHTML = '<tr><td colspan="3" style="text-align:center">No data</td></tr>';
+        return;
+    }
+    document.getElementById('browsersTable').innerHTML = data.map(b => `
+        <tr>
+            <td>${b.browser}</td>
+            <td class="num">${fmt(b.hits)}</td>
+            <td class="pct">${b.percent.toFixed(1)}%</td>
+        </tr>
+    `).join('');
+}
+
+function renderOS(data) {
+    if (!data?.length) {
+        document.getElementById('osTable').innerHTML = '<tr><td colspan="3" style="text-align:center">No data</td></tr>';
+        return;
+    }
+    document.getElementById('osTable').innerHTML = data.map(o => `
+        <tr>
+            <td>${o.os}</td>
+            <td class="num">${fmt(o.hits)}</td>
+            <td class="pct">${o.percent.toFixed(1)}%</td>
+        </tr>
+    `).join('');
+}
+
+function renderRobots(data) {
+    if (!data?.length) {
+        document.getElementById('robotsTable').innerHTML = '<tr><td colspan="3" style="text-align:center">No robot/spider visits</td></tr>';
+        return;
+    }
+    document.getElementById('robotsTable').innerHTML = data.map(r => `
+        <tr>
+            <td>🤖 ${r.robot}</td>
+            <td class="num">${fmt(r.hits)}</td>
+            <td class="num">${fmtBytes(r.bandwidth)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderStatus(data) {
+    if (!data?.length) {
+        document.getElementById('statusTable').innerHTML = '<tr><td colspan="4" style="text-align:center">No data</td></tr>';
+        return;
+    }
+    const total = data.reduce((s, d) => s + d.hits, 0) || 1;
+    const statusDesc = { 200: 'OK', 206: 'Partial Content', 301: 'Moved Permanently', 302: 'Found', 304: 'Not Modified', 400: 'Bad Request', 403: 'Forbidden', 404: 'Not Found', 500: 'Internal Server Error' };
+    document.getElementById('statusTable').innerHTML = data.map(s => {
+        const pct = (s.hits / total * 100);
+        const color = s.code < 300 ? 'green' : s.code < 400 ? 'orange' : 'red';
+        return `
+            <tr>
+                <td>${s.code} ${statusDesc[s.code] || ''}</td>
+                <td class="num">${fmt(s.hits)}</td>
+                <td class="pct">${pct.toFixed(1)}%</td>
+                <td>${renderBar(pct, color)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+</script>
+{{end}}

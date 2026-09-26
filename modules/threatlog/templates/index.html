@@ -1,0 +1,725 @@
+{{define "content"}}
+<div class="threat-log">
+    <!-- Header -->
+    <div class="d-flex justify-content-end align-items-center mb-4">
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="loadData()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+            <div class="live-indicator">
+                <span class="live-dot"></span>
+                <span class="live-text">Live</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="threat-stat-card threat-stat-total">
+                <div class="stat-icon"><i class="bi bi-shield-x"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalThreats">-</div>
+                    <div class="stat-label">Total Threats</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="threat-stat-card threat-stat-24h">
+                <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value" id="last24h">-</div>
+                    <div class="stat-label">Last 24 Hours</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="threat-stat-card threat-stat-hour">
+                <div class="stat-icon"><i class="bi bi-lightning"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value" id="lastHour">-</div>
+                    <div class="stat-label">Last Hour</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="threat-stat-card threat-stat-rate">
+                <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value" id="threatRate">-</div>
+                    <div class="stat-label">Threats/Hour</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Live Threat Feed -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-activity text-danger me-2"></i>Live Threat Feed</span>
+                    <span class="badge bg-danger" id="feedCount">0</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="threat-feed" id="threatFeed">
+                        <div class="text-center text-muted py-4">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="col-lg-8">
+            <div class="row g-3">
+                <!-- Top Countries -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-globe me-2"></i>Top Threat Origins
+                        </div>
+                        <div class="card-body">
+                            <div id="countriesChart" class="threat-bar-chart"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Bot Types -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-robot me-2"></i>Threat Types
+                        </div>
+                        <div class="card-body">
+                            <div id="botTypesChart" class="threat-bar-chart"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hourly Trend -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-bar-chart me-2"></i>24-Hour Threat Activity
+                        </div>
+                        <div class="card-body">
+                            <div id="hourlyChart" class="hourly-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Threat Log Table -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span><i class="bi bi-table me-2"></i>Threat Details</span>
+                <div class="d-flex gap-2 flex-wrap">
+                    <select id="filterCountry" class="form-select form-select-sm" style="width: auto;">
+                        <option value="">All Countries</option>
+                    </select>
+                    <select id="filterBotType" class="form-select form-select-sm" style="width: auto;">
+                        <option value="">All Types</option>
+                    </select>
+                    <input type="date" id="filterDateFrom" class="form-control form-control-sm" style="width: auto;">
+                    <input type="date" id="filterDateTo" class="form-control form-control-sm" style="width: auto;">
+                    <button class="btn btn-sm btn-primary" onclick="applyFilters()">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>IP Address</th>
+                            <th>Country</th>
+                            <th>Threat Type</th>
+                            <th>Target</th>
+                            <th>Device</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="threatTable">
+                        <tr><td colspan="7" class="text-center py-4">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted" id="tableInfo">Showing 0 threats</div>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary" id="prevPage" onclick="prevPage()" disabled>
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="nextPage" onclick="nextPage()">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.threat-log {
+    --threat-red: #dc3545;
+    --threat-orange: #fd7e14;
+    --threat-yellow: #ffc107;
+    --threat-green: #28a745;
+}
+
+/* Live indicator */
+.live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(220, 53, 69, 0.1);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--threat-red);
+}
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--threat-red);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* Stat Cards */
+.threat-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    border-radius: 12px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.threat-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 24px;
+}
+.threat-stat-total .stat-icon { background: rgba(220, 53, 69, 0.15); color: var(--threat-red); }
+.threat-stat-24h .stat-icon { background: rgba(253, 126, 20, 0.15); color: var(--threat-orange); }
+.threat-stat-hour .stat-icon { background: rgba(255, 193, 7, 0.15); color: var(--threat-yellow); }
+.threat-stat-rate .stat-icon { background: rgba(40, 167, 69, 0.15); color: var(--threat-green); }
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.stat-label {
+    font-size: 12px;
+    color: var(--bs-secondary-color);
+    margin-top: 4px;
+}
+
+/* Threat Feed */
+.threat-feed {
+    max-height: 400px;
+    overflow-y: auto;
+}
+.threat-feed-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--bs-border-color);
+    animation: slideIn 0.3s ease-out;
+}
+.threat-feed-item:hover {
+    background: var(--bs-tertiary-bg);
+}
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.threat-feed-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(220, 53, 69, 0.15);
+    color: var(--threat-red);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.threat-feed-content {
+    flex: 1;
+    min-width: 0;
+}
+.threat-feed-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.threat-feed-meta {
+    font-size: 11px;
+    color: var(--bs-secondary-color);
+}
+.threat-feed-time {
+    font-size: 11px;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+}
+
+/* Bar Charts */
+.threat-bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.threat-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.threat-bar-label {
+    width: 80px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.threat-bar-label img {
+    width: 16px;
+    height: 12px;
+    object-fit: cover;
+    border-radius: 2px;
+}
+.threat-bar-track {
+    flex: 1;
+    height: 20px;
+    background: var(--bs-tertiary-bg);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.threat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--threat-red), var(--threat-orange));
+    border-radius: 4px;
+    transition: width 0.5s ease-out;
+}
+.threat-bar-value {
+    width: 50px;
+    text-align: right;
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Hourly Chart */
+.hourly-chart {
+    display: flex;
+    align-items: flex-end;
+    height: 120px;
+    gap: 4px;
+    padding-top: 10px;
+}
+.hourly-bar {
+    flex: 1;
+    background: linear-gradient(180deg, var(--threat-red), var(--threat-orange));
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    position: relative;
+    transition: height 0.3s ease-out;
+    cursor: pointer;
+}
+.hourly-bar:hover {
+    opacity: 0.8;
+}
+.hourly-bar::after {
+    content: attr(data-hour);
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: var(--bs-secondary-color);
+}
+
+/* Table */
+.threat-log .table th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--bs-secondary-color);
+    border-bottom-width: 2px;
+}
+.threat-log .table td {
+    font-size: 13px;
+    vertical-align: middle;
+}
+.ip-address {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
+    background: var(--bs-tertiary-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.country-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.country-cell img {
+    width: 18px;
+    height: 13px;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.threat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 12px;
+    background: rgba(220, 53, 69, 0.15);
+    color: var(--threat-red);
+}
+.target-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.device-badge {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bs-tertiary-bg);
+}
+.details-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+}
+</style>
+
+<script>
+let currentOffset = 0;
+const pageSize = 50;
+let totalThreats = 0;
+let autoRefresh = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+    loadFilters();
+    startAutoRefresh();
+});
+
+function startAutoRefresh() {
+    autoRefresh = setInterval(() => {
+        loadRecent();
+        loadStats();
+    }, 30000);
+}
+
+async function loadData() {
+    await Promise.all([
+        loadStats(),
+        loadRecent(),
+        loadThreats()
+    ]);
+}
+
+async function loadStats() {
+    try {
+        const stats = await fetch('/user/threatlog/api/stats').then(r => r.json());
+
+        animateValue('totalThreats', stats.totalThreats);
+        animateValue('last24h', stats.last24h);
+        animateValue('lastHour', stats.lastHour);
+        animateValue('threatRate', (stats.last24h / 24).toFixed(1));
+
+        renderCountriesChart(stats.topCountries || []);
+        renderBotTypesChart(stats.topBotTypes || []);
+        renderHourlyChart(stats.hourlyTrend || []);
+    } catch (e) {
+        console.error('Failed to load stats:', e);
+    }
+}
+
+async function loadRecent() {
+    try {
+        const threats = await fetch('/user/threatlog/api/recent?limit=20').then(r => r.json());
+        renderFeed(threats);
+        document.getElementById('feedCount').textContent = threats.length;
+    } catch (e) {
+        console.error('Failed to load recent:', e);
+    }
+}
+
+async function loadThreats() {
+    const params = new URLSearchParams({
+        limit: pageSize,
+        offset: currentOffset,
+        country: document.getElementById('filterCountry').value,
+        botType: document.getElementById('filterBotType').value,
+        dateFrom: document.getElementById('filterDateFrom').value,
+        dateTo: document.getElementById('filterDateTo').value
+    });
+
+    try {
+        const data = await fetch('/user/threatlog/api/threats?' + params).then(r => r.json());
+        totalThreats = data.total;
+        renderTable(data.threats || []);
+        updatePagination();
+    } catch (e) {
+        console.error('Failed to load threats:', e);
+    }
+}
+
+async function loadFilters() {
+    try {
+        const filters = await fetch('/user/threatlog/api/filters').then(r => r.json());
+
+        const countrySelect = document.getElementById('filterCountry');
+        (filters.countries || []).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            countrySelect.appendChild(opt);
+        });
+
+        const typeSelect = document.getElementById('filterBotType');
+        (filters.botTypes || []).forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.textContent = t;
+            typeSelect.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Failed to load filters:', e);
+    }
+}
+
+function applyFilters() {
+    currentOffset = 0;
+    loadThreats();
+}
+
+function prevPage() {
+    if (currentOffset > 0) {
+        currentOffset -= pageSize;
+        loadThreats();
+    }
+}
+
+function nextPage() {
+    if (currentOffset + pageSize < totalThreats) {
+        currentOffset += pageSize;
+        loadThreats();
+    }
+}
+
+function updatePagination() {
+    const start = totalThreats > 0 ? currentOffset + 1 : 0;
+    const end = Math.min(currentOffset + pageSize, totalThreats);
+    document.getElementById('tableInfo').textContent = `Showing ${start}-${end} of ${totalThreats.toLocaleString()} threats`;
+    document.getElementById('prevPage').disabled = currentOffset === 0;
+    document.getElementById('nextPage').disabled = currentOffset + pageSize >= totalThreats;
+}
+
+function animateValue(id, value) {
+    const el = document.getElementById(id);
+    const current = parseFloat(el.textContent.replace(/,/g, '')) || 0;
+    const target = parseFloat(value) || 0;
+    const duration = 500;
+    const start = performance.now();
+
+    function update(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(eased * target);
+        el.textContent = typeof value === 'string' && value.includes('.')
+            ? current.toFixed(1)
+            : current.toLocaleString();
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
+
+function renderFeed(threats) {
+    const feed = document.getElementById('threatFeed');
+    if (!threats.length) {
+        feed.innerHTML = '<div class="text-center text-muted py-4">No recent threats</div>';
+        return;
+    }
+
+    feed.innerHTML = threats.map(t => `
+        <div class="threat-feed-item">
+            <div class="threat-feed-icon"><i class="bi bi-shield-x"></i></div>
+            <div class="threat-feed-content">
+                <div class="threat-feed-title">
+                    ${flagImg(t.country)}
+                    ${t.botType}
+                </div>
+                <div class="threat-feed-meta">${t.ip} → ${t.domain || ''}${t.path}</div>
+            </div>
+            <div class="threat-feed-time">${timeAgo(t.timestamp)}</div>
+        </div>
+    `).join('');
+}
+
+function renderCountriesChart(countries) {
+    const chart = document.getElementById('countriesChart');
+    if (!countries.length) {
+        chart.innerHTML = '<div class="text-muted text-center py-3">No data</div>';
+        return;
+    }
+
+    const max = Math.max(...countries.map(c => c.count), 1);
+    chart.innerHTML = countries.slice(0, 5).map(c => `
+        <div class="threat-bar-row">
+            <div class="threat-bar-label">
+                ${flagImg(c.country)}
+                ${c.country}
+            </div>
+            <div class="threat-bar-track">
+                <div class="threat-bar-fill" style="width: ${c.count / max * 100}%"></div>
+            </div>
+            <div class="threat-bar-value">${c.count.toLocaleString()}</div>
+        </div>
+    `).join('');
+}
+
+function renderBotTypesChart(types) {
+    const chart = document.getElementById('botTypesChart');
+    if (!types.length) {
+        chart.innerHTML = '<div class="text-muted text-center py-3">No data</div>';
+        return;
+    }
+
+    const max = Math.max(...types.map(t => t.count), 1);
+    chart.innerHTML = types.slice(0, 5).map(t => `
+        <div class="threat-bar-row">
+            <div class="threat-bar-label">${truncate(t.botType, 10)}</div>
+            <div class="threat-bar-track">
+                <div class="threat-bar-fill" style="width: ${t.count / max * 100}%"></div>
+            </div>
+            <div class="threat-bar-value">${t.count.toLocaleString()}</div>
+        </div>
+    `).join('');
+}
+
+function renderHourlyChart(hourly) {
+    const chart = document.getElementById('hourlyChart');
+
+    const hourMap = {};
+    hourly.forEach(h => { hourMap[h.hour] = h.count; });
+
+    const data = [];
+    for (let i = 0; i < 24; i++) {
+        data.push({ hour: i, count: hourMap[i] || 0 });
+    }
+
+    const max = Math.max(...data.map(d => d.count), 1);
+    chart.innerHTML = data.map(d => `
+        <div class="hourly-bar"
+             style="height: ${Math.max(4, d.count / max * 100)}%"
+             data-hour="${d.hour}"
+             title="${d.hour}:00 - ${d.count} threats">
+        </div>
+    `).join('');
+}
+
+function renderTable(threats) {
+    const tbody = document.getElementById('threatTable');
+    if (!threats.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No threats found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = threats.map(t => `
+        <tr>
+            <td>${formatTime(t.timestamp)}</td>
+            <td><span class="ip-address">${t.ip}</span></td>
+            <td>
+                <div class="country-cell">
+                    ${flagImg(t.country)}
+                    ${t.country}
+                </div>
+            </td>
+            <td><span class="threat-badge"><i class="bi bi-robot"></i> ${t.botType}</span></td>
+            <td class="target-cell" title="${t.domain}${t.path}">${t.domain}${t.path}</td>
+            <td><span class="device-badge">${t.device || t.os || '-'}</span></td>
+            <td>
+                <button class="btn btn-outline-secondary details-btn" onclick="showDetails('${t.id}', this)" data-ua="${encodeURIComponent(t.userAgent)}">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showDetails(id, btn) {
+    const ua = decodeURIComponent(btn.dataset.ua);
+    alert('User Agent:\n\n' + (ua || 'Unknown'));
+}
+
+function flagImg(code) {
+    if (!code || code === 'Unknown') {
+        return '<span class="text-muted">--</span>';
+    }
+    return `<img src="/static/flags/${code.toLowerCase()}.png" alt="${code}" onerror="this.outerHTML='<span class=text-muted>--</span>'">`;
+}
+
+function formatTime(ts) {
+    const d = new Date(ts);
+    return d.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+function timeAgo(ts) {
+    const seconds = Math.floor((Date.now() - new Date(ts)) / 1000);
+    if (seconds < 60) return seconds + 's ago';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    return Math.floor(seconds / 86400) + 'd ago';
+}
+
+function truncate(str, len) {
+    return str.length > len ? str.substring(0, len) + '...' : str;
+}
+</script>
+{{end}}
