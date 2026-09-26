@@ -45,6 +45,16 @@ func (s *CpanelService) SetProxyService(ps *proxy.Service) {
 	s.proxyService = ps
 }
 
+// getDeployIP returns the IP of the first available deploy server from admin/servers
+func (s *CpanelService) getDeployIP() string {
+	var ip string
+	err := s.db.Get(&ip, `SELECT ip FROM servers WHERE status = 'ready' ORDER BY created_at LIMIT 1`)
+	if err != nil {
+		return ""
+	}
+	return ip
+}
+
 // newClient creates a cPanel client, using proxy if configured
 func (s *CpanelService) newClient(host, username, apiToken string) *cpanel.Client {
 	if s.proxyService != nil {
@@ -428,10 +438,10 @@ func (s *CpanelService) TriggerAutoDNS(domainID, domainName, verifyToken, cpanel
 	}
 	log.Printf("[cpanel] TXT record added for %s", domainName)
 
-	// 2. Add wildcard A record pointing to Deploy VPS
-	deployIP := os.Getenv("DEPLOY_VPS_IP")
+	// 2. Add wildcard A record pointing to Deploy VPS (from admin/servers)
+	deployIP := s.getDeployIP()
 	if deployIP == "" {
-		log.Printf("[cpanel] DEPLOY_VPS_IP not set, skipping wildcard A record for %s", domainName)
+		log.Printf("[cpanel] No deploy server found in admin/servers, skipping wildcard A record for %s", domainName)
 		return true // TXT was added, partial success
 	}
 

@@ -109,6 +109,7 @@ func (m *Module) Routes() chi.Router {
 		r.Put("/{id}", m.handler.APIUpdate)
 		r.Delete("/{id}", m.handler.APIDelete)
 		r.Post("/{id}/verify", m.handler.APIVerifyDNS)
+		r.Get("/{id}/dns-status", m.handler.APIGetDNSStatus) // Individual DNS record status
 		r.Post("/{id}/transfer", m.handler.APITransferOwnership) // Admin: transfer to user
 		r.Get("/{id}/ssl", m.handler.APICheckSSL)
 		r.Post("/{id}/setup", m.handler.APISetupDomain)

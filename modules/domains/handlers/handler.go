@@ -575,6 +575,33 @@ func (h *Handler) APIGetTurnstileStatus(w http.ResponseWriter, r *http.Request) 
 	h.json(w, http.StatusOK, map[string]interface{}{"hasKeys": hasKeys})
 }
 
+// APIGetDNSStatus returns individual DNS record verification status
+func (h *Handler) APIGetDNSStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	domain, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+	if !h.canAccessDomain(r, domain) {
+		h.jsonError(w, "Not authorized", http.StatusForbidden)
+		return
+	}
+
+	// Check each record type independently
+	txtVerified := h.verification.CheckTXTRecord(domain.Name, domain.VerifyToken)
+	aRecordVerified := h.verification.CheckWildcardARecord(domain.Name)
+	cnameVerified := h.verification.CheckAcmeCNAME(domain.Name)
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"txtVerified":     txtVerified,
+		"aRecordVerified": aRecordVerified,
+		"cnameVerified":   cnameVerified,
+		"allVerified":     txtVerified && aRecordVerified && cnameVerified,
+	})
+}
+
 func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 

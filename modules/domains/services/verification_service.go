@@ -471,6 +471,39 @@ certbot certonly --manual --preferred-challenges dns \
 	return nil
 }
 
+// CheckTXTRecord checks if the domain has a valid verification TXT record
+func (s *VerificationService) CheckTXTRecord(domain, expectedToken string) bool {
+	verified, _ := s.VerifyDNS(domain, expectedToken)
+	return verified
+}
+
+// CheckWildcardARecord checks if *.domain resolves to any IP
+func (s *VerificationService) CheckWildcardARecord(domain string) bool {
+	baseDomain := GetBaseDomain(domain)
+	checkHost := "wildcard-check." + baseDomain
+
+	ips, err := net.LookupHost(checkHost)
+	if err != nil {
+		return false
+	}
+	return len(ips) > 0
+}
+
+// CheckAcmeCNAME checks if _acme-challenge CNAME exists (pointing to any acme-dns)
+func (s *VerificationService) CheckAcmeCNAME(domain string) bool {
+	baseDomain := GetBaseDomain(domain)
+	cnameHost := "_acme-challenge." + baseDomain
+
+	cname, err := net.LookupCNAME(cnameHost)
+	if err != nil {
+		return false
+	}
+
+	// Just check that a CNAME exists (not self-referential)
+	cname = strings.TrimSuffix(cname, ".")
+	return cname != "" && cname != cnameHost
+}
+
 // CheckAcmeCnameRecord verifies if CNAME record is correctly pointing to acme-dns
 func (s *VerificationService) CheckAcmeCnameRecord(domain, expectedTarget string) bool {
 	baseDomain := GetBaseDomain(domain)
