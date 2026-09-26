@@ -319,8 +319,12 @@ async function loadExistingConnections() {
         const res = await fetch('/user/domains/cpanel/');
         const data = await res.json();
 
+        const container = document.getElementById('connections-list');
+        const existingSection = document.getElementById('existing-connections');
+        const newForm = document.querySelector('.cpanel-new-form');
+        const showFormBtn = document.getElementById('show-new-form-btn');
+
         if (data.success && data.data && data.data.length > 0) {
-            const container = document.getElementById('connections-list');
             container.innerHTML = data.data.map(conn => `
                 <div class="card mb-2 cpanel-conn-card" data-conn-id="${conn.id}">
                     <div class="card-body py-2 d-flex justify-content-between align-items-center">
@@ -354,38 +358,68 @@ async function loadExistingConnections() {
                 btn.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     const connId = btn.dataset.connId;
-                    if (!confirm('Delete this cPanel connection? This will not delete domains already added.')) return;
+                    if (!confirm('Delete this cPanel connection and ALL domains added through it? This cannot be undone.')) return;
 
                     btn.disabled = true;
                     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
                     try {
                         const res = await fetch(`/user/domains/cpanel/${connId}`, { method: 'DELETE' });
-                        const data = await res.json();
-                        if (data.success) {
-                            showToast('Connection deleted', 'success');
-                            loadExistingConnections();
+
+                        // Handle session expiry (redirect to login)
+                        if (res.redirected || res.url.includes('/auth/login')) {
+                            window.location.href = '/auth/login';
+                            return;
+                        }
+
+                        const text = await res.text();
+                        let data;
+                        try {
+                            data = JSON.parse(text);
+                        } catch (e) {
+                            // If response is HTML (like login page), redirect
+                            if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+                                window.location.href = '/auth/login';
+                                return;
+                            }
+                            throw new Error('Invalid response');
+                        }
+
+                        if (data.success || data.deleted) {
+                            const msg = data.domains_deleted > 0
+                                ? `Connection and ${data.domains_deleted} domain(s) deleted`
+                                : 'Connection deleted';
+                            showToast(msg, 'success');
+                            await loadExistingConnections();
                         } else {
                             showToast(data.error || 'Failed to delete', 'danger');
                             btn.disabled = false;
                             btn.innerHTML = '<i class="bi bi-trash"></i>';
                         }
                     } catch (err) {
-                        showToast('Network error', 'danger');
+                        showToast('Error: ' + err.message, 'danger');
                         btn.disabled = false;
                         btn.innerHTML = '<i class="bi bi-trash"></i>';
                     }
                 });
             });
 
-            document.getElementById('existing-connections').classList.remove('d-none');
-            document.querySelector('.cpanel-new-form').classList.add('d-none');
+            existingSection.classList.remove('d-none');
+            newForm.classList.add('d-none');
+            showFormBtn.classList.remove('d-none');
 
-            // Show form button handler
-            document.getElementById('show-new-form-btn').addEventListener('click', () => {
-                document.querySelector('.cpanel-new-form').classList.remove('d-none');
-                document.getElementById('show-new-form-btn').classList.add('d-none');
+            // Show form button handler (remove old listener first)
+            const newShowBtn = showFormBtn.cloneNode(true);
+            showFormBtn.parentNode.replaceChild(newShowBtn, showFormBtn);
+            newShowBtn.addEventListener('click', () => {
+                newForm.classList.remove('d-none');
+                newShowBtn.classList.add('d-none');
             });
+        } else {
+            // No connections - show the form directly
+            container.innerHTML = '';
+            existingSection.classList.add('d-none');
+            newForm.classList.remove('d-none');
         }
     } catch (err) {
         console.error('Failed to load connections:', err);
