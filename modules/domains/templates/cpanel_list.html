@@ -1,4 +1,18 @@
 {{define "content"}}
+<!-- Domains in Setup Section -->
+<div class="row mb-4" id="setup-section" style="display:none;">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header bg-warning bg-opacity-10">
+                <h5 class="card-title mb-0"><i class="bi bi-gear-fill me-2"></i>Domains in Setup</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="setup-domains"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -96,6 +110,7 @@ async function loadConnections() {
             <tr>
                 <td>
                     <strong>${escapeHtml(conn.name)}</strong>
+                    ${conn.domainCount > 0 ? `<br><small class="text-muted">${conn.domainCount} domain${conn.domainCount > 1 ? 's' : ''}</small>` : ''}
                 </td>
                 <td>
                     <code class="small">${escapeHtml(conn.host)}</code>
@@ -105,6 +120,11 @@ async function loadConnections() {
                     <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Connected</span>
                 </td>
                 <td class="text-end">
+                    ${conn.domainCount > 0 ? `
+                    <a href="/user/domains?cpanel=${conn.id}" class="btn btn-sm btn-outline-secondary me-1" title="View domains from this connection">
+                        <i class="bi bi-list-ul"></i>
+                    </a>
+                    ` : ''}
                     <a href="/user/domains/cpanel/${conn.id}/domains" class="btn btn-sm btn-primary me-1">
                         <i class="bi bi-plus-lg me-1"></i>Add Domain
                     </a>
@@ -161,5 +181,49 @@ document.getElementById('confirm-delete-btn').addEventListener('click', async fu
 });
 
 loadConnections();
+loadDomainsInSetup();
+
+async function loadDomainsInSetup() {
+    try {
+        const res = await fetch('/user/domains/api/?setup=pending');
+        const data = await res.json();
+
+        if (!data.domains || data.domains.length === 0) {
+            return; // No domains in setup
+        }
+
+        // Filter to only cPanel domains not yet complete
+        const pendingDomains = data.domains.filter(d =>
+            d.cpanelConnectionId && d.setupStep !== 'complete' && !d.sslEnabled
+        );
+
+        if (pendingDomains.length === 0) {
+            return;
+        }
+
+        const section = document.getElementById('setup-section');
+        const container = document.getElementById('setup-domains');
+
+        container.innerHTML = pendingDomains.map(d => `
+            <a href="/user/domains/cpanel/${d.cpanelConnectionId}/domains?domain=${d.id}"
+               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${escapeHtml(d.name)}</strong>
+                    <br>
+                    <small class="text-muted">
+                        ${d.dnsVerified ? '<i class="bi bi-check-circle text-success"></i> DNS Verified' : '<i class="bi bi-hourglass-split text-warning"></i> Verifying DNS'}
+                        ${d.dnsVerified && !d.sslEnabled ? ' · <i class="bi bi-hourglass-split text-warning"></i> SSL Pending' : ''}
+                    </small>
+                </div>
+                <span class="badge bg-warning text-dark">Continue Setup <i class="bi bi-arrow-right"></i></span>
+            </a>
+        `).join('');
+
+        section.style.display = 'block';
+
+    } catch (err) {
+        console.error('Failed to load domains in setup:', err);
+    }
+}
 </script>
 {{end}}
