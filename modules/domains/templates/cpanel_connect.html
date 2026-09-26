@@ -322,24 +322,59 @@ async function loadExistingConnections() {
         if (data.success && data.data && data.data.length > 0) {
             const container = document.getElementById('connections-list');
             container.innerHTML = data.data.map(conn => `
-                <div class="card mb-2 cpanel-conn-card" data-conn-id="${conn.id}" style="cursor:pointer">
+                <div class="card mb-2 cpanel-conn-card" data-conn-id="${conn.id}">
                     <div class="card-body py-2 d-flex justify-content-between align-items-center">
-                        <div>
+                        <div class="conn-select" style="cursor:pointer;flex:1">
                             <strong>${conn.name}</strong>
                             <div class="text-muted small">${conn.username}@${conn.host}</div>
                         </div>
-                        <i class="bi bi-chevron-right text-muted"></i>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger conn-delete" data-conn-id="${conn.id}" title="Delete connection">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <i class="bi bi-chevron-right text-muted conn-select" style="cursor:pointer"></i>
+                        </div>
                     </div>
                 </div>
             `).join('');
 
-            // Add click handlers - card click
-            container.querySelectorAll('.cpanel-conn-card').forEach(card => {
-                card.addEventListener('click', async () => {
+            // Add click handlers - select connection
+            container.querySelectorAll('.conn-select').forEach(el => {
+                el.addEventListener('click', async (e) => {
+                    const card = e.target.closest('.cpanel-conn-card');
                     card.innerHTML = '<div class="card-body py-2 text-center"><span class="spinner-border spinner-border-sm me-2"></span>Loading domains...</div>';
                     cpanelConnectionId = card.dataset.connId;
                     await loadCpanelDomains(cpanelConnectionId);
                     showStep('select-domain');
+                });
+            });
+
+            // Add click handlers - delete connection
+            container.querySelectorAll('.conn-delete').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const connId = btn.dataset.connId;
+                    if (!confirm('Delete this cPanel connection? This will not delete domains already added.')) return;
+
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+                    try {
+                        const res = await fetch(`/user/domains/cpanel/${connId}`, { method: 'DELETE' });
+                        const data = await res.json();
+                        if (data.success) {
+                            flashToast('Connection deleted', 'success');
+                            loadExistingConnections();
+                        } else {
+                            flashToast(data.error || 'Failed to delete', 'danger');
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="bi bi-trash"></i>';
+                        }
+                    } catch (err) {
+                        flashToast('Network error', 'danger');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-trash"></i>';
+                    }
                 });
             });
 

@@ -466,6 +466,45 @@ func (s *CpanelService) AddWildcardARecord(connectionID, domain, ip string) erro
 	return nil
 }
 
+// CleanupDomainDNS removes DNS records we added for a domain via cPanel
+// Called when a domain is deleted to clean up our records
+func (s *CpanelService) CleanupDomainDNS(connectionID, domain string) {
+	conn, err := s.GetByID(connectionID)
+	if err != nil {
+		log.Printf("[cpanel] cleanup: failed to get connection for %s: %v", domain, err)
+		return
+	}
+
+	client := s.newClient(conn.Host, conn.Username, conn.APIToken)
+
+	baseDomain, err := client.GetBaseDomain(domain)
+	if err != nil {
+		log.Printf("[cpanel] cleanup: failed to get base domain for %s: %v", domain, err)
+		return
+	}
+
+	// Remove verification TXT record
+	if err := client.RemoveTXTRecord(baseDomain, "_guardbot-verify"); err != nil {
+		log.Printf("[cpanel] cleanup: failed to remove TXT for %s: %v", domain, err)
+	} else {
+		log.Printf("[cpanel] cleanup: removed _guardbot-verify TXT for %s", domain)
+	}
+
+	// Remove ACME CNAME record
+	if record, _ := client.FindCNAMERecord(baseDomain, "_acme-challenge"); record != nil {
+		if err := client.RemoveCNAMERecord(baseDomain, "_acme-challenge"); err != nil {
+			log.Printf("[cpanel] cleanup: failed to remove CNAME for %s: %v", domain, err)
+		} else {
+			log.Printf("[cpanel] cleanup: removed _acme-challenge CNAME for %s", domain)
+		}
+	}
+
+	// Note: We don't remove the wildcard A record because:
+	// 1. The user might have other domains/subdomains using it
+	// 2. They might re-add the domain and want the same setup
+	// If needed, user can manually remove it from cPanel
+}
+
 // AddAcmeCNAME adds or updates a CNAME record for acme-dns SSL verification
 // If CNAME already exists with different target, it will be updated
 func (s *CpanelService) AddAcmeCNAME(connectionID, domain, target string) error {

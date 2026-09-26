@@ -608,7 +608,7 @@ func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cleanup VPS files (async to not block response)
+	// Cleanup VPS files and cPanel DNS (async to not block response)
 	go func() {
 		// Clean up domain files: nginx config, SSL certs, site directories
 		if cleanupErr := h.verification.CleanupDomain(domain.Name); cleanupErr != nil {
@@ -623,6 +623,12 @@ func (h *Handler) APIDelete(w http.ResponseWriter, r *http.Request) {
 			if linkIDs, err := h.service.GetRedirectLinkIDs(id); err == nil {
 				h.verification.CleanupRedirectLinkSettings(linkIDs)
 			}
+		}
+
+		// Clean up cPanel DNS records if this domain was added via cPanel
+		if domain.CpanelAutoDNS && domain.CpanelConnectionID != nil && h.cpanelService != nil {
+			log.Printf("[domains] cleaning up cPanel DNS for %s", domain.Name)
+			h.cpanelService.CleanupDomainDNS(*domain.CpanelConnectionID, domain.Name)
 		}
 	}()
 

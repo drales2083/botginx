@@ -556,6 +556,32 @@ func (c *Client) UpdateOrAddCNAMERecord(domain, name, target string) error {
 	return c.AddCNAMERecord(domain, name, target)
 }
 
+// RemoveCNAMERecord removes a CNAME record by name
+func (c *Client) RemoveCNAMERecord(domain, name string) error {
+	record, err := c.FindCNAMERecord(domain, name)
+	if err != nil {
+		return err
+	}
+	if record == nil {
+		return nil // Already doesn't exist
+	}
+
+	return c.removeRecordByLine(domain, record.Line)
+}
+
+// RemoveARecord removes an A record by name
+func (c *Client) RemoveARecord(domain, name string) error {
+	record, err := c.FindARecord(domain, name)
+	if err != nil {
+		return err
+	}
+	if record == nil {
+		return nil // Already doesn't exist
+	}
+
+	return c.removeRecordByLine(domain, record.Line)
+}
+
 // DebugZone prints all DNS records for debugging
 func (c *Client) DebugZone(domain string) (string, error) {
 	records, err := c.GetZone(domain)
