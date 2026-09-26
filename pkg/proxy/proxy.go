@@ -124,14 +124,15 @@ func generateSessionID() string {
 }
 
 // BuildProxyURL builds the full proxy URL with session
-// Format: http://USER-zone-custom-session-{random}-sessTime-10:password@host:port
+// Format: http://USER-zone-custom-region-US-session-{random}-sessTime-10:password@host:port
 func (c *Config) BuildProxyURL() string {
 	if c.Username == "" || c.Password == "" || c.Host == "" {
 		return ""
 	}
 
 	sessionID := generateSessionID()
-	user := fmt.Sprintf("%s-zone-%s-session-%s-sessTime-%d",
+	// Region must be uppercase (US not us)
+	user := fmt.Sprintf("%s-zone-%s-region-US-session-%s-sessTime-%d",
 		c.Username, c.Zone, sessionID, c.SessionMinutes)
 
 	return fmt.Sprintf("http://%s:%s@%s:%d", user, c.Password, c.Host, c.Port)
