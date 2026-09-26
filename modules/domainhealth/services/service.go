@@ -136,6 +136,9 @@ func (s *HealthService) checkDNS(domain, expectedToken string) (string, string) 
 
 // checkSSLOnVPS checks SSL certificate on the deploy VPS (same as VerificationService.CheckSSL)
 func (s *HealthService) checkSSLOnVPS(domain string) (string, string, *time.Time) {
+	// Strip wildcard prefix - certs are stored at base domain path
+	baseDomain := stripWildcard(domain)
+
 	ip, port, user, password, err := s.getDeployServer()
 	if err != nil {
 		return "error", "No deploy server", nil
@@ -153,7 +156,7 @@ func (s *HealthService) checkSSLOnVPS(domain string) (string, string, *time.Time
 	defer client.Close()
 
 	// Check if cert exists (same path as verification service)
-	certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", domain)
+	certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", baseDomain)
 	checkCmd := fmt.Sprintf("test -f %s && echo EXISTS || echo MISSING", certPath)
 
 	output, err := client.Run(checkCmd)
