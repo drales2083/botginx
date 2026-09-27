@@ -1276,11 +1276,36 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 	if domain.SSLEnabled {
 		status.SSLReady = true
 		status.SetupStep = models.SetupStepComplete
+	} else if domain.SSLError != nil && *domain.SSLError != "" {
+		// SSL has error - check if cert actually exists on server (maybe generation succeeded but post-processing failed)
+		sslStatus, _ := h.verification.CheckSSL(domain.Name)
+		if sslStatus != nil && sslStatus.Exists {
+			// Certificate exists! Complete the setup
+			log.Printf("[domains] SSL cert already exists for %s during status check, completing setup", domain.Name)
+			go func() {
+				if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+					log.Printf("[domains] nginx setup failed for %s: %v", domain.Name, err)
+					return
+				}
+				serverID := h.service.GetDeployServerID()
+				sslEnabled := true
+				step := models.SetupStepComplete
+				emptyErr := ""
+				h.service.Update(id, models.UpdateDomainInput{
+					SSLEnabled: &sslEnabled,
+					SetupStep:  &step,
+					ServerID:   &serverID,
+					SSLError:   &emptyErr,
+				})
+			}()
+			status.SetupStep = models.SetupStepComplete
+			status.SSLReady = true
+		}
 	}
 
 	// Include SSL error if present
 	// But suppress old ACME TXT errors when using acme-dns (they're no longer relevant)
-	if domain.SSLError != nil && *domain.SSLError != "" {
+	if domain.SSLError != nil && *domain.SSLError != "" && !status.SSLReady {
 		// When using acme-dns, clear old errors mentioning ACME TXT
 		if domain.AcmeSubdomain != nil && strings.Contains(*domain.SSLError, "_acme-challenge") {
 			// Clear the stale error from database
