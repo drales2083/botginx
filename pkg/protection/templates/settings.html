@@ -682,11 +682,21 @@
 
                 // Update preview - set() handles queuing internally
                 if (window.protPreviewView) {
+                    // Resolve "auto" theme to actual system preference
+                    var themeVal = document.getElementById('prot-themeMode')?.value || 'light';
+                    if (themeVal === 'auto') {
+                        themeVal = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                    }
+                    // Resolve "auto" mode to slider (default puzzle type)
+                    var modeVal = document.getElementById('prot-puzzleMode')?.value || 'auto';
+                    if (modeVal === 'auto') {
+                        modeVal = 'slider';
+                    }
                     window.protPreviewView.set({
                         template: value,
                         state: window.protCurrentState,
-                        theme: document.getElementById('prot-themeMode')?.value || 'light',
-                        mode: document.getElementById('prot-puzzleMode')?.value || 'auto'
+                        theme: themeVal,
+                        mode: modeVal
                     });
                 }
             } else {
