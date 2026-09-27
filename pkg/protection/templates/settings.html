@@ -192,9 +192,10 @@
     border-radius: 0.5rem;
 }
 #prot-preview-mount img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: 768px;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
     border-radius: 0.5rem;
 }
 .prot-state-btn.active {
@@ -417,7 +418,7 @@
                         </div>
                     </div>
                     <div class="col" id="prot-template-preview-col" style="display:none;">
-                        <div id="prot-preview-mount" class="border rounded bg-dark position-relative" style="max-width: 320px; aspect-ratio: 768/660; overflow: hidden;">
+                        <div id="prot-preview-mount" class="border rounded bg-dark position-relative" style="width: 768px; max-width: 100%; aspect-ratio: 768/660; overflow: hidden;">
                             <div id="prot-preview-loading" class="position-absolute top-50 start-50 translate-middle text-white-50">
                                 <span class="spinner-border spinner-border-sm me-1"></span>Loading...
                             </div>
