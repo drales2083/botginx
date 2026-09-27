@@ -59,6 +59,37 @@ func NewHandler(service *services.DomainService, cpanelService *services.CpanelS
 	}
 }
 
+// completeSSLSetup marks a domain as SSL-complete with all required fields.
+// Delegates to DomainService.CompleteSSLSetup for DRY - use that directly in services.
+// Returns true if completion was successful.
+func (h *Handler) completeSSLSetup(domainID string) bool {
+	return h.service.CompleteSSLSetup(domainID) == nil
+}
+
+// checkAndCompleteSSL checks if SSL cert exists on server and completes setup if so.
+// Returns true if SSL is ready (either already enabled or just completed).
+func (h *Handler) checkAndCompleteSSL(domain *models.Domain) bool {
+	// Already complete
+	if domain.SSLEnabled {
+		return true
+	}
+
+	// Check if cert exists on server
+	sslStatus, err := h.verification.CheckSSL(domain.Name)
+	if err != nil || sslStatus == nil || !sslStatus.Exists {
+		return false
+	}
+
+	// Cert exists - setup nginx and complete
+	log.Printf("[domains] SSL cert exists for %s, completing setup", domain.Name)
+	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+		log.Printf("[domains] nginx setup failed for %s: %v", domain.Name, err)
+		return false
+	}
+
+	return h.completeSSLSetup(domain.ID)
+}
+
 // Page handlers
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
@@ -790,14 +821,9 @@ func (h *Handler) APICheckSSL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update SSL status in database and assign server
+	// Update SSL status in database - use helper for consistent completion
 	if status.Exists && status.IsWildcard {
-		sslEnabled := true
-		serverID := h.service.GetDeployServerID()
-		h.service.Update(id, models.UpdateDomainInput{
-			SSLEnabled: &sslEnabled,
-			ServerID:   &serverID,
-		})
+		h.completeSSLSetup(id)
 	}
 
 	response := map[string]interface{}{
@@ -1272,35 +1298,10 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check if SSL is ready
-	if domain.SSLEnabled {
+	// Check if SSL is ready (either already enabled or cert exists on server)
+	if domain.SSLEnabled || h.checkAndCompleteSSL(domain) {
 		status.SSLReady = true
 		status.SetupStep = models.SetupStepComplete
-	} else if domain.SSLError != nil && *domain.SSLError != "" {
-		// SSL has error - check if cert actually exists on server (maybe generation succeeded but post-processing failed)
-		sslStatus, _ := h.verification.CheckSSL(domain.Name)
-		if sslStatus != nil && sslStatus.Exists {
-			// Certificate exists! Complete the setup
-			log.Printf("[domains] SSL cert already exists for %s during status check, completing setup", domain.Name)
-			go func() {
-				if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
-					log.Printf("[domains] nginx setup failed for %s: %v", domain.Name, err)
-					return
-				}
-				serverID := h.service.GetDeployServerID()
-				sslEnabled := true
-				step := models.SetupStepComplete
-				emptyErr := ""
-				h.service.Update(id, models.UpdateDomainInput{
-					SSLEnabled: &sslEnabled,
-					SetupStep:  &step,
-					ServerID:   &serverID,
-					SSLError:   &emptyErr,
-				})
-			}()
-			status.SetupStep = models.SetupStepComplete
-			status.SSLReady = true
-		}
 	}
 
 	// Include SSL error if present
@@ -1379,19 +1380,10 @@ func (h *Handler) completeExternalSetup(domain *models.Domain) {
 		return
 	}
 
-	// Get deploy server ID and assign to domain
-	serverID := h.service.GetDeployServerID()
-
-	// Mark as complete with server assignment
-	step := models.SetupStepComplete
-	sslEnabled := true
+	// Mark as complete using helper, plus set DNSVerified
+	h.completeSSLSetup(domain.ID)
 	dnsVerified := true
-	h.service.Update(domain.ID, models.UpdateDomainInput{
-		SetupStep:   &step,
-		SSLEnabled:  &sslEnabled,
-		DNSVerified: &dnsVerified,
-		ServerID:    &serverID,
-	})
+	h.service.Update(domain.ID, models.UpdateDomainInput{DNSVerified: &dnsVerified})
 
 	log.Printf("[domains] SSL setup complete for %s", domain.Name)
 }
@@ -1444,29 +1436,7 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 
 	// First check if certificate already exists on server
 	// This handles cases where certbot succeeded but post-processing failed
-	sslStatus, _ := h.verification.CheckSSL(domain.Name)
-	if sslStatus != nil && sslStatus.Exists {
-		// Certificate exists! Complete the setup
-		log.Printf("[domains] SSL cert already exists for %s, completing setup", domain.Name)
-
-		// Setup nginx
-		if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
-			h.jsonError(w, "Certificate exists but nginx setup failed: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// Mark as complete
-		serverID := h.service.GetDeployServerID()
-		sslEnabled := true
-		step := models.SetupStepComplete
-		emptyErr := ""
-		h.service.Update(id, models.UpdateDomainInput{
-			SSLEnabled: &sslEnabled,
-			SetupStep:  &step,
-			ServerID:   &serverID,
-			SSLError:   &emptyErr,
-		})
-
+	if h.checkAndCompleteSSL(domain) {
 		h.json(w, http.StatusOK, map[string]interface{}{
 			"success": true,
 			"message": "Certificate found! Setup completed.",
@@ -1540,23 +1510,14 @@ func (h *Handler) APIStartSSLChallenge(w http.ResponseWriter, r *http.Request) {
 
 	// If cert already exists, auto-complete
 	if challenge.Token == "CERT_EXISTS" {
-		// Setup nginx
+		// Setup nginx and complete SSL
 		if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
 			h.jsonError(w, "Certificate exists but nginx setup failed: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		// Mark as complete
-		stepComplete := models.SetupStepComplete
-		sslEnabled := true
+		h.completeSSLSetup(id)
 		dnsVerified := true
-		serverID := h.service.GetDeployServerID()
-		h.service.Update(id, models.UpdateDomainInput{
-			SetupStep:   &stepComplete,
-			SSLEnabled:  &sslEnabled,
-			DNSVerified: &dnsVerified,
-			ServerID:    &serverID,
-		})
+		h.service.Update(id, models.UpdateDomainInput{DNSVerified: &dnsVerified})
 
 		h.json(w, http.StatusOK, map[string]interface{}{
 			"status":  "complete",
@@ -1627,23 +1588,14 @@ func (h *Handler) APICompleteSSLChallenge(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Setup nginx
+	// Setup nginx and mark complete
 	if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
 		h.jsonError(w, "Certificate installed but nginx setup failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Mark as complete
-	stepComplete := models.SetupStepComplete
-	sslEnabled := true
+	h.completeSSLSetup(id)
 	dnsVerified := true
-	serverID := h.service.GetDeployServerID()
-	h.service.Update(id, models.UpdateDomainInput{
-		SetupStep:   &stepComplete,
-		SSLEnabled:  &sslEnabled,
-		DNSVerified: &dnsVerified,
-		ServerID:    &serverID,
-	})
+	h.service.Update(id, models.UpdateDomainInput{DNSVerified: &dnsVerified})
 
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"status":  "complete",

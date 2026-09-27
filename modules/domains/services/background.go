@@ -120,9 +120,8 @@ func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 			return
 		}
 
-		log.Printf("[domains] %s SSL ready (Cloudflare)", domainName)
-		t := true
-		b.domainService.Update(domainID, models.UpdateDomainInput{SSLEnabled: &t})
+		log.Printf("[domains] %s SSL ready (Cloudflare), completing setup", domainName)
+		b.domainService.CompleteSSLSetup(domainID)
 		return
 	}
 
@@ -181,8 +180,8 @@ func (b *BackgroundVerifier) checkAndEnableSSL(domainID, domainName string) {
 	}
 
 	if status.Exists {
-		log.Printf("[domains] SSL active for %s (wildcard: %v)", domainName, status.IsWildcard)
-		t := true
-		b.domainService.Update(domainID, models.UpdateDomainInput{SSLEnabled: &t})
+		log.Printf("[domains] SSL active for %s (wildcard: %v), completing setup", domainName, status.IsWildcard)
+		// Use shared completion logic for consistent state
+		b.domainService.CompleteSSLSetup(domainID)
 	}
 }
