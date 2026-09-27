@@ -700,13 +700,24 @@
         });
     });
 
-    // Theme/Puzzle mode change handlers
-    ['prot-themeMode', 'prot-puzzleMode'].forEach(function(id) {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('change', protUpdateTemplatePreview);
-        }
-    });
+    // Theme mode change handler
+    const themeModeEl = document.getElementById('prot-themeMode');
+    if (themeModeEl) {
+        themeModeEl.addEventListener('change', protUpdateTemplatePreview);
+    }
+
+    // Puzzle mode change handler - auto-switch to Puzzle state to show selected type
+    const puzzleModeEl = document.getElementById('prot-puzzleMode');
+    if (puzzleModeEl) {
+        puzzleModeEl.addEventListener('change', function() {
+            // Switch to captcha/puzzle state to show the selected puzzle type
+            protCurrentState = 'captcha';
+            document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
+            const puzzleBtn = document.querySelector('.prot-state-btn[data-state="captcha"]');
+            if (puzzleBtn) puzzleBtn.classList.add('active');
+            protUpdateTemplatePreview();
+        });
+    }
 
     // Check if domain has Turnstile keys configured
     window.protCheckTurnstileStatus = async function(domainId) {
