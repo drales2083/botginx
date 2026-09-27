@@ -1133,20 +1133,32 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check A record with rich status
-	status.ARecordFound, status.ARecordIP = h.verification.CheckARecord(domain.Name, deployIP)
-	status.ARecord = models.RecordStatus{
-		Expected: deployIP,
-		Found:    status.ARecordIP,
-	}
-	if status.ARecordFound {
-		status.ARecord.Status = "verified"
-		status.ARecord.Message = "A record correctly points to server"
-	} else if status.ARecordIP != "" {
-		status.ARecord.Status = "mismatch"
-		status.ARecord.Message = fmt.Sprintf("Found %s, expected %s", status.ARecordIP, deployIP)
+	// Trust database if already verified (DNS cache can return stale negatives during propagation)
+	if domain.DNSVerified {
+		status.ARecordFound = true
+		status.ARecordIP = deployIP
+		status.ARecord = models.RecordStatus{
+			Expected: deployIP,
+			Found:    deployIP,
+			Status:   "verified",
+			Message:  "A record correctly points to server",
+		}
 	} else {
-		status.ARecord.Status = "not_found"
-		status.ARecord.Message = "No A record found"
+		status.ARecordFound, status.ARecordIP = h.verification.CheckARecord(domain.Name, deployIP)
+		status.ARecord = models.RecordStatus{
+			Expected: deployIP,
+			Found:    status.ARecordIP,
+		}
+		if status.ARecordFound {
+			status.ARecord.Status = "verified"
+			status.ARecord.Message = "A record correctly points to server"
+		} else if status.ARecordIP != "" {
+			status.ARecord.Status = "mismatch"
+			status.ARecord.Message = fmt.Sprintf("Found %s, expected %s", status.ARecordIP, deployIP)
+		} else {
+			status.ARecord.Status = "not_found"
+			status.ARecord.Message = "No A record found"
+		}
 	}
 
 	// Check verify TXT with rich status
