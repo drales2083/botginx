@@ -1405,6 +1405,38 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// First check if certificate already exists on server
+	// This handles cases where certbot succeeded but post-processing failed
+	sslStatus, _ := h.verification.CheckSSL(domain.Name)
+	if sslStatus != nil && sslStatus.Exists {
+		// Certificate exists! Complete the setup
+		log.Printf("[domains] SSL cert already exists for %s, completing setup", domain.Name)
+
+		// Setup nginx
+		if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+			h.jsonError(w, "Certificate exists but nginx setup failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Mark as complete
+		serverID := h.service.GetDeployServerID()
+		sslEnabled := true
+		step := models.SetupStepComplete
+		emptyErr := ""
+		h.service.Update(id, models.UpdateDomainInput{
+			SSLEnabled: &sslEnabled,
+			SetupStep:  &step,
+			ServerID:   &serverID,
+			SSLError:   &emptyErr,
+		})
+
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"success": true,
+			"message": "Certificate found! Setup completed.",
+		})
+		return
+	}
+
 	// Prevent spam - if already generating and updated within last 2 minutes, reject
 	if domain.SetupStep == models.SetupStepSSLGenerating {
 		if time.Since(domain.UpdatedAt) < 2*time.Minute {
@@ -1417,12 +1449,14 @@ func (h *Handler) APIRetrySSL(w http.ResponseWriter, r *http.Request) {
 	// Cancel any existing lego challenge
 	h.verification.LegoCancelChallenge(domain.Name)
 
-	// Clear old token and reset step
+	// Clear old error and reset step
 	emptyToken := ""
+	emptyErr := ""
 	step := models.SetupStepDNSWaiting
 	h.service.Update(id, models.UpdateDomainInput{
 		AcmeToken: &emptyToken,
 		SetupStep: &step,
+		SSLError:  &emptyErr,
 	})
 
 	h.json(w, http.StatusOK, map[string]interface{}{
