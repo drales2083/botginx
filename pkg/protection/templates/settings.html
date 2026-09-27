@@ -400,7 +400,7 @@
                         </select>
                         <small class="text-muted d-block mt-1">Challenge page shown to suspicious visitors</small>
                         <div id="prot-theme-mode-section" class="mt-2" style="display: none;">
-                            <select class="form-select" id="prot-themeMode" style="min-width: 250px;">
+                            <select class="form-select" id="prot-themeMode" style="min-width: 250px;" onchange="protUpdateTemplatePreview()">
                                 <option value="auto">Auto (System)</option>
                                 <option value="light" selected>Light Mode</option>
                                 <option value="dark">Dark Mode</option>
@@ -408,7 +408,7 @@
                             <small class="text-muted d-block mt-1">Theme mode</small>
                         </div>
                         <div id="prot-puzzle-mode-section" class="mt-2" style="display: none;">
-                            <select class="form-select" id="prot-puzzleMode" style="min-width: 250px;">
+                            <select class="form-select" id="prot-puzzleMode" style="min-width: 250px;" onchange="protOnPuzzleModeChange()">
                                 <option value="auto" selected>Auto (System picks)</option>
                                 <option value="slider">Slider</option>
                                 <option value="drag">Drag</option>
@@ -641,6 +641,15 @@
             }
         });
     }
+
+    // Puzzle mode change handler - switches to Puzzle state to show selected type
+    window.protOnPuzzleModeChange = function() {
+        window.protCurrentState = 'captcha';
+        document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
+        const puzzleBtn = document.querySelector('.prot-state-btn[data-state="captcha"]');
+        if (puzzleBtn) puzzleBtn.classList.add('active');
+        protUpdateTemplatePreview();
+    };
 
     window.protUpdateTemplatePreview = function() {
         const select = document.getElementById('prot-template');
@@ -1000,23 +1009,7 @@
             });
         });
 
-        // Theme mode change handler
-        const themeModeEl = document.getElementById('prot-themeMode');
-        if (themeModeEl) {
-            themeModeEl.addEventListener('change', protUpdateTemplatePreview);
-        }
-
-        // Puzzle mode change handler - auto-switch to Puzzle state to show selected type
-        const puzzleModeEl = document.getElementById('prot-puzzleMode');
-        if (puzzleModeEl) {
-            puzzleModeEl.addEventListener('change', function() {
-                window.protCurrentState = 'captcha';
-                document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
-                const puzzleBtn = document.querySelector('.prot-state-btn[data-state="captcha"]');
-                if (puzzleBtn) puzzleBtn.classList.add('active');
-                protUpdateTemplatePreview();
-            });
-        }
+        // Theme mode and puzzle mode use inline onchange handlers for reliability
     });
 })();
 </script>
