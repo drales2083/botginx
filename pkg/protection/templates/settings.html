@@ -673,12 +673,16 @@
 
                 // Update preview - set() handles queuing internally
                 if (window.protPreviewView) {
-                    window.protPreviewView.set({
+                    const previewOpts = {
                         template: value,
                         state: window.protCurrentState,
                         theme: document.getElementById('prot-themeMode')?.value || 'light',
                         mode: document.getElementById('prot-puzzleMode')?.value || 'auto'
-                    });
+                    };
+                    console.log('[PROT] protUpdateTemplatePreview calling set() with:', previewOpts);
+                    window.protPreviewView.set(previewOpts);
+                } else {
+                    console.log('[PROT] protUpdateTemplatePreview: protPreviewView is null');
                 }
             } else {
                 previewCol.style.display = 'none';
@@ -1008,14 +1012,19 @@
 
         // Puzzle mode change handler - auto-switch to Puzzle state to show selected type
         const puzzleModeEl = document.getElementById('prot-puzzleMode');
+        console.log('[PROT] DOMContentLoaded fired, puzzleModeEl:', puzzleModeEl);
         if (puzzleModeEl) {
             puzzleModeEl.addEventListener('change', function() {
+                console.log('[PROT] Puzzle mode changed to:', this.value);
                 window.protCurrentState = 'captcha';
                 document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
                 const puzzleBtn = document.querySelector('.prot-state-btn[data-state="captcha"]');
                 if (puzzleBtn) puzzleBtn.classList.add('active');
+                console.log('[PROT] Calling protUpdateTemplatePreview, protPreviewView:', window.protPreviewView);
                 protUpdateTemplatePreview();
             });
+        } else {
+            console.log('[PROT] ERROR: puzzleModeEl not found!');
         }
     });
 })();
