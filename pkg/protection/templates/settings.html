@@ -208,7 +208,12 @@
 <div class="prot-container" id="prot-container">
     <ul class="nav prot-tabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <a class="nav-link active" data-bs-toggle="tab" href="#prot-tab-detection" role="tab">
+            <a class="nav-link active" data-bs-toggle="tab" href="#prot-tab-template" role="tab">
+                <i class="bi bi-palette me-1"></i>Template
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" data-bs-toggle="tab" href="#prot-tab-detection" role="tab">
                 <i class="bi bi-sliders me-1"></i>Detection
             </a>
         </li>
@@ -373,8 +378,8 @@
             </div>
         </div>
 
-        <!-- Detection Tab -->
-        <div class="tab-pane active show prot-section" id="prot-tab-detection" role="tabpanel">
+        <!-- Template Tab -->
+        <div class="tab-pane active show prot-section" id="prot-tab-template" role="tabpanel">
             <div class="mb-4">
                 <label class="form-label text-muted small text-uppercase mb-2">Challenge Template</label>
                 <div class="row g-3 align-items-start">
@@ -450,7 +455,10 @@
                     <span>Turnstile enabled — using keys from domain settings</span>
                 </div>
             </div>
+        </div>
 
+        <!-- Detection Tab -->
+        <div class="tab-pane prot-section" id="prot-tab-detection" role="tabpanel">
             <div class="mb-4">
                 <label class="form-label text-muted small text-uppercase mb-3">Block Traffic Types</label>
 
@@ -625,6 +633,11 @@
                     }
                 });
             }
+            // Show preview if template already selected (e.g., on page reload)
+            const templateSelect = document.getElementById('prot-template');
+            if (templateSelect && templateSelect.value) {
+                protUpdateTemplatePreview();
+            }
         });
     }
 
@@ -689,35 +702,6 @@
             }
         }
     };
-
-    // State button handlers
-    document.querySelectorAll('.prot-state-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
-            this.classList.add('active');
-            protCurrentState = this.dataset.state;
-            protUpdateTemplatePreview();
-        });
-    });
-
-    // Theme mode change handler
-    const themeModeEl = document.getElementById('prot-themeMode');
-    if (themeModeEl) {
-        themeModeEl.addEventListener('change', protUpdateTemplatePreview);
-    }
-
-    // Puzzle mode change handler - auto-switch to Puzzle state to show selected type
-    const puzzleModeEl = document.getElementById('prot-puzzleMode');
-    if (puzzleModeEl) {
-        puzzleModeEl.addEventListener('change', function() {
-            // Switch to captcha/puzzle state to show the selected puzzle type
-            protCurrentState = 'captcha';
-            document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
-            const puzzleBtn = document.querySelector('.prot-state-btn[data-state="captcha"]');
-            if (puzzleBtn) puzzleBtn.classList.add('active');
-            protUpdateTemplatePreview();
-        });
-    }
 
     // Check if domain has Turnstile keys configured
     window.protCheckTurnstileStatus = async function(domainId) {
@@ -1006,6 +990,34 @@
     document.addEventListener('DOMContentLoaded', function() {
         protRenderCountries('prot-countries-block', 'block');
         protRenderCountries('prot-countries-allow', 'allow');
+
+        // State button handlers
+        document.querySelectorAll('.prot-state-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
+                this.classList.add('active');
+                protCurrentState = this.dataset.state;
+                protUpdateTemplatePreview();
+            });
+        });
+
+        // Theme mode change handler
+        const themeModeEl = document.getElementById('prot-themeMode');
+        if (themeModeEl) {
+            themeModeEl.addEventListener('change', protUpdateTemplatePreview);
+        }
+
+        // Puzzle mode change handler - auto-switch to Puzzle state to show selected type
+        const puzzleModeEl = document.getElementById('prot-puzzleMode');
+        if (puzzleModeEl) {
+            puzzleModeEl.addEventListener('change', function() {
+                protCurrentState = 'captcha';
+                document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
+                const puzzleBtn = document.querySelector('.prot-state-btn[data-state="captcha"]');
+                if (puzzleBtn) puzzleBtn.classList.add('active');
+                protUpdateTemplatePreview();
+            });
+        }
     });
 })();
 </script>
