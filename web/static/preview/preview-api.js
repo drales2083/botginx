@@ -113,7 +113,7 @@
       var img = document.createElement('img');
       img.alt = opts.alt || 'Challenge template preview';
       img.draggable = false;
-      img.style.cssText = 'display:block;width:100%;height:100%;object-fit:contain';
+      img.style.cssText = 'display:none;width:100%;height:100%;object-fit:contain';
       el.appendChild(img);
 
       var catalog = null, queued = null, current = {};
@@ -123,8 +123,12 @@
         var src = catalog.srcFor(current);
         if (!src) return;
         if (opts.onLoading) opts.onLoading(true);
-        img.onload  = function () { if (opts.onLoading) opts.onLoading(false); };
+        img.onload  = function () {
+          img.style.display = 'block';
+          if (opts.onLoading) opts.onLoading(false);
+        };
         img.onerror = function () {
+          img.style.display = 'none';
           if (opts.onLoading) opts.onLoading(false);
           if (opts.onMissing) opts.onMissing(src);
         };

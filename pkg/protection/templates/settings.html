@@ -616,8 +616,9 @@
     }
 
     // Template preview (using AntibotPreview API)
-    let protPreviewView = null;
-    let protCurrentState = 'challenge';
+    // Expose on window so event handlers can access after async load
+    window.protPreviewView = null;
+    window.protCurrentState = 'challenge';
 
     // Initialize preview on load
     if (typeof AntibotPreview !== 'undefined') {
@@ -625,7 +626,7 @@
             window.protPreviewCatalog = catalog;
             const mountEl = document.getElementById('prot-preview-mount');
             if (mountEl) {
-                protPreviewView = AntibotPreview.mount(mountEl, {
+                window.protPreviewView = AntibotPreview.mount(mountEl, {
                     base: '/user/preview/',
                     onLoading: function(loading) {
                         const loadingEl = document.getElementById('prot-preview-loading');
@@ -670,15 +671,13 @@
                     puzzleModeSection.style.display = caps.puzzleMode ? '' : 'none';
                 }
 
-                // Update preview
-                if (protPreviewView && protPreviewView.ready) {
-                    protPreviewView.ready.then(function() {
-                        protPreviewView.set({
-                            template: value,
-                            state: protCurrentState,
-                            theme: document.getElementById('prot-themeMode')?.value || 'light',
-                            mode: document.getElementById('prot-puzzleMode')?.value || 'auto'
-                        });
+                // Update preview - set() handles queuing internally
+                if (window.protPreviewView) {
+                    window.protPreviewView.set({
+                        template: value,
+                        state: window.protCurrentState,
+                        theme: document.getElementById('prot-themeMode')?.value || 'light',
+                        mode: document.getElementById('prot-puzzleMode')?.value || 'auto'
                     });
                 }
             } else {
@@ -996,7 +995,7 @@
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
                 this.classList.add('active');
-                protCurrentState = this.dataset.state;
+                window.protCurrentState = this.dataset.state;
                 protUpdateTemplatePreview();
             });
         });
@@ -1011,7 +1010,7 @@
         const puzzleModeEl = document.getElementById('prot-puzzleMode');
         if (puzzleModeEl) {
             puzzleModeEl.addEventListener('change', function() {
-                protCurrentState = 'captcha';
+                window.protCurrentState = 'captcha';
                 document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
                 const puzzleBtn = document.querySelector('.prot-state-btn[data-state="captcha"]');
                 if (puzzleBtn) puzzleBtn.classList.add('active');
