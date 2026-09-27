@@ -434,7 +434,7 @@ setup_autodeploy() {
     fi
 
     # Download auto-deploy.sh from GitHub (consistent with antibot approach)
-    local repo="robertp2083/botginx"
+    local repo="drales2083/botginx"
     local branch="main"
     local script_url="https://raw.githubusercontent.com/${repo}/${branch}/auto-deploy.sh"
 

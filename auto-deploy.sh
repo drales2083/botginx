@@ -17,7 +17,7 @@ LOCK_FILE="/tmp/botginx-deploy.lock"
 APP_DIR="${APP_DIR:-/opt/botginx}"
 BINARY="${BINARY:-$APP_DIR/bin/botginx}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/botginx}"
-REPO="${BOTGINX_REPO:-robertp2083/botginx}"
+REPO="${BOTGINX_REPO:-drales2083/botginx}"
 
 mkdir -p "$APP_DIR/logs"
 
