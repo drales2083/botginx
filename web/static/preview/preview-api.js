@@ -121,6 +121,7 @@
       function paint() {
         if (!catalog) return;
         var src = catalog.srcFor(current);
+        console.log('[Preview API] paint() - current:', JSON.stringify(current), 'src:', src);
         if (!src) return;
         if (opts.onLoading) opts.onLoading(true);
         img.onload  = function () {
@@ -132,6 +133,7 @@
           if (opts.onLoading) opts.onLoading(false);
           if (opts.onMissing) opts.onMissing(src);
         };
+        console.log('[Preview API] Setting img.src to:', src);
         img.src = src;
       }
 
@@ -151,7 +153,9 @@
         catalog: function () { return catalog; },
         /** Merge fields into the current selection and repaint. */
         set: function (next) {
+          console.log('[Preview API] set() called with:', next, 'current before merge:', JSON.stringify(current));
           for (var k in next) current[k] = next[k];
+          console.log('[Preview API] current after merge:', JSON.stringify(current), 'catalog:', !!catalog);
           if (!catalog) { queued = current; return; }
           paint();
         },
