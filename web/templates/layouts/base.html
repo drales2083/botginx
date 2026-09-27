@@ -105,83 +105,22 @@
       border-color: var(--bs-accordion-border-color);
     }
 
-    /* cPanel-style alerts - subtle, professional */
-    .alert {
-      border: 1px solid;
-      border-left-width: 4px;
-      border-radius: 2px;
-      padding: 10px 14px;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-    .alert i.bi {
-      font-size: 16px;
-      margin-right: 8px;
-      vertical-align: -2px;
-    }
-    .alert strong {
-      font-weight: 600;
-    }
-
-    /* Warning - pale yellow */
-    .alert-warning {
-      background-color: #fef9ed;
-      border-color: #f5e6c8;
-      border-left-color: #daa520;
-      color: #664d03;
-    }
-    [data-bs-theme="dark"] .alert-warning {
-      background-color: rgba(218, 165, 32, 0.1);
-      border-color: rgba(218, 165, 32, 0.3);
-      border-left-color: #daa520;
-      color: #ffc107;
-    }
-
-    /* Danger - pale red */
-    .alert-danger {
-      background-color: #fdf2f2;
-      border-color: #f5c6cb;
-      border-left-color: #dc3545;
-      color: #842029;
-    }
-    [data-bs-theme="dark"] .alert-danger {
-      background-color: rgba(220, 53, 69, 0.1);
-      border-color: rgba(220, 53, 69, 0.3);
-      border-left-color: #dc3545;
-      color: #f8d7da;
-    }
-
-    /* Success - pale green */
-    .alert-success {
-      background-color: #f0fdf4;
-      border-color: #c3e6cb;
-      border-left-color: #28a745;
-      color: #0f5132;
-    }
-    [data-bs-theme="dark"] .alert-success {
-      background-color: rgba(40, 167, 69, 0.1);
-      border-color: rgba(40, 167, 69, 0.3);
-      border-left-color: #28a745;
-      color: #badbcc;
-    }
-
-    /* Info - pale blue */
-    .alert-info {
-      background-color: #f0f9ff;
-      border-color: #b8daff;
-      border-left-color: #17a2b8;
-      color: #055160;
-    }
-    [data-bs-theme="dark"] .alert-info {
-      background-color: rgba(23, 162, 184, 0.1);
-      border-color: rgba(23, 162, 184, 0.3);
-      border-left-color: #17a2b8;
-      color: #9eeaf9;
-    }
-
-    /* Legacy class for backwards compatibility */
+    /* Alert with left border accent */
     .alert-border-left {
-      /* Already styled above */
+      border-left: 4px solid;
+      border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
+    }
+    .alert-danger.alert-border-left {
+      border-left-color: var(--bs-danger);
+    }
+    .alert-warning.alert-border-left {
+      border-left-color: var(--bs-warning);
+    }
+    .alert-success.alert-border-left {
+      border-left-color: var(--bs-success);
+    }
+    .alert-info.alert-border-left {
+      border-left-color: var(--bs-info);
     }
   </style>
 </head>
