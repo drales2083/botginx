@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -400,10 +401,14 @@ func main() {
 	r.Use(translator.Middleware) // i18n middleware
 
 	// Static files (no directory listing)
+	// Preview images require auth - served separately under /user/preview/*
 	staticSub, _ := fs.Sub(web.StaticFS, "static")
 	staticHandler := http.StripPrefix("/static/", noDirectoryListing(http.FileServer(http.FS(staticSub))))
 	r.Handle("/static", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
 	r.Handle("/static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
+	r.Handle("/static/preview", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
+	r.Handle("/static/preview/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
+	r.Handle("/static/preview/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
 	r.Handle("/static/*", staticHandler)
 
 	// Health check
@@ -514,6 +519,17 @@ func main() {
 		if qrMod, ok := registry.Get("qrcodes"); ok {
 			r.Mount("/qrcodes", qrMod.Routes())
 		}
+
+		// Template preview images: authenticated + rate-limited
+		// Serves WebP captures of antibot challenge templates
+		previewSub, _ := fs.Sub(web.StaticFS, "static/preview")
+		previewHandler := http.StripPrefix("/user/preview/", noDirectoryListing(http.FileServer(http.FS(previewSub))))
+		previewRateLimiter := newPreviewRateLimiter()
+		r.Route("/preview", func(r chi.Router) {
+			r.Use(previewRateLimiter.Middleware)
+			r.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
+			r.Handle("/*", previewHandler)
+		})
 
 		// Reports: CSV export of analytics data.
 		if repMod, ok := registry.Get("reports"); ok {
@@ -684,6 +700,83 @@ func noDirectoryListing(next http.Handler) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// previewRateLimiter limits requests to template preview images
+// to prevent bulk enumeration of all templates
+type previewRateLimiter struct {
+	mu       sync.Mutex
+	requests map[string][]time.Time
+	limit    int           // max requests per window
+	window   time.Duration // sliding window duration
+}
+
+func newPreviewRateLimiter() *previewRateLimiter {
+	rl := &previewRateLimiter{
+		requests: make(map[string][]time.Time),
+		limit:    60,               // 60 requests
+		window:   time.Minute * 1,  // per minute
+	}
+	// Cleanup old entries every minute
+	go func() {
+		for range time.Tick(time.Minute) {
+			rl.cleanup()
+		}
+	}()
+	return rl
+}
+
+func (rl *previewRateLimiter) cleanup() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	cutoff := time.Now().Add(-rl.window)
+	for ip, times := range rl.requests {
+		var valid []time.Time
+		for _, t := range times {
+			if t.After(cutoff) {
+				valid = append(valid, t)
+			}
+		}
+		if len(valid) == 0 {
+			delete(rl.requests, ip)
+		} else {
+			rl.requests[ip] = valid
+		}
+	}
+}
+
+func (rl *previewRateLimiter) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := r.RemoteAddr
+		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+			ip = strings.Split(fwd, ",")[0]
+		}
+
+		rl.mu.Lock()
+		now := time.Now()
+		cutoff := now.Add(-rl.window)
+
+		// Filter to requests within window
+		var valid []time.Time
+		for _, t := range rl.requests[ip] {
+			if t.After(cutoff) {
+				valid = append(valid, t)
+			}
+		}
+
+		if len(valid) >= rl.limit {
+			rl.mu.Unlock()
+			w.Header().Set("Retry-After", "60")
+			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			return
+		}
+
+		valid = append(valid, now)
+		rl.requests[ip] = valid
+		rl.mu.Unlock()
+
 		next.ServeHTTP(w, r)
 	})
 }

@@ -1,0 +1,922 @@
+[
+  {
+    "template": "cloudflare",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/cloudflare/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 28076
+  },
+  {
+    "template": "cloudflare",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/cloudflare/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 28076
+  },
+  {
+    "template": "cloudflare",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/cloudflare/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18314
+  },
+  {
+    "template": "cloudflare",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/cloudflare/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 28076
+  },
+  {
+    "template": "foyer",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/foyer/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 36134
+  },
+  {
+    "template": "foyer",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/foyer/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 36134
+  },
+  {
+    "template": "foyer",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/foyer/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 22524
+  },
+  {
+    "template": "foyer",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/foyer/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 15362
+  },
+  {
+    "template": "humancheck",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/humancheck/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19612
+  },
+  {
+    "template": "humancheck",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/humancheck/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 32890
+  },
+  {
+    "template": "humancheck",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/humancheck/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 26944
+  },
+  {
+    "template": "humancheck",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/humancheck/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19612
+  },
+  {
+    "template": "humansecurity",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/humansecurity/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 22584
+  },
+  {
+    "template": "humansecurity",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/humansecurity/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 20224
+  },
+  {
+    "template": "humansecurity",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/humansecurity/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 20224
+  },
+  {
+    "template": "humansecurity",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/humansecurity/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 26604
+  },
+  {
+    "template": "interstitial",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/interstitial/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 15594
+  },
+  {
+    "template": "interstitial",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/interstitial/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 23840
+  },
+  {
+    "template": "interstitial",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/interstitial/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 25824
+  },
+  {
+    "template": "interstitial",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/interstitial/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 15622
+  },
+  {
+    "template": "interstitial",
+    "state": "challenge",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/interstitial/challenge-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 14324
+  },
+  {
+    "template": "interstitial",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/interstitial/captcha-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 21506
+  },
+  {
+    "template": "interstitial",
+    "state": "blocked",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/interstitial/blocked-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 23388
+  },
+  {
+    "template": "interstitial",
+    "state": "success",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/interstitial/success-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 14334
+  },
+  {
+    "template": "latch",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/latch/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19572
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/latch/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19572
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "drag",
+    "src": "img/latch/captcha-light-drag.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19572
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "rotate",
+    "src": "img/latch/captcha-light-rotate.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19572
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "icon",
+    "src": "img/latch/captcha-light-icon.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19572
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "text",
+    "src": "img/latch/captcha-light-text.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19572
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "strip",
+    "src": "img/latch/captcha-light-strip.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19572
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "gobang",
+    "src": "img/latch/captcha-light-gobang.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19572
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "match3",
+    "src": "img/latch/captcha-light-match3.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19572
+  },
+  {
+    "template": "latch",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/latch/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 20606
+  },
+  {
+    "template": "latch",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/latch/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18878
+  },
+  {
+    "template": "latch",
+    "state": "challenge",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/latch/challenge-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18856
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/latch/captcha-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18856
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "drag",
+    "src": "img/latch/captcha-dark-drag.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18856
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "rotate",
+    "src": "img/latch/captcha-dark-rotate.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18856
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "icon",
+    "src": "img/latch/captcha-dark-icon.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18856
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "text",
+    "src": "img/latch/captcha-dark-text.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18856
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "strip",
+    "src": "img/latch/captcha-dark-strip.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18856
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "gobang",
+    "src": "img/latch/captcha-dark-gobang.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18856
+  },
+  {
+    "template": "latch",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "match3",
+    "src": "img/latch/captcha-dark-match3.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18856
+  },
+  {
+    "template": "latch",
+    "state": "blocked",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/latch/blocked-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 19220
+  },
+  {
+    "template": "latch",
+    "state": "success",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/latch/success-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18250
+  },
+  {
+    "template": "lobby",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/lobby/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 45580
+  },
+  {
+    "template": "lobby",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/lobby/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 45580
+  },
+  {
+    "template": "lobby",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/lobby/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 36618
+  },
+  {
+    "template": "lobby",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/lobby/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 52960
+  },
+  {
+    "template": "simple",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/simple/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 12282
+  },
+  {
+    "template": "simple",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/simple/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 12282
+  },
+  {
+    "template": "simple",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/simple/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 11028
+  },
+  {
+    "template": "simple",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/simple/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 11152
+  },
+  {
+    "template": "simple",
+    "state": "challenge",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/simple/challenge-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 11936
+  },
+  {
+    "template": "simple",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/simple/captcha-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 11936
+  },
+  {
+    "template": "simple",
+    "state": "blocked",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/simple/blocked-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 10922
+  },
+  {
+    "template": "simple",
+    "state": "success",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/simple/success-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 10912
+  },
+  {
+    "template": "slidepuzzle",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/slidepuzzle/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 23274
+  },
+  {
+    "template": "slidepuzzle",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/slidepuzzle/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 23274
+  },
+  {
+    "template": "slidepuzzle",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/slidepuzzle/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18080
+  },
+  {
+    "template": "slidepuzzle",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/slidepuzzle/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 13490
+  },
+  {
+    "template": "smartpuzzle",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/smartpuzzle/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18944
+  },
+  {
+    "template": "smartpuzzle",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/smartpuzzle/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18944
+  },
+  {
+    "template": "smartpuzzle",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/smartpuzzle/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18524
+  },
+  {
+    "template": "smartpuzzle",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/smartpuzzle/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 17946
+  },
+  {
+    "template": "smartpuzzle",
+    "state": "challenge",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/smartpuzzle/challenge-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18042
+  },
+  {
+    "template": "smartpuzzle",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/smartpuzzle/captcha-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18042
+  },
+  {
+    "template": "smartpuzzle",
+    "state": "blocked",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/smartpuzzle/blocked-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 18524
+  },
+  {
+    "template": "smartpuzzle",
+    "state": "success",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/smartpuzzle/success-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 17120
+  },
+  {
+    "template": "transit",
+    "state": "challenge",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/transit/challenge-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 16588
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/transit/captcha-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 31022
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "drag",
+    "src": "img/transit/captcha-light-drag.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 32116
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "rotate",
+    "src": "img/transit/captcha-light-rotate.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 29928
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "icon",
+    "src": "img/transit/captcha-light-icon.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 28052
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "text",
+    "src": "img/transit/captcha-light-text.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 29788
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "strip",
+    "src": "img/transit/captcha-light-strip.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 27954
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "gobang",
+    "src": "img/transit/captcha-light-gobang.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 29332
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "light",
+    "mode": "match3",
+    "src": "img/transit/captcha-light-match3.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 37316
+  },
+  {
+    "template": "transit",
+    "state": "blocked",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/transit/blocked-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 15182
+  },
+  {
+    "template": "transit",
+    "state": "success",
+    "theme": "light",
+    "mode": "slider",
+    "src": "img/transit/success-light-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 16012
+  },
+  {
+    "template": "transit",
+    "state": "challenge",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/transit/challenge-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 16346
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/transit/captcha-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 29620
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "drag",
+    "src": "img/transit/captcha-dark-drag.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 31226
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "rotate",
+    "src": "img/transit/captcha-dark-rotate.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 27056
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "icon",
+    "src": "img/transit/captcha-dark-icon.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 27540
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "text",
+    "src": "img/transit/captcha-dark-text.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 29272
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "strip",
+    "src": "img/transit/captcha-dark-strip.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 27388
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "gobang",
+    "src": "img/transit/captcha-dark-gobang.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 27626
+  },
+  {
+    "template": "transit",
+    "state": "captcha",
+    "theme": "dark",
+    "mode": "match3",
+    "src": "img/transit/captcha-dark-match3.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 34554
+  },
+  {
+    "template": "transit",
+    "state": "blocked",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/transit/blocked-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 14830
+  },
+  {
+    "template": "transit",
+    "state": "success",
+    "theme": "dark",
+    "mode": "slider",
+    "src": "img/transit/success-dark-slider.webp",
+    "w": 768,
+    "h": 660,
+    "bytes": 15534
+  }
+]

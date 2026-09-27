@@ -2,6 +2,8 @@
 <!-- Fancybox for image lightbox -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
+<!-- Template Preview API -->
+<script src="/user/preview/preview-api.js"></script>
 <style>
 /* Protection Component Styles - all prefixed with prot- */
 .prot-tabs {
@@ -184,6 +186,21 @@
 .prot-country-item img {
     height: 12px;
     border-radius: 1px;
+}
+/* Preview mount styles */
+#prot-preview-mount {
+    border-radius: 0.5rem;
+}
+#prot-preview-mount img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0.5rem;
+}
+.prot-state-btn.active {
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    color: #fff !important;
 }
 </style>
 
@@ -400,15 +417,17 @@
                         </div>
                     </div>
                     <div class="col" id="prot-template-preview-col" style="display:none;">
-                        <a id="prot-template-link" href="" data-fancybox="template" data-caption="Challenge Template Preview">
-                            <div class="border rounded p-2 bg-dark position-relative" style="max-width: 280px; cursor: zoom-in;">
-                                <img id="prot-template-preview" src="" alt="Template Preview"
-                                     style="width: 100%; border-radius: 4px; display: block;">
-                                <div class="position-absolute bottom-0 start-0 end-0 text-center pb-1">
-                                    <small class="text-white-50"><i class="bi bi-zoom-in me-1"></i>Click to enlarge</small>
-                                </div>
+                        <div id="prot-preview-mount" class="border rounded bg-dark position-relative" style="max-width: 320px; aspect-ratio: 768/660; overflow: hidden;">
+                            <div id="prot-preview-loading" class="position-absolute top-50 start-50 translate-middle text-white-50">
+                                <span class="spinner-border spinner-border-sm me-1"></span>Loading...
                             </div>
-                        </a>
+                        </div>
+                        <div class="d-flex gap-2 mt-2" id="prot-preview-states" style="display:none !important;">
+                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn active" data-state="challenge">Challenge</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn" data-state="captcha">Puzzle</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn" data-state="blocked">Blocked</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn" data-state="success">Success</button>
+                        </div>
                     </div>
                 </div>
                 <!-- Turnstile Warning (shown when cloudflare template selected without keys) -->
@@ -587,38 +606,76 @@
         });
     }
 
-    // Template preview
+    // Template preview (using AntibotPreview API)
+    let protPreviewView = null;
+    let protCurrentState = 'challenge';
+
+    // Initialize preview on load
+    if (typeof AntibotPreview !== 'undefined') {
+        AntibotPreview.load('/user/preview/').then(function(catalog) {
+            window.protPreviewCatalog = catalog;
+            const mountEl = document.getElementById('prot-preview-mount');
+            if (mountEl) {
+                protPreviewView = AntibotPreview.mount(mountEl, {
+                    base: '/user/preview/',
+                    onLoading: function(loading) {
+                        const loadingEl = document.getElementById('prot-preview-loading');
+                        if (loadingEl) loadingEl.style.display = loading ? '' : 'none';
+                    }
+                });
+            }
+        });
+    }
+
     window.protUpdateTemplatePreview = function() {
         const select = document.getElementById('prot-template');
         const previewCol = document.getElementById('prot-template-preview-col');
-        const previewImg = document.getElementById('prot-template-preview');
-        const previewLink = document.getElementById('prot-template-link');
         const themeModeSection = document.getElementById('prot-theme-mode-section');
+        const puzzleModeSection = document.getElementById('prot-puzzle-mode-section');
+        const statesSection = document.getElementById('prot-preview-states');
         const turnstileWarning = document.getElementById('prot-turnstile-warning');
         const turnstileEnabled = document.getElementById('prot-turnstile-enabled');
-        if (!select || !previewCol || !previewImg) return;
+        if (!select || !previewCol) return;
 
         const value = select.value;
-        if (value && ['transit', 'cloudflare', 'humancheck', 'humansecurity', 'slidepuzzle', 'smartpuzzle', 'simple', 'lobby', 'foyer', 'latch', 'interstitial'].includes(value)) {
-            const imgUrl = '/static/img/templates/' + value + '.gif';
-            previewImg.src = imgUrl;
-            if (previewLink) previewLink.href = imgUrl;
-            previewCol.style.display = '';
+        const catalog = window.protPreviewCatalog;
+
+        if (value && catalog) {
+            const caps = catalog.supports(value);
+            if (caps) {
+                previewCol.style.display = '';
+                if (statesSection) statesSection.style.display = '';
+
+                // Show/hide theme mode based on catalog
+                if (themeModeSection) {
+                    themeModeSection.style.display = caps.theme ? '' : 'none';
+                }
+
+                // Show/hide puzzle mode based on catalog
+                if (puzzleModeSection) {
+                    puzzleModeSection.style.display = caps.puzzleMode ? '' : 'none';
+                }
+
+                // Update preview
+                if (protPreviewView && protPreviewView.ready) {
+                    protPreviewView.ready.then(function() {
+                        protPreviewView.set({
+                            template: value,
+                            state: protCurrentState,
+                            theme: document.getElementById('prot-themeMode')?.value || 'light',
+                            mode: document.getElementById('prot-puzzleMode')?.value || 'auto'
+                        });
+                    });
+                }
+            } else {
+                previewCol.style.display = 'none';
+                if (statesSection) statesSection.style.display = 'none';
+            }
         } else {
             previewCol.style.display = 'none';
-            previewImg.src = '';
-            if (previewLink) previewLink.href = '';
-        }
-
-        // Show theme mode for templates that support theming (transit, simple, smartpuzzle, interstitial, latch)
-        if (themeModeSection) {
-            themeModeSection.style.display = (value === 'transit' || value === 'simple' || value === 'smartpuzzle' || value === 'interstitial' || value === 'latch') ? '' : 'none';
-        }
-
-        // Show puzzle mode for templates that support it (transit, wave, latch)
-        const puzzleModeSection = document.getElementById('prot-puzzle-mode-section');
-        if (puzzleModeSection) {
-            puzzleModeSection.style.display = (value === 'transit' || value === 'wave' || value === 'latch') ? '' : 'none';
+            if (statesSection) statesSection.style.display = 'none';
+            if (themeModeSection) themeModeSection.style.display = 'none';
+            if (puzzleModeSection) puzzleModeSection.style.display = 'none';
         }
 
         // Check Turnstile status when cloudflare template is selected
@@ -631,6 +688,24 @@
             }
         }
     };
+
+    // State button handlers
+    document.querySelectorAll('.prot-state-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.prot-state-btn').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            protCurrentState = this.dataset.state;
+            protUpdateTemplatePreview();
+        });
+    });
+
+    // Theme/Puzzle mode change handlers
+    ['prot-themeMode', 'prot-puzzleMode'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', protUpdateTemplatePreview);
+        }
+    });
 
     // Check if domain has Turnstile keys configured
     window.protCheckTurnstileStatus = async function(domainId) {
@@ -659,9 +734,9 @@
         }
     };
 
-    // Initialize Fancybox
+    // Initialize Fancybox for other images (template preview now uses AntibotPreview API)
     if (typeof Fancybox !== 'undefined') {
-        Fancybox.bind('[data-fancybox="template"]', {
+        Fancybox.bind('[data-fancybox]', {
             animated: true,
             showClass: "fancybox-fadeIn",
             hideClass: "fancybox-fadeOut",
