@@ -31,8 +31,10 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="/static/css/adminlte.css" />
   <link rel="stylesheet" href="/static/css/adminlte-colors.css" />
-  <!-- Kumo Theme - comment out to disable -->
-  <link rel="stylesheet" href="/static/css/kumo-theme.css" />
+  <!-- Kumo Theme -->
+  <link rel="stylesheet" href="/static/css/kumo-foundation.css" />
+  <link rel="stylesheet" href="/static/css/kumo-components.css" />
+  <link rel="stylesheet" href="/static/css/kumo-layout.css" />
   <style>
     /* Matches the 20% text scale in the main layout. */
     :root {
@@ -66,7 +68,7 @@
     }
   </style>
 </head>
-<body class="{{if eq .Title "Sign Up"}}register-page{{else}}login-page{{end}} bg-body-tertiary">
+<body class="{{if eq .Title "Sign Up"}}register-page{{else}}login-page{{end}}">
 
   <div class="{{if eq .Title "Sign Up"}}register-box{{else}}login-box{{end}}">
     <div class="{{if eq .Title "Sign Up"}}register-logo{{else}}login-logo{{end}}">

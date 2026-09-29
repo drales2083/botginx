@@ -19,30 +19,48 @@
 
 :root {
   /* Glass Effect */
-  --kumo-glass-bg: rgba(255, 255, 255, 0.03);
-  --kumo-glass-border: rgba(255, 255, 255, 0.08);
-  --kumo-glass-blur: 12px;
+  --kumo-glass-bg: rgba(255, 255, 255, 0.04);
+  --kumo-glass-border: rgba(255, 255, 255, 0.1);
+  --kumo-glass-blur: 16px;
 
   /* Shadows - soft with large blur radius */
-  --kumo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
-  --kumo-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.2);
-  --kumo-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.25);
+  --kumo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --kumo-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
+  --kumo-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.3);
+  --kumo-shadow-glow: 0 0 20px rgba(230, 57, 70, 0.2);
 
   /* Border Radius - generous rounding */
   --kumo-radius-sm: 8px;
   --kumo-radius-md: 12px;
   --kumo-radius-lg: 16px;
   --kumo-radius-xl: 24px;
+  --kumo-radius-pill: 9999px;
 
   /* Transitions - smooth micro-animations */
-  --kumo-transition-fast: 150ms ease;
-  --kumo-transition-normal: 250ms ease;
-  --kumo-transition-slow: 400ms ease;
+  --kumo-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --kumo-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --kumo-transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Colors - softer red primary with gradient accent */
   --kumo-primary: #e63946;
+  --kumo-primary-light: #f06c77;
+  --kumo-primary-dark: #c52836;
   --kumo-primary-soft: rgba(230, 57, 70, 0.15);
   --kumo-accent-gradient: linear-gradient(135deg, #e63946 0%, #f4a261 100%);
+  --kumo-success-gradient: linear-gradient(135deg, #28a745 0%, #5dd879 100%);
+  --kumo-danger-gradient: linear-gradient(135deg, #dc3545 0%, #ff6b6b 100%);
+  --kumo-warning-gradient: linear-gradient(135deg, #ffc107 0%, #ffdb4d 100%);
+  --kumo-info-gradient: linear-gradient(135deg, #17a2b8 0%, #4dd4ec 100%);
+
+  /* Background layers - darker like Cloudflare/Kumo */
+  --kumo-bg-base: #09090b;
+  --kumo-bg-surface: #111113;
+  --kumo-bg-elevated: #18181b;
+
+  /* Text colors */
+  --kumo-text-primary: rgba(255, 255, 255, 0.95);
+  --kumo-text-secondary: rgba(255, 255, 255, 0.7);
+  --kumo-text-muted: rgba(255, 255, 255, 0.45);
 }
 
 
@@ -52,11 +70,12 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+[data-bs-theme="dark"] body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  color: var(--kumo-text-primary) !important;
 }
 
 
@@ -64,14 +83,33 @@ body {
    3. Base Body Styles
    ========================================================================== */
 
-body {
+[data-bs-theme="dark"] body {
   letter-spacing: -0.01em;
-  line-height: 1.5;
+  line-height: 1.6;
+  background: var(--kumo-bg-base) !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
+[data-bs-theme="dark"] h1,
+[data-bs-theme="dark"] h2,
+[data-bs-theme="dark"] h3,
+[data-bs-theme="dark"] h4,
+[data-bs-theme="dark"] h5,
+[data-bs-theme="dark"] h6 {
   font-weight: 600;
   letter-spacing: -0.02em;
+  color: var(--kumo-text-primary);
+}
+
+/* Selection styling */
+[data-bs-theme="dark"] ::selection {
+  background: var(--kumo-primary-soft);
+  color: #fff;
+}
+
+/* Focus visible styling for accessibility */
+[data-bs-theme="dark"] :focus-visible {
+  outline: 2px solid var(--kumo-primary);
+  outline-offset: 2px;
 }
 
 
@@ -79,7 +117,7 @@ h1, h2, h3, h4, h5, h6 {
    4. Page Transitions
    ========================================================================== */
 
-.content-wrapper {
+[data-bs-theme="dark"] .content-wrapper {
   animation: kumoFadeIn var(--kumo-transition-slow);
 }
 
@@ -95,27 +133,27 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Staggered card entrance for lists */
-.card {
+[data-bs-theme="dark"] .card {
   animation: kumoFadeIn var(--kumo-transition-slow) backwards;
 }
 
-.card:nth-child(1) { animation-delay: 0ms; }
-.card:nth-child(2) { animation-delay: 50ms; }
-.card:nth-child(3) { animation-delay: 100ms; }
-.card:nth-child(4) { animation-delay: 150ms; }
-.card:nth-child(5) { animation-delay: 200ms; }
+[data-bs-theme="dark"] .card:nth-child(1) { animation-delay: 0ms; }
+[data-bs-theme="dark"] .card:nth-child(2) { animation-delay: 50ms; }
+[data-bs-theme="dark"] .card:nth-child(3) { animation-delay: 100ms; }
+[data-bs-theme="dark"] .card:nth-child(4) { animation-delay: 150ms; }
+[data-bs-theme="dark"] .card:nth-child(5) { animation-delay: 200ms; }
 
 
 /* ==========================================================================
    5. Loading States
    ========================================================================== */
 
-.skeleton {
+[data-bs-theme="dark"] .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.03) 25%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.03) 75%
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 75%
   );
   background-size: 200% 100%;
   animation: kumoShimmer 1.5s infinite;
@@ -132,30 +170,36 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Skeleton variants */
-.skeleton-text {
+[data-bs-theme="dark"] .skeleton-text {
   height: 1em;
   margin-bottom: 0.5em;
 }
 
-.skeleton-text:last-child {
+[data-bs-theme="dark"] .skeleton-text:last-child {
   width: 70%;
 }
 
-.skeleton-title {
+[data-bs-theme="dark"] .skeleton-title {
   height: 1.5em;
   width: 60%;
   margin-bottom: 1em;
 }
 
-.skeleton-avatar {
+[data-bs-theme="dark"] .skeleton-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
 }
 
-.skeleton-button {
+[data-bs-theme="dark"] .skeleton-button {
   height: 38px;
   width: 100px;
+}
+
+/* Spinner / Loading indicator */
+[data-bs-theme="dark"] .spinner-border {
+  border-color: var(--kumo-glass-border);
+  border-right-color: var(--kumo-primary);
 }
 
 
@@ -164,30 +208,104 @@ h1, h2, h3, h4, h5, h6 {
    ========================================================================== */
 
 /* Webkit browsers (Chrome, Safari, Edge) */
-::-webkit-scrollbar {
+[data-bs-theme="dark"] ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+[data-bs-theme="dark"] ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+[data-bs-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  transition: background 0.2s;
 }
 
-::-webkit-scrollbar-corner {
+[data-bs-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+[data-bs-theme="dark"] ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 /* Firefox */
-* {
+[data-bs-theme="dark"] * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.18) rgba(0, 0, 0, 0.1);
+}
+
+
+/* ==========================================================================
+   7. Utility Classes
+   ========================================================================== */
+
+/* Glass effect utility */
+[data-bs-theme="dark"] .glass {
+  background: var(--kumo-glass-bg) !important;
+  backdrop-filter: blur(var(--kumo-glass-blur));
+  -webkit-backdrop-filter: blur(var(--kumo-glass-blur));
+  border: 1px solid var(--kumo-glass-border) !important;
+}
+
+/* Gradient text utility */
+[data-bs-theme="dark"] .text-gradient {
+  background: var(--kumo-accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effect utility */
+[data-bs-theme="dark"] .glow {
+  box-shadow: var(--kumo-shadow-glow);
+}
+
+/* Surface levels */
+[data-bs-theme="dark"] .surface-base {
+  background: var(--kumo-bg-base) !important;
+}
+
+[data-bs-theme="dark"] .surface-1 {
+  background: var(--kumo-bg-surface) !important;
+}
+
+[data-bs-theme="dark"] .surface-2 {
+  background: var(--kumo-bg-elevated) !important;
+}
+
+
+/* ==========================================================================
+   8. Hr / Divider styling
+   ========================================================================== */
+
+[data-bs-theme="dark"] hr {
+  border-color: var(--kumo-glass-border) !important;
+  opacity: 1;
+}
+
+
+/* ==========================================================================
+   9. Link styling
+   ========================================================================== */
+
+[data-bs-theme="dark"] a {
+  color: var(--kumo-primary);
+  text-decoration: none;
+  transition: color var(--kumo-transition-fast);
+}
+
+[data-bs-theme="dark"] a:hover {
+  color: var(--kumo-primary-light);
+}
+
+[data-bs-theme="dark"] .text-muted {
+  color: var(--kumo-text-muted) !important;
+}
+
+[data-bs-theme="dark"] .text-secondary {
+  color: var(--kumo-text-secondary) !important;
 }

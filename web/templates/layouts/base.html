@@ -36,18 +36,13 @@
   <link rel="stylesheet" href="/static/css/kumo-theme.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.min.css" />
   <style>
-    /* Global text scale: 20% up from the browser default, so everything sized
-       in rem -- body copy, cards, tables, buttons, forms -- grows together.
-       Defined on :root to match where AdminLTE sets its variables; this block
-       loads after adminlte.css, so it wins. */
+    /* Global text scale: 20% up from the browser default */
     :root {
       font-size: 120%;
       --lte-sidebar-width: 330px;
     }
 
-    /* Sidebar text and icons sit a further 20% above the global scale, putting
-       them well over stock AdminLTE (nav links 0.9rem, icon slot 1.5rem). These
-       rem values compound with the 120% root, so 1.17rem renders at ~22px. */
+    /* Sidebar text scaling */
     .app-sidebar .sidebar-menu .nav-link {
       font-size: 1.17rem;
       padding: 0.65rem 0.9rem;
@@ -71,78 +66,12 @@
       padding-left: 1rem !important;
     }
 
-    /* Square form switches instead of round */
-    .form-switch .form-check-input {
-      border-radius: 0.25em;
-    }
-
-    /* adminlte.js injects the skip links at runtime. Hidden here rather than by
-       patching the vendored file, so an AdminLTE upgrade does not bring them back. */
+    /* Hide AdminLTE skip links */
     .skip-links {
       display: none !important;
     }
 
-    /* simple-datatables ships a light theme; map its chrome onto the Bootstrap
-       variables so it follows the dark app instead of punching a white hole. */
-    .datatable-wrapper .datatable-top,
-    .datatable-wrapper .datatable-bottom {
-      padding: 0.75rem 1rem;
-      color: var(--bs-body-color);
-    }
-    .datatable-wrapper .datatable-input,
-    .datatable-wrapper .datatable-selector {
-      background-color: var(--bs-body-bg);
-      border: var(--bs-border-width) solid var(--bs-border-color);
-      border-radius: var(--bs-border-radius);
-      color: var(--bs-body-color);
-      padding: 0.35rem 0.6rem;
-    }
-    .datatable-wrapper .datatable-pagination a {
-      color: var(--bs-body-color);
-      border-radius: var(--bs-border-radius);
-    }
-    .datatable-wrapper .datatable-pagination .datatable-active a {
-      background-color: var(--bs-primary);
-      color: #fff;
-    }
-    .datatable-wrapper .datatable-table > tbody > tr > td,
-    .datatable-wrapper .datatable-table > thead > tr > th {
-      vertical-align: middle;
-    }
-    .datatable-wrapper .datatable-sorter::before,
-    .datatable-wrapper .datatable-sorter::after {
-      opacity: 0.5;
-    }
-    .datatable-wrapper .datatable-empty {
-      color: var(--bs-secondary-color);
-    }
-    /* Accordion: dark background when expanded instead of red */
-    .accordion-button:not(.collapsed) {
-      background-color: var(--bs-dark-bg-subtle);
-      color: var(--bs-body-color);
-    }
-    .accordion-button:focus {
-      box-shadow: none;
-      border-color: var(--bs-accordion-border-color);
-    }
-
-    /* Alert with left border accent */
-    .alert-border-left {
-      border-left: 4px solid;
-      border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
-    }
-    .alert-danger.alert-border-left {
-      border-left-color: var(--bs-danger);
-    }
-    .alert-warning.alert-border-left {
-      border-left-color: var(--bs-warning);
-    }
-    .alert-success.alert-border-left {
-      border-left-color: var(--bs-success);
-    }
-    .alert-info.alert-border-left {
-      border-left-color: var(--bs-info);
-    }
+    /* NOTE: Form switches, accordions, alerts, datatables are now styled by Kumo theme */
   </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
