@@ -603,12 +603,7 @@ func main() {
 	// Homepage (public landing page)
 	homeTemplate := loadHomeTemplate()
 	r.Get("/", authModule.Handler.OptionalAuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// If user is logged in, redirect to dashboard
-		if ctx.GetUser(r) != nil {
-			http.Redirect(w, r, "/user/dashboard", http.StatusFound)
-			return
-		}
-		// Render homepage for guests
+		// Render homepage for everyone (guests and logged-in users)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		data := map[string]interface{}{
 			"appName":     getAppName(),
