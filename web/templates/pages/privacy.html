@@ -1,0 +1,149 @@
+{{define "privacy"}}
+<!doctype html>
+<html lang="{{currentLang}}" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Privacy Policy | {{appName}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/kumo-homepage.css?v={{appBuild}}" />
+  <link rel="stylesheet" href="/static/css/kumo-legal.css?v={{appBuild}}" />
+</head>
+<body>
+
+  <div class="rails">
+    <div class="rails-inner">
+
+      <header class="section section-header">
+        <div class="section-inner header-content">
+          <a href="/" class="logo">
+            <img src="/static/img/logo.svg" alt="{{appName}}" height="28">
+          </a>
+          <a href="/auth/signup" class="btn-pill">Get Started</a>
+        </div>
+      </header>
+
+    </div>
+  </div>
+  <div class="line-full"></div>
+
+  <div class="rails">
+    <div class="rails-inner">
+
+      <article class="section section-legal">
+        <div class="section-inner legal-content">
+          <h1>Privacy Policy</h1>
+          <p class="legal-updated">Last updated: {{currentYear}}</p>
+
+          <h2>1. Introduction</h2>
+          <p>{{appName}} ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our bot protection and link management service.</p>
+
+          <h2>2. Information We Collect</h2>
+          <h3>2.1 Account Information</h3>
+          <p>When you create an account, we collect:</p>
+          <ul>
+            <li>Email address</li>
+            <li>Password (encrypted)</li>
+            <li>Account preferences and settings</li>
+          </ul>
+
+          <h3>2.2 Usage Data</h3>
+          <p>We automatically collect information when you use our service:</p>
+          <ul>
+            <li>IP addresses of visitors to your protected links</li>
+            <li>Browser type and version</li>
+            <li>Device information</li>
+            <li>Geographic location (country level)</li>
+            <li>Referral sources</li>
+            <li>Click timestamps</li>
+          </ul>
+
+          <h3>2.3 Bot Detection Data</h3>
+          <p>To provide our bot protection service, we analyze:</p>
+          <ul>
+            <li>Request patterns and behavior</li>
+            <li>User agent strings</li>
+            <li>JavaScript execution capabilities</li>
+            <li>Network characteristics</li>
+          </ul>
+
+          <h2>3. How We Use Your Information</h2>
+          <p>We use collected information to:</p>
+          <ul>
+            <li>Provide and maintain our service</li>
+            <li>Detect and block bot traffic</li>
+            <li>Generate analytics and reports</li>
+            <li>Improve our bot detection algorithms</li>
+            <li>Send important service notifications</li>
+            <li>Process payments and billing</li>
+            <li>Provide customer support</li>
+          </ul>
+
+          <h2>4. Data Sharing</h2>
+          <p>We do not sell your personal information. We may share data with:</p>
+          <ul>
+            <li><strong>Service providers:</strong> Third parties that help us operate our service (hosting, payment processing)</li>
+            <li><strong>Legal requirements:</strong> When required by law or to protect our rights</li>
+            <li><strong>Business transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
+          </ul>
+
+          <h2>5. Data Security</h2>
+          <p>We implement industry-standard security measures including:</p>
+          <ul>
+            <li>SSL/TLS encryption for all data transmission</li>
+            <li>Encrypted password storage</li>
+            <li>Regular security audits</li>
+            <li>Access controls and authentication</li>
+          </ul>
+
+          <h2>6. Data Retention</h2>
+          <p>We retain your data for as long as your account is active. Analytics data is retained for 12 months. You may request deletion of your account and associated data at any time.</p>
+
+          <h2>7. Your Rights</h2>
+          <p>You have the right to:</p>
+          <ul>
+            <li>Access your personal data</li>
+            <li>Correct inaccurate data</li>
+            <li>Request deletion of your data</li>
+            <li>Export your data</li>
+            <li>Opt out of marketing communications</li>
+          </ul>
+
+          <h2>8. Cookies</h2>
+          <p>We use cookies and similar technologies. See our <a href="/cookies">Cookie Policy</a> for details.</p>
+
+          <h2>9. Children's Privacy</h2>
+          <p>Our service is not intended for users under 18 years of age. We do not knowingly collect information from children.</p>
+
+          <h2>10. Changes to This Policy</h2>
+          <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.</p>
+
+          <h2>11. Contact Us</h2>
+          <p>If you have questions about this Privacy Policy, please contact us through our <a href="/user/support">Support</a> page.</p>
+        </div>
+      </article>
+
+      <div class="line"></div>
+
+      <footer class="section section-footer">
+        <div class="section-inner footer-content">
+          <span class="copyright">&copy; {{currentYear}} {{appName}}</span>
+          <div class="footer-links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Use</a>
+            <a href="/cookies">Cookies</a>
+            <a href="/user/support">Support</a>
+            <a href="/auth/login">Sign In</a>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+</body>
+</html>
+{{end}}

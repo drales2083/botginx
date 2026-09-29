@@ -1,0 +1,167 @@
+{{define "cookies"}}
+<!doctype html>
+<html lang="{{currentLang}}" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Cookie Policy | {{appName}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/kumo-homepage.css?v={{appBuild}}" />
+  <link rel="stylesheet" href="/static/css/kumo-legal.css?v={{appBuild}}" />
+</head>
+<body>
+
+  <div class="rails">
+    <div class="rails-inner">
+
+      <header class="section section-header">
+        <div class="section-inner header-content">
+          <a href="/" class="logo">
+            <img src="/static/img/logo.svg" alt="{{appName}}" height="28">
+          </a>
+          <a href="/auth/signup" class="btn-pill">Get Started</a>
+        </div>
+      </header>
+
+    </div>
+  </div>
+  <div class="line-full"></div>
+
+  <div class="rails">
+    <div class="rails-inner">
+
+      <article class="section section-legal">
+        <div class="section-inner legal-content">
+          <h1>Cookie Policy</h1>
+          <p class="legal-updated">Last updated: {{currentYear}}</p>
+
+          <h2>1. What Are Cookies</h2>
+          <p>Cookies are small text files stored on your device when you visit a website. They help websites remember your preferences and improve your experience.</p>
+
+          <h2>2. How We Use Cookies</h2>
+          <p>{{appName}} uses cookies for the following purposes:</p>
+
+          <h3>2.1 Essential Cookies</h3>
+          <p>These cookies are necessary for the Service to function properly:</p>
+          <table class="cookie-table">
+            <thead>
+              <tr>
+                <th>Cookie</th>
+                <th>Purpose</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>session</td>
+                <td>Maintains your login session</td>
+                <td>Session</td>
+              </tr>
+              <tr>
+                <td>csrf_token</td>
+                <td>Security protection against cross-site attacks</td>
+                <td>Session</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>2.2 Functional Cookies</h3>
+          <p>These cookies remember your preferences:</p>
+          <table class="cookie-table">
+            <thead>
+              <tr>
+                <th>Cookie</th>
+                <th>Purpose</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>theme</td>
+                <td>Remembers your theme preference</td>
+                <td>1 year</td>
+              </tr>
+              <tr>
+                <td>lang</td>
+                <td>Remembers your language preference</td>
+                <td>1 year</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>2.3 Bot Detection Cookies</h3>
+          <p>These cookies help us identify and block malicious bots:</p>
+          <table class="cookie-table">
+            <thead>
+              <tr>
+                <th>Cookie</th>
+                <th>Purpose</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>_guard</td>
+                <td>Bot detection verification</td>
+                <td>24 hours</td>
+              </tr>
+              <tr>
+                <td>_challenge</td>
+                <td>Challenge response verification</td>
+                <td>Session</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2>3. Third-Party Cookies</h2>
+          <p>We may use third-party services that set their own cookies:</p>
+          <ul>
+            <li><strong>Payment processors:</strong> For secure payment processing</li>
+            <li><strong>Analytics:</strong> To understand how our Service is used</li>
+          </ul>
+
+          <h2>4. Managing Cookies</h2>
+          <p>You can control cookies through your browser settings:</p>
+          <ul>
+            <li><strong>Chrome:</strong> Settings → Privacy and Security → Cookies</li>
+            <li><strong>Firefox:</strong> Settings → Privacy & Security → Cookies</li>
+            <li><strong>Safari:</strong> Preferences → Privacy → Cookies</li>
+            <li><strong>Edge:</strong> Settings → Privacy → Cookies</li>
+          </ul>
+          <p>Note: Disabling essential cookies may prevent you from using certain features of our Service.</p>
+
+          <h2>5. Do Not Track</h2>
+          <p>Some browsers have a "Do Not Track" feature. We currently do not respond to DNT signals, but we respect your privacy choices through cookie settings.</p>
+
+          <h2>6. Updates to This Policy</h2>
+          <p>We may update this Cookie Policy from time to time. Changes will be posted on this page with an updated date.</p>
+
+          <h2>7. Contact Us</h2>
+          <p>If you have questions about our use of cookies, please contact us through our <a href="/user/support">Support</a> page.</p>
+        </div>
+      </article>
+
+      <div class="line"></div>
+
+      <footer class="section section-footer">
+        <div class="section-inner footer-content">
+          <span class="copyright">&copy; {{currentYear}} {{appName}}</span>
+          <div class="footer-links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Use</a>
+            <a href="/cookies">Cookies</a>
+            <a href="/user/support">Support</a>
+            <a href="/auth/login">Sign In</a>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+</body>
+</html>
+{{end}}

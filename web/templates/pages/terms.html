@@ -1,0 +1,136 @@
+{{define "terms"}}
+<!doctype html>
+<html lang="{{currentLang}}" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Terms of Use | {{appName}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/kumo-homepage.css?v={{appBuild}}" />
+  <link rel="stylesheet" href="/static/css/kumo-legal.css?v={{appBuild}}" />
+</head>
+<body>
+
+  <div class="rails">
+    <div class="rails-inner">
+
+      <header class="section section-header">
+        <div class="section-inner header-content">
+          <a href="/" class="logo">
+            <img src="/static/img/logo.svg" alt="{{appName}}" height="28">
+          </a>
+          <a href="/auth/signup" class="btn-pill">Get Started</a>
+        </div>
+      </header>
+
+    </div>
+  </div>
+  <div class="line-full"></div>
+
+  <div class="rails">
+    <div class="rails-inner">
+
+      <article class="section section-legal">
+        <div class="section-inner legal-content">
+          <h1>Terms of Use</h1>
+          <p class="legal-updated">Last updated: {{currentYear}}</p>
+
+          <h2>1. Acceptance of Terms</h2>
+          <p>By accessing or using {{appName}} ("Service"), you agree to be bound by these Terms of Use. If you do not agree to these terms, do not use our Service.</p>
+
+          <h2>2. Description of Service</h2>
+          <p>{{appName}} provides bot protection, link shortening, analytics, and domain management services. We reserve the right to modify, suspend, or discontinue any part of the Service at any time.</p>
+
+          <h2>3. Account Registration</h2>
+          <p>To use our Service, you must:</p>
+          <ul>
+            <li>Be at least 18 years old</li>
+            <li>Provide accurate and complete registration information</li>
+            <li>Maintain the security of your account credentials</li>
+            <li>Notify us immediately of any unauthorized access</li>
+          </ul>
+          <p>You are responsible for all activities that occur under your account.</p>
+
+          <h2>4. Acceptable Use</h2>
+          <p>You agree NOT to use the Service to:</p>
+          <ul>
+            <li>Violate any applicable laws or regulations</li>
+            <li>Distribute malware, viruses, or harmful code</li>
+            <li>Engage in phishing, fraud, or deceptive practices</li>
+            <li>Distribute spam or unsolicited communications</li>
+            <li>Infringe on intellectual property rights</li>
+            <li>Harass, abuse, or harm others</li>
+            <li>Distribute illegal content or promote illegal activities</li>
+            <li>Attempt to bypass or circumvent security measures</li>
+            <li>Resell or redistribute the Service without authorization</li>
+          </ul>
+
+          <h2>5. Content Responsibility</h2>
+          <p>You are solely responsible for the content you link to through our Service. We do not monitor or control the content of destination URLs and are not responsible for any third-party content.</p>
+
+          <h2>6. Payment and Billing</h2>
+          <ul>
+            <li>Subscription fees are billed in advance</li>
+            <li>All fees are non-refundable unless otherwise stated</li>
+            <li>We may change pricing with 30 days notice</li>
+            <li>Failure to pay may result in service suspension</li>
+          </ul>
+
+          <h2>7. Service Availability</h2>
+          <p>We strive for high availability but do not guarantee uninterrupted service. We are not liable for any downtime, data loss, or service interruptions.</p>
+
+          <h2>8. Intellectual Property</h2>
+          <p>The Service, including its design, features, and content, is owned by {{appName}} and protected by intellectual property laws. You may not copy, modify, or reverse engineer any part of the Service.</p>
+
+          <h2>9. Termination</h2>
+          <p>We may suspend or terminate your account at any time for violations of these Terms or for any other reason at our discretion. Upon termination:</p>
+          <ul>
+            <li>Your right to use the Service ceases immediately</li>
+            <li>We may delete your account data</li>
+            <li>Any outstanding fees remain due</li>
+          </ul>
+
+          <h2>10. Disclaimer of Warranties</h2>
+          <p>THE SERVICE IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND. WE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.</p>
+
+          <h2>11. Limitation of Liability</h2>
+          <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, {{appName}} SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES.</p>
+
+          <h2>12. Indemnification</h2>
+          <p>You agree to indemnify and hold harmless {{appName}} from any claims, damages, or expenses arising from your use of the Service or violation of these Terms.</p>
+
+          <h2>13. Changes to Terms</h2>
+          <p>We may modify these Terms at any time. Continued use of the Service after changes constitutes acceptance of the new Terms.</p>
+
+          <h2>14. Governing Law</h2>
+          <p>These Terms are governed by applicable laws. Any disputes shall be resolved through binding arbitration.</p>
+
+          <h2>15. Contact</h2>
+          <p>For questions about these Terms, please contact us through our <a href="/user/support">Support</a> page.</p>
+        </div>
+      </article>
+
+      <div class="line"></div>
+
+      <footer class="section section-footer">
+        <div class="section-inner footer-content">
+          <span class="copyright">&copy; {{currentYear}} {{appName}}</span>
+          <div class="footer-links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Use</a>
+            <a href="/cookies">Cookies</a>
+            <a href="/user/support">Support</a>
+            <a href="/auth/login">Sign In</a>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+</body>
+</html>
+{{end}}

@@ -7,279 +7,505 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
   <meta name="description" content="Advanced bot protection and link management. Keep bots out, let humans in." />
-  <!-- Favicon -->
   <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-icon-180x180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
   <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
   <meta name="theme-color" content="#e63946">
-  <!-- Fonts & Icons -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" crossorigin="anonymous" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
-  <!-- Bootstrap + Kumo Theme -->
-  <link rel="stylesheet" href="/static/css/adminlte.css" />
-  <link rel="stylesheet" href="/static/css/kumo-foundation.css?v={{appBuild}}" />
-  <link rel="stylesheet" href="/static/css/kumo-components.css?v={{appBuild}}" />
-  <link rel="stylesheet" href="/static/css/kumo-layout.css?v={{appBuild}}" />
   <link rel="stylesheet" href="/static/css/kumo-homepage.css?v={{appBuild}}" />
 </head>
-<body class="homepage">
+<body>
 
-  <!-- Header -->
-  <header class="homepage-header">
-    <div class="container">
-      <nav class="homepage-nav">
-        <a href="/" class="homepage-logo">
-          <img src="/static/img/logo.svg" alt="{{appName}}" height="32">
-        </a>
-        <div class="homepage-nav-actions">
-          <a href="/auth/login" class="btn btn-outline-light btn-sm">Sign In</a>
-          <a href="/auth/register" class="btn btn-primary btn-sm">Get Started</a>
+  <!-- Rails wrapper - runs full page -->
+  <div class="rails">
+    <div class="rails-inner">
+
+      <!-- Header -->
+      <header class="section section-header">
+        <div class="section-inner header-content">
+          <a href="/" class="logo">
+            <img src="/static/img/logo.svg" alt="{{appName}}" height="28">
+          </a>
+          <a href="/auth/signup" class="btn-pill">Get Started</a>
+        </div>
+      </header>
+
+    </div>
+  </div>
+  <div class="line-full"></div>
+
+  <div class="rails">
+    <div class="rails-inner">
+
+      <!-- Hero -->
+      <section class="section section-hero">
+        <div class="section-inner hero-content">
+          <span class="badge">{{appName}}</span>
+          <h1>Protect your links from<br>bots and fraud.</h1>
+          <p class="hero-subtitle">Give every link bot protection, analytics, and control.<br>Block malicious traffic before it reaches your destination.</p>
+          <a href="/auth/signup" class="btn-outline"><i class="bi bi-rocket-takeoff"></i> Get Started Free</a>
+        </div>
+      </section>
+
+    </div>
+  </div>
+  <div class="line-full"></div>
+
+  <!-- Tab bar - full bleed line -->
+  <div class="rails">
+    <div class="rails-inner">
+      <nav class="section section-tabs">
+        <div class="tab active" data-tab="protect">
+          <span class="tab-num">01</span>
+          <h4>Protect</h4>
+          <p>AI-powered bot detection</p>
+        </div>
+        <div class="tab" data-tab="create">
+          <span class="tab-num">02</span>
+          <h4>Create</h4>
+          <p>Redirect links with rules</p>
+        </div>
+        <div class="tab" data-tab="track">
+          <span class="tab-num">03</span>
+          <h4>Track</h4>
+          <p>Visitors and conversions</p>
+        </div>
+        <div class="tab" data-tab="manage">
+          <span class="tab-num">04</span>
+          <h4>Manage</h4>
+          <p>Domains and whitelists</p>
+        </div>
+        <div class="tab" data-tab="deploy">
+          <span class="tab-num">05</span>
+          <h4>Deploy</h4>
+          <p>cPanel and hosting</p>
         </div>
       </nav>
     </div>
-  </header>
+  </div>
+  <div class="line-full"></div>
 
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="container">
-      <div class="hero-content">
-        <span class="hero-badge">{{appName}}</span>
-        <h1 class="hero-title">Protect your links from bots and fraud</h1>
-        <p class="hero-subtitle">
-          Advanced bot detection and link management platform.
-          Block malicious traffic, track analytics, and keep your campaigns safe.
-        </p>
-        <div class="hero-actions">
-          <a href="/auth/register" class="btn btn-primary btn-lg">
-            <i class="bi bi-rocket-takeoff me-2"></i>Get Started Free
-          </a>
-          <a href="#features" class="btn btn-outline-light btn-lg">
-            <i class="bi bi-play-circle me-2"></i>See How It Works
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
+  <div class="rails">
+    <div class="rails-inner">
 
-  <!-- Feature Tabs -->
-  <section id="features" class="features-section">
-    <div class="container">
-      <div class="features-tabs">
-        <button class="feature-tab active" data-tab="protect">
-          <i class="bi bi-shield-check"></i>
-          <span>Protect</span>
-        </button>
-        <button class="feature-tab" data-tab="create">
-          <i class="bi bi-link-45deg"></i>
-          <span>Create</span>
-        </button>
-        <button class="feature-tab" data-tab="track">
-          <i class="bi bi-graph-up"></i>
-          <span>Track</span>
-        </button>
-        <button class="feature-tab" data-tab="manage">
-          <i class="bi bi-gear"></i>
-          <span>Manage</span>
-        </button>
-        <button class="feature-tab" data-tab="deploy">
-          <i class="bi bi-cloud-upload"></i>
-          <span>Deploy</span>
-        </button>
-      </div>
-      <div class="features-content">
-        <div class="feature-panel active" id="panel-protect">
-          <div class="feature-text">
-            <h3>AI-Powered Bot Detection</h3>
-            <p>Stop bots, scrapers, and fraudulent traffic before they reach your destination. Our detection engine analyzes behavior patterns in real-time.</p>
-            <ul class="feature-list">
-              <li><i class="bi bi-check-lg"></i> Block datacenter IPs automatically</li>
-              <li><i class="bi bi-check-lg"></i> Detect headless browsers</li>
-              <li><i class="bi bi-check-lg"></i> Custom blocking rules</li>
-            </ul>
-          </div>
-        </div>
-        <div class="feature-panel" id="panel-create">
-          <div class="feature-text">
-            <h3>Smart Link Generation</h3>
-            <p>Create short, branded links with built-in protection. Every link comes with bot detection enabled by default.</p>
-            <ul class="feature-list">
-              <li><i class="bi bi-check-lg"></i> Custom domains</li>
-              <li><i class="bi bi-check-lg"></i> Branded short links</li>
-              <li><i class="bi bi-check-lg"></i> QR code generation</li>
-            </ul>
-          </div>
-        </div>
-        <div class="feature-panel" id="panel-track">
-          <div class="feature-text">
-            <h3>Real-Time Analytics</h3>
-            <p>See who visits your links with detailed analytics. Track countries, devices, and separate human traffic from bots.</p>
-            <ul class="feature-list">
-              <li><i class="bi bi-check-lg"></i> Geographic breakdown</li>
-              <li><i class="bi bi-check-lg"></i> Device & browser stats</li>
-              <li><i class="bi bi-check-lg"></i> Bot vs human reports</li>
-            </ul>
-          </div>
-        </div>
-        <div class="feature-panel" id="panel-manage">
-          <div class="feature-text">
-            <h3>Domain Management</h3>
-            <p>Manage multiple domains from one dashboard. Set up custom rules, whitelists, and protection levels per domain.</p>
-            <ul class="feature-list">
-              <li><i class="bi bi-check-lg"></i> Multi-domain support</li>
-              <li><i class="bi bi-check-lg"></i> IP whitelisting</li>
-              <li><i class="bi bi-check-lg"></i> Per-link settings</li>
-            </ul>
-          </div>
-        </div>
-        <div class="feature-panel" id="panel-deploy">
-          <div class="feature-text">
-            <h3>Hosting Integration</h3>
-            <p>Deploy websites with built-in bot protection. Seamless integration with cPanel and other hosting platforms.</p>
-            <ul class="feature-list">
-              <li><i class="bi bi-check-lg"></i> cPanel integration</li>
-              <li><i class="bi bi-check-lg"></i> Automatic SSL</li>
-              <li><i class="bi bi-check-lg"></i> One-click deployment</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Product Screenshot -->
-  <section class="screenshot-section">
-    <div class="container">
-      <div class="screenshot-wrapper">
-        <div class="screenshot-glow"></div>
-        <div class="screenshot-frame">
-          <div class="screenshot-header">
-            <span class="screenshot-dot"></span>
-            <span class="screenshot-dot"></span>
-            <span class="screenshot-dot"></span>
-          </div>
-          <div class="screenshot-content">
-            <div class="screenshot-sidebar">
-              <div class="screenshot-menu-item active"></div>
-              <div class="screenshot-menu-item"></div>
-              <div class="screenshot-menu-item"></div>
-              <div class="screenshot-menu-item"></div>
-            </div>
-            <div class="screenshot-main">
-              <div class="screenshot-stats">
-                <div class="screenshot-stat-card">
-                  <span class="stat-icon"><i class="bi bi-people"></i></span>
-                  <span class="stat-value">12,847</span>
-                  <span class="stat-label">Human Visits</span>
-                </div>
-                <div class="screenshot-stat-card">
-                  <span class="stat-icon"><i class="bi bi-robot"></i></span>
-                  <span class="stat-value">3,291</span>
-                  <span class="stat-label">Bots Blocked</span>
-                </div>
-                <div class="screenshot-stat-card">
-                  <span class="stat-icon"><i class="bi bi-link-45deg"></i></span>
-                  <span class="stat-value">156</span>
-                  <span class="stat-label">Active Links</span>
+      <!-- Product Demo -->
+      <section class="section section-demo">
+        <div class="section-inner">
+          <!-- Protect Panel -->
+          <div class="demo-panel active" id="panel-protect">
+            <div class="demo-frame">
+              <div class="demo-titlebar">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="titlebar-text">Threat Overview — Last 30 Days</span>
+              </div>
+              <div class="demo-body demo-body-text">
+                <div class="demo-feature-grid">
+                  <div class="demo-feature-card">
+                    <div class="demo-feature-icon red"><i class="bi bi-robot"></i></div>
+                    <div class="demo-feature-content">
+                      <span class="demo-feature-value">3,847</span>
+                      <span class="demo-feature-label">Bots Blocked</span>
+                      <span class="demo-feature-desc">Datacenter IPs, headless browsers, and automated scripts detected and blocked before reaching your destination.</span>
+                    </div>
+                  </div>
+                  <div class="demo-feature-card">
+                    <div class="demo-feature-icon green"><i class="bi bi-person-check"></i></div>
+                    <div class="demo-feature-content">
+                      <span class="demo-feature-value">28,412</span>
+                      <span class="demo-feature-label">Humans Verified</span>
+                      <span class="demo-feature-desc">Real visitors passed through seamlessly with zero friction. No CAPTCHAs, no delays.</span>
+                    </div>
+                  </div>
+                  <div class="demo-feature-card">
+                    <div class="demo-feature-icon blue"><i class="bi bi-shield-check"></i></div>
+                    <div class="demo-feature-content">
+                      <span class="demo-feature-value">99.7%</span>
+                      <span class="demo-feature-label">Detection Rate</span>
+                      <span class="demo-feature-desc">AI-powered analysis identifies threats in real-time using behavioral patterns and fingerprinting.</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="screenshot-chart"></div>
+            </div>
+          </div>
+
+          <!-- Create Panel -->
+          <div class="demo-panel" id="panel-create">
+            <div class="demo-frame">
+              <div class="demo-titlebar">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="titlebar-text">New Redirect Link</span>
+              </div>
+              <div class="demo-body demo-body-text">
+                <div class="demo-feature-grid">
+                  <div class="demo-feature-card">
+                    <div class="demo-feature-icon purple"><i class="bi bi-link-45deg"></i></div>
+                    <div class="demo-feature-content">
+                      <span class="demo-feature-value">Protected URLs</span>
+                      <span class="demo-feature-label">Any Destination</span>
+                      <span class="demo-feature-desc">Create redirect links to any URL. Each link gets bot protection automatically. Set custom slugs or let us generate them.</span>
+                    </div>
+                  </div>
+                  <div class="demo-feature-card">
+                    <div class="demo-feature-icon orange"><i class="bi bi-sliders"></i></div>
+                    <div class="demo-feature-content">
+                      <span class="demo-feature-value">Targeting Rules</span>
+                      <span class="demo-feature-label">Geo & Device</span>
+                      <span class="demo-feature-desc">Route traffic by country, device type, or OS. Send mobile users to app stores, desktop to your site.</span>
+                    </div>
+                  </div>
+                  <div class="demo-feature-card">
+                    <div class="demo-feature-icon green"><i class="bi bi-qr-code"></i></div>
+                    <div class="demo-feature-content">
+                      <span class="demo-feature-value">QR Codes</span>
+                      <span class="demo-feature-label">Print Ready</span>
+                      <span class="demo-feature-desc">Generate QR codes for any link instantly. Download in PNG or SVG. Perfect for print materials.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Track Panel -->
+          <div class="demo-panel" id="panel-track">
+            <div class="demo-frame">
+              <div class="demo-titlebar">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="titlebar-text">Analytics Dashboard</span>
+              </div>
+              <div class="demo-body demo-body-map">
+                <div class="demo-map-container">
+                  <img src="/static/img/world-map.png" alt="Global visitor map" class="demo-map-img">
+                  <div class="demo-map-overlay">
+                    <div class="demo-map-stats">
+                      <div class="demo-map-stat">
+                        <span class="map-stat-value">24,847</span>
+                        <span class="map-stat-label">Total Visitors</span>
+                      </div>
+                      <div class="demo-map-stat">
+                        <span class="map-stat-value">142</span>
+                        <span class="map-stat-label">Countries</span>
+                      </div>
+                      <div class="demo-map-stat">
+                        <span class="map-stat-value">89%</span>
+                        <span class="map-stat-label">Human Traffic</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Manage Panel -->
+          <div class="demo-panel" id="panel-manage">
+            <div class="demo-frame">
+              <div class="demo-titlebar">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="titlebar-text">Domain & IP Management</span>
+              </div>
+              <div class="demo-body demo-body-text">
+                <div class="demo-feature-grid">
+                  <div class="demo-feature-card">
+                    <div class="demo-feature-icon blue"><i class="bi bi-globe2"></i></div>
+                    <div class="demo-feature-content">
+                      <span class="demo-feature-value">Custom Domains</span>
+                      <span class="demo-feature-label">Your Brand</span>
+                      <span class="demo-feature-desc">Use your own domains for redirect links. Automatic SSL certificates. DNS setup takes 5 minutes.</span>
+                    </div>
+                  </div>
+                  <div class="demo-feature-card">
+                    <div class="demo-feature-icon green"><i class="bi bi-check2-circle"></i></div>
+                    <div class="demo-feature-content">
+                      <span class="demo-feature-value">IP Whitelisting</span>
+                      <span class="demo-feature-label">Global Sync</span>
+                      <span class="demo-feature-desc">Your IPs always pass through. Whitelist syncs across all protection servers instantly. Never block yourself.</span>
+                    </div>
+                  </div>
+                  <div class="demo-feature-card">
+                    <div class="demo-feature-icon orange"><i class="bi bi-gear"></i></div>
+                    <div class="demo-feature-content">
+                      <span class="demo-feature-value">Per-Link Settings</span>
+                      <span class="demo-feature-label">Fine Control</span>
+                      <span class="demo-feature-desc">Configure protection level, challenge type, and blocking rules for each link individually.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Deploy Panel -->
+          <div class="demo-panel" id="panel-deploy">
+            <div class="demo-frame">
+              <div class="demo-titlebar">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="titlebar-text">Deployment Activity</span>
+              </div>
+              <div class="demo-body demo-body-deploy">
+                <div class="deploy-list" id="deploy-list">
+                  <div class="deploy-row building">
+                    <span class="deploy-version">v30534</span>
+                    <span class="deploy-time js-deploy-time">Loading...</span>
+                    <span class="deploy-status"><span class="status-text">Building</span><span class="spinner"></span></span>
+                  </div>
+                  <div class="deploy-row deployed">
+                    <span class="deploy-version">v30533</span>
+                    <span class="deploy-time js-deploy-time">Loading...</span>
+                    <span class="deploy-status"><span class="status-text">Deployed</span><span class="status-icon"><i class="bi bi-check"></i></span></span>
+                  </div>
+                  <div class="deploy-row deployed">
+                    <span class="deploy-version">v30532</span>
+                    <span class="deploy-time js-deploy-time">Loading...</span>
+                    <span class="deploy-status"><span class="status-text">Deployed</span><span class="status-icon"><i class="bi bi-check"></i></span></span>
+                  </div>
+                  <div class="deploy-row deployed fading">
+                    <span class="deploy-version">v30531</span>
+                    <span class="deploy-time js-deploy-time">Loading...</span>
+                    <span class="deploy-status"><span class="status-text">Deployed</span><span class="status-icon"><i class="bi bi-check"></i></span></span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
+      </section>
 
-  <!-- Security Section -->
-  <section class="security-section">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-label">SECURITY</span>
-        <h2 class="section-title">Keep bots out. Let humans in.</h2>
-        <p class="section-subtitle">Enterprise-grade protection for your links and websites.</p>
-      </div>
-      <div class="security-grid">
-        <div class="security-card">
-          <div class="security-icon">
-            <i class="bi bi-shield-lock"></i>
+      <div class="line"></div>
+
+      <!-- Open Source / Integrations - 50/50 split -->
+      <section class="section section-split">
+        <div class="split-left">
+          <span class="eyebrow">INTEGRATIONS</span>
+          <h2>Works with your existing tools.</h2>
+          <p>Connect to your hosting panel, get alerts via Telegram, and manage domains from one dashboard. Built to integrate, not replace.</p>
+          <a href="/auth/signup" class="text-link"><i class="bi bi-arrow-right"></i> Start integrating</a>
+        </div>
+        <div class="split-right">
+          <div class="logo-grid">
+            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/domains.svg" class="grid-icon" alt="Domains"></div>
+            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/redirects.svg" class="grid-icon" alt="Redirects"></div>
+            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/mod_security.svg" class="grid-icon" alt="Security"></div>
+            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/visitors.svg" class="grid-icon" alt="Analytics"></div>
+            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/api_tokens.svg" class="grid-icon" alt="API"></div>
+            <div class="logo-cell"><img src="/static/icons/guardbot/qr-codes.svg" class="grid-icon" alt="QR Codes"></div>
+            <div class="logo-cell"><img src="/static/icons/guardbot/tickets.svg" class="grid-icon" alt="Support"></div>
+            <div class="logo-cell muted">+ Your tools</div>
           </div>
-          <h4>Bot Detection</h4>
-          <p>AI-powered detection identifies bots, scrapers, and automated traffic with high accuracy.</p>
         </div>
-        <div class="security-card">
-          <div class="security-icon">
-            <i class="bi bi-person-check"></i>
+      </section>
+
+      <div class="line"></div>
+
+      <!-- Capture / Bot Protection - centered statement -->
+      <section class="section section-statement">
+        <div class="section-inner statement-content">
+          <div class="statement-checks">
+            <span><i class="bi bi-check2"></i> Block datacenter IPs</span>
+            <span><i class="bi bi-check2"></i> Detect headless browsers</span>
+            <span><i class="bi bi-check2"></i> Whitelist your IPs globally</span>
           </div>
-          <h4>IP Whitelisting</h4>
-          <p>Your trusted IPs always pass through. Global whitelist syncs across all your links.</p>
+          <span class="eyebrow">BOT PROTECTION</span>
+          <h2>Keep bots out. Let humans in.</h2>
+          <p>AI-powered detection identifies bots, scrapers, and automated traffic.<br>Your trusted IPs always pass through.</p>
         </div>
-        <div class="security-card">
-          <div class="security-icon">
-            <i class="bi bi-activity"></i>
+      </section>
+
+      <div class="line"></div>
+
+      <!-- Security - 50/50 split with numbered list -->
+      <section class="section section-split">
+        <div class="split-left">
+          <span class="eyebrow">SECURITY</span>
+          <h2>Enterprise-grade protection.</h2>
+          <p>Every link and domain gets the same protection. Real-time monitoring, custom rules, and instant blocking.</p>
+          <p>Settings sync across all your links. Changes take effect within 30 seconds.</p>
+        </div>
+        <div class="split-right">
+          <div class="numbered-list">
+            <div class="numbered-row">
+              <span class="row-num">01</span>
+              <div class="row-content">
+                <h4>Bot Detection</h4>
+                <p>AI identifies bots and automated traffic with high accuracy.</p>
+              </div>
+            </div>
+            <div class="numbered-row">
+              <span class="row-num">02</span>
+              <div class="row-content">
+                <h4>IP Whitelisting</h4>
+                <p>Your trusted IPs always pass. Global whitelist syncs automatically.</p>
+              </div>
+            </div>
+            <div class="numbered-row">
+              <span class="row-num">03</span>
+              <div class="row-content">
+                <h4>Real-time Monitoring</h4>
+                <p>Live dashboard shows traffic and blocked attempts as they happen.</p>
+              </div>
+            </div>
           </div>
-          <h4>Real-Time Monitoring</h4>
-          <p>Live dashboard shows traffic patterns, blocked attempts, and security events as they happen.</p>
         </div>
-      </div>
-    </div>
-  </section>
+      </section>
 
-  <!-- CTA Section -->
-  <section class="cta-section">
-    <div class="container">
-      <div class="cta-content">
-        <span class="section-label">GET STARTED</span>
-        <h2 class="cta-title">Start protecting your links today</h2>
-        <p class="cta-subtitle">Free to start. No credit card required.</p>
-        <a href="/auth/register" class="btn btn-primary btn-lg">
-          <i class="bi bi-rocket-takeoff me-2"></i>Create Free Account
-        </a>
-      </div>
-    </div>
-  </section>
+      <div class="line"></div>
 
-  <!-- Footer -->
-  <footer class="homepage-footer">
-    <div class="container">
-      <div class="footer-content">
-        <div class="footer-brand">
-          <img src="/static/img/logo.svg" alt="{{appName}}" height="24">
-          <span class="footer-copyright">&copy; {{currentYear}} {{appName}}. All rights reserved.</span>
+      <!-- Final CTA -->
+      <section class="section section-cta">
+        <div class="section-inner cta-content">
+          <span class="eyebrow">GET STARTED</span>
+          <h2>Start protecting your links today.</h2>
+          <a href="/auth/signup" class="btn-pill"><i class="bi bi-rocket-takeoff"></i> Create Free Account</a>
         </div>
-        <div class="footer-links">
-          <a href="/help">Support</a>
-          <a href="/auth/login">Sign In</a>
-        </div>
-      </div>
-    </div>
-  </footer>
+      </section>
 
-  <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+      <div class="line"></div>
+
+      <!-- Footer -->
+      <footer class="section section-footer">
+        <div class="section-inner footer-content">
+          <span class="copyright">&copy; {{currentYear}} {{appName}}</span>
+          <div class="footer-links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Use</a>
+            <a href="/cookies">Cookies</a>
+            <a href="/user/support">Support</a>
+            <a href="/auth/login">Sign In</a>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
   <script>
-    // Feature tabs
-    document.querySelectorAll('.feature-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.feature-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.feature-panel').forEach(p => p.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
-      });
-    });
+    (function() {
+      const tabs = document.querySelectorAll('.tab');
+      const panels = document.querySelectorAll('.demo-panel');
+      const DURATION = 5000;
+      let currentIndex = 0;
+      let isPaused = false;
+      let timer = null;
 
-    // Smooth scroll
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function(e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+      function switchToTab(index) {
+        tabs.forEach(t => t.classList.remove('active'));
+        panels.forEach(p => p.classList.remove('active'));
+        tabs[index].classList.add('active');
+        const panelId = 'panel-' + tabs[index].dataset.tab;
+        document.getElementById(panelId).classList.add('active');
+        currentIndex = index;
+      }
+
+      function nextTab() {
+        const next = (currentIndex + 1) % tabs.length;
+        switchToTab(next);
+        scheduleNext();
+      }
+
+      function scheduleNext() {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (!isPaused) nextTab();
+          else scheduleNext();
+        }, DURATION);
+      }
+
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => {
+          switchToTab(index);
+          scheduleNext();
+        });
       });
-    });
+
+      const tabSection = document.querySelector('.section-tabs');
+      const demoSection = document.querySelector('.section-demo');
+      [tabSection, demoSection].forEach(el => {
+        el.addEventListener('mouseenter', () => { isPaused = true; });
+        el.addEventListener('mouseleave', () => { isPaused = false; });
+      });
+
+      scheduleNext();
+    })();
+
+    // Deploy animation
+    (function() {
+      const list = document.getElementById('deploy-list');
+      if (!list) return;
+
+      let version = 30534;
+
+      function getTime(offsetMins) {
+        const now = new Date();
+        if (offsetMins) now.setMinutes(now.getMinutes() - offsetMins);
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const y = String(now.getFullYear()).slice(2);
+        const h = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        return `Updated ${m}.${d}.${y}, ${h}:${min}`;
+      }
+
+      // Set initial times with current date
+      list.querySelectorAll('.js-deploy-time').forEach((el, i) => {
+        el.textContent = getTime(i);
+      });
+
+      function cycle() {
+        const rows = list.querySelectorAll('.deploy-row');
+        const buildingRow = list.querySelector('.building');
+
+        if (buildingRow) {
+          // Building -> Deployed
+          buildingRow.classList.remove('building');
+          buildingRow.classList.add('deployed');
+          buildingRow.querySelector('.status-text').textContent = 'Deployed';
+          buildingRow.querySelector('.spinner').outerHTML = '<span class="status-icon"><i class="bi bi-check"></i></span>';
+        }
+
+        // Add fading to second-to-last
+        rows.forEach((row, i) => {
+          row.classList.remove('fading');
+          if (i === rows.length - 2) row.classList.add('fading');
+        });
+
+        // Remove last row if more than 4
+        if (rows.length >= 4) {
+          const last = rows[rows.length - 1];
+          last.classList.add('fade-out');
+          setTimeout(() => last.remove(), 500);
+        }
+
+        // Add new row at top after short delay
+        setTimeout(() => {
+          version++;
+          const newRow = document.createElement('div');
+          newRow.className = 'deploy-row building fade-in';
+          newRow.innerHTML = `
+            <span class="deploy-version">v${version}</span>
+            <span class="deploy-time">${getTime()}</span>
+            <span class="deploy-status"><span class="status-text">Building</span><span class="spinner"></span></span>
+          `;
+          list.insertBefore(newRow, list.firstChild);
+        }, 600);
+      }
+
+      setInterval(cycle, 4000);
+    })();
   </script>
+
 </body>
 </html>
 {{end}}

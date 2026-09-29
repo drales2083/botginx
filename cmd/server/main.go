@@ -621,6 +621,30 @@ func main() {
 		}
 	})).ServeHTTP)
 
+	// Legal pages (public)
+	privacyTemplate := loadPageTemplate("privacy")
+	termsTemplate := loadPageTemplate("terms")
+	cookiesTemplate := loadPageTemplate("cookies")
+
+	renderLegalPage := func(tmpl *template.Template, name string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			data := map[string]interface{}{
+				"appName":     getAppName(),
+				"appBuild":    buildinfo.Build(),
+				"currentYear": time.Now().Year(),
+			}
+			if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
+				log.Error().Err(err).Str("page", name).Msg("failed to render legal page")
+				http.NotFound(w, r)
+			}
+		}
+	}
+
+	r.Get("/privacy", renderLegalPage(privacyTemplate, "privacy"))
+	r.Get("/terms", renderLegalPage(termsTemplate, "terms"))
+	r.Get("/cookies", renderLegalPage(cookiesTemplate, "cookies"))
+
 	// Start server
 	srv := &http.Server{
 		Addr:    cfg.Server.Listen,
@@ -708,22 +732,26 @@ func getAppName() string {
 	return "GuardBot"
 }
 
-func loadHomeTemplate() *template.Template {
-	tmpl := template.New("home").Funcs(template.FuncMap{
+func loadPageTemplate(name string) *template.Template {
+	tmpl := template.New(name).Funcs(template.FuncMap{
 		"appName":     getAppName,
 		"appBuild":    buildinfo.Build,
 		"currentYear": func() int { return time.Now().Year() },
 		"currentLang": func() string { return "en" },
 	})
-	data, err := web.PagesFS.ReadFile("templates/pages/home.html")
+	data, err := web.PagesFS.ReadFile("templates/pages/" + name + ".html")
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to load homepage template")
+		log.Fatal().Err(err).Str("template", name).Msg("failed to load page template")
 	}
 	tmpl, err = tmpl.Parse(string(data))
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to parse homepage template")
+		log.Fatal().Err(err).Str("template", name).Msg("failed to parse page template")
 	}
 	return tmpl
+}
+
+func loadHomeTemplate() *template.Template {
+	return loadPageTemplate("home")
 }
 
 // noDirectoryListing wraps a file server to return 404 for directory requests
