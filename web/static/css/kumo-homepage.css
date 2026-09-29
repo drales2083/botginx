@@ -1007,6 +1007,18 @@ a {
   color: var(--text);
 }
 
+.footer-links .privacy-choices {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-links .privacy-icon {
+  width: auto;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 /* ==========================================================================
    Responsive
    ========================================================================== */
