@@ -600,10 +600,26 @@ func main() {
 		subscriptions.Attach(http.HandlerFunc(notFound)),
 	).ServeHTTP)
 
-	// Root redirect to user dashboard
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
-	})
+	// Homepage (public landing page)
+	homeTemplate := loadHomeTemplate()
+	r.Get("/", authModule.Handler.OptionalAuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If user is logged in, redirect to dashboard
+		if ctx.GetUser(r) != nil {
+			http.Redirect(w, r, "/user/dashboard", http.StatusFound)
+			return
+		}
+		// Render homepage for guests
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		data := map[string]interface{}{
+			"appName":     getAppName(),
+			"appBuild":    buildinfo.Build(),
+			"currentYear": time.Now().Year(),
+		}
+		if err := homeTemplate.ExecuteTemplate(w, "home", data); err != nil {
+			log.Error().Err(err).Msg("failed to render homepage")
+			http.Redirect(w, r, "/auth/login", http.StatusFound)
+		}
+	})).ServeHTTP)
 
 	// Start server
 	srv := &http.Server{
@@ -690,6 +706,24 @@ func getAppName() string {
 		return name
 	}
 	return "GuardBot"
+}
+
+func loadHomeTemplate() *template.Template {
+	tmpl := template.New("home").Funcs(template.FuncMap{
+		"appName":     getAppName,
+		"appBuild":    buildinfo.Build,
+		"currentYear": func() int { return time.Now().Year() },
+		"currentLang": func() string { return "en" },
+	})
+	data, err := web.PagesFS.ReadFile("templates/pages/home.html")
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to load homepage template")
+	}
+	tmpl, err = tmpl.Parse(string(data))
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to parse homepage template")
+	}
+	return tmpl
 }
 
 // noDirectoryListing wraps a file server to return 404 for directory requests

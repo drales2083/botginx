@@ -10,3 +10,6 @@ var LayoutsFS embed.FS
 
 //go:embed templates/errors/*.html
 var ErrorsFS embed.FS
+
+//go:embed templates/pages/*.html
+var PagesFS embed.FS

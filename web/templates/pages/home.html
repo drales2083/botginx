@@ -1,0 +1,285 @@
+{{define "home"}}
+<!doctype html>
+<html lang="{{currentLang}}" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>{{appName}} - Protect Your Links from Bots</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Advanced bot protection and link management. Keep bots out, let humans in." />
+  <!-- Favicon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-icon-180x180.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
+  <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
+  <meta name="theme-color" content="#e63946">
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
+  <!-- Bootstrap + Kumo Theme -->
+  <link rel="stylesheet" href="/static/css/adminlte.css" />
+  <link rel="stylesheet" href="/static/css/kumo-foundation.css?v={{appBuild}}" />
+  <link rel="stylesheet" href="/static/css/kumo-components.css?v={{appBuild}}" />
+  <link rel="stylesheet" href="/static/css/kumo-layout.css?v={{appBuild}}" />
+  <link rel="stylesheet" href="/static/css/kumo-homepage.css?v={{appBuild}}" />
+</head>
+<body class="homepage">
+
+  <!-- Header -->
+  <header class="homepage-header">
+    <div class="container">
+      <nav class="homepage-nav">
+        <a href="/" class="homepage-logo">
+          <img src="/static/img/logo.svg" alt="{{appName}}" height="32">
+        </a>
+        <div class="homepage-nav-actions">
+          <a href="/auth/login" class="btn btn-outline-light btn-sm">Sign In</a>
+          <a href="/auth/register" class="btn btn-primary btn-sm">Get Started</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="container">
+      <div class="hero-content">
+        <span class="hero-badge">{{appName}}</span>
+        <h1 class="hero-title">Protect your links from bots and fraud</h1>
+        <p class="hero-subtitle">
+          Advanced bot detection and link management platform.
+          Block malicious traffic, track analytics, and keep your campaigns safe.
+        </p>
+        <div class="hero-actions">
+          <a href="/auth/register" class="btn btn-primary btn-lg">
+            <i class="bi bi-rocket-takeoff me-2"></i>Get Started Free
+          </a>
+          <a href="#features" class="btn btn-outline-light btn-lg">
+            <i class="bi bi-play-circle me-2"></i>See How It Works
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Tabs -->
+  <section id="features" class="features-section">
+    <div class="container">
+      <div class="features-tabs">
+        <button class="feature-tab active" data-tab="protect">
+          <i class="bi bi-shield-check"></i>
+          <span>Protect</span>
+        </button>
+        <button class="feature-tab" data-tab="create">
+          <i class="bi bi-link-45deg"></i>
+          <span>Create</span>
+        </button>
+        <button class="feature-tab" data-tab="track">
+          <i class="bi bi-graph-up"></i>
+          <span>Track</span>
+        </button>
+        <button class="feature-tab" data-tab="manage">
+          <i class="bi bi-gear"></i>
+          <span>Manage</span>
+        </button>
+        <button class="feature-tab" data-tab="deploy">
+          <i class="bi bi-cloud-upload"></i>
+          <span>Deploy</span>
+        </button>
+      </div>
+      <div class="features-content">
+        <div class="feature-panel active" id="panel-protect">
+          <div class="feature-text">
+            <h3>AI-Powered Bot Detection</h3>
+            <p>Stop bots, scrapers, and fraudulent traffic before they reach your destination. Our detection engine analyzes behavior patterns in real-time.</p>
+            <ul class="feature-list">
+              <li><i class="bi bi-check-lg"></i> Block datacenter IPs automatically</li>
+              <li><i class="bi bi-check-lg"></i> Detect headless browsers</li>
+              <li><i class="bi bi-check-lg"></i> Custom blocking rules</li>
+            </ul>
+          </div>
+        </div>
+        <div class="feature-panel" id="panel-create">
+          <div class="feature-text">
+            <h3>Smart Link Generation</h3>
+            <p>Create short, branded links with built-in protection. Every link comes with bot detection enabled by default.</p>
+            <ul class="feature-list">
+              <li><i class="bi bi-check-lg"></i> Custom domains</li>
+              <li><i class="bi bi-check-lg"></i> Branded short links</li>
+              <li><i class="bi bi-check-lg"></i> QR code generation</li>
+            </ul>
+          </div>
+        </div>
+        <div class="feature-panel" id="panel-track">
+          <div class="feature-text">
+            <h3>Real-Time Analytics</h3>
+            <p>See who visits your links with detailed analytics. Track countries, devices, and separate human traffic from bots.</p>
+            <ul class="feature-list">
+              <li><i class="bi bi-check-lg"></i> Geographic breakdown</li>
+              <li><i class="bi bi-check-lg"></i> Device & browser stats</li>
+              <li><i class="bi bi-check-lg"></i> Bot vs human reports</li>
+            </ul>
+          </div>
+        </div>
+        <div class="feature-panel" id="panel-manage">
+          <div class="feature-text">
+            <h3>Domain Management</h3>
+            <p>Manage multiple domains from one dashboard. Set up custom rules, whitelists, and protection levels per domain.</p>
+            <ul class="feature-list">
+              <li><i class="bi bi-check-lg"></i> Multi-domain support</li>
+              <li><i class="bi bi-check-lg"></i> IP whitelisting</li>
+              <li><i class="bi bi-check-lg"></i> Per-link settings</li>
+            </ul>
+          </div>
+        </div>
+        <div class="feature-panel" id="panel-deploy">
+          <div class="feature-text">
+            <h3>Hosting Integration</h3>
+            <p>Deploy websites with built-in bot protection. Seamless integration with cPanel and other hosting platforms.</p>
+            <ul class="feature-list">
+              <li><i class="bi bi-check-lg"></i> cPanel integration</li>
+              <li><i class="bi bi-check-lg"></i> Automatic SSL</li>
+              <li><i class="bi bi-check-lg"></i> One-click deployment</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Product Screenshot -->
+  <section class="screenshot-section">
+    <div class="container">
+      <div class="screenshot-wrapper">
+        <div class="screenshot-glow"></div>
+        <div class="screenshot-frame">
+          <div class="screenshot-header">
+            <span class="screenshot-dot"></span>
+            <span class="screenshot-dot"></span>
+            <span class="screenshot-dot"></span>
+          </div>
+          <div class="screenshot-content">
+            <div class="screenshot-sidebar">
+              <div class="screenshot-menu-item active"></div>
+              <div class="screenshot-menu-item"></div>
+              <div class="screenshot-menu-item"></div>
+              <div class="screenshot-menu-item"></div>
+            </div>
+            <div class="screenshot-main">
+              <div class="screenshot-stats">
+                <div class="screenshot-stat-card">
+                  <span class="stat-icon"><i class="bi bi-people"></i></span>
+                  <span class="stat-value">12,847</span>
+                  <span class="stat-label">Human Visits</span>
+                </div>
+                <div class="screenshot-stat-card">
+                  <span class="stat-icon"><i class="bi bi-robot"></i></span>
+                  <span class="stat-value">3,291</span>
+                  <span class="stat-label">Bots Blocked</span>
+                </div>
+                <div class="screenshot-stat-card">
+                  <span class="stat-icon"><i class="bi bi-link-45deg"></i></span>
+                  <span class="stat-value">156</span>
+                  <span class="stat-label">Active Links</span>
+                </div>
+              </div>
+              <div class="screenshot-chart"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Security Section -->
+  <section class="security-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">SECURITY</span>
+        <h2 class="section-title">Keep bots out. Let humans in.</h2>
+        <p class="section-subtitle">Enterprise-grade protection for your links and websites.</p>
+      </div>
+      <div class="security-grid">
+        <div class="security-card">
+          <div class="security-icon">
+            <i class="bi bi-shield-lock"></i>
+          </div>
+          <h4>Bot Detection</h4>
+          <p>AI-powered detection identifies bots, scrapers, and automated traffic with high accuracy.</p>
+        </div>
+        <div class="security-card">
+          <div class="security-icon">
+            <i class="bi bi-person-check"></i>
+          </div>
+          <h4>IP Whitelisting</h4>
+          <p>Your trusted IPs always pass through. Global whitelist syncs across all your links.</p>
+        </div>
+        <div class="security-card">
+          <div class="security-icon">
+            <i class="bi bi-activity"></i>
+          </div>
+          <h4>Real-Time Monitoring</h4>
+          <p>Live dashboard shows traffic patterns, blocked attempts, and security events as they happen.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-content">
+        <span class="section-label">GET STARTED</span>
+        <h2 class="cta-title">Start protecting your links today</h2>
+        <p class="cta-subtitle">Free to start. No credit card required.</p>
+        <a href="/auth/register" class="btn btn-primary btn-lg">
+          <i class="bi bi-rocket-takeoff me-2"></i>Create Free Account
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="homepage-footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <img src="/static/img/logo.svg" alt="{{appName}}" height="24">
+          <span class="footer-copyright">&copy; {{currentYear}} {{appName}}. All rights reserved.</span>
+        </div>
+        <div class="footer-links">
+          <a href="/help">Support</a>
+          <a href="/auth/login">Sign In</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <script>
+    // Feature tabs
+    document.querySelectorAll('.feature-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.feature-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.feature-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+{{end}}
