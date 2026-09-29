@@ -1090,6 +1090,33 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
+/* Header balance button (Kumo style) */
+[data-bs-theme="dark"] .btn-header-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 0.4rem 0.875rem !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+[data-bs-theme="dark"] .btn-header-balance:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+}
+
+[data-bs-theme="dark"] .btn-header-balance .bi-plus-lg {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+}
+
 [data-bs-theme="dark"] .app-footer,
 [data-bs-theme="dark"] .main-footer {
   background: #09090b !important;
