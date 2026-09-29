@@ -3,6 +3,7 @@ package dashboard
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"time"
@@ -82,17 +83,26 @@ func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	userID := user.ID
 
 	// Subscription info
-	var subDaysLeft int
+	var subDaysLeft string
 	var subStatus string
-	m.DB().Get(&subDaysLeft, `
-		SELECT GREATEST(0, EXTRACT(DAY FROM (expires_at - NOW()))::INT)
-		FROM subscriptions WHERE user_id = $1 AND status = 'active'
-		ORDER BY expires_at DESC LIMIT 1
-	`, userID)
-	m.DB().Get(&subStatus, `
-		SELECT COALESCE(status, 'none') FROM subscriptions
-		WHERE user_id = $1 ORDER BY expires_at DESC LIMIT 1
-	`, userID)
+
+	if user.IsAdmin() {
+		subDaysLeft = "∞"
+		subStatus = "active"
+	} else {
+		var daysLeft int
+		m.DB().Get(&daysLeft, `
+			SELECT GREATEST(0, EXTRACT(DAY FROM (expires_at - NOW()))::INT)
+			FROM subscriptions WHERE user_id = $1 AND status = 'active'
+			ORDER BY expires_at DESC LIMIT 1
+		`, userID)
+		subDaysLeft = fmt.Sprintf("%d", daysLeft)
+
+		m.DB().Get(&subStatus, `
+			SELECT COALESCE(status, 'none') FROM subscriptions
+			WHERE user_id = $1 ORDER BY expires_at DESC LIMIT 1
+		`, userID)
+	}
 
 	// KPI stats
 	var domains, botsDetected, humansVerified, redirectLinks int64
