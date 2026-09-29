@@ -1,0 +1,17 @@
+/*
+ * Kumo UI Theme for Botginx
+ *
+ * A polished, modern theme with glassmorphism, soft shadows, and smooth animations.
+ * Layers on top of AdminLTE without modifying it.
+ *
+ * To disable: comment out the <link> to this file in base.html and auth.html
+ *
+ * Structure:
+ *   - kumo-foundation.css: Variables, typography, animations, scrollbar
+ *   - kumo-components.css: Cards, buttons, forms, tables
+ *   - kumo-layout.css: Sidebar, modals, dropdowns, alerts
+ */
+
+@import url('./kumo-foundation.css');
+@import url('./kumo-components.css');
+@import url('./kumo-layout.css');

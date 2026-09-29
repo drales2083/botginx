@@ -1,0 +1,193 @@
+/*
+ * Kumo UI Foundation
+ *
+ * Core design tokens and base styles for the Kumo theme.
+ * This file establishes the foundation that other Kumo components depend on.
+ *
+ * Contents:
+ *   1. CSS Variables (design tokens)
+ *   2. Typography
+ *   3. Base body styles
+ *   4. Page transitions
+ *   5. Loading states
+ *   6. Scrollbar styling
+ */
+
+/* ==========================================================================
+   1. CSS Variables (Design Tokens)
+   ========================================================================== */
+
+:root {
+  /* Glass Effect */
+  --kumo-glass-bg: rgba(255, 255, 255, 0.03);
+  --kumo-glass-border: rgba(255, 255, 255, 0.08);
+  --kumo-glass-blur: 12px;
+
+  /* Shadows - soft with large blur radius */
+  --kumo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --kumo-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --kumo-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.25);
+
+  /* Border Radius - generous rounding */
+  --kumo-radius-sm: 8px;
+  --kumo-radius-md: 12px;
+  --kumo-radius-lg: 16px;
+  --kumo-radius-xl: 24px;
+
+  /* Transitions - smooth micro-animations */
+  --kumo-transition-fast: 150ms ease;
+  --kumo-transition-normal: 250ms ease;
+  --kumo-transition-slow: 400ms ease;
+
+  /* Colors - softer red primary with gradient accent */
+  --kumo-primary: #e63946;
+  --kumo-primary-soft: rgba(230, 57, 70, 0.15);
+  --kumo-accent-gradient: linear-gradient(135deg, #e63946 0%, #f4a261 100%);
+}
+
+
+/* ==========================================================================
+   2. Typography
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+
+/* ==========================================================================
+   3. Base Body Styles
+   ========================================================================== */
+
+body {
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+
+/* ==========================================================================
+   4. Page Transitions
+   ========================================================================== */
+
+.content-wrapper {
+  animation: kumoFadeIn var(--kumo-transition-slow);
+}
+
+@keyframes kumoFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered card entrance for lists */
+.card {
+  animation: kumoFadeIn var(--kumo-transition-slow) backwards;
+}
+
+.card:nth-child(1) { animation-delay: 0ms; }
+.card:nth-child(2) { animation-delay: 50ms; }
+.card:nth-child(3) { animation-delay: 100ms; }
+.card:nth-child(4) { animation-delay: 150ms; }
+.card:nth-child(5) { animation-delay: 200ms; }
+
+
+/* ==========================================================================
+   5. Loading States
+   ========================================================================== */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: kumoShimmer 1.5s infinite;
+  border-radius: var(--kumo-radius-sm);
+}
+
+@keyframes kumoShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Skeleton variants */
+.skeleton-text {
+  height: 1em;
+  margin-bottom: 0.5em;
+}
+
+.skeleton-text:last-child {
+  width: 70%;
+}
+
+.skeleton-title {
+  height: 1.5em;
+  width: 60%;
+  margin-bottom: 1em;
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.skeleton-button {
+  height: 38px;
+  width: 100px;
+}
+
+
+/* ==========================================================================
+   6. Scrollbar Styling
+   ========================================================================== */
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}

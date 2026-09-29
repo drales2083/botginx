@@ -1,0 +1,343 @@
+/*
+ * Kumo Theme - Layout Components
+ * Sidebar, Modals, Dropdowns, Alerts, Toasts, Badges
+ */
+
+/* ==========================================================================
+   SIDEBAR
+   ========================================================================== */
+
+.app-sidebar {
+  background: linear-gradient(
+    180deg,
+    rgba(25, 25, 35, 0.95) 0%,
+    rgba(18, 18, 28, 0.98) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid var(--kumo-glass-border);
+}
+
+.sidebar-brand {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid var(--kumo-glass-border);
+}
+
+.sidebar-brand .brand-link {
+  transition: opacity var(--kumo-transition-fast);
+}
+
+.sidebar-brand .brand-link:hover {
+  opacity: 0.85;
+}
+
+/* Navigation Items */
+.nav-sidebar .nav-item {
+  margin: 2px 0;
+}
+
+.nav-sidebar .nav-link {
+  border-radius: var(--kumo-radius-md);
+  margin: 2px 0.75rem;
+  padding: 0.75rem 1rem;
+  transition: all var(--kumo-transition-fast);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nav-sidebar .nav-link:hover {
+  background: var(--kumo-primary-soft);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.nav-sidebar .nav-link.active {
+  background: var(--kumo-accent-gradient);
+  box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+  color: #fff;
+}
+
+/* Nav Icons */
+.nav-icon {
+  opacity: 0.7;
+  transition: opacity var(--kumo-transition-fast);
+  margin-right: 0.5rem;
+}
+
+.nav-link:hover .nav-icon,
+.nav-link.active .nav-icon {
+  opacity: 1;
+}
+
+/* Sidebar Menu Headers */
+.nav-sidebar .nav-header {
+  padding: 1rem 1.5rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* Sidebar Submenu */
+.nav-sidebar .nav-treeview {
+  padding-left: 0.5rem;
+}
+
+.nav-sidebar .nav-treeview .nav-link {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  border-top: 1px solid var(--kumo-glass-border);
+  padding: 1rem;
+}
+
+
+/* ==========================================================================
+   MODALS
+   ========================================================================== */
+
+.modal-content {
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--kumo-glass-border);
+  border-radius: var(--kumo-radius-xl);
+  box-shadow: var(--kumo-shadow-lg);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--kumo-glass-border);
+  padding: 1.5rem;
+}
+
+.modal-header .modal-title {
+  font-weight: 600;
+}
+
+.modal-header .btn-close {
+  opacity: 0.6;
+  transition: opacity var(--kumo-transition-fast);
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--kumo-glass-border);
+  padding: 1.25rem 1.5rem;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+
+/* ==========================================================================
+   DROPDOWNS
+   ========================================================================== */
+
+.dropdown-menu {
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--kumo-glass-border);
+  border-radius: var(--kumo-radius-md);
+  box-shadow: var(--kumo-shadow-md);
+  padding: 0.5rem;
+}
+
+.dropdown-item {
+  border-radius: var(--kumo-radius-sm);
+  padding: 0.6rem 1rem;
+  transition: background var(--kumo-transition-fast);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: var(--kumo-primary-soft);
+  color: #fff;
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+  background: var(--kumo-accent-gradient);
+  color: #fff;
+}
+
+.dropdown-divider {
+  border-color: var(--kumo-glass-border);
+  margin: 0.5rem 0;
+}
+
+.dropdown-header {
+  padding: 0.5rem 1rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+
+/* ==========================================================================
+   ALERTS
+   ========================================================================== */
+
+.alert {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--kumo-glass-border);
+  border-radius: var(--kumo-radius-md);
+  padding: 1rem 1.25rem;
+}
+
+.alert-primary {
+  background: rgba(230, 57, 70, 0.15);
+  border-color: rgba(230, 57, 70, 0.3);
+  color: #f8d7da;
+}
+
+.alert-success {
+  background: rgba(40, 167, 69, 0.15);
+  border-color: rgba(40, 167, 69, 0.3);
+  color: #d4edda;
+}
+
+.alert-warning {
+  background: rgba(255, 193, 7, 0.15);
+  border-color: rgba(255, 193, 7, 0.3);
+  color: #fff3cd;
+}
+
+.alert-danger {
+  background: rgba(220, 53, 69, 0.15);
+  border-color: rgba(220, 53, 69, 0.3);
+  color: #f8d7da;
+}
+
+.alert-info {
+  background: rgba(23, 162, 184, 0.15);
+  border-color: rgba(23, 162, 184, 0.3);
+  color: #d1ecf1;
+}
+
+.alert .btn-close {
+  opacity: 0.6;
+}
+
+.alert .btn-close:hover {
+  opacity: 1;
+}
+
+
+/* ==========================================================================
+   TOASTS
+   ========================================================================== */
+
+.toast {
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--kumo-glass-border);
+  border-radius: var(--kumo-radius-md);
+  box-shadow: var(--kumo-shadow-md);
+}
+
+.toast-header {
+  background: transparent;
+  border-bottom: 1px solid var(--kumo-glass-border);
+  padding: 0.75rem 1rem;
+}
+
+.toast-body {
+  padding: 1rem;
+}
+
+/* Toast container positioning */
+.toast-container {
+  z-index: 1090;
+}
+
+/* Toast variants via border accent */
+.toast.toast-success {
+  border-left: 3px solid #28a745;
+}
+
+.toast.toast-warning {
+  border-left: 3px solid #ffc107;
+}
+
+.toast.toast-danger,
+.toast.toast-error {
+  border-left: 3px solid #dc3545;
+}
+
+.toast.toast-info {
+  border-left: 3px solid #17a2b8;
+}
+
+
+/* ==========================================================================
+   BADGES
+   ========================================================================== */
+
+.badge {
+  border-radius: var(--kumo-radius-sm);
+  padding: 0.4em 0.7em;
+  font-weight: 500;
+  font-size: 0.75em;
+}
+
+/* Soft badge variants for glass aesthetic */
+.badge.bg-primary {
+  background: var(--kumo-primary-soft) !important;
+  color: var(--kumo-primary);
+}
+
+.badge.bg-secondary {
+  background: rgba(108, 117, 125, 0.2) !important;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.badge.bg-success {
+  background: rgba(40, 167, 69, 0.2) !important;
+  color: #28a745;
+}
+
+.badge.bg-danger {
+  background: rgba(220, 53, 69, 0.2) !important;
+  color: #dc3545;
+}
+
+.badge.bg-warning {
+  background: rgba(255, 193, 7, 0.2) !important;
+  color: #ffc107;
+}
+
+.badge.bg-info {
+  background: rgba(23, 162, 184, 0.2) !important;
+  color: #17a2b8;
+}
+
+/* Solid badge option */
+.badge.badge-solid.bg-primary {
+  background: var(--kumo-accent-gradient) !important;
+  color: #fff;
+}
+
+/* Pill badges */
+.badge.rounded-pill {
+  border-radius: 50rem;
+  padding: 0.4em 0.8em;
+}
