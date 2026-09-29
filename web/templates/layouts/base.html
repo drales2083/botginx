@@ -92,7 +92,7 @@
           <!--begin::Balance-->
           {{if .User}}
           <li class="nav-item d-flex align-items-center">
-            <a class="btn btn-header-balance" href="/user/deposit" title="{{t "add_funds"}}">
+            <a class="btn btn-header-balance" href="/user/payments" title="{{t "add_funds"}}">
               <i class="bi bi-plus-lg"></i>
               <span>${{printf "%.2f" .User.Balance}}</span>
             </a>
