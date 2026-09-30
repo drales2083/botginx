@@ -59,6 +59,7 @@
   "two_factor_code": "Authentication Code",
   "two_factor_hint": "Enter the 6-digit code from your authenticator app",
   "verify": "Verify",
+  "support": "Support",
 
   "servers.title": "VPS Servers",
   "servers.add": "Add Server",

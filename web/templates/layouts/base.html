@@ -133,7 +133,7 @@
           <li class="nav-item dropdown">
             <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
               <i class="bi bi-person-circle me-1"></i>
-              <span class="d-none d-md-inline">{{if .User}}{{.User.Name}}{{else}}Account{{end}}</span>
+              <span class="d-none d-md-inline">{{if .User}}{{.User.Name}}{{end}}</span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
               {{if and .User .User.IsAdmin}}
@@ -168,25 +168,25 @@
             <li class="nav-item">
               <a href="/user/dashboard" class="nav-link {{if eq .Title "Dashboard"}}active{{end}}">
                 <i class="nav-icon bi bi-grid-3x3-gap-fill"></i>
-                <p>Dashboard</p>
+                <p>{{t "dashboard"}}</p>
               </a>
             </li>
             <li class="nav-item">
               <a href="/user/analytics" class="nav-link {{if hasPrefix .Title "Analytics"}}active{{end}}">
                 <i class="nav-icon bi bi-graph-up"></i>
-                <p>Analytics</p>
+                <p>{{t "analytics"}}</p>
               </a>
             </li>
             <li class="nav-item">
               <a href="/user/marketplace" class="nav-link {{if eq .Title "Marketplace"}}active{{end}}">
                 <i class="nav-icon bi bi-shop"></i>
-                <p>Domain Store</p>
+                <p>{{t "marketplace.buy_domain"}}</p>
               </a>
             </li>
             <li class="nav-item">
               <a href="/user/support" class="nav-link {{if hasPrefix .Title "Support"}}active{{end}}">
                 <i class="nav-icon bi bi-life-preserver"></i>
-                <p>Support</p>
+                <p>{{t "support"}}</p>
               </a>
             </li>
           </ul>
