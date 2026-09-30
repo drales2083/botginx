@@ -6,7 +6,7 @@
     <div class="col-md-3 col-6">
         <div class="card h-100">
             <div class="card-body">
-                <p class="text-secondary small mb-1">Total Links</p>
+                <p class="text-secondary small mb-1">{{t "redirectlinks.total_links"}}</p>
                 <h3 class="mb-0 fw-bold">{{len .Links}}</h3>
             </div>
         </div>
@@ -14,7 +14,7 @@
     <div class="col-md-3 col-6">
         <div class="card h-100">
             <div class="card-body">
-                <p class="text-secondary small mb-1">Deployed</p>
+                <p class="text-secondary small mb-1">{{t "deployed"}}</p>
                 <h3 class="mb-0 fw-bold text-success" id="stat-deployed">0</h3>
             </div>
         </div>
@@ -22,7 +22,7 @@
     <div class="col-md-3 col-6">
         <div class="card h-100">
             <div class="card-body">
-                <p class="text-secondary small mb-1">Pending</p>
+                <p class="text-secondary small mb-1">{{t "pending"}}</p>
                 <h3 class="mb-0 fw-bold text-warning" id="stat-pending">0</h3>
             </div>
         </div>
@@ -30,7 +30,7 @@
     <div class="col-md-3 col-6">
         <div class="card h-100">
             <div class="card-body">
-                <p class="text-secondary small mb-1">Failed</p>
+                <p class="text-secondary small mb-1">{{t "failed"}}</p>
                 <h3 class="mb-0 fw-bold text-danger" id="stat-failed">0</h3>
             </div>
         </div>
@@ -43,7 +43,7 @@
         <h3 class="card-title mb-0 me-auto">{{t "redirect_links"}}</h3>
         {{if $canWrite}}
         <button class="btn btn-danger btn-sm d-none" id="bulk-delete-btn">
-            <i class="bi bi-trash me-1"></i><span id="selected-count">0</span> Selected — Delete
+            <i class="bi bi-trash me-1"></i><span id="selected-count">0</span> {{t "selected"}} — {{t "delete"}}
         </button>
         {{end}}
         <a href="/user/redirectlinks/new" class="btn btn-primary btn-sm">
@@ -55,14 +55,14 @@
             <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="0,7">
                 <thead>
                     <tr>
-                        {{if $canWrite}}<th style="width:40px"><input type="checkbox" class="form-check-input" id="select-all" title="Select all"></th>{{end}}
-                        <th>Link</th>
-                        <th>Type</th>
-                        <th>Views</th>
-                        <th>Status</th>
-                        <th class="text-center">Bot Settings</th>
-                        <th>Created</th>
-                        <th class="text-end">Actions</th>
+                        {{if $canWrite}}<th style="width:40px"><input type="checkbox" class="form-check-input" id="select-all" title="{{t "select_all"}}"></th>{{end}}
+                        <th>{{t "redirectlinks.link"}}</th>
+                        <th>{{t "type"}}</th>
+                        <th>{{t "redirectlinks.views"}}</th>
+                        <th>{{t "status"}}</th>
+                        <th class="text-center">{{t "redirectlinks.bot_settings"}}</th>
+                        <th>{{t "created"}}</th>
+                        <th class="text-end">{{t "actions"}}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -79,19 +79,19 @@
                             {{end}}
                             <div class="small text-secondary">
                                 {{if .DestinationURLs}}
-                                {{len .DestinationURLs}} destination{{if gt (len .DestinationURLs) 1}}s{{end}}
+                                {{len .DestinationURLs}} {{t "destinations"}}
                                 {{else if eq .Type "HTML"}}
-                                Custom HTML
+                                {{t "redirectlinks.custom_html"}}
                                 {{else}}
-                                No destinations
+                                {{t "redirectlinks.no_destinations"}}
                                 {{end}}
                             </div>
                         </td>
                         <td>
                             {{if eq .Type "REDIRECT"}}
-                            <span class="badge text-bg-primary">Redirect</span>
+                            <span class="badge text-bg-primary">{{t "redirectlinks.type_redirect"}}</span>
                             {{else}}
-                            <span class="badge text-bg-info">HTML</span>
+                            <span class="badge text-bg-info">{{t "redirectlinks.type_html"}}</span>
                             {{end}}
                         </td>
                         <td>
@@ -99,46 +99,46 @@
                         </td>
                         <td>
                             {{if eq .DeployStatus "deployed"}}
-                            <span class="badge text-bg-success">Deployed</span>
+                            <span class="badge text-bg-success">{{t "deployed"}}</span>
                             {{else if eq .DeployStatus "pending"}}
-                            <span class="badge text-bg-warning">Pending</span>
+                            <span class="badge text-bg-warning">{{t "pending"}}</span>
                             {{else}}
-                            <span class="badge text-bg-danger" title="{{.DeployError}}">Failed</span>
+                            <span class="badge text-bg-danger" title="{{.DeployError}}">{{t "failed"}}</span>
                             {{end}}
                         </td>
                         <td class="text-center">
-                            <a href="/user/analytics/link/{{.ID}}/settings" class="btn btn-sm btn-outline-secondary" title="Bot Settings">
+                            <a href="/user/analytics/link/{{.ID}}/settings" class="btn btn-sm btn-outline-secondary" title="{{t "redirectlinks.bot_settings"}}">
                                 <i class="bi bi-gear"></i>
                             </a>
                         </td>
                         <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
                         <td class="text-end">
                             <div class="btn-group btn-group-sm">
-                                <a href="/user/redirectlinks/{{.ID}}" class="btn btn-outline-secondary" title="View">
+                                <a href="/user/redirectlinks/{{.ID}}" class="btn btn-outline-secondary" title="{{t "view"}}">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="/user/analytics/link/{{.ID}}" class="btn btn-outline-secondary" title="Analytics">
+                                <a href="/user/analytics/link/{{.ID}}" class="btn btn-outline-secondary" title="{{t "analytics"}}">
                                     <i class="bi bi-graph-up"></i>
                                 </a>
-                                <a href="/user/analytics/link/{{.ID}}/settings" class="btn btn-outline-secondary" title="Bot Settings">
+                                <a href="/user/analytics/link/{{.ID}}/settings" class="btn btn-outline-secondary" title="{{t "redirectlinks.bot_settings"}}">
                                     <i class="bi bi-shield-check"></i>
                                 </a>
-                                <button class="btn btn-outline-secondary btn-copy" title="Copy URL" data-url="{{.FullURL}}">
+                                <button class="btn btn-outline-secondary btn-copy" title="{{t "copy_url"}}" data-url="{{.FullURL}}">
                                     <i class="bi bi-clipboard"></i>
                                 </button>
                                 {{if $canWrite}}
                                 <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="More">
+                                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="{{t "more"}}">
                                         <i class="bi bi-three-dots-vertical"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
                                         {{if eq .Type "HTML"}}
-                                        <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/edit-html"><i class="bi bi-code-slash me-2"></i>Edit HTML</a></li>
+                                        <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/edit-html"><i class="bi bi-code-slash me-2"></i>{{t "redirectlinks.edit_html"}}</a></li>
                                         {{else}}
-                                        <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/customize"><i class="bi bi-palette me-2"></i>Customize</a></li>
+                                        <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/customize"><i class="bi bi-palette me-2"></i>{{t "customize"}}</a></li>
                                         {{end}}
                                         <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                        <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>{{t "delete"}}</a></li>
                                     </ul>
                                 </div>
                                 {{end}}
@@ -148,8 +148,8 @@
                     {{else}}
                     <tr>
                         <td colspan="{{if $canWrite}}8{{else}}7{{end}}" class="text-center text-muted py-4">
-                            No redirect links yet.
-                            <a href="/user/redirectlinks/new">Create your first link</a>.
+                            {{t "redirectlinks.no_links_message"}}
+                            <a href="/user/redirectlinks/new">{{t "redirectlinks.create_first"}}</a>.
                         </td>
                     </tr>
                     {{end}}
@@ -164,17 +164,17 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header border-danger">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Redirect</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>{{t "redirectlinks.delete_redirect"}}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete this redirect?</p>
-                <p class="text-muted small mb-0">This will remove the deployed page and all analytics data.</p>
+                <p>{{t "redirectlinks.delete_confirm"}}</p>
+                <p class="text-muted small mb-0">{{t "redirectlinks.delete_warning"}}</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{t "cancel"}}</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="bi bi-trash me-1"></i>Delete
+                    <i class="bi bi-trash me-1"></i>{{t "delete"}}
                 </button>
             </div>
         </div>
@@ -186,17 +186,17 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header border-danger">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Multiple Links</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>{{t "redirectlinks.delete_multiple"}}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete <strong id="bulk-count">0</strong> redirect links?</p>
-                <p class="text-muted small mb-0">This will remove all deployed pages and analytics data for these links.</p>
+                <p>{{t "redirectlinks.delete_multiple_confirm"}} <strong id="bulk-count">0</strong> {{t "redirect_links"}}?</p>
+                <p class="text-muted small mb-0">{{t "redirectlinks.delete_multiple_warning"}}</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{t "cancel"}}</button>
                 <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">
-                    <i class="bi bi-trash me-1"></i>Delete All
+                    <i class="bi bi-trash me-1"></i>{{t "delete_all"}}
                 </button>
             </div>
         </div>

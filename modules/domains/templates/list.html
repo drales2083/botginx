@@ -6,7 +6,7 @@
             <i class="bi bi-plus-lg me-1"></i> {{t "domains.add"}}
         </a>
         <a href="/user/marketplace" class="btn btn-outline-primary">
-            <i class="bi bi-bag me-1"></i> Buy Domain
+            <i class="bi bi-bag me-1"></i> {{t "marketplace.buy_domain"}}
         </a>
     </div>
 </div>
@@ -19,10 +19,10 @@
         <table class="table table-striped mb-0" data-datatable data-no-sort="5">
             <thead>
                 <tr>
-                    <th>Domain</th>
-                    <th>Server</th>
-                    <th>DNS</th>
-                    <th>SSL</th>
+                    <th>{{t "domains.domain"}}</th>
+                    <th>{{t "domains.server"}}</th>
+                    <th>{{t "domains.dns"}}</th>
+                    <th>{{t "domains.ssl"}}</th>
                     <th>{{t "created"}}</th>
                     <th>{{t "actions"}}</th>
                 </tr>
@@ -39,7 +39,7 @@
                         {{if .ServerName}}
                         <span class="badge bg-primary">{{.ServerName}}</span>
                         {{else}}
-                        <span class="text-muted">Not assigned</span>
+                        <span class="text-muted">{{t "domains.not_assigned"}}</span>
                         {{end}}
                     </td>
                     <td>
@@ -55,11 +55,11 @@
                         {{else if and .IsWildcard (ne .SetupStep "complete")}}
                         {{if .CpanelConnectionID}}
                         <a href="/user/domains/cpanel/{{.CpanelConnectionID}}/domains?domain={{.ID}}" class="badge bg-warning text-dark text-decoration-none">
-                            <i class="bi bi-gear-fill me-1"></i>Setup
+                            <i class="bi bi-gear-fill me-1"></i>{{t "domains.setup"}}
                         </a>
                         {{else}}
                         <a href="/user/domains/{{.ID}}/setup" class="badge bg-warning text-dark text-decoration-none">
-                            <i class="bi bi-gear-fill me-1"></i>Setup
+                            <i class="bi bi-gear-fill me-1"></i>{{t "domains.setup"}}
                         </a>
                         {{end}}
                         {{else}}
@@ -70,21 +70,21 @@
                     <td>
                         <div class="dropdown">
                             <button class="btn btn-sm btn-dark dropdown-toggle" data-bs-toggle="dropdown">
-                                Actions
+                                {{t "actions"}}
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="/user/domains/{{.ID}}"><i class="bi bi-eye me-2"></i>View Details</a></li>
-                                <li><a class="dropdown-item" href="/user/domains/{{.ID}}/settings"><i class="bi bi-sliders me-2"></i>Settings</a></li>
+                                <li><a class="dropdown-item" href="/user/domains/{{.ID}}"><i class="bi bi-eye me-2"></i>{{t "domains.view_details"}}</a></li>
+                                <li><a class="dropdown-item" href="/user/domains/{{.ID}}/settings"><i class="bi bi-sliders me-2"></i>{{t "settings"}}</a></li>
                                 {{if and .IsWildcard (not .SSLEnabled)}}
                                 {{if .CpanelConnectionID}}
-                                <li><a class="dropdown-item" href="/user/domains/cpanel/{{.CpanelConnectionID}}/domains?domain={{.ID}}"><i class="bi bi-gear me-2"></i>Setup Status</a></li>
+                                <li><a class="dropdown-item" href="/user/domains/cpanel/{{.CpanelConnectionID}}/domains?domain={{.ID}}"><i class="bi bi-gear me-2"></i>{{t "domains.setup_status"}}</a></li>
                                 {{else}}
-                                <li><a class="dropdown-item" href="/user/domains/{{.ID}}/setup"><i class="bi bi-gear me-2"></i>Setup Wizard</a></li>
+                                <li><a class="dropdown-item" href="/user/domains/{{.ID}}/setup"><i class="bi bi-gear me-2"></i>{{t "domains.setup"}}</a></li>
                                 {{end}}
                                 {{end}}
-                                <li><a class="dropdown-item btn-verify" href="#" data-id="{{.ID}}"><i class="bi bi-check-circle me-2"></i>Verify DNS</a></li>
+                                <li><a class="dropdown-item btn-verify" href="#" data-id="{{.ID}}"><i class="bi bi-check-circle me-2"></i>{{t "domains.verify"}}</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}" data-name="{{.Name}}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}" data-name="{{.Name}}"><i class="bi bi-trash me-2"></i>{{t "delete"}}</a></li>
                             </ul>
                         </div>
                     </td>
@@ -106,16 +106,16 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header border-danger">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Domain</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>{{t "domains.delete_domain"}}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="deleteModalBody">
-                <p>Checking...</p>
+                <p>{{t "loading"}}</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{t "cancel"}}</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled>
-                    <i class="bi bi-trash me-1"></i>Delete
+                    <i class="bi bi-trash me-1"></i>{{t "delete"}}
                 </button>
             </div>
         </div>

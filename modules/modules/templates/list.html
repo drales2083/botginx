@@ -47,18 +47,18 @@
 <div class="row mb-3">
   <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
-      <h5 class="mb-1">Modules</h5>
+      <h5 class="mb-1">{{t "modules"}}</h5>
       <small class="text-muted">
-        {{len .Modules}} installed
+        {{len .Modules}} {{t "modules.installed"}}
       </small>
     </div>
     <div class="alert alert-info mb-0 py-2 px-3 d-flex align-items-center gap-3">
       <span>
         <i class="bi bi-info-circle me-1"></i>
-        Enabling or disabling a module takes effect after a server restart.
+        {{t "modules.restart_note"}}
       </span>
       <button class="btn btn-sm btn-outline-primary flex-shrink-0" id="btn-restart">
-        <i class="bi bi-arrow-clockwise me-1"></i> Restart now
+        <i class="bi bi-arrow-clockwise me-1"></i> {{t "modules.restart_now"}}
       </button>
     </div>
   </div>
@@ -69,9 +69,9 @@
     <table class="table table-hover align-middle mb-0 plugins-table" data-datatable data-per-page="50">
       <thead>
         <tr>
-          <th style="width: 32%">Module</th>
-          <th>Description</th>
-          <th style="width: 18%">Status</th>
+          <th style="width: 32%">{{t "modules.module"}}</th>
+          <th>{{t "description"}}</th>
+          <th style="width: 18%">{{t "status"}}</th>
         </tr>
       </thead>
       <tbody>
@@ -83,14 +83,14 @@
             </div>
             <div class="plugin-actions">
               {{if .IsCore}}
-              <span class="text-muted">Required</span>
+              <span class="text-muted">Core</span>
               {{else if .IsEnabled}}
-              <button type="button" class="btn-disable text-danger" data-id="{{.ID}}">Deactivate</button>
+              <button type="button" class="btn-disable text-danger" data-id="{{.ID}}">{{t "modules.deactivate"}}</button>
               {{else}}
-              <button type="button" class="btn-enable" data-id="{{.ID}}">Activate</button>
+              <button type="button" class="btn-enable" data-id="{{.ID}}">{{t "modules.activate"}}</button>
               {{end}}
               <span class="sep">|</span>
-              <a href="/admin/modules/{{.ID}}">Details</a>
+              <a href="/admin/modules/{{.ID}}">{{t "domains.view_details"}}</a>
             </div>
           </td>
           <td>
@@ -106,16 +106,16 @@
             {{if .IsCore}}
             <span class="badge bg-primary">Core</span>
             {{else if .IsEnabled}}
-            <span class="badge bg-success">Active</span>
+            <span class="badge bg-success">{{t "active"}}</span>
             {{else}}
-            <span class="badge bg-secondary">Inactive</span>
+            <span class="badge bg-secondary">{{t "inactive"}}</span>
             {{end}}
           </td>
         </tr>
         {{else}}
         <tr>
           <td colspan="3" class="text-center text-muted py-5">
-            No modules are registered.
+            {{t "no_data"}}
           </td>
         </tr>
         {{end}}
@@ -137,9 +137,9 @@
                 <p class="text-muted small mb-0">Anyone using the panel will be briefly disconnected.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{t "cancel"}}</button>
                 <button type="button" class="btn btn-warning" id="confirmRestartBtn">
-                    <i class="bi bi-arrow-clockwise me-1"></i>Restart
+                    <i class="bi bi-arrow-clockwise me-1"></i>{{t "modules.restart_now"}}
                 </button>
             </div>
         </div>
@@ -151,17 +151,17 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header border-danger">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Deactivate Module</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>{{t "modules.confirm_deactivate"}}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Deactivate this module?</p>
-                <p class="text-muted small mb-0">The server will need to be restarted for changes to take effect.</p>
+                <p>{{t "modules.deactivate_prompt"}}</p>
+                <p class="text-muted small mb-0">{{t "modules.restart_note"}}</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{t "cancel"}}</button>
                 <button type="button" class="btn btn-danger" id="confirmDisableBtn">
-                    <i class="bi bi-x-circle me-1"></i>Deactivate
+                    <i class="bi bi-x-circle me-1"></i>{{t "modules.deactivate"}}
                 </button>
             </div>
         </div>

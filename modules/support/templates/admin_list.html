@@ -2,7 +2,7 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col">
-            <h2>Support Tickets</h2>
+            <h2>{{t "support.tickets"}}</h2>
         </div>
     </div>
 
@@ -11,18 +11,18 @@
         <div class="card-body">
             <form method="GET" class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label">Status</label>
+                    <label class="form-label">{{t "status"}}</label>
                     <select class="form-select" name="status" onchange="this.form.submit()">
-                        <option value="">All Statuses</option>
-                        <option value="open" {{if eq .FilterStatus "open"}}selected{{end}}>Open</option>
-                        <option value="answered" {{if eq .FilterStatus "answered"}}selected{{end}}>Answered</option>
-                        <option value="closed" {{if eq .FilterStatus "closed"}}selected{{end}}>Closed</option>
+                        <option value="">{{t "support.all_statuses"}}</option>
+                        <option value="open" {{if eq .FilterStatus "open"}}selected{{end}}>{{t "support.open"}}</option>
+                        <option value="answered" {{if eq .FilterStatus "answered"}}selected{{end}}>{{t "support.answered"}}</option>
+                        <option value="closed" {{if eq .FilterStatus "closed"}}selected{{end}}>{{t "support.closed"}}</option>
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Category</label>
+                    <label class="form-label">{{t "support.category"}}</label>
                     <select class="form-select" name="category" onchange="this.form.submit()">
-                        <option value="">All Categories</option>
+                        <option value="">{{t "support.all_categories"}}</option>
                         {{range .Categories}}
                         <option value="{{.}}" {{if eq $.FilterCategory .}}selected{{end}}>{{.}}</option>
                         {{end}}
@@ -30,7 +30,7 @@
                 </div>
                 <div class="col-md-2">
                     {{if or .FilterStatus .FilterCategory}}
-                    <a href="/admin/support" class="btn btn-outline-secondary">Clear Filters</a>
+                    <a href="/admin/support" class="btn btn-outline-secondary">{{t "support.clear_filters"}}</a>
                     {{end}}
                 </div>
             </form>
@@ -40,9 +40,9 @@
     <!-- Tickets Table -->
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">All Tickets</h5>
+            <h5 class="card-title mb-0">{{t "support.all_tickets"}}</h5>
             {{if gt .OpenCount 0}}
-            <span class="badge bg-warning">{{.OpenCount}} Open</span>
+            <span class="badge bg-warning">{{.OpenCount}} {{t "support.open"}}</span>
             {{end}}
         </div>
         <div class="card-body p-0">
@@ -51,12 +51,12 @@
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th>User</th>
-                            <th>Subject</th>
-                            <th>Category</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Last Update</th>
+                            <th>{{t "support.user"}}</th>
+                            <th>{{t "support.subject"}}</th>
+                            <th>{{t "support.category"}}</th>
+                            <th>{{t "status"}}</th>
+                            <th>{{t "created"}}</th>
+                            <th>{{t "support.last_update"}}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -71,11 +71,11 @@
                             <td>{{.Category}}</td>
                             <td>
                                 {{if eq .Status "open"}}
-                                <span class="badge bg-warning">Open</span>
+                                <span class="badge bg-warning">{{t "support.open"}}</span>
                                 {{else if eq .Status "answered"}}
-                                <span class="badge bg-info">Answered</span>
+                                <span class="badge bg-info">{{t "support.answered"}}</span>
                                 {{else}}
-                                <span class="badge bg-secondary">Closed</span>
+                                <span class="badge bg-secondary">{{t "support.closed"}}</span>
                                 {{end}}
                             </td>
                             <td>{{.CreatedAt.Format "Jan 2"}}</td>
@@ -88,7 +88,7 @@
             {{else}}
             <div class="text-center py-5">
                 <i class="bi bi-inbox display-4 text-muted mb-3 d-block"></i>
-                <p class="text-muted">No tickets found</p>
+                <p class="text-muted">{{t "support.no_tickets"}}</p>
             </div>
             {{end}}
         </div>
