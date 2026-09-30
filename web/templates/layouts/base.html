@@ -203,14 +203,14 @@
             <li class="nav-item">
               <a href="#" class="nav-link">
                 <i class="nav-icon bi {{.Icon}}"></i>
-                <p>{{.Title}}<i class="nav-arrow bi bi-chevron-right"></i></p>
+                <p>{{tMenu .Title}}<i class="nav-arrow bi bi-chevron-right"></i></p>
               </a>
               <ul class="nav nav-treeview">
                 {{range .Children}}
                 <li class="nav-item">
                   <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
                     <i class="nav-icon bi {{.Icon}}"></i>
-                    <p>{{.Title}}</p>
+                    <p>{{tMenu .Title}}</p>
                   </a>
                 </li>
                 {{end}}
@@ -220,7 +220,7 @@
             <li class="nav-item">
               <a href="{{.Path}}" class="nav-link {{if eq $.Title .Title}}active{{end}}">
                 <i class="nav-icon bi {{.Icon}}"></i>
-                <p>{{.Title}}</p>
+                <p>{{tMenu .Title}}</p>
                 {{if .Badge}}<span class="badge bg-danger ms-auto">{{.Badge}}</span>{{end}}
               </a>
             </li>
@@ -251,12 +251,12 @@
       <div class="app-content-header">
         <div class="container-fluid">
           <div class="row">
-            <div class="col-sm-6"><h3 class="mb-0">{{.Title}}</h3></div>
+            <div class="col-sm-6"><h3 class="mb-0">{{tMenu .Title}}</h3></div>
             <div class="col-sm-6">
               <ol class="breadcrumb float-sm-end">
                 <li class="breadcrumb-item"><a href="/user/dashboard">{{t "dashboard"}}</a></li>
                 {{if ne .Title "Dashboard"}}
-                <li class="breadcrumb-item active">{{.Title}}</li>
+                <li class="breadcrumb-item active">{{tMenu .Title}}</li>
                 {{end}}
               </ol>
             </div>

@@ -15,9 +15,9 @@
                 <div class="d-flex justify-content-center gap-2 flex-wrap">
                     <span class="badge text-bg-primary"><svg class="ui-icon me-1" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#gem"/></svg>{{.Account.plan}}</span>
                     {{if .Subscription.Active}}
-                    <span class="badge text-bg-success"><svg class="ui-icon me-1" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#circle-check"/></svg>Active</span>
+                    <span class="badge text-bg-success"><svg class="ui-icon me-1" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#circle-check"/></svg>{{t "stats.active"}}</span>
                     {{else}}
-                    <span class="badge text-bg-warning"><svg class="ui-icon me-1" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#triangle-alert"/></svg>Inactive</span>
+                    <span class="badge text-bg-warning"><svg class="ui-icon me-1" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#triangle-alert"/></svg>{{t "inactive"}}</span>
                     {{end}}
                 </div>
             </div>
@@ -25,21 +25,21 @@
                 <div class="list-group-item d-flex align-items-center gap-3">
                     <span class="cpanel-info-icon text-bg-success"><i class="bi bi-wallet2"></i></span>
                     <div class="flex-grow-1">
-                        <div class="cpanel-info-label">Balance</div>
+                        <div class="cpanel-info-label">{{t "stats.balance"}}</div>
                         <div class="cpanel-info-value">${{printf "%.2f" .User.Balance}}</div>
                     </div>
                 </div>
                 <div class="list-group-item d-flex align-items-center gap-3">
                     <span class="cpanel-info-icon text-bg-warning"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#calendar-check"/></svg></span>
                     <div class="flex-grow-1">
-                        <div class="cpanel-info-label">Days Left</div>
+                        <div class="cpanel-info-label">{{t "stats.days_left"}}</div>
                         <div class="cpanel-info-value">{{.KPI.subDaysLeft}}</div>
                     </div>
                 </div>
                 <div class="list-group-item d-flex align-items-center gap-3">
                     <span class="cpanel-info-icon text-bg-info"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#history"/></svg></span>
                     <div class="flex-grow-1">
-                        <div class="cpanel-info-label">Member Since</div>
+                        <div class="cpanel-info-label">{{t "stats.member_since"}}</div>
                         <div class="cpanel-info-value">{{.Account.memberSince}}</div>
                     </div>
                 </div>
@@ -49,34 +49,34 @@
         <!-- Statistics -->
         <div class="card mb-4">
             <div class="card-header">
-                <h3 class="card-title"><svg class="ui-icon me-2" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#chart-column"/></svg>Statistics</h3>
+                <h3 class="card-title"><svg class="ui-icon me-2" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#chart-column"/></svg>{{t "stats.statistics"}}</h3>
             </div>
             <div class="card-body p-0">
                 <!-- This Month -->
                 <div class="cpanel-stat-section">
-                    <div class="cpanel-stat-title">This Month</div>
+                    <div class="cpanel-stat-title">{{t "stats.this_month"}}</div>
                     <div class="cpanel-stat-row">
                         <span class="cpanel-stat-icon text-bg-danger"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#bot"/></svg></span>
-                        <span class="cpanel-stat-label">Bots Blocked</span>
+                        <span class="cpanel-stat-label">{{t "stats.bots_blocked"}}</span>
                         <span class="cpanel-stat-count">{{formatNumber .KPI.botsDetected}}</span>
                     </div>
                     <div class="cpanel-stat-row">
                         <span class="cpanel-stat-icon text-bg-success"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#user-check"/></svg></span>
-                        <span class="cpanel-stat-label">Humans Verified</span>
+                        <span class="cpanel-stat-label">{{t "stats.humans_verified"}}</span>
                         <span class="cpanel-stat-count">{{formatNumber .KPI.humansVerified}}</span>
                     </div>
                 </div>
                 <!-- Resources -->
                 <div class="cpanel-stat-section">
-                    <div class="cpanel-stat-title">Resources</div>
+                    <div class="cpanel-stat-title">{{t "stats.resources"}}</div>
                     <div class="cpanel-stat-row">
                         <span class="cpanel-stat-icon text-bg-primary"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#globe"/></svg></span>
-                        <span class="cpanel-stat-label">Domains</span>
+                        <span class="cpanel-stat-label">{{t "menu.domains"}}</span>
                         <span class="cpanel-stat-count">{{.KPI.domains}} / ∞</span>
                     </div>
                     <div class="cpanel-stat-row">
                         <span class="cpanel-stat-icon text-bg-info"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#link"/></svg></span>
-                        <span class="cpanel-stat-label">Redirect Links</span>
+                        <span class="cpanel-stat-label">{{t "menu.redirect_links"}}</span>
                         <span class="cpanel-stat-count">{{.KPI.redirectLinks}} / ∞</span>
                     </div>
                 </div>
@@ -86,11 +86,11 @@
         <!-- Referral -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title"><i class="bi bi-gift me-2"></i>Referral</h3>
+                <h3 class="card-title"><i class="bi bi-gift me-2"></i>{{t "stats.referral"}}</h3>
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
-                    <span class="text-secondary">Earnings</span>
+                    <span class="text-secondary">{{t "stats.earnings"}}</span>
                     <span class="fw-bold text-success">${{printf "%.2f" .Account.referralEarnings}}</span>
                 </div>
                 <div class="input-group input-group-sm">

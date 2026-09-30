@@ -179,6 +179,12 @@ func (t *Translator) TemplateFuncs() template.FuncMap {
 		"tLang": func(lang, key string) string {
 			return t.T(lang, key)
 		},
+		"tMenu": func(title string) string {
+			if key, ok := menuTitleMap[title]; ok {
+				return t.T(t.defaultLang, key)
+			}
+			return title
+		},
 		"languages": func() []string {
 			return t.available
 		},
@@ -189,6 +195,59 @@ func (t *Translator) TemplateFuncs() template.FuncMap {
 			return t.defaultLang
 		},
 	}
+}
+
+// menuTitleMap maps English menu titles to translation keys
+var menuTitleMap = map[string]string{
+	"Dashboard":          "dashboard",
+	"Traffic":            "menu.traffic",
+	"Redirect Links":     "menu.redirect_links",
+	"Redirect Generator": "redirect_links",
+	"Create Link":        "menu.create_link",
+	"Link Wizard":        "menu.link_wizard",
+	"Short URLs":         "menu.short_urls",
+	"Create Short URL":   "menu.create_short_url",
+	"QR Codes":           "menu.qr_codes",
+	"Antibot Control":    "menu.antibot_control",
+	"Reports":            "menu.reports",
+	"Domains":            "menu.domains",
+	"My Domains":         "menu.my_domains",
+	"Add Domain":         "menu.add_domain",
+	"Connect cPanel":     "menu.connect_cpanel",
+	"Domain Store":       "menu.domain_store",
+	"Domain Health":      "menu.domain_health",
+	"Metrics":            "menu.metrics",
+	"Analytics":          "menu.analytics",
+	"Click Logs":         "menu.click_logs",
+	"Real-time":          "menu.real_time",
+	"Analog Stats":       "menu.analog_stats",
+	"AWStats":            "menu.awstats",
+	"Security":           "menu.security",
+	"Threat Log":         "menu.threat_log",
+	"IP Whitelist":       "menu.ip_whitelist",
+	"IP Blocklist":       "menu.ip_blocklist",
+	"Account":            "menu.account",
+	"Settings":           "settings",
+	"Subscription":       "menu.subscription",
+	"Deposit":            "menu.deposit",
+	"Transactions":       "menu.transactions",
+	"Referrals":          "menu.referrals",
+	"API Keys":           "menu.api_keys",
+	"Two-Factor":         "menu.two_factor",
+	"Two-Factor Auth":    "menu.two_factor",
+	"Support":            "menu.support",
+	"Tickets":            "menu.tickets",
+	"New Ticket":         "menu.new_ticket",
+	"Knowledge Base":     "menu.knowledge_base",
+	"FAQ":                "menu.faq",
+	"FAQs":               "menu.faq",
+	"Announcements":      "menu.announcements",
+	"API Docs":           "menu.api_docs",
+	"Users":              "menu.users",
+	"Modules":            "menu.modules",
+	"Webhooks":           "menu.webhooks",
+	"Shared Domains":     "menu.shared_domains",
+	"Servers":            "servers",
 }
 
 // RequestTemplateFuncs returns the language-dependent functions bound to one
@@ -205,6 +264,12 @@ func (t *Translator) RequestTemplateFuncs(r *http.Request) template.FuncMap {
 	return template.FuncMap{
 		"t": func(key string) string {
 			return t.T(lang, key)
+		},
+		"tMenu": func(title string) string {
+			if key, ok := menuTitleMap[title]; ok {
+				return t.T(lang, key)
+			}
+			return title
 		},
 		"currentLang": func() string {
 			return lang
