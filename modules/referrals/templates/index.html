@@ -5,18 +5,18 @@
         <!-- Referral Link Card -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="card-title mb-0"><i class="bi bi-share me-2"></i>Your Referral Link</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-share me-2"></i>{{t "referrals.your_link"}}</h5>
             </div>
             <div class="card-body">
                 <div class="input-group input-group-lg">
                     <input type="text" class="form-control" id="referral-link"
                         value="" readonly data-ref="{{.Stats.ReferralCode}}">
                     <button class="btn btn-primary" type="button" onclick="copyLink()">
-                        <i class="bi bi-clipboard me-1"></i>Copy
+                        <i class="bi bi-clipboard me-1"></i>{{t "referrals.copy"}}
                     </button>
                 </div>
                 <p class="text-muted mt-3 mb-0">
-                    Share this link and earn <strong>{{.Settings.Level1Rate}}%</strong> commission when your referrals subscribe.
+                    {{t "referrals.share_earn"}} <strong>{{.Settings.Level1Rate}}%</strong> {{t "referrals.commission_when"}}
                 </p>
             </div>
         </div>
@@ -24,7 +24,7 @@
         <!-- Your Referrals -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="card-title mb-0"><i class="bi bi-people me-2"></i>Your Referrals</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-people me-2"></i>{{t "referrals.your_referrals"}}</h5>
             </div>
             <div class="card-body p-0">
                 <div id="referrals-list"></div>
@@ -34,7 +34,7 @@
         <!-- How It Works -->
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0"><i class="bi bi-question-circle me-2"></i>How It Works</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-question-circle me-2"></i>{{t "referrals.how_it_works"}}</h5>
             </div>
             <div class="card-body">
                 <div class="row text-center g-4">
@@ -42,22 +42,22 @@
                         <div class="rounded-circle bg-primary bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px">
                             <i class="bi bi-share fs-3 text-primary"></i>
                         </div>
-                        <h6>1. Share</h6>
-                        <p class="text-muted small mb-0">Share your unique link with friends and on social media</p>
+                        <h6>{{t "referrals.step1_title"}}</h6>
+                        <p class="text-muted small mb-0">{{t "referrals.step1_desc"}}</p>
                     </div>
                     <div class="col-md-4">
                         <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px">
                             <i class="bi bi-person-check fs-3 text-success"></i>
                         </div>
-                        <h6>2. They Subscribe</h6>
-                        <p class="text-muted small mb-0">When they sign up using your link and pay</p>
+                        <h6>{{t "referrals.step2_title"}}</h6>
+                        <p class="text-muted small mb-0">{{t "referrals.step2_desc"}}</p>
                     </div>
                     <div class="col-md-4">
                         <div class="rounded-circle bg-warning bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px">
                             <i class="bi bi-cash-coin fs-3 text-warning"></i>
                         </div>
-                        <h6>3. You Earn</h6>
-                        <p class="text-muted small mb-0">Get {{.Settings.Level1Rate}}% of every payment they make</p>
+                        <h6>{{t "referrals.step3_title"}}</h6>
+                        <p class="text-muted small mb-0">{{t "referrals.step3_desc"}}</p>
                     </div>
                 </div>
             </div>
@@ -74,7 +74,7 @@
                         <i class="bi bi-people-fill fs-4 text-primary"></i>
                     </div>
                     <div>
-                        <div class="text-muted small">Total Referrals</div>
+                        <div class="text-muted small">{{t "referrals.total_referrals"}}</div>
                         <div class="fs-3 fw-bold">{{.Stats.Level1Count}}</div>
                     </div>
                 </div>
@@ -83,7 +83,7 @@
                         <i class="bi bi-wallet2 fs-4 text-success"></i>
                     </div>
                     <div>
-                        <div class="text-muted small">Total Earned</div>
+                        <div class="text-muted small">{{t "referrals.total_earned"}}</div>
                         <div class="fs-3 fw-bold text-success">${{printf "%.2f" .Stats.TotalEarnings}}</div>
                     </div>
                 </div>
@@ -92,7 +92,7 @@
                         <i class="bi bi-percent fs-4 text-info"></i>
                     </div>
                     <div>
-                        <div class="text-muted small">Commission Rate</div>
+                        <div class="text-muted small">{{t "referrals.commission_rate"}}</div>
                         <div class="fs-3 fw-bold text-info">{{.Settings.Level1Rate}}%</div>
                     </div>
                 </div>
@@ -102,7 +102,7 @@
         <!-- Recent Earnings -->
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0"><i class="bi bi-cash-stack me-2"></i>Recent Earnings</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-cash-stack me-2"></i>{{t "referrals.recent_earnings"}}</h5>
             </div>
             <div class="card-body p-0">
                 <div id="earnings-list"></div>
@@ -112,10 +112,16 @@
 </div>
 
 <script>
+const TRANSLATIONS = {
+    linkCopied: '{{t "referrals.link_copied"}}',
+    noReferrals: '{{t "referrals.no_referrals"}}',
+    noEarnings: '{{t "referrals.no_earnings"}}'
+};
+
 function copyLink() {
     const input = document.getElementById('referral-link');
     navigator.clipboard.writeText(input.value).then(() => {
-        window.showToast && showToast('Link copied to clipboard!', 'success');
+        window.showToast && showToast(TRANSLATIONS.linkCopied, 'success');
     });
 }
 
@@ -125,7 +131,7 @@ async function loadReferrals() {
     const el = document.getElementById('referrals-list');
 
     if (!referrals || referrals.length === 0) {
-        el.innerHTML = '<div class="text-muted text-center py-4">No referrals yet. Share your link to get started!</div>';
+        el.innerHTML = '<div class="text-muted text-center py-4">' + TRANSLATIONS.noReferrals + '</div>';
         return;
     }
 
@@ -146,7 +152,7 @@ async function loadEarnings() {
     const el = document.getElementById('earnings-list');
 
     if (!earnings || earnings.length === 0) {
-        el.innerHTML = '<div class="text-muted text-center py-4">No earnings yet</div>';
+        el.innerHTML = '<div class="text-muted text-center py-4">' + TRANSLATIONS.noEarnings + '</div>';
         return;
     }
 

@@ -4,20 +4,20 @@
         <div class="col">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item active">Support</li>
+                    <li class="breadcrumb-item active">{{t "support"}}</li>
                 </ol>
             </nav>
         </div>
         <div class="col-auto">
             <a href="/user/support/new" class="btn btn-primary">
-                <i class="bi bi-plus-lg me-1"></i>New Ticket
+                <i class="bi bi-plus-lg me-1"></i>{{t "support.new_ticket"}}
             </a>
         </div>
     </div>
 
     <div class="card">
         <div class="card-header">
-            <h5 class="card-title mb-0">My Tickets</h5>
+            <h5 class="card-title mb-0">{{t "support.my_tickets"}}</h5>
         </div>
         <div class="card-body p-0">
             {{if .Tickets}}
@@ -25,10 +25,10 @@
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th>Subject</th>
-                            <th>Category</th>
-                            <th>Status</th>
-                            <th>Last Update</th>
+                            <th>{{t "support.subject"}}</th>
+                            <th>{{t "support.category"}}</th>
+                            <th>{{t "status"}}</th>
+                            <th>{{t "support.last_update"}}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -40,11 +40,11 @@
                             <td>{{.Category}}</td>
                             <td>
                                 {{if eq .Status "open"}}
-                                <span class="badge bg-warning">Open</span>
+                                <span class="badge bg-warning">{{t "support.open"}}</span>
                                 {{else if eq .Status "answered"}}
-                                <span class="badge bg-info">Answered</span>
+                                <span class="badge bg-info">{{t "support.answered"}}</span>
                                 {{else}}
-                                <span class="badge bg-secondary">Closed</span>
+                                <span class="badge bg-secondary">{{t "support.closed"}}</span>
                                 {{end}}
                             </td>
                             <td>{{.UpdatedAt.Format "Jan 2, 3:04 PM"}}</td>
@@ -56,9 +56,9 @@
             {{else}}
             <div class="text-center py-5">
                 <i class="bi bi-headset display-4 text-muted mb-3 d-block"></i>
-                <p class="text-muted mb-3">No support tickets yet</p>
+                <p class="text-muted mb-3">{{t "support.no_tickets"}}</p>
                 <a href="/user/support/new" class="btn btn-primary">
-                    <i class="bi bi-plus-lg me-1"></i>Create Your First Ticket
+                    <i class="bi bi-plus-lg me-1"></i>{{t "support.create_first_ticket"}}
                 </a>
             </div>
             {{end}}

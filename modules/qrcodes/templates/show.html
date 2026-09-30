@@ -1,7 +1,7 @@
 {{define "content"}}
 <div class="mb-3">
     <a href="/user/qrcodes" class="text-decoration-none">
-        <i class="bi bi-arrow-left me-1"></i>Back to QR Codes
+        <i class="bi bi-arrow-left me-1"></i>{{t "qrcodes.back_to_list"}}
     </a>
 </div>
 <div class="row">
@@ -17,13 +17,13 @@
                 <div class="d-flex justify-content-center gap-2 mb-3">
                     <div class="dropdown">
                         <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-download me-1"></i>Download PNG
+                            <i class="bi bi-download me-1"></i>{{t "qrcodes.download_png"}}
                         </button>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=200&format=png" download="qrcode-200.png">Small (200px)</a></li>
-                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=400&format=png" download="qrcode-400.png">Medium (400px)</a></li>
-                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=800&format=png" download="qrcode-800.png">Large (800px)</a></li>
-                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=1200&format=png" download="qrcode-1200.png">Print (1200px)</a></li>
+                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=200&format=png" download="qrcode-200.png">{{t "qrcodes.size_small"}}</a></li>
+                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=400&format=png" download="qrcode-400.png">{{t "qrcodes.size_medium"}}</a></li>
+                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=800&format=png" download="qrcode-800.png">{{t "qrcodes.size_large"}}</a></li>
+                            <li><a class="dropdown-item" href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=1200&format=png" download="qrcode-1200.png">{{t "qrcodes.size_print"}}</a></li>
                         </ul>
                     </div>
                     <a href="/user/qrcodes/api/{{.QRCode.ID}}/download?size=400&format=svg" class="btn btn-outline-secondary" download="qrcode.svg">
@@ -39,17 +39,17 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
                     <i class="bi bi-qr-code me-2"></i>
-                    {{if .QRCode.Title}}{{.QRCode.Title}}{{else}}QR Code Details{{end}}
+                    {{if .QRCode.Title}}{{.QRCode.Title}}{{else}}{{t "qrcodes.details"}}{{end}}
                 </h5>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteQR()">
-                    <i class="bi bi-trash me-1"></i>Delete
+                    <i class="bi bi-trash me-1"></i>{{t "delete"}}
                 </button>
             </div>
             <div class="card-body">
                 <form id="editForm">
                     <div class="mb-3">
-                        <label for="title" class="form-label">Title</label>
-                        <input type="text" class="form-control" id="title" value="{{.QRCode.Title}}" placeholder="Untitled">
+                        <label for="title" class="form-label">{{t "title"}}</label>
+                        <input type="text" class="form-control" id="title" value="{{.QRCode.Title}}" placeholder="{{t "qrcodes.untitled"}}">
                     </div>
 
                     <div class="mb-3">
@@ -64,14 +64,14 @@
 
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label for="fgColor" class="form-label">Foreground</label>
+                            <label for="fgColor" class="form-label">{{t "qrcodes.foreground"}}</label>
                             <div class="input-group">
                                 <input type="color" class="form-control form-control-color" id="fgColorPicker" value="{{.QRCode.FGColor}}">
                                 <input type="text" class="form-control" id="fgColor" value="{{.QRCode.FGColor}}" maxlength="7">
                             </div>
                         </div>
                         <div class="col-6">
-                            <label for="bgColor" class="form-label">Background</label>
+                            <label for="bgColor" class="form-label">{{t "qrcodes.background"}}</label>
                             <div class="input-group">
                                 <input type="color" class="form-control form-control-color" id="bgColorPicker" value="{{.QRCode.BGColor}}">
                                 <input type="text" class="form-control" id="bgColor" value="{{.QRCode.BGColor}}" maxlength="7">
@@ -81,14 +81,14 @@
 
                     <div class="mb-3">
                         <small class="text-muted">
-                            Created: {{.QRCode.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}
+                            {{t "created"}}: {{.QRCode.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}
                         </small>
                     </div>
 
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save me-1"></i>Save Changes
+                        <i class="bi bi-save me-1"></i>{{t "save_changes"}}
                     </button>
-                    <a href="/user/qrcodes" class="btn btn-secondary">Back to Library</a>
+                    <a href="/user/qrcodes" class="btn btn-secondary">{{t "qrcodes.back_to_library"}}</a>
                 </form>
             </div>
         </div>
@@ -99,11 +99,11 @@
                 <div class="d-flex align-items-center">
                     <i class="bi bi-arrow-repeat text-primary me-3 fs-4"></i>
                     <div>
-                        <div class="fw-semibold">Linked to Redirect</div>
-                        <small class="text-muted">This QR code is connected to one of your redirect links</small>
+                        <div class="fw-semibold">{{t "qrcodes.linked_redirect"}}</div>
+                        <small class="text-muted">{{t "qrcodes.linked_redirect_desc"}}</small>
                     </div>
                     <a href="/user/redirectlinks/{{.QRCode.RedirectLinkID.String}}" class="btn btn-sm btn-outline-primary ms-auto">
-                        View Link
+                        {{t "qrcodes.view_link"}}
                     </a>
                 </div>
             </div>
@@ -113,6 +113,15 @@
 </div>
 
 <script>
+const TRANSLATIONS = {
+    urlCopied: '{{t "url_copied"}}',
+    saved: '{{t "qrcodes.saved"}}',
+    failedToSave: '{{t "failed_to_save"}}',
+    deleteConfirm: '{{t "qrcodes.delete_confirm_single"}}',
+    deleted: '{{t "qrcodes.deleted"}}',
+    failedToDelete: '{{t "failed_to_delete"}}'
+};
+
 const qrId = '{{.QRCode.ID}}';
 
 // Color sync
@@ -132,7 +141,7 @@ document.getElementById('bgColorPicker').addEventListener('input', (e) => {
 // Copy URL
 function copyURL() {
     navigator.clipboard.writeText(document.getElementById('url').value);
-    showToast('URL copied!', 'success');
+    showToast(TRANSLATIONS.urlCopied, 'success');
 }
 
 // Save form
@@ -151,23 +160,23 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
     });
 
     if (res.ok) {
-        showToast('Changes saved!', 'success');
+        showToast(TRANSLATIONS.saved, 'success');
         location.reload();
     } else {
-        showToast('Failed to save', 'danger');
+        showToast(TRANSLATIONS.failedToSave, 'danger');
     }
 });
 
 // Delete
 async function deleteQR() {
-    if (!confirm('Delete this QR code?')) return;
+    if (!confirm(TRANSLATIONS.deleteConfirm)) return;
 
     const res = await fetch(`/user/qrcodes/api/${qrId}`, { method: 'DELETE' });
     if (res.ok) {
-        showToast('QR code deleted', 'success');
+        showToast(TRANSLATIONS.deleted, 'success');
         window.location.href = '/user/qrcodes';
     } else {
-        showToast('Failed to delete', 'danger');
+        showToast(TRANSLATIONS.failedToDelete, 'danger');
     }
 }
 </script>

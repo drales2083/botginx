@@ -4,8 +4,8 @@
         <div class="col">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="/admin/support">Support</a></li>
-                    <li class="breadcrumb-item active">Ticket</li>
+                    <li class="breadcrumb-item"><a href="/admin/support">{{t "support"}}</a></li>
+                    <li class="breadcrumb-item active">{{t "support.tickets"}}</li>
                 </ol>
             </nav>
         </div>
@@ -27,11 +27,11 @@
                         </div>
                         <div class="d-flex gap-2 align-items-center">
                             {{if eq .Ticket.Status "open"}}
-                            <span class="badge bg-warning fs-6">Open</span>
+                            <span class="badge bg-warning fs-6">{{t "support.open"}}</span>
                             {{else if eq .Ticket.Status "answered"}}
-                            <span class="badge bg-info fs-6">Answered</span>
+                            <span class="badge bg-info fs-6">{{t "support.answered"}}</span>
                             {{else}}
-                            <span class="badge bg-secondary fs-6">Closed</span>
+                            <span class="badge bg-secondary fs-6">{{t "support.closed"}}</span>
                             {{end}}
                         </div>
                     </div>
@@ -41,13 +41,13 @@
             <!-- Conversation -->
             <div class="card mb-3">
                 <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="bi bi-chat-dots me-2"></i>Conversation</h6>
+                    <h6 class="card-title mb-0"><i class="bi bi-chat-dots me-2"></i>{{t "support.conversation"}}</h6>
                 </div>
                 <div class="card-body">
                     {{range .Messages}}
                     <div class="mb-3">
                         <div class="text-muted small mb-1">
-                            {{if .IsAdmin}}Admin{{else}}{{$.Ticket.UserEmail}}{{end}} &bull; {{.CreatedAt.Format "Jan 2, 3:04 PM"}}
+                            {{if .IsAdmin}}{{t "support.admin"}}{{else}}{{$.Ticket.UserEmail}}{{end}} &bull; {{.CreatedAt.Format "Jan 2, 3:04 PM"}}
                         </div>
                         <div style="white-space: pre-wrap;">{{.Message}}</div>
                     </div>
@@ -58,29 +58,29 @@
             <!-- Reply Form -->
             <div class="card">
                 <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="bi bi-reply me-2"></i>Reply</h6>
+                    <h6 class="card-title mb-0"><i class="bi bi-reply me-2"></i>{{t "support.reply"}}</h6>
                 </div>
                 <div class="card-body">
                     <form id="replyForm">
                         <div class="mb-3">
                             <textarea class="form-control" name="message" rows="4"
-                                      placeholder="Type your reply (10-2000 chars)..."
+                                      placeholder="{{t "support.type_reply"}}"
                                       required minlength="10" maxlength="2000"></textarea>
                         </div>
                         <div class="d-flex justify-content-between">
                             <div class="d-flex gap-2">
                                 {{if eq .Ticket.Status "closed"}}
                                 <button type="button" class="btn btn-outline-success" id="reopenBtn">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reopen
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>{{t "support.reopen"}}
                                 </button>
                                 {{else}}
                                 <button type="button" class="btn btn-outline-secondary" id="closeBtn">
-                                    <i class="bi bi-x-circle me-1"></i>Close
+                                    <i class="bi bi-x-circle me-1"></i>{{t "support.close_ticket"}}
                                 </button>
                                 {{end}}
                             </div>
                             <button type="submit" class="btn btn-primary" id="replyBtn">
-                                <i class="bi bi-send me-1"></i>Send Reply
+                                <i class="bi bi-send me-1"></i>{{t "support.send_reply"}}
                             </button>
                         </div>
                     </form>
@@ -92,27 +92,27 @@
         <div class="col-lg-4">
             <div class="card">
                 <div class="card-header">
-                    <h6 class="card-title mb-0">Ticket Info</h6>
+                    <h6 class="card-title mb-0">{{t "support.ticket_info"}}</h6>
                 </div>
                 <div class="card-body">
                     <dl class="mb-0">
-                        <dt>User</dt>
+                        <dt>{{t "support.user"}}</dt>
                         <dd><code>{{.Ticket.UserEmail}}</code></dd>
-                        <dt>Category</dt>
+                        <dt>{{t "support.category"}}</dt>
                         <dd>{{.Ticket.Category}}</dd>
-                        <dt>Status</dt>
+                        <dt>{{t "status"}}</dt>
                         <dd>
                             {{if eq .Ticket.Status "open"}}
-                            <span class="badge bg-warning">Open</span>
+                            <span class="badge bg-warning">{{t "support.open"}}</span>
                             {{else if eq .Ticket.Status "answered"}}
-                            <span class="badge bg-info">Answered</span>
+                            <span class="badge bg-info">{{t "support.answered"}}</span>
                             {{else}}
-                            <span class="badge bg-secondary">Closed</span>
+                            <span class="badge bg-secondary">{{t "support.closed"}}</span>
                             {{end}}
                         </dd>
-                        <dt>Created</dt>
+                        <dt>{{t "support.created"}}</dt>
                         <dd>{{.Ticket.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}</dd>
-                        <dt>Last Update</dt>
+                        <dt>{{t "support.last_update"}}</dt>
                         <dd>{{.Ticket.UpdatedAt.Format "Jan 2, 2006 3:04 PM"}}</dd>
                     </dl>
                 </div>
@@ -123,6 +123,21 @@
 
 <script>
 const ticketID = '{{.Ticket.ID}}';
+const TRANSLATIONS = {
+    sending: '{{t "support.sending"}}',
+    closing: '{{t "support.closing"}}',
+    reopening: '{{t "support.reopening"}}',
+    replySent: '{{t "support.reply_sent"}}',
+    replyFailed: '{{t "support.reply_failed"}}',
+    ticketClosed: '{{t "support.ticket_closed_success"}}',
+    closeFailed: '{{t "support.close_failed"}}',
+    ticketReopened: '{{t "support.ticket_reopened"}}',
+    reopenFailed: '{{t "support.reopen_failed"}}',
+    networkError: '{{t "network_error"}}',
+    sendReply: '{{t "support.send_reply"}}',
+    closeTicket: '{{t "support.close_ticket"}}',
+    reopen: '{{t "support.reopen"}}'
+};
 
 document.getElementById('replyForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -130,7 +145,7 @@ document.getElementById('replyForm')?.addEventListener('submit', async function(
     const btn = document.getElementById('replyBtn');
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sending...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + TRANSLATIONS.sending;
 
     const message = this.querySelector('[name="message"]').value;
 
@@ -144,15 +159,15 @@ document.getElementById('replyForm')?.addEventListener('submit', async function(
         const result = await response.json();
 
         if (response.ok && result.success) {
-            window.showToast?.('Reply sent', 'success');
+            window.showToast?.(TRANSLATIONS.replySent, 'success');
             location.reload();
         } else {
-            window.showToast?.(result.error || 'Failed to send reply', 'danger');
+            window.showToast?.(result.error || TRANSLATIONS.replyFailed, 'danger');
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
     } catch (err) {
-        window.showToast?.('Network error', 'danger');
+        window.showToast?.(TRANSLATIONS.networkError, 'danger');
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
@@ -160,7 +175,7 @@ document.getElementById('replyForm')?.addEventListener('submit', async function(
 
 document.getElementById('closeBtn')?.addEventListener('click', async function() {
     this.disabled = true;
-    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Closing...';
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + TRANSLATIONS.closing;
 
     try {
         const response = await fetch(`/admin/support/api/${ticketID}/close`, {
@@ -171,23 +186,23 @@ document.getElementById('closeBtn')?.addEventListener('click', async function() 
         const result = await response.json();
 
         if (response.ok && result.success) {
-            window.showToast?.('Ticket closed', 'success');
+            window.showToast?.(TRANSLATIONS.ticketClosed, 'success');
             location.reload();
         } else {
-            window.showToast?.(result.error || 'Failed to close ticket', 'danger');
+            window.showToast?.(result.error || TRANSLATIONS.closeFailed, 'danger');
             this.disabled = false;
-            this.innerHTML = '<i class="bi bi-x-circle me-1"></i>Close';
+            this.innerHTML = '<i class="bi bi-x-circle me-1"></i>' + TRANSLATIONS.closeTicket;
         }
     } catch (err) {
-        window.showToast?.('Network error', 'danger');
+        window.showToast?.(TRANSLATIONS.networkError, 'danger');
         this.disabled = false;
-        this.innerHTML = '<i class="bi bi-x-circle me-1"></i>Close';
+        this.innerHTML = '<i class="bi bi-x-circle me-1"></i>' + TRANSLATIONS.closeTicket;
     }
 });
 
 document.getElementById('reopenBtn')?.addEventListener('click', async function() {
     this.disabled = true;
-    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Reopening...';
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + TRANSLATIONS.reopening;
 
     try {
         const response = await fetch(`/admin/support/api/${ticketID}/reopen`, {
@@ -198,17 +213,17 @@ document.getElementById('reopenBtn')?.addEventListener('click', async function()
         const result = await response.json();
 
         if (response.ok && result.success) {
-            window.showToast?.('Ticket reopened', 'success');
+            window.showToast?.(TRANSLATIONS.ticketReopened, 'success');
             location.reload();
         } else {
-            window.showToast?.(result.error || 'Failed to reopen ticket', 'danger');
+            window.showToast?.(result.error || TRANSLATIONS.reopenFailed, 'danger');
             this.disabled = false;
-            this.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i>Reopen';
+            this.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i>' + TRANSLATIONS.reopen;
         }
     } catch (err) {
-        window.showToast?.('Network error', 'danger');
+        window.showToast?.(TRANSLATIONS.networkError, 'danger');
         this.disabled = false;
-        this.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i>Reopen';
+        this.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i>' + TRANSLATIONS.reopen;
     }
 });
 </script>

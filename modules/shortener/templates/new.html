@@ -1,35 +1,35 @@
 {{define "content"}}
 <div class="mb-3">
     <a href="/user/shortener" class="text-muted text-decoration-none">
-        <i class="bi bi-arrow-left me-1"></i>Back to Short Links
+        <i class="bi bi-arrow-left me-1"></i>{{t "shortener.back_to_links"}}
     </a>
 </div>
 
 <div class="card">
     <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Create Short Link</h5>
+        <h5 class="mb-0"><i class="bi bi-link-45deg me-2"></i>{{t "shortener.create_short_link"}}</h5>
     </div>
     <div class="card-body">
         <form id="create-form">
             <div class="row g-3">
                 <!-- Domain -->
                 <div class="col-md-3">
-                    <label class="form-label">Domain</label>
+                    <label class="form-label">{{t "shortener.domain"}}</label>
                     <select class="form-select" id="domainId" required>
-                        <option value="">Select domain...</option>
+                        <option value="">{{t "form.select_domain"}}</option>
                         {{/* Active domains first */}}
                         {{range .Domains}}
                         {{if and .DNSVerified .SSLEnabled}}
-                        <option value="{{.ID}}">{{.Name}}{{if .IsShared}} (shared){{end}}</option>
+                        <option value="{{.ID}}">{{.Name}}{{if .IsShared}} ({{t "form.shared"}}){{end}}</option>
                         {{end}}
                         {{end}}
                         {{/* Inactive own domains below (shared domains hidden if not ready) */}}
                         {{range .Domains}}
                         {{if and (not (and .DNSVerified .SSLEnabled)) (not .IsShared)}}
                         {{if not .DNSVerified}}
-                        <option value="" disabled class="text-muted">{{.Name}} (DNS pending)</option>
+                        <option value="" disabled class="text-muted">{{.Name}} ({{t "form.dns_pending"}})</option>
                         {{else}}
-                        <option value="" disabled class="text-muted">{{.Name}} (no SSL)</option>
+                        <option value="" disabled class="text-muted">{{.Name}} ({{t "form.no_ssl"}})</option>
                         {{end}}
                         {{end}}
                         {{end}}
@@ -38,10 +38,10 @@
 
                 <!-- Subdomain -->
                 <div class="col-md-3">
-                    <label class="form-label">Subdomain</label>
+                    <label class="form-label">{{t "shortener.subdomain"}}</label>
                     <div class="input-group">
                         <input type="text" class="form-control" id="subdomain" pattern="[a-z0-9]+" required>
-                        <button type="button" class="btn btn-outline-secondary" onclick="randomizeSubdomain()" title="Generate random">
+                        <button type="button" class="btn btn-outline-secondary" onclick="randomizeSubdomain()" title="{{t "shortener.generate_random"}}">
                             <i class="bi bi-shuffle"></i>
                         </button>
                     </div>
@@ -49,11 +49,11 @@
 
                 <!-- Path -->
                 <div class="col-md-4">
-                    <label class="form-label">Path</label>
+                    <label class="form-label">{{t "shortener.path"}}</label>
                     <div class="input-group">
                         <span class="input-group-text">/</span>
                         <input type="text" class="form-control" id="path" pattern="[a-zA-Z0-9\-_]+" required>
-                        <button type="button" class="btn btn-outline-secondary" onclick="randomizePath()" title="Generate random">
+                        <button type="button" class="btn btn-outline-secondary" onclick="randomizePath()" title="{{t "shortener.generate_random"}}">
                             <i class="bi bi-shuffle"></i>
                         </button>
                     </div>
@@ -61,17 +61,17 @@
 
                 <!-- QR -->
                 <div class="col-md-2">
-                    <label class="form-label">QR Code</label>
+                    <label class="form-label">{{t "shortener.qr_code"}}</label>
                     <div class="form-check form-switch mt-2">
                         <input class="form-check-input" type="checkbox" id="qrEnabled">
-                        <label class="form-check-label" for="qrEnabled">Enable</label>
+                        <label class="form-check-label" for="qrEnabled">{{t "shortener.enable"}}</label>
                     </div>
                 </div>
             </div>
 
             <!-- Destinations -->
             <div class="mt-4">
-                <label class="form-label">Destination URL(s)</label>
+                <label class="form-label">{{t "shortener.destination_urls"}}</label>
                 <div id="destinations-container">
                     <div class="input-group mb-2">
                         <input type="url" class="form-control destination-input" placeholder="https://example.com" required>
@@ -80,7 +80,7 @@
                         </button>
                     </div>
                 </div>
-                <small class="text-muted">Add multiple URLs for random rotation</small>
+                <small class="text-muted">{{t "shortener.multiple_urls_hint"}}</small>
             </div>
 
             <!-- Protection Settings (collapsible) -->
@@ -90,7 +90,7 @@
                          style="cursor: pointer;"
                          data-bs-toggle="collapse"
                          data-bs-target="#protection-collapse">
-                        <span><i class="bi bi-shield-check me-2"></i>Protection Settings</span>
+                        <span><i class="bi bi-shield-check me-2"></i>{{t "shortener.protection_settings"}}</span>
                         <i class="bi bi-chevron-down" id="protection-chevron"></i>
                     </div>
                     <div class="collapse" id="protection-collapse">
@@ -103,7 +103,7 @@
 
             <div class="mt-4">
                 <button type="submit" class="btn btn-primary" id="submit-btn">
-                    <i class="bi bi-check-lg me-1"></i>Create Short Link
+                    <i class="bi bi-check-lg me-1"></i>{{t "shortener.create_short_link"}}
                 </button>
             </div>
         </form>
@@ -111,18 +111,22 @@
 </div>
 
 <script>
-// Generate random subdomain and path on load
+const TRANSLATIONS = {
+    creating: '{{t "shortener.creating"}}',
+    created: '{{t "shortener.created"}}',
+    createFailed: '{{t "shortener.create_failed"}}',
+    destRequired: '{{t "shortener.dest_required"}}'
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     randomizeSubdomain();
     randomizePath();
 
-    // Initialize protection with defaults
     const defaults = {{json .DefaultProtection}};
     if (window.protectionSettings) {
         window.protectionSettings.init(defaults);
     }
 
-    // Toggle chevron
     document.getElementById('protection-collapse').addEventListener('show.bs.collapse', () => {
         document.getElementById('protection-chevron').classList.replace('bi-chevron-down', 'bi-chevron-up');
     });
@@ -162,7 +166,7 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
     const btn = document.getElementById('submit-btn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + TRANSLATIONS.creating;
 
     try {
         const destinations = Array.from(document.querySelectorAll('.destination-input'))
@@ -170,7 +174,7 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
             .filter(v => v);
 
         if (destinations.length === 0) {
-            showToast('At least one destination URL is required', 'warning');
+            showToast(TRANSLATIONS.destRequired, 'warning');
             btn.disabled = false;
             btn.innerHTML = originalHtml;
             return;
@@ -194,11 +198,11 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
 
         if (res.ok) {
             const link = await res.json();
-            showToast('Short link created!', 'success');
+            showToast(TRANSLATIONS.created, 'success');
             window.location.href = '/user/shortener/' + link.id;
         } else {
             const err = await res.json();
-            showToast(err.error || 'Failed to create', 'danger');
+            showToast(err.error || TRANSLATIONS.createFailed, 'danger');
         }
     } finally {
         btn.disabled = false;

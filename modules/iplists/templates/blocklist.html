@@ -1,23 +1,22 @@
 {{define "content"}}
 <div class="card">
     <div class="card-header">
-        <h5 class="card-title mb-0"><i class="bi bi-shield-x me-2"></i>Visitor IP Blocklist</h5>
+        <h5 class="card-title mb-0"><i class="bi bi-shield-x me-2"></i>{{t "iplists.blocklist"}}</h5>
     </div>
     <div class="card-body">
         <p class="text-muted small mb-3">
-            Blocked visitor IPs are denied access to your redirect links.
-            Use this for known bad actors or suspicious visitors.
+            {{t "iplists.blocklist_desc"}}
         </p>
 
         <div class="table-responsive mb-3">
             <table class="table table-striped mb-0" data-datatable>
                 <thead>
                     <tr>
-                        <th>IP Address</th>
-                        <th>Note</th>
-                        <th>Source</th>
-                        <th>Added</th>
-                        <th style="width:80px">Actions</th>
+                        <th>{{t "iplists.ip_address"}}</th>
+                        <th>{{t "iplists.note"}}</th>
+                        <th>{{t "iplists.source"}}</th>
+                        <th>{{t "iplists.added"}}</th>
+                        <th style="width:80px">{{t "actions"}}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -27,21 +26,21 @@
                         <td class="text-muted">{{if .Note}}{{.Note}}{{else}}-{{end}}</td>
                         <td>
                             {{if eq .Source "analytics"}}
-                            <span class="badge bg-info">analytics</span>
+                            <span class="badge bg-info">{{t "iplists.analytics"}}</span>
                             {{else}}
-                            <span class="badge bg-secondary">manual</span>
+                            <span class="badge bg-secondary">{{t "iplists.manual"}}</span>
                             {{end}}
                         </td>
                         <td>{{.CreatedAt.Format "2006-01-02"}}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-success btn-unblock" data-id="{{.ID}}" title="Unblock">
+                            <button class="btn btn-sm btn-outline-success btn-unblock" data-id="{{.ID}}" title="{{t "iplists.unblock"}}">
                                 <i class="bi bi-check-lg"></i>
                             </button>
                         </td>
                     </tr>
                     {{else}}
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">No blocked IPs</td>
+                        <td colspan="5" class="text-center text-muted py-4">{{t "iplists.no_blocked"}}</td>
                     </tr>
                     {{end}}
                 </tbody>
@@ -51,39 +50,48 @@
         {{if lt (len .Blocklist) .MaxIPs}}
         <div class="row g-2 align-items-end">
             <div class="col-md-4">
-                <label class="form-label small">IP Address</label>
-                <input type="text" class="form-control font-monospace" id="new-ip" placeholder="e.g. 192.168.1.100">
+                <label class="form-label small">{{t "iplists.ip_address"}}</label>
+                <input type="text" class="form-control font-monospace" id="new-ip" placeholder="{{t "iplists.ip_placeholder"}}">
             </div>
             <div class="col-md-4">
-                <label class="form-label small">Note (optional)</label>
-                <input type="text" class="form-control" id="new-note" placeholder="e.g. Suspicious bot">
+                <label class="form-label small">{{t "iplists.note_optional"}}</label>
+                <input type="text" class="form-control" id="new-note" placeholder="{{t "iplists.suspicious_bot"}}">
             </div>
             <div class="col-md-2">
                 <button class="btn btn-danger w-100" id="add-btn">
-                    <i class="bi bi-shield-x me-1"></i> Block
+                    <i class="bi bi-shield-x me-1"></i> {{t "iplists.block"}}
                 </button>
             </div>
         </div>
         {{else}}
         <div class="alert alert-warning py-2 small mb-0">
             <i class="bi bi-exclamation-triangle me-1"></i>
-            Maximum {{.MaxIPs}} IPs. Remove one to add another.
+            {{t "iplists.max_ips"}}
         </div>
         {{end}}
 
         <div class="text-muted small mt-3">
-            {{len .Blocklist}} of {{.MaxIPs}} IPs blocked
+            {{len .Blocklist}} {{t "iplists.ips_blocked"}}
         </div>
     </div>
 </div>
 
 <script>
+const TRANSLATIONS = {
+    enterIp: '{{t "iplists.enter_ip"}}',
+    ipBlocked: '{{t "iplists.ip_blocked"}}',
+    blockFailed: '{{t "iplists.block_failed"}}',
+    ipUnblocked: '{{t "iplists.ip_unblocked"}}',
+    unblockFailed: '{{t "iplists.unblock_failed"}}',
+    networkError: '{{t "network_error"}}'
+};
+
 document.getElementById('add-btn')?.addEventListener('click', async () => {
     const ip = document.getElementById('new-ip').value.trim();
     const note = document.getElementById('new-note').value.trim();
 
     if (!ip) {
-        showToast('Please enter an IP address', 'warning');
+        showToast(TRANSLATIONS.enterIp, 'warning');
         return;
     }
 
@@ -99,13 +107,13 @@ document.getElementById('add-btn')?.addEventListener('click', async () => {
 
         const data = await res.json();
         if (res.ok) {
-            reloadWithToast('IP added to blocklist', 'success');
+            reloadWithToast(TRANSLATIONS.ipBlocked, 'success');
         } else {
-            showToast(data.error || 'Failed to block IP', 'danger');
+            showToast(data.error || TRANSLATIONS.blockFailed, 'danger');
             btn.disabled = false;
         }
     } catch (err) {
-        showToast('Network error', 'danger');
+        showToast(TRANSLATIONS.networkError, 'danger');
         btn.disabled = false;
     }
 });
@@ -128,14 +136,14 @@ document.querySelectorAll('.btn-unblock').forEach(btn => {
             });
 
             if (res.ok) {
-                reloadWithToast('IP unblocked', 'success');
+                reloadWithToast(TRANSLATIONS.ipUnblocked, 'success');
             } else {
                 const data = await res.json();
-                showToast(data.error || 'Failed to unblock IP', 'danger');
+                showToast(data.error || TRANSLATIONS.unblockFailed, 'danger');
                 btn.disabled = false;
             }
         } catch (err) {
-            showToast('Network error', 'danger');
+            showToast(TRANSLATIONS.networkError, 'danger');
             btn.disabled = false;
         }
     });

@@ -241,12 +241,12 @@
                 <div class="col-lg-6">
                     <div class="prot-card">
                         <div class="prot-card-title">
-                            <h6><i class="bi bi-x-circle text-danger me-1"></i>Blocked ASNs <span class="badge bg-danger ms-1" id="prot-asn-blk-count">0</span></h6>
+                            <h6><i class="bi bi-x-circle text-danger me-1"></i>{{t "protection.blocked_asns"}} <span class="badge bg-danger ms-1" id="prot-asn-blk-count">0</span></h6>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="radio" name="prot-asnMode" value="blacklist" id="prot-asnMode-blacklist">
                             </div>
                         </div>
-                        <p class="text-muted small mb-2">Block traffic from these networks/ISPs</p>
+                        <p class="text-muted small mb-2">{{t "protection.block_networks"}}</p>
                         <div class="input-group mb-2">
                             <input type="text" class="form-control form-control-sm" id="prot-asn-block-input" placeholder="AS14061, AS16509...">
                             <button class="btn btn-outline-danger btn-sm" type="button" onclick="protAddASN('block')">
@@ -259,12 +259,12 @@
                 <div class="col-lg-6">
                     <div class="prot-card">
                         <div class="prot-card-title">
-                            <h6><i class="bi bi-check-circle text-success me-1"></i>Allowed ASNs Only <span class="badge bg-success ms-1" id="prot-asn-allow-count">0</span></h6>
+                            <h6><i class="bi bi-check-circle text-success me-1"></i>{{t "protection.allowed_asns"}} <span class="badge bg-success ms-1" id="prot-asn-allow-count">0</span></h6>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="radio" name="prot-asnMode" value="whitelist" id="prot-asnMode-whitelist">
                             </div>
                         </div>
-                        <p class="text-muted small mb-2">Only allow traffic from these networks</p>
+                        <p class="text-muted small mb-2">{{t "protection.allow_networks"}}</p>
                         <div class="input-group mb-2">
                             <input type="text" class="form-control form-control-sm" id="prot-asn-allow-input" placeholder="AS7922, AS701...">
                             <button class="btn btn-outline-success btn-sm" type="button" onclick="protAddASN('allow')">
@@ -279,8 +279,8 @@
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="prot-asnMode" value="all" id="prot-asnMode-all" checked>
                             <label class="form-check-label" for="prot-asnMode-all">
-                                <i class="bi bi-globe2 me-1"></i><strong>Allow All Networks</strong>
-                                <span class="text-muted ms-2">— No ASN restrictions</span>
+                                <i class="bi bi-globe2 me-1"></i><strong>{{t "protection.allow_all_networks"}}</strong>
+                                <span class="text-muted ms-2">— {{t "protection.no_asn_restrictions"}}</span>
                             </label>
                         </div>
                     </div>
@@ -288,7 +288,7 @@
                 <div class="col-12">
                     <div class="alert alert-secondary mb-0 small">
                         <i class="bi bi-info-circle me-1"></i>
-                        <strong>Common ASNs:</strong> AS14061 (DigitalOcean), AS16509 (AWS), AS15169 (Google), AS13335 (Cloudflare), AS7922 (Comcast), AS701 (Verizon).
+                        <strong>{{t "protection.common_asns"}}:</strong> AS14061 (DigitalOcean), AS16509 (AWS), AS15169 (Google), AS13335 (Cloudflare), AS7922 (Comcast), AS701 (Verizon).
                     </div>
                 </div>
             </div>
@@ -300,32 +300,32 @@
                 <div class="col-lg-6">
                     <div class="prot-card">
                         <div class="prot-card-title">
-                            <h6><i class="bi bi-x-circle text-danger me-1"></i>Blocked Countries <span class="badge bg-danger ms-1" id="prot-cnt-blk">0</span></h6>
+                            <h6><i class="bi bi-x-circle text-danger me-1"></i>{{t "protection.blocked_countries"}} <span class="badge bg-danger ms-1" id="prot-cnt-blk">0</span></h6>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="radio" name="prot-countryMode" value="blacklist" id="prot-countryMode-blacklist">
                             </div>
                         </div>
-                        <input type="text" class="form-control form-control-sm mb-2" placeholder="Search countries..." oninput="protFilterCountries(this.value, 'block')">
+                        <input type="text" class="form-control form-control-sm mb-2" placeholder="{{t "protection.search_countries"}}" oninput="protFilterCountries(this.value, 'block')">
                         <div class="prot-country-picker" id="prot-countries-block"></div>
                         <div class="d-flex align-items-center justify-content-between mt-2">
-                            <small class="text-muted"><span id="prot-cnt-blk-display">0</span> selected</small>
-                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="protClearCountries('block')">Clear</button>
+                            <small class="text-muted"><span id="prot-cnt-blk-display">0</span> {{t "protection.selected"}}</small>
+                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="protClearCountries('block')">{{t "protection.clear"}}</button>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-6">
                     <div class="prot-card">
                         <div class="prot-card-title">
-                            <h6><i class="bi bi-check-circle text-success me-1"></i>Allowed Only <span class="badge bg-success ms-1" id="prot-cnt-allow">0</span></h6>
+                            <h6><i class="bi bi-check-circle text-success me-1"></i>{{t "protection.allowed_only"}} <span class="badge bg-success ms-1" id="prot-cnt-allow">0</span></h6>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="radio" name="prot-countryMode" value="whitelist" id="prot-countryMode-whitelist">
                             </div>
                         </div>
-                        <input type="text" class="form-control form-control-sm mb-2" placeholder="Search countries..." oninput="protFilterCountries(this.value, 'allow')">
+                        <input type="text" class="form-control form-control-sm mb-2" placeholder="{{t "protection.search_countries"}}" oninput="protFilterCountries(this.value, 'allow')">
                         <div class="prot-country-picker" id="prot-countries-allow"></div>
                         <div class="d-flex align-items-center justify-content-between mt-2">
-                            <small class="text-muted"><span id="prot-cnt-allow-display">0</span> selected</small>
-                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="protClearCountries('allow')">Clear</button>
+                            <small class="text-muted"><span id="prot-cnt-allow-display">0</span> {{t "protection.selected"}}</small>
+                            <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="protClearCountries('allow')">{{t "protection.clear"}}</button>
                         </div>
                     </div>
                 </div>
@@ -334,8 +334,8 @@
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="prot-countryMode" value="all" id="prot-countryMode-all" checked>
                             <label class="form-check-label" for="prot-countryMode-all">
-                                <i class="bi bi-globe2 me-1"></i><strong>Allow All Countries</strong>
-                                <span class="text-muted ms-2">— No geographic restrictions</span>
+                                <i class="bi bi-globe2 me-1"></i><strong>{{t "protection.allow_all_countries"}}</strong>
+                                <span class="text-muted ms-2">— {{t "protection.no_geo_restrictions"}}</span>
                             </label>
                         </div>
                     </div>
@@ -346,34 +346,34 @@
         <!-- Devices Tab -->
         <div class="tab-pane prot-section" id="prot-tab-devices" role="tabpanel">
             <div class="mb-4">
-                <label class="form-label text-muted small text-uppercase mb-2">Target Devices</label>
+                <label class="form-label text-muted small text-uppercase mb-2">{{t "protection.target_devices"}}</label>
                 <div class="prot-device-selector">
                     <input class="prot-device-check" type="checkbox" value="desktop" id="prot-device-desktop">
                     <label for="prot-device-desktop">
                         <i class="bi bi-display"></i>
-                        <span>Desktop</span>
+                        <span>{{t "protection.desktop"}}</span>
                     </label>
                     <input class="prot-device-check" type="checkbox" value="mobile" id="prot-device-mobile">
                     <label for="prot-device-mobile">
                         <i class="bi bi-phone"></i>
-                        <span>Mobile</span>
+                        <span>{{t "protection.mobile"}}</span>
                     </label>
                     <input class="prot-device-check" type="checkbox" value="tablet" id="prot-device-tablet">
                     <label for="prot-device-tablet">
                         <i class="bi bi-tablet"></i>
-                        <span>Tablet</span>
+                        <span>{{t "protection.tablet"}}</span>
                     </label>
                 </div>
             </div>
             <div>
-                <label class="form-label text-muted small text-uppercase mb-2">Filter Mode</label>
+                <label class="form-label text-muted small text-uppercase mb-2">{{t "protection.filter_mode"}}</label>
                 <div class="prot-mode-pills">
                     <input type="radio" name="prot-deviceMode" id="prot-deviceMode-all" value="all" checked>
-                    <label for="prot-deviceMode-all">Allow All</label>
+                    <label for="prot-deviceMode-all">{{t "protection.allow_all"}}</label>
                     <input type="radio" name="prot-deviceMode" id="prot-deviceMode-whitelist" value="whitelist">
-                    <label for="prot-deviceMode-whitelist">Allow Selected</label>
+                    <label for="prot-deviceMode-whitelist">{{t "protection.allow_selected"}}</label>
                     <input type="radio" name="prot-deviceMode" id="prot-deviceMode-blacklist" value="blacklist">
-                    <label for="prot-deviceMode-blacklist">Block Selected</label>
+                    <label for="prot-deviceMode-blacklist">{{t "protection.block_selected"}}</label>
                 </div>
             </div>
         </div>
@@ -381,58 +381,58 @@
         <!-- Template Tab -->
         <div class="tab-pane active show prot-section" id="prot-tab-template" role="tabpanel">
             <div class="mb-4">
-                <label class="form-label text-muted small text-uppercase mb-2">Challenge Template</label>
+                <label class="form-label text-muted small text-uppercase mb-2">{{t "protection.challenge_template"}}</label>
                 <div class="row g-3 align-items-start">
                     <div class="col-auto">
                         <select class="form-select" id="prot-template" style="min-width: 250px;" onchange="protUpdateTemplatePreview()">
-                            <option value="">Use Global Default</option>
-                            <option value="transit">Transit (Silent Pass)</option>
-                            <option value="cloudflare">Cloudflare Style</option>
-                            <option value="humancheck">Human Check</option>
-                            <option value="humansecurity">Human Security (Press & Hold)</option>
-                            <option value="slidepuzzle">Slide Puzzle</option>
-                            <option value="smartpuzzle">Smart Puzzle</option>
-                            <option value="simple">Simple</option>
-                            <option value="lobby">Lobby</option>
-                            <option value="foyer">Foyer (Stepped)</option>
-                            <option value="latch">Latch (Pull-to-Verify)</option>
-                            <option value="interstitial">Interstitial (Terminal)</option>
+                            <option value="">{{t "protection.use_global_default"}}</option>
+                            <option value="transit">{{t "protection.tpl_transit"}}</option>
+                            <option value="cloudflare">{{t "protection.tpl_cloudflare"}}</option>
+                            <option value="humancheck">{{t "protection.tpl_humancheck"}}</option>
+                            <option value="humansecurity">{{t "protection.tpl_humansecurity"}}</option>
+                            <option value="slidepuzzle">{{t "protection.tpl_slidepuzzle"}}</option>
+                            <option value="smartpuzzle">{{t "protection.tpl_smartpuzzle"}}</option>
+                            <option value="simple">{{t "protection.tpl_simple"}}</option>
+                            <option value="lobby">{{t "protection.tpl_lobby"}}</option>
+                            <option value="foyer">{{t "protection.tpl_foyer"}}</option>
+                            <option value="latch">{{t "protection.tpl_latch"}}</option>
+                            <option value="interstitial">{{t "protection.tpl_interstitial"}}</option>
                         </select>
-                        <small class="text-muted d-block mt-1">Challenge page shown to suspicious visitors</small>
+                        <small class="text-muted d-block mt-1">{{t "protection.challenge_desc"}}</small>
                         <div id="prot-theme-mode-section" class="mt-2" style="display: none;">
                             <select class="form-select" id="prot-themeMode" style="min-width: 250px;" onchange="protUpdateTemplatePreview()">
-                                <option value="auto">Auto (System)</option>
-                                <option value="light" selected>Light Mode</option>
-                                <option value="dark">Dark Mode</option>
+                                <option value="auto">{{t "protection.auto_system"}}</option>
+                                <option value="light" selected>{{t "protection.light_mode"}}</option>
+                                <option value="dark">{{t "protection.dark_mode"}}</option>
                             </select>
-                            <small class="text-muted d-block mt-1">Theme mode</small>
+                            <small class="text-muted d-block mt-1">{{t "protection.theme_mode"}}</small>
                         </div>
                         <div id="prot-puzzle-mode-section" class="mt-2" style="display: none;">
                             <select class="form-select" id="prot-puzzleMode" style="min-width: 250px;" onchange="protOnPuzzleModeChange()">
-                                <option value="auto" selected>Auto (System picks)</option>
-                                <option value="slider">Slider</option>
-                                <option value="drag">Drag</option>
-                                <option value="rotate">Rotate</option>
-                                <option value="icon">Icon Order</option>
-                                <option value="text">Text</option>
-                                <option value="strip">Strip</option>
-                                <option value="gobang">Gobang</option>
-                                <option value="match3">Match 3</option>
+                                <option value="auto" selected>{{t "protection.puzzle_auto"}}</option>
+                                <option value="slider">{{t "protection.puzzle_slider"}}</option>
+                                <option value="drag">{{t "protection.puzzle_drag"}}</option>
+                                <option value="rotate">{{t "protection.puzzle_rotate"}}</option>
+                                <option value="icon">{{t "protection.puzzle_icon"}}</option>
+                                <option value="text">{{t "protection.puzzle_text"}}</option>
+                                <option value="strip">{{t "protection.puzzle_strip"}}</option>
+                                <option value="gobang">{{t "protection.puzzle_gobang"}}</option>
+                                <option value="match3">{{t "protection.puzzle_match3"}}</option>
                             </select>
-                            <small class="text-muted d-block mt-1">Puzzle type override</small>
+                            <small class="text-muted d-block mt-1">{{t "protection.puzzle_override"}}</small>
                         </div>
                     </div>
                     <div class="col" id="prot-template-preview-col" style="display:none;">
                         <div id="prot-preview-mount" class="border rounded bg-dark position-relative" style="width: 100%; aspect-ratio: 768/660; overflow: hidden;">
                             <div id="prot-preview-loading" class="position-absolute top-50 start-50 translate-middle text-white-50">
-                                <span class="spinner-border spinner-border-sm me-1"></span>Loading...
+                                <span class="spinner-border spinner-border-sm me-1"></span>{{t "loading"}}...
                             </div>
                         </div>
                         <div class="d-flex gap-2 mt-2" id="prot-preview-states" style="display:none;">
-                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn active" data-state="challenge">Challenge</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn" data-state="captcha">Puzzle</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn" data-state="blocked">Blocked</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn" data-state="success">Success</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn active" data-state="challenge">{{t "protection.state_challenge"}}</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn" data-state="captcha">{{t "protection.state_puzzle"}}</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn" data-state="blocked">{{t "protection.state_blocked"}}</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary prot-state-btn" data-state="success">{{t "protection.state_success"}}</button>
                         </div>
                     </div>
                 </div>
@@ -441,10 +441,10 @@
                     <div class="d-flex align-items-start">
                         <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
                         <div>
-                            <strong>Turnstile Not Configured</strong>
-                            <p class="mb-2 small">The "cloudflare" template works best with Cloudflare Turnstile keys. Without them, it uses proof-of-work instead of the official widget.</p>
+                            <strong>{{t "protection.turnstile_not_configured"}}</strong>
+                            <p class="mb-2 small">{{t "protection.turnstile_warning"}}</p>
                             <a href="#" id="prot-turnstile-settings-link" class="btn btn-sm btn-warning">
-                                <i class="bi bi-gear me-1"></i>Configure Turnstile Keys
+                                <i class="bi bi-gear me-1"></i>{{t "protection.configure_turnstile"}}
                             </a>
                         </div>
                     </div>
@@ -452,7 +452,7 @@
                 <!-- Turnstile Enabled (shown when cloudflare template selected with keys) -->
                 <div id="prot-turnstile-enabled" class="alert alert-success d-none mt-3" style="max-width: 600px;">
                     <i class="bi bi-check-circle-fill me-1"></i>
-                    <span>Turnstile enabled — using keys from domain settings</span>
+                    <span>{{t "protection.turnstile_enabled"}}</span>
                 </div>
             </div>
         </div>
@@ -460,14 +460,14 @@
         <!-- Detection Tab -->
         <div class="tab-pane prot-section" id="prot-tab-detection" role="tabpanel">
             <div class="mb-4">
-                <label class="form-label text-muted small text-uppercase mb-3">Block Traffic Types</label>
+                <label class="form-label text-muted small text-uppercase mb-3">{{t "protection.block_traffic_types"}}</label>
 
                 <div class="prot-toggle-row">
                     <div class="prot-toggle-label">
                         <i class="bi bi-robot text-warning"></i>
                         <div class="prot-toggle-text">
-                            <h6>Known Bots</h6>
-                            <small>Block crawlers, scrapers, and automated tools</small>
+                            <h6>{{t "protection.known_bots"}}</h6>
+                            <small>{{t "protection.known_bots_desc"}}</small>
                         </div>
                     </div>
                     <div class="form-check form-switch mb-0">
@@ -479,8 +479,8 @@
                     <div class="prot-toggle-label">
                         <i class="bi bi-window-x text-success"></i>
                         <div class="prot-toggle-text">
-                            <h6>Headless Browsers</h6>
-                            <small>Block Puppeteer, Selenium, Playwright</small>
+                            <h6>{{t "protection.headless_browsers"}}</h6>
+                            <small>{{t "protection.headless_desc"}}</small>
                         </div>
                     </div>
                     <div class="form-check form-switch mb-0">
@@ -492,8 +492,8 @@
                     <div class="prot-toggle-label">
                         <i class="bi bi-shield-exclamation text-danger"></i>
                         <div class="prot-toggle-text">
-                            <h6>Tor Exit Nodes</h6>
-                            <small>Block visitors coming through Tor</small>
+                            <h6>{{t "protection.tor_exit"}}</h6>
+                            <small>{{t "protection.tor_desc"}}</small>
                         </div>
                     </div>
                     <div class="form-check form-switch mb-0">
@@ -505,8 +505,8 @@
                     <div class="prot-toggle-label">
                         <i class="bi bi-incognito text-info"></i>
                         <div class="prot-toggle-text">
-                            <h6>Proxy/VPN</h6>
-                            <small>Block visitors using VPN or proxy services</small>
+                            <h6>{{t "protection.proxy_vpn"}}</h6>
+                            <small>{{t "protection.proxy_desc"}}</small>
                         </div>
                     </div>
                     <div class="form-check form-switch mb-0">
@@ -518,8 +518,8 @@
                     <div class="prot-toggle-label">
                         <i class="bi bi-hdd-rack text-secondary"></i>
                         <div class="prot-toggle-text">
-                            <h6>Datacenter IPs</h6>
-                            <small>Block traffic from AWS, GCP, Azure, hosting providers</small>
+                            <h6>{{t "protection.datacenter_ips"}}</h6>
+                            <small>{{t "protection.datacenter_desc"}}</small>
                         </div>
                     </div>
                     <div class="form-check form-switch mb-0">
@@ -529,26 +529,34 @@
             </div>
 
             <div class="mb-4">
-                <label class="form-label text-muted small text-uppercase mb-2">Behavior Score Threshold</label>
+                <label class="form-label text-muted small text-uppercase mb-2">{{t "protection.behavior_threshold"}}</label>
                 <div class="d-flex align-items-center gap-3">
-                    <span class="text-muted small fw-semibold">OFF</span>
+                    <span class="text-muted small fw-semibold">{{t "protection.score_off"}}</span>
                     <input type="range" class="form-range flex-grow-1" min="0" max="100" step="5" id="prot-minBehaviorScore" value="0" style="max-width: 300px;">
-                    <span class="text-muted small fw-semibold">STRICT</span>
+                    <span class="text-muted small fw-semibold">{{t "protection.score_strict"}}</span>
                     <span class="badge bg-primary" id="prot-score-value" style="min-width:45px;text-align:center;">0</span>
                 </div>
-                <small class="text-muted" id="prot-score-hint">Disabled — all visitors pass behavior check</small>
+                <small class="text-muted" id="prot-score-hint">{{t "protection.score_disabled"}}</small>
             </div>
 
             <div>
-                <label class="form-label text-muted small text-uppercase mb-2">Blocked Visitor Redirect</label>
+                <label class="form-label text-muted small text-uppercase mb-2">{{t "protection.blocked_redirect"}}</label>
                 <input type="url" class="form-control" id="prot-redirectOnBlock" placeholder="https://example.com/blocked" style="max-width: 400px;">
-                <small class="text-muted">Where to send blocked visitors (leave empty for error page)</small>
+                <small class="text-muted">{{t "protection.blocked_redirect_desc"}}</small>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+const PROT_TRANSLATIONS = {
+    scoreDisabled: '{{t "protection.score_disabled"}}',
+    scoreLight: '{{t "protection.score_light"}}',
+    scoreModerate: '{{t "protection.score_moderate"}}',
+    scoreStrict: '{{t "protection.score_strict_hint"}}',
+    loading: '{{t "loading"}}'
+};
+
 (function() {
     // Countries list
     const PROT_COUNTRIES = [
@@ -604,13 +612,13 @@
             document.getElementById('prot-score-value').textContent = this.value;
             const hint = document.getElementById('prot-score-hint');
             if (this.value == 0) {
-                hint.textContent = 'Disabled — all visitors pass behavior check';
+                hint.textContent = PROT_TRANSLATIONS.scoreDisabled;
             } else if (this.value <= 30) {
-                hint.textContent = 'Light — blocks obvious bots only';
+                hint.textContent = PROT_TRANSLATIONS.scoreLight;
             } else if (this.value <= 60) {
-                hint.textContent = 'Moderate — balanced filtering';
+                hint.textContent = PROT_TRANSLATIONS.scoreModerate;
             } else {
-                hint.textContent = 'Strict — may block some real users';
+                hint.textContent = PROT_TRANSLATIONS.scoreStrict;
             }
         });
     }

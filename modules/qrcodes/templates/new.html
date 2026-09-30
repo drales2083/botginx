@@ -3,20 +3,20 @@
     <div class="col-lg-7">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0"><i class="bi bi-qr-code me-2"></i>Create QR Code</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-qr-code me-2"></i>{{t "qrcodes.create"}}</h5>
             </div>
             <div class="card-body">
                 <!-- URL Source -->
                 <div class="mb-4">
-                    <label class="form-label">URL Source</label>
+                    <label class="form-label">{{t "qrcodes.url_source"}}</label>
                     <div class="btn-group w-100 mb-3" role="group">
                         <input type="radio" class="btn-check" name="urlSource" id="sourcePaste" value="paste" checked>
                         <label class="btn btn-outline-secondary" for="sourcePaste">
-                            <i class="bi bi-link-45deg me-1"></i>Paste URL
+                            <i class="bi bi-link-45deg me-1"></i>{{t "qrcodes.paste_url"}}
                         </label>
                         <input type="radio" class="btn-check" name="urlSource" id="sourceLink" value="link">
                         <label class="btn btn-outline-secondary" for="sourceLink">
-                            <i class="bi bi-arrow-repeat me-1"></i>Select Redirect Link
+                            <i class="bi bi-arrow-repeat me-1"></i>{{t "qrcodes.select_redirect"}}
                         </label>
                     </div>
 
@@ -26,7 +26,7 @@
 
                     <div id="linkSelect" class="d-none">
                         <select class="form-select" id="redirectLink">
-                            <option value="">Select a redirect link...</option>
+                            <option value="">{{t "qrcodes.select_redirect_placeholder"}}...</option>
                             {{range .RedirectLinks}}
                             <option value="{{.ID}}" data-url="https://{{.Subdomain}}.{{.Domain}}/{{.Path}}">
                                 {{.Subdomain}}.{{.Domain}}/{{.Path}}
@@ -38,21 +38,21 @@
 
                 <!-- Title -->
                 <div class="mb-4">
-                    <label for="title" class="form-label">Title (optional)</label>
-                    <input type="text" class="form-control" id="title" placeholder="My QR Code">
+                    <label for="title" class="form-label">{{t "qrcodes.title_optional"}}</label>
+                    <input type="text" class="form-control" id="title" placeholder="{{t "qrcodes.my_qr"}}">
                 </div>
 
                 <!-- Colors -->
                 <div class="row mb-4">
                     <div class="col-6">
-                        <label for="fgColor" class="form-label">Foreground Color</label>
+                        <label for="fgColor" class="form-label">{{t "qrcodes.foreground_color"}}</label>
                         <div class="input-group">
                             <input type="color" class="form-control form-control-color" id="fgColorPicker" value="#000000">
                             <input type="text" class="form-control" id="fgColor" value="#000000" maxlength="7">
                         </div>
                     </div>
                     <div class="col-6">
-                        <label for="bgColor" class="form-label">Background Color</label>
+                        <label for="bgColor" class="form-label">{{t "qrcodes.background_color"}}</label>
                         <div class="input-group">
                             <input type="color" class="form-control form-control-color" id="bgColorPicker" value="#FFFFFF">
                             <input type="text" class="form-control" id="bgColor" value="#FFFFFF" maxlength="7">
@@ -62,44 +62,44 @@
 
                 <!-- Color Presets -->
                 <div class="mb-4">
-                    <label class="form-label">Quick Presets</label>
+                    <label class="form-label">{{t "qrcodes.presets"}}</label>
                     <div class="d-flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#000000" data-bg="#FFFFFF">
-                            <span style="display:inline-block;width:12px;height:12px;background:#000;border:1px solid #ccc;"></span> Classic
+                            <span style="display:inline-block;width:12px;height:12px;background:#000;border:1px solid #ccc;"></span> {{t "qrcodes.preset_classic"}}
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#FFFFFF" data-bg="#000000">
-                            <span style="display:inline-block;width:12px;height:12px;background:#fff;border:1px solid #ccc;"></span> Inverted
+                            <span style="display:inline-block;width:12px;height:12px;background:#fff;border:1px solid #ccc;"></span> {{t "qrcodes.preset_inverted"}}
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#1a73e8" data-bg="#FFFFFF">
-                            <span style="display:inline-block;width:12px;height:12px;background:#1a73e8;border:1px solid #ccc;"></span> Blue
+                            <span style="display:inline-block;width:12px;height:12px;background:#1a73e8;border:1px solid #ccc;"></span> {{t "qrcodes.preset_blue"}}
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#dc3545" data-bg="#FFFFFF">
-                            <span style="display:inline-block;width:12px;height:12px;background:#dc3545;border:1px solid #ccc;"></span> Red
+                            <span style="display:inline-block;width:12px;height:12px;background:#dc3545;border:1px solid #ccc;"></span> {{t "qrcodes.preset_red"}}
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-fg="#198754" data-bg="#FFFFFF">
-                            <span style="display:inline-block;width:12px;height:12px;background:#198754;border:1px solid #ccc;"></span> Green
+                            <span style="display:inline-block;width:12px;height:12px;background:#198754;border:1px solid #ccc;"></span> {{t "qrcodes.preset_green"}}
                         </button>
                     </div>
                 </div>
 
                 <!-- Download Size -->
                 <div class="mb-4">
-                    <label class="form-label">Download Size</label>
+                    <label class="form-label">{{t "qrcodes.download_size"}}</label>
                     <select class="form-select" id="downloadSize">
-                        <option value="200">Small (200px)</option>
-                        <option value="400" selected>Medium (400px)</option>
-                        <option value="800">Large (800px)</option>
-                        <option value="1200">Print (1200px)</option>
+                        <option value="200">{{t "qrcodes.size_small"}}</option>
+                        <option value="400" selected>{{t "qrcodes.size_medium"}}</option>
+                        <option value="800">{{t "qrcodes.size_large"}}</option>
+                        <option value="1200">{{t "qrcodes.size_print"}}</option>
                     </select>
                 </div>
 
                 <!-- Actions -->
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-primary" id="btnSave">
-                        <i class="bi bi-save me-1"></i>Save to Library
+                        <i class="bi bi-save me-1"></i>{{t "qrcodes.save_to_library"}}
                     </button>
                     <button type="button" class="btn btn-success" id="btnDownloadPNG">
-                        <i class="bi bi-download me-1"></i>Download PNG
+                        <i class="bi bi-download me-1"></i>{{t "qrcodes.download_png"}}
                     </button>
                     <button type="button" class="btn btn-outline-secondary" id="btnDownloadSVG">
                         <i class="bi bi-filetype-svg me-1"></i>SVG
@@ -112,12 +112,12 @@
     <div class="col-lg-5">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0"><i class="bi bi-eye me-2"></i>Preview</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-eye me-2"></i>{{t "qrcodes.preview"}}</h5>
             </div>
             <div class="card-body text-center">
                 <div id="qrPreview" class="d-inline-block p-4 rounded" style="background: #FFFFFF;">
                     <div id="qrPlaceholder" class="text-muted" style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--bs-border-color); border-radius: 0.5rem;">
-                        <span>Enter a URL to preview</span>
+                        <span>{{t "qrcodes.enter_url_preview"}}</span>
                     </div>
                     <img id="qrImage" src="" alt="QR Preview" style="width: 200px; height: 200px; display: none;">
                 </div>
@@ -130,6 +130,13 @@
 </div>
 
 <script>
+const TRANSLATIONS = {
+    enterUrl: '{{t "qrcodes.please_enter_url"}}',
+    saved: '{{t "qrcodes.saved"}}',
+    failedToSave: '{{t "failed_to_save"}}',
+    errorSaving: '{{t "qrcodes.error_saving"}}'
+};
+
 let debounceTimer;
 
 function getFormData() {
@@ -245,7 +252,7 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 document.getElementById('btnSave').addEventListener('click', async () => {
     const data = getFormData();
     if (!data.url) {
-        showToast('Please enter a URL', 'warning');
+        showToast(TRANSLATIONS.enterUrl, 'warning');
         return;
     }
 
@@ -267,13 +274,13 @@ document.getElementById('btnSave').addEventListener('click', async () => {
 
         const result = await res.json();
         if (res.ok) {
-            showToast('QR code saved!', 'success');
+            showToast(TRANSLATIONS.saved, 'success');
             window.location.href = `/user/qrcodes/${result.qrcode.id}`;
         } else {
-            showToast(result.error || 'Failed to save', 'danger');
+            showToast(result.error || TRANSLATIONS.failedToSave, 'danger');
         }
     } catch (e) {
-        showToast('Error saving QR code', 'danger');
+        showToast(TRANSLATIONS.errorSaving, 'danger');
     }
 
     btn.disabled = false;
@@ -283,7 +290,7 @@ document.getElementById('btnSave').addEventListener('click', async () => {
 document.getElementById('btnDownloadPNG').addEventListener('click', async () => {
     const data = getFormData();
     if (!data.url) {
-        showToast('Please enter a URL', 'warning');
+        showToast(TRANSLATIONS.enterUrl, 'warning');
         return;
     }
 
@@ -314,7 +321,7 @@ document.getElementById('btnDownloadPNG').addEventListener('click', async () => 
 document.getElementById('btnDownloadSVG').addEventListener('click', async () => {
     const data = getFormData();
     if (!data.url) {
-        showToast('Please enter a URL', 'warning');
+        showToast(TRANSLATIONS.enterUrl, 'warning');
         return;
     }
 

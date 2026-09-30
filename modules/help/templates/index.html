@@ -1,15 +1,15 @@
 {{define "content"}}
 <!-- Headline + search -->
 <div class="text-center mb-4">
-    <h2 class="mb-2">How can we help?</h2>
-    <p class="text-secondary mb-3">Search our knowledge base, or browse the topics below.</p>
+    <h2 class="mb-2">{{t "help.how_can_we_help"}}</h2>
+    <p class="text-secondary mb-3">{{t "help.search_desc"}}</p>
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
             <div class="input-group input-group-lg">
                 <span class="input-group-text bg-body">
                     <i class="bi bi-search"></i>
                 </span>
-                <input type="search" class="form-control" id="faq-search" placeholder="Search the FAQ..." autocomplete="off">
+                <input type="search" class="form-control" id="faq-search" placeholder="{{t "help.search_placeholder"}}" autocomplete="off">
             </div>
         </div>
     </div>
@@ -18,7 +18,7 @@
 <!-- No results message -->
 <div id="no-results" class="alert alert-info text-center d-none">
     <i class="bi bi-search me-2"></i>
-    No FAQs match your search. Try different keywords.
+    {{t "help.no_results"}}
 </div>
 
 <!-- FAQ Categories -->
@@ -63,7 +63,7 @@
 <div class="text-center mt-4">
     <p class="text-muted">
         <i class="bi bi-chat-dots me-1"></i>
-        Still need help? Contact admin on Telegram.
+        {{t "help.still_need_help"}}
     </p>
 </div>
 

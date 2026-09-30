@@ -4,11 +4,11 @@
     <div class="d-flex justify-content-end align-items-center mb-4">
         <div class="d-flex gap-2">
             <button class="btn btn-outline-secondary btn-sm" onclick="loadData()">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
+                <i class="bi bi-arrow-clockwise"></i> {{t "threatlog.refresh"}}
             </button>
             <div class="live-indicator">
                 <span class="live-dot"></span>
-                <span class="live-text">Live</span>
+                <span class="live-text">{{t "threatlog.live"}}</span>
             </div>
         </div>
     </div>
@@ -20,7 +20,7 @@
                 <div class="stat-icon"><i class="bi bi-shield-x"></i></div>
                 <div class="stat-content">
                     <div class="stat-value" id="totalThreats">-</div>
-                    <div class="stat-label">Total Threats</div>
+                    <div class="stat-label">{{t "threatlog.total_threats"}}</div>
                 </div>
             </div>
         </div>
@@ -29,7 +29,7 @@
                 <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
                 <div class="stat-content">
                     <div class="stat-value" id="last24h">-</div>
-                    <div class="stat-label">Last 24 Hours</div>
+                    <div class="stat-label">{{t "threatlog.last_24h"}}</div>
                 </div>
             </div>
         </div>
@@ -38,7 +38,7 @@
                 <div class="stat-icon"><i class="bi bi-lightning"></i></div>
                 <div class="stat-content">
                     <div class="stat-value" id="lastHour">-</div>
-                    <div class="stat-label">Last Hour</div>
+                    <div class="stat-label">{{t "threatlog.last_hour"}}</div>
                 </div>
             </div>
         </div>
@@ -47,7 +47,7 @@
                 <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
                 <div class="stat-content">
                     <div class="stat-value" id="threatRate">-</div>
-                    <div class="stat-label">Threats/Hour</div>
+                    <div class="stat-label">{{t "threatlog.threats_per_hour"}}</div>
                 </div>
             </div>
         </div>
@@ -58,7 +58,7 @@
         <div class="col-lg-4">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-activity text-danger me-2"></i>Live Threat Feed</span>
+                    <span><i class="bi bi-activity text-danger me-2"></i>{{t "threatlog.live_feed"}}</span>
                     <span class="badge bg-danger" id="feedCount">0</span>
                 </div>
                 <div class="card-body p-0">
@@ -76,7 +76,7 @@
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <i class="bi bi-globe me-2"></i>Top Threat Origins
+                            <i class="bi bi-globe me-2"></i>{{t "threatlog.top_origins"}}
                         </div>
                         <div class="card-body">
                             <div id="countriesChart" class="threat-bar-chart"></div>
@@ -88,7 +88,7 @@
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <i class="bi bi-robot me-2"></i>Threat Types
+                            <i class="bi bi-robot me-2"></i>{{t "threatlog.threat_types"}}
                         </div>
                         <div class="card-body">
                             <div id="botTypesChart" class="threat-bar-chart"></div>
@@ -100,7 +100,7 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <i class="bi bi-bar-chart me-2"></i>24-Hour Threat Activity
+                            <i class="bi bi-bar-chart me-2"></i>{{t "threatlog.hourly_activity"}}
                         </div>
                         <div class="card-body">
                             <div id="hourlyChart" class="hourly-chart"></div>
@@ -115,18 +115,18 @@
     <div class="card mt-4">
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <span><i class="bi bi-table me-2"></i>Threat Details</span>
+                <span><i class="bi bi-table me-2"></i>{{t "threatlog.details"}}</span>
                 <div class="d-flex gap-2 flex-wrap">
                     <select id="filterCountry" class="form-select form-select-sm" style="width: auto;">
-                        <option value="">All Countries</option>
+                        <option value="">{{t "threatlog.all_countries"}}</option>
                     </select>
                     <select id="filterBotType" class="form-select form-select-sm" style="width: auto;">
-                        <option value="">All Types</option>
+                        <option value="">{{t "threatlog.all_types"}}</option>
                     </select>
                     <input type="date" id="filterDateFrom" class="form-control form-control-sm" style="width: auto;">
                     <input type="date" id="filterDateTo" class="form-control form-control-sm" style="width: auto;">
                     <button class="btn btn-sm btn-primary" onclick="applyFilters()">
-                        <i class="bi bi-funnel"></i> Filter
+                        <i class="bi bi-funnel"></i> {{t "threatlog.filter"}}
                     </button>
                 </div>
             </div>
@@ -136,13 +136,13 @@
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th>Time</th>
-                            <th>IP Address</th>
-                            <th>Country</th>
-                            <th>Threat Type</th>
-                            <th>Target</th>
-                            <th>Device</th>
-                            <th>Details</th>
+                            <th>{{t "threatlog.time"}}</th>
+                            <th>{{t "iplists.ip_address"}}</th>
+                            <th>{{t "threatlog.country"}}</th>
+                            <th>{{t "threatlog.threat_type"}}</th>
+                            <th>{{t "threatlog.target"}}</th>
+                            <th>{{t "threatlog.device"}}</th>
+                            <th>{{t "description"}}</th>
                         </tr>
                     </thead>
                     <tbody id="threatTable">

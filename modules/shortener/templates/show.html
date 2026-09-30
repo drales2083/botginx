@@ -2,17 +2,17 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <a href="/user/shortener" class="text-muted text-decoration-none">
-            <i class="bi bi-arrow-left me-1"></i>Back to Short Links
+            <i class="bi bi-arrow-left me-1"></i>{{t "shortener.back_to_list"}}
         </a>
     </div>
     <div class="d-flex gap-2">
         {{if .Link.QREnabled}}
         <a href="/user/shortener/{{.Link.ID}}/qr" target="_blank" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-qr-code me-1"></i>QR Code
+            <i class="bi bi-qr-code me-1"></i>{{t "shortener.qr_code"}}
         </a>
         {{end}}
         <button class="btn btn-outline-primary btn-sm" onclick="copyToClipboard('{{.Link.FullURL}}')">
-            <i class="bi bi-clipboard me-1"></i>Copy Link
+            <i class="bi bi-clipboard me-1"></i>{{t "shortener.copy_link"}}
         </button>
     </div>
 </div>
@@ -29,16 +29,16 @@
                     </a>
                 </h4>
                 <div class="text-muted">
-                    Created {{.Link.CreatedAt.Format "January 02, 2006 at 3:04 PM"}}
+                    {{t "created"}} {{.Link.CreatedAt.Format "January 02, 2006 at 3:04 PM"}}
                 </div>
             </div>
             <div class="col-md-4 text-md-end mt-3 mt-md-0">
                 {{if eq .Link.DeployStatus "deployed"}}
-                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Live</span>
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>{{t "live"}}</span>
                 {{else if eq .Link.DeployStatus "pending"}}
-                <span class="badge bg-warning"><i class="bi bi-clock me-1"></i>Pending</span>
+                <span class="badge bg-warning"><i class="bi bi-clock me-1"></i>{{t "pending"}}</span>
                 {{else if eq .Link.DeployStatus "error"}}
-                <span class="badge bg-danger" title="{{.Link.DeployError}}"><i class="bi bi-x-circle me-1"></i>Error</span>
+                <span class="badge bg-danger" title="{{.Link.DeployError}}"><i class="bi bi-x-circle me-1"></i>{{t "error"}}</span>
                 {{end}}
             </div>
         </div>
@@ -50,7 +50,7 @@
     <div class="col-md-4">
         <div class="card h-100">
             <div class="card-body text-center">
-                <div class="text-muted small text-uppercase mb-1">Total Clicks</div>
+                <div class="text-muted small text-uppercase mb-1">{{t "shortener.total_clicks"}}</div>
                 <div class="fs-2 fw-bold">{{.Link.ClickCount}}</div>
             </div>
         </div>
@@ -58,7 +58,7 @@
     <div class="col-md-4">
         <div class="card h-100">
             <div class="card-body text-center">
-                <div class="text-muted small text-uppercase mb-1">Human Visits</div>
+                <div class="text-muted small text-uppercase mb-1">{{t "shortener.human_visits"}}</div>
                 <div class="fs-2 fw-bold text-success">{{.Link.HumanCount}}</div>
             </div>
         </div>
@@ -66,7 +66,7 @@
     <div class="col-md-4">
         <div class="card h-100">
             <div class="card-body text-center">
-                <div class="text-muted small text-uppercase mb-1">Blocked Bots</div>
+                <div class="text-muted small text-uppercase mb-1">{{t "shortener.blocked_bots"}}</div>
                 <div class="fs-2 fw-bold text-danger">{{.Link.BotCount}}</div>
             </div>
         </div>
@@ -76,13 +76,13 @@
 <!-- Destinations -->
 <div class="card mb-3">
     <div class="card-header">
-        <h6 class="mb-0"><i class="bi bi-signpost-split me-2"></i>Destinations</h6>
+        <h6 class="mb-0"><i class="bi bi-signpost-split me-2"></i>{{t "shortener.destinations"}}</h6>
     </div>
     <div class="card-body">
         {{if gt (len .Link.Destinations) 1}}
         <div class="alert alert-info py-2 mb-3">
             <i class="bi bi-shuffle me-1"></i>
-            <strong>Rotation enabled:</strong> Traffic is distributed randomly across {{len .Link.Destinations}} URLs
+            <strong>{{t "shortener.rotation_enabled"}}:</strong> {{t "shortener.rotation_desc" (len .Link.Destinations)}}
         </div>
         {{end}}
         <ul class="list-group list-group-flush">
@@ -99,20 +99,20 @@
 <!-- Settings -->
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Settings</h6>
+        <h6 class="mb-0"><i class="bi bi-gear me-2"></i>{{t "settings"}}</h6>
         <button class="btn btn-sm btn-outline-primary" onclick="toggleEditMode()">
-            <i class="bi bi-pencil me-1"></i>Edit
+            <i class="bi bi-pencil me-1"></i>{{t "edit"}}
         </button>
     </div>
     <div class="card-body">
         <div id="settings-view">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="text-muted small text-uppercase">QR Code</label>
-                    <div>{{if .Link.QREnabled}}Enabled{{else}}Disabled{{end}}</div>
+                    <label class="text-muted small text-uppercase">{{t "shortener.qr_code"}}</label>
+                    <div>{{if .Link.QREnabled}}{{t "enabled"}}{{else}}{{t "disabled"}}{{end}}</div>
                 </div>
                 <div class="col-md-6">
-                    <label class="text-muted small text-uppercase">Rotation</label>
+                    <label class="text-muted small text-uppercase">{{t "shortener.rotation"}}</label>
                     <div>{{.Link.RotationMode}}</div>
                 </div>
             </div>
@@ -122,22 +122,22 @@
             <form id="settings-form">
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
-                        <label class="form-label">QR Code</label>
+                        <label class="form-label">{{t "shortener.qr_code"}}</label>
                         <div class="form-check form-switch mt-2">
                             <input class="form-check-input" type="checkbox" id="edit-qrEnabled" {{if .Link.QREnabled}}checked{{end}}>
-                            <label class="form-check-label" for="edit-qrEnabled">Enable</label>
+                            <label class="form-check-label" for="edit-qrEnabled">{{t "enable"}}</label>
                         </div>
                     </div>
                 </div>
 
-                <h6 class="mb-3"><i class="bi bi-shield-check me-2"></i>Protection Settings</h6>
+                <h6 class="mb-3"><i class="bi bi-shield-check me-2"></i>{{t "shortener.protection_settings"}}</h6>
                 {{template "protection-settings" .}}
 
                 <div class="mt-4">
                     <button type="submit" class="btn btn-primary" id="save-btn">
-                        <i class="bi bi-check-lg me-1"></i>Save Changes
+                        <i class="bi bi-check-lg me-1"></i>{{t "save_changes"}}
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="toggleEditMode()">Cancel</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="toggleEditMode()">{{t "cancel"}}</button>
                 </div>
             </form>
         </div>
@@ -149,11 +149,11 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h6 class="text-danger mb-1">Delete Short Link</h6>
-                <p class="text-muted small mb-0">This action cannot be undone.</p>
+                <h6 class="text-danger mb-1">{{t "shortener.delete_link"}}</h6>
+                <p class="text-muted small mb-0">{{t "action_cannot_be_undone"}}</p>
             </div>
             <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                <i class="bi bi-trash me-1"></i>Delete
+                <i class="bi bi-trash me-1"></i>{{t "delete"}}
             </button>
         </div>
     </div>
@@ -164,17 +164,17 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header border-danger">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Short Link</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>{{t "shortener.delete_link"}}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete this short link?</p>
-                <p class="text-muted small mb-0">This action cannot be undone.</p>
+                <p>{{t "shortener.delete_confirm"}}</p>
+                <p class="text-muted small mb-0">{{t "action_cannot_be_undone"}}</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{t "cancel"}}</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="bi bi-trash me-1"></i>Delete
+                    <i class="bi bi-trash me-1"></i>{{t "delete"}}
                 </button>
             </div>
         </div>
@@ -182,12 +182,21 @@
 </div>
 
 <script>
+const TRANSLATIONS = {
+    copied: '{{t "copied_to_clipboard"}}',
+    saving: '{{t "form.saving"}}',
+    settingsSaved: '{{t "settings_saved"}}',
+    failedToSave: '{{t "failed_to_save"}}',
+    linkDeleted: '{{t "shortener.link_deleted"}}',
+    failedToDelete: '{{t "failed_to_delete"}}'
+};
+
 // Domain ID for Turnstile check
 window.PROT_DOMAIN_ID = '{{.DomainID}}';
 
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
-        showToast('Copied to clipboard', 'success');
+        showToast(TRANSLATIONS.copied, 'success');
     });
 }
 
@@ -212,7 +221,7 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
     const btn = document.getElementById('save-btn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + TRANSLATIONS.saving;
 
     try {
         const data = {
@@ -227,11 +236,11 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
         });
 
         if (res.ok) {
-            showToast('Settings saved', 'success');
+            showToast(TRANSLATIONS.settingsSaved, 'success');
             location.reload();
         } else {
             const err = await res.json();
-            showToast(err.error || 'Failed to save', 'danger');
+            showToast(err.error || TRANSLATIONS.failedToSave, 'danger');
         }
     } finally {
         btn.disabled = false;
@@ -242,11 +251,11 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
 document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
     const res = await fetch('/user/shortener/api/{{.Link.ID}}', { method: 'DELETE' });
     if (res.ok) {
-        showToast('Link deleted', 'success');
+        showToast(TRANSLATIONS.linkDeleted, 'success');
         window.location.href = '/user/shortener';
     } else {
         const data = await res.json();
-        showToast(data.error || 'Failed to delete', 'danger');
+        showToast(data.error || TRANSLATIONS.failedToDelete, 'danger');
     }
 });
 </script>

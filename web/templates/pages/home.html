@@ -3,10 +3,10 @@
 <html lang="{{currentLang}}" data-bs-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>{{appName}} - Protect Your Links from Bots</title>
+  <title>{{appName}} - {{t "home.meta_title"}}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Advanced bot protection and link management. Keep bots out, let humans in." />
+  <meta name="description" content="{{t "home.meta_desc"}}" />
   <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-icon-180x180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
   <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
@@ -28,7 +28,7 @@
           <a href="/" class="logo">
             <img src="/static/img/logo.svg" alt="{{appName}}" height="28">
           </a>
-          <a href="/auth/signup" class="btn-pill">Get Started</a>
+          <a href="/auth/signup" class="btn-pill">{{t "home.get_started"}}</a>
         </div>
       </header>
 
@@ -43,9 +43,9 @@
       <section class="section section-hero">
         <div class="section-inner hero-content">
           <img src="/static/img/guardbot-logo.svg" alt="{{appName}}" class="hero-logo">
-          <h1>Protect your links from<br>bots and fraud.</h1>
-          <p class="hero-subtitle">Give every link bot protection, analytics, and control.<br>Block malicious traffic before it reaches your destination.</p>
-          <a href="/auth/signup" class="btn-outline"><i class="bi bi-rocket-takeoff"></i> Get Started Free</a>
+          <h1>{{t "home.hero_title"}}</h1>
+          <p class="hero-subtitle">{{t "home.hero_subtitle"}}</p>
+          <a href="/auth/signup" class="btn-outline"><i class="bi bi-rocket-takeoff"></i> {{t "home.get_started_free"}}</a>
         </div>
       </section>
 
@@ -59,28 +59,28 @@
       <nav class="section section-tabs">
         <div class="tab active" data-tab="protect">
           <span class="tab-num">01</span>
-          <h4>Protect</h4>
-          <p>AI-powered bot detection</p>
+          <h4>{{t "home.tab_protect"}}</h4>
+          <p>{{t "home.tab_protect_desc"}}</p>
         </div>
         <div class="tab" data-tab="create">
           <span class="tab-num">02</span>
-          <h4>Create</h4>
-          <p>Redirect links with rules</p>
+          <h4>{{t "home.tab_create"}}</h4>
+          <p>{{t "home.tab_create_desc"}}</p>
         </div>
         <div class="tab" data-tab="track">
           <span class="tab-num">03</span>
-          <h4>Track</h4>
-          <p>Visitors and conversions</p>
+          <h4>{{t "home.tab_track"}}</h4>
+          <p>{{t "home.tab_track_desc"}}</p>
         </div>
         <div class="tab" data-tab="manage">
           <span class="tab-num">04</span>
-          <h4>Manage</h4>
-          <p>Domains and whitelists</p>
+          <h4>{{t "home.tab_manage"}}</h4>
+          <p>{{t "home.tab_manage_desc"}}</p>
         </div>
         <div class="tab" data-tab="deploy">
           <span class="tab-num">05</span>
-          <h4>Deploy</h4>
-          <p>cPanel and hosting</p>
+          <h4>{{t "home.tab_deploy"}}</h4>
+          <p>{{t "home.tab_deploy_desc"}}</p>
         </div>
       </nav>
     </div>
@@ -100,7 +100,7 @@
                 <span class="dot"></span>
                 <span class="dot"></span>
                 <span class="dot"></span>
-                <span class="titlebar-text">Threat Overview — Last 30 Days</span>
+                <span class="titlebar-text">{{t "home.demo_threat_overview"}}</span>
               </div>
               <div class="demo-body demo-body-text">
                 <div class="demo-feature-grid">
@@ -108,24 +108,24 @@
                     <div class="demo-feature-icon red"><i class="bi bi-robot"></i></div>
                     <div class="demo-feature-content">
                       <span class="demo-feature-value">3,847</span>
-                      <span class="demo-feature-label">Bots Blocked</span>
-                      <span class="demo-feature-desc">Datacenter IPs, headless browsers, and automated scripts detected and blocked before reaching your destination.</span>
+                      <span class="demo-feature-label">{{t "home.bots_blocked"}}</span>
+                      <span class="demo-feature-desc">{{t "home.bots_blocked_desc"}}</span>
                     </div>
                   </div>
                   <div class="demo-feature-card">
                     <div class="demo-feature-icon green"><i class="bi bi-person-check"></i></div>
                     <div class="demo-feature-content">
                       <span class="demo-feature-value">28,412</span>
-                      <span class="demo-feature-label">Humans Verified</span>
-                      <span class="demo-feature-desc">Real visitors passed through seamlessly with zero friction. No CAPTCHAs, no delays.</span>
+                      <span class="demo-feature-label">{{t "home.humans_verified"}}</span>
+                      <span class="demo-feature-desc">{{t "home.humans_verified_desc"}}</span>
                     </div>
                   </div>
                   <div class="demo-feature-card">
                     <div class="demo-feature-icon blue"><i class="bi bi-shield-check"></i></div>
                     <div class="demo-feature-content">
                       <span class="demo-feature-value">99.7%</span>
-                      <span class="demo-feature-label">Detection Rate</span>
-                      <span class="demo-feature-desc">AI-powered analysis identifies threats in real-time using behavioral patterns and fingerprinting.</span>
+                      <span class="demo-feature-label">{{t "home.detection_rate"}}</span>
+                      <span class="demo-feature-desc">{{t "home.detection_rate_desc"}}</span>
                     </div>
                   </div>
                 </div>
@@ -140,32 +140,32 @@
                 <span class="dot"></span>
                 <span class="dot"></span>
                 <span class="dot"></span>
-                <span class="titlebar-text">New Redirect Link</span>
+                <span class="titlebar-text">{{t "home.demo_new_redirect"}}</span>
               </div>
               <div class="demo-body demo-body-text">
                 <div class="demo-feature-grid">
                   <div class="demo-feature-card">
                     <div class="demo-feature-icon purple"><i class="bi bi-link-45deg"></i></div>
                     <div class="demo-feature-content">
-                      <span class="demo-feature-value">Protected URLs</span>
-                      <span class="demo-feature-label">Any Destination</span>
-                      <span class="demo-feature-desc">Create redirect links to any URL. Each link gets bot protection automatically. Set custom slugs or let us generate them.</span>
+                      <span class="demo-feature-value">{{t "home.protected_urls"}}</span>
+                      <span class="demo-feature-label">{{t "home.any_destination"}}</span>
+                      <span class="demo-feature-desc">{{t "home.protected_urls_desc"}}</span>
                     </div>
                   </div>
                   <div class="demo-feature-card">
                     <div class="demo-feature-icon orange"><i class="bi bi-sliders"></i></div>
                     <div class="demo-feature-content">
-                      <span class="demo-feature-value">Targeting Rules</span>
-                      <span class="demo-feature-label">Geo & Device</span>
-                      <span class="demo-feature-desc">Route traffic by country, device type, or OS. Send mobile users to app stores, desktop to your site.</span>
+                      <span class="demo-feature-value">{{t "home.targeting_rules"}}</span>
+                      <span class="demo-feature-label">{{t "home.geo_device"}}</span>
+                      <span class="demo-feature-desc">{{t "home.targeting_rules_desc"}}</span>
                     </div>
                   </div>
                   <div class="demo-feature-card">
                     <div class="demo-feature-icon green"><i class="bi bi-qr-code"></i></div>
                     <div class="demo-feature-content">
-                      <span class="demo-feature-value">QR Codes</span>
-                      <span class="demo-feature-label">Print Ready</span>
-                      <span class="demo-feature-desc">Generate QR codes for any link instantly. Download in PNG or SVG. Perfect for print materials.</span>
+                      <span class="demo-feature-value">{{t "home.qr_codes"}}</span>
+                      <span class="demo-feature-label">{{t "home.print_ready"}}</span>
+                      <span class="demo-feature-desc">{{t "home.qr_codes_desc"}}</span>
                     </div>
                   </div>
                 </div>
@@ -180,24 +180,24 @@
                 <span class="dot"></span>
                 <span class="dot"></span>
                 <span class="dot"></span>
-                <span class="titlebar-text">Analytics Dashboard</span>
+                <span class="titlebar-text">{{t "home.demo_analytics"}}</span>
               </div>
               <div class="demo-body demo-body-map">
                 <div class="demo-map-container">
-                  <img src="/static/img/world-map.png" alt="Global visitor map" class="demo-map-img">
+                  <img src="/static/img/world-map.png" alt="{{t "home.global_map"}}" class="demo-map-img">
                   <div class="demo-map-overlay">
                     <div class="demo-map-stats">
                       <div class="demo-map-stat">
                         <span class="map-stat-value">24,847</span>
-                        <span class="map-stat-label">Total Visitors</span>
+                        <span class="map-stat-label">{{t "home.total_visitors"}}</span>
                       </div>
                       <div class="demo-map-stat">
                         <span class="map-stat-value">142</span>
-                        <span class="map-stat-label">Countries</span>
+                        <span class="map-stat-label">{{t "home.countries"}}</span>
                       </div>
                       <div class="demo-map-stat">
                         <span class="map-stat-value">89%</span>
-                        <span class="map-stat-label">Human Traffic</span>
+                        <span class="map-stat-label">{{t "home.human_traffic"}}</span>
                       </div>
                     </div>
                   </div>
@@ -213,32 +213,32 @@
                 <span class="dot"></span>
                 <span class="dot"></span>
                 <span class="dot"></span>
-                <span class="titlebar-text">Domain & IP Management</span>
+                <span class="titlebar-text">{{t "home.demo_domain_ip"}}</span>
               </div>
               <div class="demo-body demo-body-text">
                 <div class="demo-feature-grid">
                   <div class="demo-feature-card">
                     <div class="demo-feature-icon blue"><i class="bi bi-globe2"></i></div>
                     <div class="demo-feature-content">
-                      <span class="demo-feature-value">Custom Domains</span>
-                      <span class="demo-feature-label">Your Brand</span>
-                      <span class="demo-feature-desc">Use your own domains for redirect links. Automatic SSL certificates. DNS setup takes 5 minutes.</span>
+                      <span class="demo-feature-value">{{t "home.custom_domains"}}</span>
+                      <span class="demo-feature-label">{{t "home.your_brand"}}</span>
+                      <span class="demo-feature-desc">{{t "home.custom_domains_desc"}}</span>
                     </div>
                   </div>
                   <div class="demo-feature-card">
                     <div class="demo-feature-icon green"><i class="bi bi-check2-circle"></i></div>
                     <div class="demo-feature-content">
-                      <span class="demo-feature-value">IP Whitelisting</span>
-                      <span class="demo-feature-label">Global Sync</span>
-                      <span class="demo-feature-desc">Your IPs always pass through. Whitelist syncs across all protection servers instantly. Never block yourself.</span>
+                      <span class="demo-feature-value">{{t "home.ip_whitelisting"}}</span>
+                      <span class="demo-feature-label">{{t "home.global_sync"}}</span>
+                      <span class="demo-feature-desc">{{t "home.ip_whitelisting_desc"}}</span>
                     </div>
                   </div>
                   <div class="demo-feature-card">
                     <div class="demo-feature-icon orange"><i class="bi bi-gear"></i></div>
                     <div class="demo-feature-content">
-                      <span class="demo-feature-value">Per-Link Settings</span>
-                      <span class="demo-feature-label">Fine Control</span>
-                      <span class="demo-feature-desc">Configure protection level, challenge type, and blocking rules for each link individually.</span>
+                      <span class="demo-feature-value">{{t "home.per_link_settings"}}</span>
+                      <span class="demo-feature-label">{{t "home.fine_control"}}</span>
+                      <span class="demo-feature-desc">{{t "home.per_link_settings_desc"}}</span>
                     </div>
                   </div>
                 </div>
@@ -253,29 +253,29 @@
                 <span class="dot"></span>
                 <span class="dot"></span>
                 <span class="dot"></span>
-                <span class="titlebar-text">Deployment Activity</span>
+                <span class="titlebar-text">{{t "home.demo_deployment"}}</span>
               </div>
               <div class="demo-body demo-body-deploy">
                 <div class="deploy-list" id="deploy-list">
                   <div class="deploy-row building">
                     <span class="deploy-version">v30534</span>
-                    <span class="deploy-time js-deploy-time">Loading...</span>
-                    <span class="deploy-status"><span class="status-text">Building</span><span class="spinner"></span></span>
+                    <span class="deploy-time js-deploy-time">{{t "loading"}}...</span>
+                    <span class="deploy-status"><span class="status-text">{{t "home.building"}}</span><span class="spinner"></span></span>
                   </div>
                   <div class="deploy-row deployed">
                     <span class="deploy-version">v30533</span>
-                    <span class="deploy-time js-deploy-time">Loading...</span>
-                    <span class="deploy-status"><span class="status-text">Deployed</span><span class="status-icon"><i class="bi bi-check"></i></span></span>
+                    <span class="deploy-time js-deploy-time">{{t "loading"}}...</span>
+                    <span class="deploy-status"><span class="status-text">{{t "deployed"}}</span><span class="status-icon"><i class="bi bi-check"></i></span></span>
                   </div>
                   <div class="deploy-row deployed">
                     <span class="deploy-version">v30532</span>
-                    <span class="deploy-time js-deploy-time">Loading...</span>
-                    <span class="deploy-status"><span class="status-text">Deployed</span><span class="status-icon"><i class="bi bi-check"></i></span></span>
+                    <span class="deploy-time js-deploy-time">{{t "loading"}}...</span>
+                    <span class="deploy-status"><span class="status-text">{{t "deployed"}}</span><span class="status-icon"><i class="bi bi-check"></i></span></span>
                   </div>
                   <div class="deploy-row deployed fading">
                     <span class="deploy-version">v30531</span>
-                    <span class="deploy-time js-deploy-time">Loading...</span>
-                    <span class="deploy-status"><span class="status-text">Deployed</span><span class="status-icon"><i class="bi bi-check"></i></span></span>
+                    <span class="deploy-time js-deploy-time">{{t "loading"}}...</span>
+                    <span class="deploy-status"><span class="status-text">{{t "deployed"}}</span><span class="status-icon"><i class="bi bi-check"></i></span></span>
                   </div>
                 </div>
               </div>
@@ -289,21 +289,21 @@
       <!-- Open Source / Integrations - 50/50 split -->
       <section class="section section-split">
         <div class="split-left">
-          <span class="eyebrow">INTEGRATIONS</span>
-          <h2>Works with your existing tools.</h2>
-          <p>Connect to your hosting panel, get alerts via Telegram, and manage domains from one dashboard. Built to integrate, not replace.</p>
-          <a href="/auth/signup" class="text-link"><i class="bi bi-arrow-right"></i> Start integrating</a>
+          <span class="eyebrow">{{t "home.integrations"}}</span>
+          <h2>{{t "home.integrations_title"}}</h2>
+          <p>{{t "home.integrations_desc"}}</p>
+          <a href="/auth/signup" class="text-link"><i class="bi bi-arrow-right"></i> {{t "home.start_integrating"}}</a>
         </div>
         <div class="split-right">
           <div class="logo-grid">
-            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/domains.svg" class="grid-icon" alt="Domains"></div>
-            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/redirects.svg" class="grid-icon" alt="Redirects"></div>
-            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/mod_security.svg" class="grid-icon" alt="Security"></div>
-            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/visitors.svg" class="grid-icon" alt="Analytics"></div>
+            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/domains.svg" class="grid-icon" alt="{{t "domains"}}"></div>
+            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/redirects.svg" class="grid-icon" alt="{{t "redirects"}}"></div>
+            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/mod_security.svg" class="grid-icon" alt="{{t "menu.security"}}"></div>
+            <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/visitors.svg" class="grid-icon" alt="{{t "menu.analytics"}}"></div>
             <div class="logo-cell"><img src="/static/icons/cpanel-jupiter/api_tokens.svg" class="grid-icon" alt="API"></div>
-            <div class="logo-cell"><img src="/static/icons/guardbot/qr-codes.svg" class="grid-icon" alt="QR Codes"></div>
-            <div class="logo-cell"><img src="/static/icons/guardbot/tickets.svg" class="grid-icon" alt="Support"></div>
-            <div class="logo-cell muted">+ Your tools</div>
+            <div class="logo-cell"><img src="/static/icons/guardbot/qr-codes.svg" class="grid-icon" alt="{{t "qrcodes"}}"></div>
+            <div class="logo-cell"><img src="/static/icons/guardbot/tickets.svg" class="grid-icon" alt="{{t "menu.support"}}"></div>
+            <div class="logo-cell muted">+ {{t "home.your_tools"}}</div>
           </div>
         </div>
       </section>
@@ -314,13 +314,13 @@
       <section class="section section-statement">
         <div class="section-inner statement-content">
           <div class="statement-checks">
-            <span><i class="bi bi-check2"></i> Block datacenter IPs</span>
-            <span><i class="bi bi-check2"></i> Detect headless browsers</span>
-            <span><i class="bi bi-check2"></i> Whitelist your IPs globally</span>
+            <span><i class="bi bi-check2"></i> {{t "home.check_datacenter"}}</span>
+            <span><i class="bi bi-check2"></i> {{t "home.check_headless"}}</span>
+            <span><i class="bi bi-check2"></i> {{t "home.check_whitelist"}}</span>
           </div>
-          <span class="eyebrow">BOT PROTECTION</span>
-          <h2>Keep bots out. Let humans in.</h2>
-          <p>AI-powered detection identifies bots, scrapers, and automated traffic.<br>Your trusted IPs always pass through.</p>
+          <span class="eyebrow">{{t "home.bot_protection"}}</span>
+          <h2>{{t "home.bot_protection_title"}}</h2>
+          <p>{{t "home.bot_protection_desc"}}</p>
         </div>
       </section>
 
@@ -329,32 +329,32 @@
       <!-- Security - 50/50 split with numbered list -->
       <section class="section section-split">
         <div class="split-left">
-          <span class="eyebrow">SECURITY</span>
-          <h2>Enterprise-grade protection.</h2>
-          <p>Every link and domain gets the same protection. Real-time monitoring, custom rules, and instant blocking.</p>
-          <p>Settings sync across all your links. Changes take effect within 30 seconds.</p>
+          <span class="eyebrow">{{t "home.security"}}</span>
+          <h2>{{t "home.security_title"}}</h2>
+          <p>{{t "home.security_desc1"}}</p>
+          <p>{{t "home.security_desc2"}}</p>
         </div>
         <div class="split-right">
           <div class="numbered-list">
             <div class="numbered-row">
               <span class="row-num">01</span>
               <div class="row-content">
-                <h4>Bot Detection</h4>
-                <p>AI identifies bots and automated traffic with high accuracy.</p>
+                <h4>{{t "home.sec_bot_detection"}}</h4>
+                <p>{{t "home.sec_bot_detection_desc"}}</p>
               </div>
             </div>
             <div class="numbered-row">
               <span class="row-num">02</span>
               <div class="row-content">
-                <h4>IP Whitelisting</h4>
-                <p>Your trusted IPs always pass. Global whitelist syncs automatically.</p>
+                <h4>{{t "home.sec_ip_whitelist"}}</h4>
+                <p>{{t "home.sec_ip_whitelist_desc"}}</p>
               </div>
             </div>
             <div class="numbered-row">
               <span class="row-num">03</span>
               <div class="row-content">
-                <h4>Real-time Monitoring</h4>
-                <p>Live dashboard shows traffic and blocked attempts as they happen.</p>
+                <h4>{{t "home.sec_realtime"}}</h4>
+                <p>{{t "home.sec_realtime_desc"}}</p>
               </div>
             </div>
           </div>
@@ -366,9 +366,9 @@
       <!-- Final CTA -->
       <section class="section section-cta">
         <div class="section-inner cta-content">
-          <span class="eyebrow">GET STARTED</span>
-          <h2>Start protecting your links today.</h2>
-          <a href="/auth/signup" class="btn-pill"><i class="bi bi-rocket-takeoff"></i> Create Free Account</a>
+          <span class="eyebrow">{{t "home.get_started"}}</span>
+          <h2>{{t "home.cta_title"}}</h2>
+          <a href="/auth/signup" class="btn-pill"><i class="bi bi-rocket-takeoff"></i> {{t "home.create_free_account"}}</a>
         </div>
       </section>
 
@@ -379,10 +379,10 @@
         <div class="section-inner footer-content">
           <span class="copyright">&copy; {{currentYear}} {{appName}}</span>
           <div class="footer-links">
-            <a href="/privacy">Privacy Policy</a>
-            <a href="/terms">Terms of Use</a>
-            <a href="/cookies" class="privacy-choices"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 14" aria-hidden="true" class="privacy-icon"><path fill-rule="evenodd" clip-rule="evenodd" fill="#fff" d="M7.4 12.8h6.8l3.1-11.6H7.4C4.2 1.2 1.6 3.8 1.6 7s2.6 5.8 5.8 5.8z"></path><path fill-rule="evenodd" clip-rule="evenodd" fill="#06f" d="M22.6 0H7.4C3.5 0 .4 3.1.4 7s3.1 7 7 7h15.2c3.9 0 7-3.1 7-7s-3.1-7-7-7zM1.6 7c0-3.2 2.6-5.8 5.8-5.8h9.9l-3.1 11.6H7.4C4.2 12.8 1.6 10.2 1.6 7z"></path><path fill="#fff" d="M24.6 4c.2.2.2.6 0 .8L22.5 7l2.2 2.2c.2.2.2.6 0 .8-.2.2-.6.2-.8 0l-2.2-2.2L19.5 10c-.2.2-.6.2-.8 0-.2-.2-.2-.6 0-.8L20.8 7l-2.2-2.2c-.2-.2-.2-.6 0-.8.2-.2.6-.2.8 0l2.2 2.2L23.8 4c.2-.2.6-.2.8 0z"></path><path fill="#06f" d="M12.7 4.1c.2.2.3.6.1.8L8.6 9.8c-.1.1-.2.2-.3.2-.2.1-.5.1-.7-.1L5.4 7.7c-.2-.2-.2-.6 0-.8.2-.2.6-.2.8 0L8 8.6l3.8-4.5c.2-.2.6-.2.9 0z"></path></svg> Your privacy choices</a>
-            <a href="/user/support">Support</a>
+            <a href="/privacy">{{t "home.privacy_policy"}}</a>
+            <a href="/terms">{{t "home.terms_of_use"}}</a>
+            <a href="/cookies" class="privacy-choices"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 14" aria-hidden="true" class="privacy-icon"><path fill-rule="evenodd" clip-rule="evenodd" fill="#fff" d="M7.4 12.8h6.8l3.1-11.6H7.4C4.2 1.2 1.6 3.8 1.6 7s2.6 5.8 5.8 5.8z"></path><path fill-rule="evenodd" clip-rule="evenodd" fill="#06f" d="M22.6 0H7.4C3.5 0 .4 3.1.4 7s3.1 7 7 7h15.2c3.9 0 7-3.1 7-7s-3.1-7-7-7zM1.6 7c0-3.2 2.6-5.8 5.8-5.8h9.9l-3.1 11.6H7.4C4.2 12.8 1.6 10.2 1.6 7z"></path><path fill="#fff" d="M24.6 4c.2.2.2.6 0 .8L22.5 7l2.2 2.2c.2.2.2.6 0 .8-.2.2-.6.2-.8 0l-2.2-2.2L19.5 10c-.2.2-.6.2-.8 0-.2-.2-.2-.6 0-.8L20.8 7l-2.2-2.2c-.2-.2-.2-.6 0-.8.2-.2.6-.2.8 0l2.2 2.2L23.8 4c.2-.2.6-.2.8 0z"></path><path fill="#06f" d="M12.7 4.1c.2.2.3.6.1.8L8.6 9.8c-.1.1-.2.2-.3.2-.2.1-.5.1-.7-.1L5.4 7.7c-.2-.2-.2-.6 0-.8.2-.2.6-.2.8 0L8 8.6l3.8-4.5c.2-.2.6-.2.9 0z"></path></svg> {{t "home.privacy_choices"}}</a>
+            <a href="/user/support">{{t "menu.support"}}</a>
           </div>
         </div>
       </footer>
@@ -508,11 +508,11 @@
   <!-- Cookie Consent Banner -->
   <div class="cookie-banner" id="cookieBanner">
     <div class="cookie-content">
-      <p><strong>Our site uses cookies</strong> to improve your experience and analyze site usage. By choosing "Accept All", you agree to our use of cookies.</p>
+      <p><strong>{{t "home.cookie_title"}}</strong> {{t "home.cookie_desc"}}</p>
       <div class="cookie-actions">
-        <a href="/cookies" class="cookie-btn outline">Cookie Preferences</a>
-        <button class="cookie-btn outline" onclick="rejectCookies()">Reject All</button>
-        <button class="cookie-btn primary" onclick="acceptCookies()">Accept All</button>
+        <a href="/cookies" class="cookie-btn outline">{{t "home.cookie_preferences"}}</a>
+        <button class="cookie-btn outline" onclick="rejectCookies()">{{t "home.reject_all"}}</button>
+        <button class="cookie-btn primary" onclick="acceptCookies()">{{t "home.accept_all"}}</button>
       </div>
     </div>
   </div>
