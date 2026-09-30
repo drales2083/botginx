@@ -1,75 +1,96 @@
 {{define "content"}}
 <style>
-.wizard-steps {
-    counter-reset: step;
-    list-style: none;
-    padding: 0;
-    display: flex;
-    justify-content: space-between;
-    position: relative;
-}
-.wizard-steps::before {
-    content: '';
-    position: absolute;
-    top: 1rem;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--bs-border-color);
-    z-index: 0;
-}
-.wizard-steps li {
-    position: relative;
-    z-index: 1;
-    background: var(--bs-body-bg);
-    padding: 0 0.75rem;
-    text-align: center;
-    color: var(--bs-secondary-color);
-    font-size: 0.875rem;
-}
-.wizard-steps li::before {
-    counter-increment: step;
-    content: counter(step);
+/* Modern Wizard Steps */
+.wizard-container {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    margin: 0 auto 0.5rem;
-    border-radius: 50%;
+    gap: 0;
+    padding: 1.5rem 1rem;
     background: var(--bs-tertiary-bg);
+    border-radius: var(--bs-border-radius-lg);
+    margin-bottom: 1.5rem;
+}
+.wizard-step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.wizard-step-number {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    background: var(--bs-body-bg);
     border: 2px solid var(--bs-border-color);
     color: var(--bs-secondary-color);
-    font-weight: 600;
+    transition: all 0.2s ease;
 }
-.wizard-steps li.active {
-    color: var(--bs-primary);
-    font-weight: 600;
+.wizard-step-text {
+    font-weight: 500;
+    color: var(--bs-secondary-color);
+    transition: color 0.2s ease;
 }
-.wizard-steps li.active::before {
+.wizard-step.active .wizard-step-number {
     background: var(--bs-primary);
     border-color: var(--bs-primary);
     color: #fff;
+    box-shadow: 0 0 0 4px rgba(var(--bs-primary-rgb), 0.2);
 }
-.wizard-steps li.completed::before {
+.wizard-step.active .wizard-step-text {
+    color: var(--bs-emphasis-color);
+    font-weight: 600;
+}
+.wizard-step.completed .wizard-step-number {
     background: var(--bs-success);
     border-color: var(--bs-success);
     color: #fff;
+}
+.wizard-step.completed .wizard-step-number::after {
     content: '\f633';
     font-family: 'bootstrap-icons';
+}
+.wizard-step.completed .wizard-step-number span {
+    display: none;
+}
+.wizard-connector {
+    flex: 1;
+    height: 2px;
+    background: var(--bs-border-color);
+    margin: 0 1rem;
+    max-width: 100px;
+    transition: background 0.2s ease;
+}
+.wizard-connector.completed {
+    background: var(--bs-success);
+}
+@media (max-width: 575.98px) {
+    .wizard-step-text { display: none; }
+    .wizard-connector { max-width: 2rem; margin: 0 0.5rem; }
 }
 </style>
 
 <div class="card card-primary card-outline">
     <div class="card-header">
-        <h3 class="card-title"><i class="bi bi-magic me-2"></i>Link Wizard</h3>
+        <h3 class="card-title"><i class="bi bi-magic me-2"></i>{{t "wizard.link_wizard"}}</h3>
     </div>
     <div class="card-body">
         <!-- Wizard Steps -->
-        <ol class="wizard-steps mb-4" id="wizard-steps">
-            <li class="active" data-step="0">Link Details</li>
-            <li data-step="1">Bot Protection</li>
-        </ol>
+        <div class="wizard-container" id="wizard-steps">
+            <div class="wizard-step active" data-step="0">
+                <div class="wizard-step-number"><span>1</span></div>
+                <div class="wizard-step-text">{{t "wizard.link_details"}}</div>
+            </div>
+            <div class="wizard-connector"></div>
+            <div class="wizard-step" data-step="1">
+                <div class="wizard-step-number"><span>2</span></div>
+                <div class="wizard-step-text">{{t "wizard.bot_protection"}}</div>
+            </div>
+        </div>
 
         <!-- Step 1: Link Details -->
         <div id="step-1">
@@ -77,22 +98,22 @@
 
             <div class="row mb-3">
                 <div class="col-md-6">
-                    <label for="domainId" class="form-label">Domain</label>
+                    <label for="domainId" class="form-label">{{t "wizard.domain"}}</label>
                     <select class="form-select" id="domainId" name="domainId" required>
-                        <option value="">Select domain...</option>
+                        <option value="">{{t "form.select_domain"}}</option>
                         {{range .Domains}}
                         {{if and .DNSVerified .SSLEnabled}}
-                        <option value="{{.ID}}">{{.Name}}{{if .IsShared}} (shared){{end}}</option>
+                        <option value="{{.ID}}">{{.Name}}{{if .IsShared}} ({{t "form.shared"}}){{end}}</option>
                         {{end}}
                         {{end}}
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label for="subdomain" class="form-label">Subdomain</label>
+                    <label for="subdomain" class="form-label">{{t "wizard.subdomain"}}</label>
                     <div class="input-group">
                         <input type="text" class="form-control" id="subdomain" name="subdomain"
                                value="{{.SuggestedSubdomain}}" placeholder="amber-canyon" required>
-                        <button type="button" class="btn btn-outline-secondary" id="btn-random-subdomain">
+                        <button type="button" class="btn btn-outline-secondary" id="btn-random-subdomain" title="{{t "form.random_subdomain"}}">
                             <i class="bi bi-shuffle"></i>
                         </button>
                     </div>
@@ -100,29 +121,29 @@
             </div>
 
             <div class="mb-3">
-                <label for="path" class="form-label">Path</label>
+                <label for="path" class="form-label">{{t "wizard.path"}}</label>
                 <div class="btn-group mb-2 w-100" role="group">
                     <input type="radio" class="btn-check" name="pathStyle" id="pathStyleTracking" value="tracking" checked>
                     <label class="btn btn-outline-secondary" for="pathStyleTracking">
-                        <i class="bi bi-shield-lock me-1"></i>Advanced
+                        <i class="bi bi-shield-lock me-1"></i>{{t "form.advanced"}}
                     </label>
                     <input type="radio" class="btn-check" name="pathStyle" id="pathStyleSimple" value="simple">
                     <label class="btn btn-outline-secondary" for="pathStyleSimple">
-                        <i class="bi bi-link-45deg me-1"></i>Simple
+                        <i class="bi bi-link-45deg me-1"></i>{{t "form.simple"}}
                     </label>
                 </div>
                 <div class="input-group">
                     <span class="input-group-text">/</span>
                     <input type="text" class="form-control" id="path" name="path"
                            value="{{.SuggestedPath}}" placeholder="redirect" required>
-                    <button type="button" class="btn btn-outline-secondary" id="btn-random-path">
+                    <button type="button" class="btn btn-outline-secondary" id="btn-random-path" title="{{t "form.random_subdomain"}}">
                         <i class="bi bi-shuffle"></i>
                     </button>
                 </div>
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Destination URLs</label>
+                <label class="form-label">{{t "wizard.destinations"}}</label>
                 <div id="urls-container">
                     <div class="input-group mb-2">
                         <input type="url" class="form-control url-input" placeholder="https://example.com" required>
@@ -131,23 +152,23 @@
                         </button>
                     </div>
                 </div>
-                <small class="text-muted">Add multiple URLs for random rotation</small>
+                <small class="text-muted">{{t "form.add_multiple_urls"}}</small>
             </div>
 
             <div class="mb-4">
                 <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="passParams" name="passParams" checked>
                     <label class="form-check-label" for="passParams">
-                        Pass query parameters to destination
+                        {{t "form.pass_params"}}
                     </label>
                 </div>
             </div>
 
             <hr>
             <div class="d-flex justify-content-between">
-                <a href="/user/redirectlinks" class="btn btn-secondary">Cancel</a>
+                <a href="/user/redirectlinks" class="btn btn-secondary">{{t "cancel"}}</a>
                 <button type="button" class="btn btn-primary" id="btn-next">
-                    Next<i class="bi bi-arrow-right ms-2"></i>
+                    {{t "wizard.next"}}<i class="bi bi-arrow-right ms-2"></i>
                 </button>
             </div>
         </div>
@@ -159,10 +180,10 @@
             <hr>
             <div class="d-flex justify-content-between">
                 <button type="button" class="btn btn-secondary" id="btn-back">
-                    <i class="bi bi-arrow-left me-1"></i>Previous
+                    <i class="bi bi-arrow-left me-1"></i>{{t "wizard.previous"}}
                 </button>
                 <button type="button" class="btn btn-success" id="btn-create">
-                    <i class="bi bi-check-lg me-1"></i>Create Link
+                    <i class="bi bi-check-lg me-1"></i>{{t "wizard.create_link"}}
                 </button>
             </div>
         </div>
@@ -180,11 +201,15 @@ function showStep(step) {
     document.getElementById('step-1').classList.toggle('d-none', step !== 1);
     document.getElementById('step-2').classList.toggle('d-none', step !== 2);
 
-    const steps = document.querySelectorAll('.wizard-steps li');
-    steps.forEach((li, i) => {
-        li.classList.remove('active', 'completed');
-        if (i < step - 1) li.classList.add('completed');
-        if (i === step - 1) li.classList.add('active');
+    const steps = document.querySelectorAll('.wizard-step');
+    const connectors = document.querySelectorAll('.wizard-connector');
+    steps.forEach((el, i) => {
+        el.classList.remove('active', 'completed');
+        if (i < step - 1) el.classList.add('completed');
+        if (i === step - 1) el.classList.add('active');
+    });
+    connectors.forEach((el, i) => {
+        el.classList.toggle('completed', i < step - 1);
     });
 }
 
@@ -199,19 +224,19 @@ document.getElementById('btn-next').addEventListener('click', () => {
     const passParams = document.getElementById('passParams').checked;
 
     if (!domainId) {
-        showToast('Please select a domain', 'warning');
+        showToast('{{t "wizard.select_domain"}}', 'warning');
         return;
     }
     if (!subdomain) {
-        showToast('Please enter a subdomain', 'warning');
+        showToast('{{t "wizard.enter_subdomain"}}', 'warning');
         return;
     }
     if (!path) {
-        showToast('Please enter a path', 'warning');
+        showToast('{{t "wizard.enter_path"}}', 'warning');
         return;
     }
     if (urls.length === 0) {
-        showToast('Please enter at least one destination URL', 'warning');
+        showToast('{{t "wizard.enter_url"}}', 'warning');
         return;
     }
 
@@ -226,7 +251,7 @@ document.getElementById('btn-back').addEventListener('click', () => showStep(1))
 document.getElementById('btn-create').addEventListener('click', async () => {
     const btn = document.getElementById('btn-create');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{{t "wizard.creating"}}';
 
     try {
         const protSettings = window.protectionSettings ? window.protectionSettings.getSettings() : {};
@@ -239,9 +264,9 @@ document.getElementById('btn-create').addEventListener('click', async () => {
 
         const linkResult = await linkRes.json();
         if (!linkRes.ok) {
-            showToast(linkResult.error || 'Failed to create link', 'danger');
+            showToast(linkResult.error || '{{t "wizard.create_failed"}}', 'danger');
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Create Link';
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{t "wizard.create_link"}}';
             return;
         }
 
@@ -254,15 +279,15 @@ document.getElementById('btn-create').addEventListener('click', async () => {
         });
 
         if (settingsRes.ok) {
-            showToast('Link created successfully!', 'success');
+            showToast('{{t "wizard.link_created"}}', 'success');
         } else {
-            showToast('Link created but protection settings may not have saved', 'warning');
+            showToast('{{t "wizard.link_created"}}', 'warning');
         }
         setTimeout(() => window.location.href = `/user/redirectlinks/${linkId}`, 500);
     } catch (err) {
-        showToast('Error creating link', 'danger');
+        showToast('{{t "wizard.create_failed"}}', 'danger');
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Create Link';
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{t "wizard.create_link"}}';
     }
 });
 
