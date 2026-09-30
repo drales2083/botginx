@@ -92,11 +92,11 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
                 window.location.href = '/auth/login';
             }, 1500);
         } else {
-            errorAlert.textContent = data.error || 'Signup failed';
+            errorAlert.textContent = data.error || '{{t "error"}}';
             errorAlert.classList.remove('d-none');
         }
     } catch (err) {
-        errorAlert.textContent = 'Network error';
+        errorAlert.textContent = '{{t "network_error"}}';
         errorAlert.classList.remove('d-none');
     }
 

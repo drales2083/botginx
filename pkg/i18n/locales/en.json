@@ -52,6 +52,13 @@
   "have_account": "Already have an account?",
   "passwords_not_match": "Passwords do not match",
   "signup_success": "Account created! Redirecting to login...",
+  "remember_me": "Remember Me",
+  "login_failed": "Login failed",
+  "network_error": "Network error",
+  "two_factor_title": "Two-Factor Authentication",
+  "two_factor_code": "Authentication Code",
+  "two_factor_hint": "Enter the 6-digit code from your authenticator app",
+  "verify": "Verify",
 
   "servers.title": "VPS Servers",
   "servers.add": "Add Server",

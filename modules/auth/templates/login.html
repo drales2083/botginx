@@ -20,7 +20,7 @@
         <div class="col-8">
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="remember">
-                <label class="form-check-label" for="remember">Remember Me</label>
+                <label class="form-check-label" for="remember">{{t "remember_me"}}</label>
             </div>
         </div>
         <div class="col-4">
@@ -67,11 +67,11 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
                 window.location.href = '/user/dashboard';
             }
         } else {
-            errorAlert.textContent = data.error || 'Login failed';
+            errorAlert.textContent = data.error || '{{t "login_failed"}}';
             errorAlert.classList.remove('d-none');
         }
     } catch (err) {
-        errorAlert.textContent = 'Network error';
+        errorAlert.textContent = '{{t "network_error"}}';
         errorAlert.classList.remove('d-none');
     }
 
