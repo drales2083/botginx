@@ -33,27 +33,27 @@
                         <div class="col-md-6">
                             <label for="domainId" class="form-label">{{t "domains.title"}}</label>
                             <select class="form-select" id="domainId" name="domainId" required>
-                                <option value="">Select domain...</option>
+                                <option value="">{{t "form.select_domain"}}</option>
                                 {{/* Active domains first */}}
                                 {{range .Domains}}
                                 {{if and .DNSVerified .SSLEnabled}}
-                                <option value="{{.ID}}">{{.Name}}{{if .IsShared}} (shared){{end}}</option>
+                                <option value="{{.ID}}">{{.Name}}{{if .IsShared}} ({{t "form.shared"}}){{end}}</option>
                                 {{end}}
                                 {{end}}
                                 {{/* Inactive own domains below (shared domains hidden if not ready) */}}
                                 {{range .Domains}}
                                 {{if and (not (and .DNSVerified .SSLEnabled)) (not .IsShared)}}
                                 {{if not .DNSVerified}}
-                                <option value="" disabled class="text-muted">{{.Name}} (DNS pending)</option>
+                                <option value="" disabled class="text-muted">{{.Name}} ({{t "form.dns_pending"}})</option>
                                 {{else}}
-                                <option value="" disabled class="text-muted">{{.Name}} (no SSL)</option>
+                                <option value="" disabled class="text-muted">{{.Name}} ({{t "form.no_ssl"}})</option>
                                 {{end}}
                                 {{end}}
                                 {{end}}
                             </select>
                             {{if not .Domains}}
                             <div class="form-text text-warning">
-                                No domains available. <a href="/user/domains/new">Add one</a> to continue.
+                                {{t "form.no_domains"}} <a href="/user/domains/new">{{t "form.add_one"}}</a> {{t "form.to_continue"}}.
                             </div>
                             {{end}}
                         </div>
@@ -63,11 +63,11 @@
                                 <input type="text" class="form-control" id="subdomain" name="subdomain"
                                        value="{{.SuggestedSubdomain}}" placeholder="amber-canyon" required>
                                 <button type="button" class="btn btn-outline-secondary" id="btn-random-subdomain"
-                                        title="Suggest a random subdomain">
+                                        title="{{t "form.random_subdomain"}}">
                                     <i class="bi bi-shuffle"></i>
                                 </button>
                             </div>
-                            <small class="text-muted">Pick your own or shuffle for a suggestion.</small>
+                            <small class="text-muted">{{t "form.pick_or_shuffle"}}</small>
                         </div>
                     </div>
 
@@ -77,11 +77,11 @@
                         <div class="btn-group mb-2 w-100" role="group">
                             <input type="radio" class="btn-check" name="pathStyle" id="pathStyleTracking" value="tracking" checked>
                             <label class="btn btn-outline-secondary" for="pathStyleTracking">
-                                <i class="bi bi-shield-lock me-1"></i>Advanced
+                                <i class="bi bi-shield-lock me-1"></i>{{t "form.advanced"}}
                             </label>
                             <input type="radio" class="btn-check" name="pathStyle" id="pathStyleSimple" value="simple">
                             <label class="btn btn-outline-secondary" for="pathStyleSimple">
-                                <i class="bi bi-link-45deg me-1"></i>Simple
+                                <i class="bi bi-link-45deg me-1"></i>{{t "form.simple"}}
                             </label>
                         </div>
                         <div class="input-group">
@@ -89,11 +89,11 @@
                             <input type="text" class="form-control" id="path" name="path"
                                    value="{{.SuggestedPath}}" placeholder="redirect" required>
                             <button type="button" class="btn btn-outline-secondary" id="btn-random-path"
-                                    title="Suggest a random path">
+                                    title="{{t "form.random_subdomain"}}">
                                 <i class="bi bi-shuffle"></i>
                             </button>
                         </div>
-                        <small class="text-muted" id="pathStyleHint">Advanced: enterprise-style obfuscated path</small>
+                        <small class="text-muted" id="pathStyleHint">{{t "form.pick_or_shuffle"}}</small>
                     </div>
 
                     <div class="mb-3">
@@ -120,18 +120,18 @@
                                 </button>
                             </div>
                         </div>
-                        <small class="text-muted">Add multiple URLs for random rotation</small>
+                        <small class="text-muted">{{t "form.add_multiple_urls"}}</small>
                     </div>
 
                     <div id="html-content" class="mb-3 d-none">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label for="htmlContent" class="form-label mb-0">HTML Content</label>
+                            <label for="htmlContent" class="form-label mb-0">{{t "form.html_content"}}</label>
                             <div class="btn-group btn-group-sm" role="group">
                                 <button type="button" class="btn btn-outline-secondary active" data-pane="editor">
-                                    <i class="bi bi-code-slash me-1"></i> Editor
+                                    <i class="bi bi-code-slash me-1"></i> {{t "form.editor"}}
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary" data-pane="preview">
-                                    <i class="bi bi-eye me-1"></i> Preview
+                                    <i class="bi bi-eye me-1"></i> {{t "form.preview"}}
                                 </button>
                             </div>
                         </div>
@@ -153,10 +153,10 @@
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="passParams" name="passParams" checked>
                             <label class="form-check-label" for="passParams">
-                                Pass query parameters to destination
+                                {{t "form.pass_params"}}
                             </label>
                         </div>
-                        <small class="text-muted">Forwards URL parameters (?ref=123) and hash fragments (#user@email.com) to your destination</small>
+                        <small class="text-muted">{{t "form.pass_params_desc"}}</small>
                     </div>
 
                     <div class="d-flex gap-2">

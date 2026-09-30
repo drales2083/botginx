@@ -231,6 +231,52 @@
 </style>
 
 <script>
+// Translations from server
+const TRANSLATIONS = {
+    'Traffic': '{{t "menu.traffic"}}',
+    'Redirect Links': '{{t "menu.redirect_links"}}',
+    'Create Link': '{{t "menu.create_link"}}',
+    'Link Wizard': '{{t "menu.link_wizard"}}',
+    'Short URLs': '{{t "menu.short_urls"}}',
+    'Create Short URL': '{{t "menu.create_short_url"}}',
+    'QR Codes': '{{t "menu.qr_codes"}}',
+    'Antibot Control': '{{t "menu.antibot_control"}}',
+    'Reports': '{{t "menu.reports"}}',
+    'Domains': '{{t "menu.domains"}}',
+    'My Domains': '{{t "menu.my_domains"}}',
+    'Add Domain': '{{t "menu.add_domain"}}',
+    'Connect cPanel': '{{t "menu.connect_cpanel"}}',
+    'Domain Store': '{{t "menu.domain_store"}}',
+    'Domain Health': '{{t "menu.domain_health"}}',
+    'Metrics': '{{t "menu.metrics"}}',
+    'Analytics': '{{t "menu.analytics"}}',
+    'Click Logs': '{{t "menu.click_logs"}}',
+    'Real-time': '{{t "menu.real_time"}}',
+    'Analog Stats': '{{t "menu.analog_stats"}}',
+    'AWStats': '{{t "menu.awstats"}}',
+    'Security': '{{t "menu.security"}}',
+    'Threat Log': '{{t "menu.threat_log"}}',
+    'IP Whitelist': '{{t "menu.ip_whitelist"}}',
+    'IP Blocklist': '{{t "menu.ip_blocklist"}}',
+    'Account': '{{t "menu.account"}}',
+    'Settings': '{{t "settings"}}',
+    'Subscription': '{{t "menu.subscription"}}',
+    'Deposit': '{{t "menu.deposit"}}',
+    'Transactions': '{{t "menu.transactions"}}',
+    'Referrals': '{{t "menu.referrals"}}',
+    'API Keys': '{{t "menu.api_keys"}}',
+    'Two-Factor': '{{t "menu.two_factor"}}',
+    'Support': '{{t "menu.support"}}',
+    'Tickets': '{{t "menu.tickets"}}',
+    'New Ticket': '{{t "menu.new_ticket"}}',
+    'Knowledge Base': '{{t "menu.knowledge_base"}}',
+    'Announcements': '{{t "menu.announcements"}}',
+    'API Docs': '{{t "menu.api_docs"}}',
+    'Soon': '{{t "coming_soon"}}',
+    'Referral link copied!': '{{t "referral_link_copied"}}',
+};
+function tr(key) { return TRANSLATIONS[key] || key; }
+
 // Line icon sets: cp = cPanel Jupiter, gb = GuardBot custom
 const LINE_ICON_SETS = {
     'cp': '/static/icons/cpanel-jupiter/',
@@ -368,7 +414,7 @@ function renderToolGroups(container, groups) {
         <div class="card cpanel-group mb-4" data-group-id="${escapeHtml(group.id)}" style="--cpanel-accent: ${escapeHtml(group.accent)}">
             <div class="card-header">
                 <h3 class="card-title">
-                    ${iconHtml(group.icon, 'cpanel-group-icon')}${escapeHtml(group.title)}
+                    ${iconHtml(group.icon, 'cpanel-group-icon')}${escapeHtml(tr(group.title))}
                 </h3>
                 <div class="card-tools">
                     <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse">
@@ -385,8 +431,8 @@ function renderToolGroups(container, groups) {
                            data-label="${escapeHtml(tool.label)}"
                            ${tool.soon ? 'onclick="return false;"' : ''}>
                             ${iconHtml(tool.icon, 'cpanel-icon')}
-                            <span class="cpanel-label">${escapeHtml(tool.label)}</span>
-                            ${tool.soon ? '<span class="cpanel-badge">Soon</span>' : ''}
+                            <span class="cpanel-label">${escapeHtml(tr(tool.label))}</span>
+                            ${tool.soon ? `<span class="cpanel-badge">${escapeHtml(tr('Soon'))}</span>` : ''}
                         </a>
                     `).join('')}
                 </div>
@@ -411,7 +457,7 @@ function copyReferral() {
     const input = document.getElementById('referral-link');
     input.select();
     document.execCommand('copy');
-    showToast('Referral link copied!', 'success');
+    showToast(tr('Referral link copied!'), 'success');
 }
 </script>
 {{end}}
