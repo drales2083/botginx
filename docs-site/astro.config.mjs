@@ -14,6 +14,18 @@ export default defineConfig({
 				src: './src/assets/logo.svg',
 				replacesTitle: true,
 			},
+			favicon: '/favicon.ico',
+			head: [
+				{
+					tag: 'link',
+					attrs: {
+						rel: 'icon',
+						type: 'image/png',
+						sizes: '32x32',
+						href: '/favicon-32x32.png',
+					},
+				},
+			],
 			customCss: ['./src/styles/custom.css'],
 			sidebar: [
 				{
