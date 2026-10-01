@@ -18,3 +18,8 @@ data/keys/
 .DS_Store
 *.swp
 server
+
+# Docs site build artifacts
+docs-site/node_modules/
+docs-site/dist/
+docs-site/.astro/

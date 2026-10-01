@@ -1,0 +1,30 @@
+/* GuardBot theme - based on Starlight's theming guide */
+/* https://starlight.astro.build/guides/css-and-tailwind/ */
+
+:root {
+	/* Red accent color matching AdminLTE */
+	--sl-color-accent-low: #450a0a;
+	--sl-color-accent: #dc3545;
+	--sl-color-accent-high: #fca5a5;
+	--sl-color-text-accent: #fca5a5;
+}
+
+/* Dark mode colors */
+:root[data-theme='dark'] {
+	--sl-color-accent-low: #450a0a;
+	--sl-color-accent: #dc3545;
+	--sl-color-accent-high: #fca5a5;
+	--sl-color-text-accent: #fca5a5;
+
+	--sl-color-bg: #0f1214;
+	--sl-color-bg-nav: #171b1f;
+	--sl-color-bg-sidebar: #171b1f;
+}
+
+/* Light mode colors (if enabled) */
+:root[data-theme='light'] {
+	--sl-color-accent-low: #fecaca;
+	--sl-color-accent: #dc3545;
+	--sl-color-accent-high: #7f1d1d;
+	--sl-color-text-accent: #991b1b;
+}

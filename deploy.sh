@@ -57,6 +57,7 @@ RUN_USER="${RUN_USER:-botginx}"
 
 APP_PORT="${APP_PORT:-3001}"
 PANEL_DOMAIN="${PANEL_DOMAIN:-}"
+DOCS_DOMAIN="${DOCS_DOMAIN:-}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
 
 # Antibot mode: nginx → botection (8080) → botginx (3001)
@@ -283,6 +284,124 @@ health_check() {
 }
 
 # ----------------------------------------------------------------------------
+# Docs Site Deployment
+# ----------------------------------------------------------------------------
+
+build_docs() {
+    step "Building docs site"
+
+    if [[ ! -d "docs-site" ]]; then
+        warn "docs-site directory not found -- skipping docs build"
+        return 0
+    fi
+
+    if [[ "$DRY_RUN" == true ]]; then
+        printf '%s  would build docs site%s\n' "$DIM" "$RESET"
+        return 0
+    fi
+
+    (cd docs-site && npm ci --silent && npm run build) \
+        || die "docs build failed"
+
+    ok "docs site built"
+}
+
+deploy_docs() {
+    step "Deploying docs site"
+
+    if [[ ! -d "docs-site/dist" ]]; then
+        warn "docs-site/dist not found -- skipping docs deploy"
+        return 0
+    fi
+
+    if [[ -z "$DOCS_DOMAIN" ]]; then
+        warn "DOCS_DOMAIN not set -- skipping docs deploy"
+        return 0
+    fi
+
+    if [[ "$DRY_RUN" == true ]]; then
+        printf '%s  would deploy docs to /var/www/docs%s\n' "$DIM" "$RESET"
+        return 0
+    fi
+
+    remote_sudo "mkdir -p /var/www/docs"
+
+    # Upload docs using rsync for efficiency
+    rsync -avz --delete -e "ssh -p ${SSH_PORT} ${SSH_KEY:+-i $SSH_KEY}" \
+        docs-site/dist/ "${SSH_USER}@${SSH_HOST}:/var/www/docs/" \
+        || die "docs upload failed"
+
+    remote_sudo "chown -R www-data:www-data /var/www/docs"
+
+    ok "docs deployed to /var/www/docs"
+}
+
+install_docs_nginx() {
+    if [[ -z "$DOCS_DOMAIN" ]]; then
+        return 0
+    fi
+
+    local conf
+    conf="$(cat <<NGINXEOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOCS_DOMAIN};
+
+    root /var/www/docs;
+    index index.html;
+
+    # SPA fallback for Starlight
+    location / {
+        try_files \$uri \$uri/ \$uri.html /index.html;
+    }
+
+    # Cache static assets
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+}
+NGINXEOF
+)"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        printf '%s  would install nginx site for %s%s\n' "$DIM" "$DOCS_DOMAIN" "$RESET"
+        return 0
+    fi
+
+    remote_sudo "cat > /etc/nginx/sites-available/docs <<'NGINXEOF'
+${conf}
+NGINXEOF"
+    remote_sudo "ln -sf /etc/nginx/sites-available/docs /etc/nginx/sites-enabled/docs"
+    remote_sudo "nginx -t" || die "nginx config test failed"
+    remote_sudo "systemctl reload nginx"
+
+    ok "nginx configured for ${DOCS_DOMAIN}"
+}
+
+request_docs_certificate() {
+    if [[ -z "$DOCS_DOMAIN" ]] || [[ -z "$CERTBOT_EMAIL" ]]; then
+        return 0
+    fi
+
+    if [[ "$DRY_RUN" == true ]]; then
+        printf '%s  would request a certificate for %s%s\n' "$DIM" "$DOCS_DOMAIN" "$RESET"
+        return 0
+    fi
+
+    if remote_sudo "certbot --nginx -d ${DOCS_DOMAIN} --non-interactive --agree-tos -m ${CERTBOT_EMAIL} --redirect"; then
+        ok "certificate issued for ${DOCS_DOMAIN}"
+    else
+        warn "certbot failed for docs -- run manually: certbot --nginx -d ${DOCS_DOMAIN}"
+    fi
+}
+
+# ----------------------------------------------------------------------------
 # First-time setup
 # ----------------------------------------------------------------------------
 
@@ -356,6 +475,12 @@ ENVEOF"
         step "Skipping nginx"
         warn "PANEL_DOMAIN not set -- no reverse proxy configured"
         step "Skipping TLS"
+    fi
+
+    if [[ -n "$DOCS_DOMAIN" ]]; then
+        step "Configuring nginx for docs site"
+        install_docs_nginx
+        request_docs_certificate
     fi
 
     step "Setting up auto-deploy cron"
@@ -638,14 +763,16 @@ follow_logs() {
 }
 
 deploy() {
-    STEP_TOTAL=6
+    STEP_TOTAL=8
     local started
     started=$(date +%s)
 
     preflight
     build
+    build_docs
     deploy_config
     deploy_binary
+    deploy_docs
     health_check
 
     step "Done"
