@@ -390,20 +390,21 @@ function uiIcon(name, extraClass = '', attrs = '') {
 }
 
 async function loadLineIcons(container) {
-    const placeholders = container.querySelectorAll('[data-line-icon]');
+    const placeholders = Array.from(container.querySelectorAll('[data-line-icon]'));
+    const urls = [...new Set(placeholders.map(el => lineIconUrl(el.dataset.lineIcon)).filter(Boolean))];
+
+    // Fetch all uncached icons in parallel
+    await Promise.all(urls.filter(url => !lineIconCache[url]).map(async url => {
+        try {
+            const res = await fetch(url);
+            if (res.ok) lineIconCache[url] = await res.text();
+        } catch {}
+    }));
+
+    // Apply cached icons
     for (const el of placeholders) {
-        const icon = el.dataset.lineIcon;
-        const url = lineIconUrl(icon);
-        if (!url) continue;
-
-        if (!lineIconCache[url]) {
-            try {
-                const res = await fetch(url);
-                if (res.ok) lineIconCache[url] = await res.text();
-            } catch {}
-        }
-
-        if (lineIconCache[url]) {
+        const url = lineIconUrl(el.dataset.lineIcon);
+        if (url && lineIconCache[url]) {
             el.innerHTML = lineIconCache[url];
             delete el.dataset.lineIcon;
         }
