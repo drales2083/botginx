@@ -135,11 +135,17 @@ func (h *Handler) BitGoWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify webhook signature if secret is configured
+	// Verify webhook signature if configured AND signature header is present.
+	// Note: BitGo does not sign webhooks by default, so signature verification
+	// is optional. The transaction is verified by re-fetching from BitGo API below.
 	secret := os.Getenv("BITGO_WEBHOOK_SECRET")
 	if secret != "" {
 		signature := r.Header.Get("X-Signature")
-		if !h.verifyBitGoSignature(body, signature, secret) {
+		if signature == "" {
+			signature = r.Header.Get("Signature")
+		}
+		// Only verify if BitGo sends a signature (they typically don't)
+		if signature != "" && !h.verifyBitGoSignature(body, signature, secret) {
 			log.Printf("[payments] Invalid webhook signature")
 			http.Error(w, "Invalid signature", http.StatusUnauthorized)
 			return

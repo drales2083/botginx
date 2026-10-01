@@ -99,8 +99,9 @@ func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		subDaysLeft = fmt.Sprintf("%d", daysLeft)
 
 		m.DB().Get(&subStatus, `
-			SELECT COALESCE(status, 'none') FROM subscriptions
-			WHERE user_id = $1 ORDER BY expires_at DESC LIMIT 1
+			SELECT CASE WHEN expires_at > NOW() THEN 'active' ELSE 'expired' END
+			FROM subscriptions WHERE user_id = $1
+			ORDER BY expires_at DESC LIMIT 1
 		`, userID)
 	}
 
@@ -120,10 +121,9 @@ func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		WHERE user_id = $1 AND type = 'referral_commission'
 	`, userID)
 	m.DB().Get(&planName, `
-		SELECT COALESCE(p.name, 'Free') FROM subscriptions s
-		LEFT JOIN subscription_plans p ON p.id = s.plan_id
-		WHERE s.user_id = $1 AND s.status = 'active'
-		ORDER BY s.expires_at DESC LIMIT 1
+		SELECT INITCAP(plan) FROM subscriptions
+		WHERE user_id = $1 AND expires_at > NOW()
+		ORDER BY expires_at DESC LIMIT 1
 	`, userID)
 	if planName == "" {
 		planName = "Free"
