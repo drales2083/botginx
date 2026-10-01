@@ -1,6 +1,6 @@
 # Module Integration Guide
 
-Internal reference for integrating third-party Go packages into botginx.
+Internal reference for integrating third-party Go packages into {{PROJECT_NAME}}.
 
 ## Module Interface
 
@@ -86,7 +86,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 ## Auth Context
 
 ```go
-import "github.com/botginx/botginx/pkg/ctx"
+import "{{PROJECT_IMPORT}}/pkg/ctx"
 
 user := ctx.GetUser(r)  // Returns *ctx.User or nil
 user.ID                 // UUID string
@@ -101,8 +101,8 @@ user.IsAdmin()          // bool
 
 ```go
 import (
-    "github.com/botginx/botginx/pkg/module"
-    "github.com/botginx/botginx/pkg/ctx"
+    "{{PROJECT_IMPORT}}/pkg/module"
+    "{{PROJECT_IMPORT}}/pkg/ctx"
     "github.com/go-chi/chi/v5"
     "github.com/jmoiron/sqlx"
 )
