@@ -92,6 +92,7 @@ func (m *Module) AdminRoutes() chi.Router {
 		r.Get("/diagnostic/{txid}", m.handler.APIAdminDiagnostic)
 		r.Post("/webhook", m.handler.APIAdminAddWebhook)
 		r.Get("/webhooks", m.handler.APIAdminListWebhooks)
+		r.Post("/sync-transfers", m.handler.APIAdminSyncTransfers)
 	})
 
 	return r

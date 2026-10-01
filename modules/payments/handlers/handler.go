@@ -383,6 +383,60 @@ func (h *Handler) APIAdminListWebhooks(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// APIAdminSyncTransfers syncs all transfers from BitGo
+func (h *Handler) APIAdminSyncTransfers(w http.ResponseWriter, r *http.Request) {
+	bitgoGateway := h.service.GetBitGoGateway()
+	if bitgoGateway == nil {
+		h.jsonError(w, "BitGo gateway not configured", http.StatusInternalServerError)
+		return
+	}
+
+	transfers, err := bitgoGateway.GetClient().ListTransfers()
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	synced := 0
+	for _, transfer := range transfers {
+		// Only process incoming transfers (deposits)
+		valueInt, _ := transfer["value"].(float64)
+		if valueInt <= 0 {
+			continue
+		}
+
+		txid, _ := transfer["txid"].(string)
+		if txid == "" {
+			continue
+		}
+
+		// Get full transaction details
+		tx, err := bitgoGateway.GetTransaction(txid)
+		if err != nil {
+			log.Printf("[payments] Failed to fetch tx %s: %v", txid, err)
+			continue
+		}
+
+		// Process each output
+		for _, output := range tx.Outputs {
+			if output.IsOurs {
+				_, err := h.service.ProcessDeposit(output.Address, txid, output.Amount, tx.Confirmations)
+				if err != nil {
+					log.Printf("[payments] Failed to process deposit: %v", err)
+				} else {
+					synced++
+				}
+			}
+		}
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"success":  true,
+		"synced":   synced,
+		"total":    len(transfers),
+	})
+}
+
 // ============ Helpers ============
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {

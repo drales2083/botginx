@@ -153,6 +153,38 @@ func (c *BitGoClient) GetTransaction(txid string) (*models.BitGoTxDetails, error
 	return &result, nil
 }
 
+// ListTransfers fetches recent incoming transfers from BitGo
+func (c *BitGoClient) ListTransfers() ([]map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/%s/wallet/%s/transfer?limit=50", c.baseURL, c.coin, c.walletID)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	c.setHeaders(req)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Transfers []map[string]interface{} `json:"transfers"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Transfers, nil
+}
+
 // AddWebhook registers a webhook URL with BitGo
 func (c *BitGoClient) AddWebhook(webhookURL string, numConfirmations int) error {
 	url := fmt.Sprintf("%s/%s/wallet/%s/webhooks", c.baseURL, c.coin, c.walletID)
