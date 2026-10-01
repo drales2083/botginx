@@ -9,7 +9,7 @@
 # Traffic flow:
 #   Direct:  Internet → :443 (nginx+SSL) → :3005 (botginx)
 #   Antibot: Internet → :443 (nginx+SSL) → :8080 (botection) → :3001 (internal-router) → :3005 (botginx)
-#   Docs:    Internet → :443 (nginx+SSL) → :8080 (botection) → :3001 (internal-router) → /var/www/docs
+#   Docs:    Internet → :443 (nginx+SSL) → /var/www/docs (direct, Cloudflare provides edge protection)
 #
 # Usage:
 #   ./deploy.sh                 deploy the binary
@@ -342,14 +342,7 @@ install_docs_nginx() {
         return 0
     fi
 
-    # Docs proxies through botection (8080) like the main site
-    local upstream_port
-    if [[ "$ANTIBOT_MODE" == "true" ]]; then
-        upstream_port="$ANTIBOT_PORT"
-    else
-        upstream_port="3001"
-    fi
-
+    # Docs serves directly (no botection) - Cloudflare provides edge protection
     local conf
     conf="$(cat <<NGINXEOF
 server {
@@ -357,14 +350,23 @@ server {
     listen [::]:80;
     server_name ${DOCS_DOMAIN};
 
+    root /var/www/docs;
+    index index.html;
+
+    # SPA fallback for Starlight
     location / {
-        proxy_pass http://127.0.0.1:${upstream_port};
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        try_files \$uri \$uri/ \$uri.html /index.html;
     }
+
+    # Cache static assets
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 }
 NGINXEOF
 )"
