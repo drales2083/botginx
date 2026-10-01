@@ -27,10 +27,9 @@ export default defineConfig({
 				},
 			],
 			customCss: ['./src/styles/custom.css'],
-			social: [
-				{ icon: 'external', label: 'Main Site', href: 'https://guardbot.sbs' },
-				{ icon: 'email', label: 'Support', href: 'https://guardbot.sbs/user/support' },
-			],
+			components: {
+				SocialIcons: './src/components/SocialIcons.astro',
+			},
 			sidebar: [
 				{
 					label: 'Getting Started',
