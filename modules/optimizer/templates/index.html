@@ -1,0 +1,91 @@
+{{define "content"}}
+<div class="card" data-bs-theme="dark">
+  <div class="card-header"><h5 class="mb-0"><i class="bi bi-file-earmark-zip"></i> Attachment Optimizer</h5></div>
+  <div class="card-body">
+    <p class="text-secondary">Upload an HTML or PDF attachment. Trackers and scripts are removed, embedded PDF code is stripped, and links are either neutralized or wrapped. Nothing is stored — the cleaned file downloads straight back to you.</p>
+
+    <form id="optForm">
+      <div class="mb-3">
+        <label class="form-label">File (HTML or PDF, max 25 MB)</label>
+        <input class="form-control" type="file" id="optFile" accept=".html,.htm,.pdf" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Link handling</label>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="mode" id="modeNeutralize" value="neutralize" checked>
+          <label class="form-check-label" for="modeNeutralize">Neutralize — defang links in place (not clickable)</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="mode" id="modeWrap" value="wrap">
+          <label class="form-check-label" for="modeWrap">Wrap — route links through a safe redirector</label>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-magic"></i> Optimize</button>
+    </form>
+
+    <div id="optResult" class="mt-4" style="display:none;">
+      <h6>Result</h6>
+      <table class="table table-hover">
+        <tbody id="optResultBody"></tbody>
+      </table>
+      <a id="optDownload" class="btn btn-outline-secondary" download><i class="bi bi-download"></i> Download cleaned file</a>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('optForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const fileEl = document.getElementById('optFile');
+  if (!fileEl.files.length) { showToast('Choose a file first', 'warning'); return; }
+  const btn = document.querySelector('#optForm button[type=submit]');
+  btn.disabled = true;
+  const fd = new FormData();
+  fd.append('file', fileEl.files[0]);
+  fd.append('mode', document.querySelector('input[name=mode]:checked').value);
+
+  try {
+    const resp = await fetch('/user/optimizer/process', { method: 'POST', body: fd });
+    if (!resp.ok) { showToast('Failed: ' + (await resp.text()), 'danger'); return; }
+    const h = resp.headers;
+    if (!h.get('X-Opt-Detected-Type')) {
+      showToast('Unexpected response (session may have expired). Reload the page and sign in again.', 'danger');
+      return;
+    }
+    const rows = [
+      ['Detected type', h.get('X-Opt-Detected-Type') || '—'],
+      ['Bytes in → out', (h.get('X-Opt-Bytes-In')||'0') + ' → ' + (h.get('X-Opt-Bytes-Out')||'0')],
+      ['Trackers removed', h.get('X-Opt-Trackers-Removed') || '0'],
+      ['Scripts removed', h.get('X-Opt-Scripts-Removed') || '0'],
+      ['Links handled', h.get('X-Opt-Links-Handled') || '0'],
+      ['PDF JavaScript removed', h.get('X-Opt-PDF-JS-Removed') || '0'],
+      ['PDF embedded files removed', h.get('X-Opt-PDF-Embedded-Removed') || '0'],
+    ];
+    if (h.get('X-Opt-Degraded') === 'true') {
+      rows.push(['Note', 'Returned unchanged: ' + (h.get('X-Opt-Reason') || 'could not process')]);
+    }
+    const body = document.getElementById('optResultBody');
+    body.textContent = '';
+    rows.forEach(function (r) {
+      const tr = document.createElement('tr');
+      const k = document.createElement('td'); k.className = 'text-secondary'; k.textContent = r[0];
+      const v = document.createElement('td'); v.textContent = r[1];
+      tr.appendChild(k); tr.appendChild(v); body.appendChild(tr);
+    });
+
+    const blob = await resp.blob();
+    const a = document.getElementById('optDownload');
+    if (a.dataset.objUrl) { URL.revokeObjectURL(a.dataset.objUrl); }
+    a.href = URL.createObjectURL(blob);
+    a.dataset.objUrl = a.href;
+    a.download = 'optimized-' + fileEl.files[0].name;
+    document.getElementById('optResult').style.display = 'block';
+    showToast('Done', 'success');
+  } catch (err) {
+    showToast('Error: ' + err, 'danger');
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+{{end}}

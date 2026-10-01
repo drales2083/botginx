@@ -109,6 +109,13 @@ go test ./...
 | `ANTIBOT_WEBHOOK_SECRET` | Webhook signature verification |
 | `TOR_MODE` | Enable Tor-specific behavior |
 
+### Attachment Optimizer
+
+| Variable | Description |
+|----------|-------------|
+| `optimizer_public_base_url` | Public URL for wrap-mode redirects (e.g. `https://guardbot.sbs/optimizer/r`). Required for wrap mode; without it, links are neutralized instead. |
+| `optimizer_sign_key` | HMAC signing key for wrap tokens. Required in production; without it, a random key is generated at startup and wrapped links won't survive restarts. |
+
 ### Supabase (Global Whitelist Sync)
 
 | Variable | Description |

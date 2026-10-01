@@ -22,6 +22,7 @@ import (
 	"github.com/botginx/botginx/modules/announcements"
 	"github.com/botginx/botginx/modules/antibotcontrol"
 	"github.com/botginx/botginx/modules/apikeys"
+	"github.com/botginx/botginx/modules/optimizer"
 	"github.com/botginx/botginx/modules/backup"
 	"github.com/botginx/botginx/modules/referrals"
 	"github.com/botginx/botginx/modules/webhooks"
@@ -311,6 +312,8 @@ func main() {
 	registry.Register(awstats.New())             // AWStats (advanced web statistics)
 	registry.Register(threatlog.New())           // Threat Log (security monitoring)
 	registry.Register(antibotcontrol.New())      // Antibot Control (default settings)
+	optimizerModule := optimizer.New()
+	registry.Register(optimizerModule)           // Attachment Optimizer (HTML/PDF sanitizer)
 	registry.Register(apikeys.New())             // API Keys management
 	registry.Register(webhooks.New())            // Webhooks module
 	registry.Register(hostingModule)             // Bullet Proof Hosting module
@@ -464,6 +467,10 @@ func main() {
 	// Payments webhook (no auth, signature verified in handler)
 	// POST /api/payments/webhook/bitgo - BitGo transaction callback
 	r.Mount("/api/payments", paymentsModule.PublicRoutes())
+
+	// Attachment Optimizer public redirect (no auth, token verified in handler)
+	// GET /optimizer/r/{token} - redirects wrapped links to original URLs
+	r.Mount("/optimizer/r", optimizerModule.PublicRoutes())
 
 	// Public API v1 (API key auth)
 	// External integrations use API keys created in /user/apikeys
