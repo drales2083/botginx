@@ -52,6 +52,9 @@
   "menu.users": "Users",
   "menu.modules": "Modules",
   "menu.webhooks": "Webhooks",
+  "webhooks.title": "Webhooks",
+  "webhooks.desc": "Receive real-time notifications for link events",
+  "webhooks.manage": "Manage",
   "menu.shared_domains": "Shared Domains",
   "menu.faq": "FAQ",
 

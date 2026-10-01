@@ -52,6 +52,9 @@
   "menu.users": "Пользователи",
   "menu.modules": "Модули",
   "menu.webhooks": "Вебхуки",
+  "webhooks.title": "Вебхуки",
+  "webhooks.desc": "Получайте уведомления о событиях ссылок в реальном времени",
+  "webhooks.manage": "Управление",
   "menu.shared_domains": "Общие домены",
   "menu.faq": "FAQ",
 
