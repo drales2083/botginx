@@ -40,7 +40,9 @@ document.getElementById('optForm').addEventListener('submit', async function (e)
   const fileEl = document.getElementById('optFile');
   if (!fileEl.files.length) { showToast('Choose a file first', 'warning'); return; }
   const btn = document.querySelector('#optForm button[type=submit]');
+  const btnOriginal = btn.innerHTML;
   btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
   const fd = new FormData();
   fd.append('file', fileEl.files[0]);
   fd.append('level', document.querySelector('input[name=level]:checked').value);
@@ -86,6 +88,7 @@ document.getElementById('optForm').addEventListener('submit', async function (e)
     showToast('Error: ' + err, 'danger');
   } finally {
     btn.disabled = false;
+    btn.innerHTML = btnOriginal;
   }
 });
 </script>
