@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS tracking_pixels (
-    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id           text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id      text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     label        text NOT NULL,
     domain       text NOT NULL,
     format       text NOT NULL DEFAULT 'gif',
@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS tracking_pixels (
 CREATE INDEX IF NOT EXISTS idx_tracking_pixels_user ON tracking_pixels(user_id);
 
 CREATE TABLE IF NOT EXISTS tracking_pixel_opens (
-    id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    pixel_id       uuid NOT NULL REFERENCES tracking_pixels(id) ON DELETE CASCADE,
+    id             text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    pixel_id       text NOT NULL REFERENCES tracking_pixels(id) ON DELETE CASCADE,
     opened_at      timestamptz NOT NULL DEFAULT NOW(),
     ip_hash        text,
     user_agent     text,
