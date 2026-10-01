@@ -61,42 +61,11 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 			Icon:        "bi-shield-lock",
 			Path:        "/admin/settings/proxy",
 		},
-		{
-			ID:          "activity",
-			Title:       "Activity Logs",
-			Description: "View admin activity logs for audit purposes",
-			Icon:        "bi-activity",
-			Path:        "/admin/settings/activity",
-		},
 	}
 
 	module.Render(w, r, h.templates, "settings:index.html", map[string]interface{}{
 		"Title":    "Settings",
 		"Sections": sections,
-	})
-}
-
-// Activity shows the admin activity logs
-func (h *Handler) Activity(w http.ResponseWriter, r *http.Request) {
-	filterAdmin := r.URL.Query().Get("admin")
-	filterAction := r.URL.Query().Get("action")
-	filterTarget := r.URL.Query().Get("target")
-
-	logs, _ := h.adminLogger.GetLogs(100, filterAdmin, filterAction, filterTarget)
-
-	// Get list of admins for filter dropdown
-	var admins []struct {
-		Email string `db:"email"`
-	}
-	h.db.Select(&admins, `SELECT email FROM users WHERE role = 'admin' OR role = 'superadmin' ORDER BY email`)
-
-	module.Render(w, r, h.templates, "settings:admin_activity.html", map[string]interface{}{
-		"Title":        "Admin Activity Logs",
-		"Logs":         logs,
-		"Admins":       admins,
-		"FilterAdmin":  filterAdmin,
-		"FilterAction": filterAction,
-		"FilterTarget": filterTarget,
 	})
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/botginx/botginx/modules/domains/handlers"
 	"github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/domains/services"
+	"github.com/botginx/botginx/pkg/adminlog"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/proxy"
 	"github.com/go-chi/chi/v5"
@@ -44,7 +45,7 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 	m.service = services.NewDomainService(deps.DB)
 	m.cpanelService = services.NewCpanelService(deps.DB)
-	m.handler = handlers.NewHandler(m.service, m.cpanelService, deps.Templates)
+	m.handler = handlers.NewHandler(m.service, m.cpanelService, deps.Templates, adminlog.NewLogger(deps.DB))
 	m.cpanelHandler = handlers.NewCpanelHandler(m.cpanelService)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")

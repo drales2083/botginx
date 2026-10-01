@@ -12,20 +12,23 @@ import (
 
 	"github.com/botginx/botginx/modules/payments/models"
 	"github.com/botginx/botginx/modules/payments/services"
+	"github.com/botginx/botginx/pkg/adminlog"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/go-chi/chi/v5"
 )
 
 type Handler struct {
-	service   *services.PaymentService
-	templates *module.TemplateEngine
+	service     *services.PaymentService
+	templates   *module.TemplateEngine
+	adminLogger *adminlog.Logger
 }
 
 func NewHandler(service *services.PaymentService, templates *module.TemplateEngine) *Handler {
 	return &Handler{
-		service:   service,
-		templates: templates,
+		service:     service,
+		templates:   templates,
+		adminLogger: adminlog.NewLogger(service.DB()),
 	}
 }
 
@@ -266,6 +269,13 @@ func (h *Handler) APIAdminResync(w http.ResponseWriter, r *http.Request) {
 				processed++
 			}
 		}
+	}
+
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionPaymentResync,
+			adminlog.TargetPayment, txid, "",
+			map[string]interface{}{"processed": processed, "confirmations": tx.Confirmations}, r)
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{

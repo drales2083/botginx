@@ -1,6 +1,6 @@
 -- Admin activity logs for audit trail
 CREATE TABLE IF NOT EXISTS admin_activity_logs (
-    id VARCHAR(24) PRIMARY KEY,
+    id VARCHAR(26) PRIMARY KEY,
     admin_id TEXT NOT NULL,
     admin_email TEXT NOT NULL,
     action VARCHAR(50) NOT NULL,

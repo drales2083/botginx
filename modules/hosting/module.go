@@ -44,7 +44,7 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.service = services.NewHostingService(deps.DB)
 	m.billing = services.NewBillingService(deps.DB, m.service)
 	m.provisioning = services.NewProvisioningService(deps.DB)
-	m.handler = handlers.NewHandler(m.service, m.billing, m.provisioning, deps.Templates)
+	m.handler = handlers.NewHandler(m.service, m.billing, m.provisioning, deps.Templates, deps.DB)
 
 	// Start background verifier for DNS/SSL auto-setup
 	m.bgVerifier = services.NewBackgroundVerifier(m.service)

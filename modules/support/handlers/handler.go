@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/botginx/botginx/pkg/adminlog"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/go-chi/chi/v5"
@@ -21,13 +22,14 @@ type Notifier interface {
 }
 
 type Handler struct {
-	db        *sqlx.DB
-	templates *module.TemplateEngine
-	notifier  Notifier
+	db          *sqlx.DB
+	templates   *module.TemplateEngine
+	notifier    Notifier
+	adminLogger *adminlog.Logger
 }
 
 func NewHandler(db *sqlx.DB, templates *module.TemplateEngine) *Handler {
-	return &Handler{db: db, templates: templates}
+	return &Handler{db: db, templates: templates, adminLogger: adminlog.NewLogger(db)}
 }
 
 func (h *Handler) SetNotifier(n Notifier) {
@@ -397,11 +399,22 @@ func (h *Handler) APIAdminReply(w http.ResponseWriter, r *http.Request) {
 	// Update ticket status to answered
 	h.db.Exec(`UPDATE support_tickets SET status = 'answered', updated_at = NOW() WHERE id = $1`, ticketID)
 
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionTicketReply,
+			adminlog.TargetTicket, ticketID, ticket.Subject,
+			map[string]interface{}{"messageLength": len(input.Message)}, r)
+	}
+
 	h.jsonOK(w, map[string]interface{}{"success": true})
 }
 
 func (h *Handler) APIAdminClose(w http.ResponseWriter, r *http.Request) {
 	ticketID := chi.URLParam(r, "id")
+
+	// Get ticket info for logging
+	var ticket Ticket
+	h.db.Get(&ticket, `SELECT id, subject FROM support_tickets WHERE id = $1`, ticketID)
 
 	result, err := h.db.Exec(`
 		UPDATE support_tickets SET status = 'closed', updated_at = NOW()
@@ -417,11 +430,21 @@ func (h *Handler) APIAdminClose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionTicketClose,
+			adminlog.TargetTicket, ticketID, ticket.Subject, nil, r)
+	}
+
 	h.jsonOK(w, map[string]interface{}{"success": true})
 }
 
 func (h *Handler) APIAdminReopen(w http.ResponseWriter, r *http.Request) {
 	ticketID := chi.URLParam(r, "id")
+
+	// Get ticket info for logging
+	var ticket Ticket
+	h.db.Get(&ticket, `SELECT id, subject FROM support_tickets WHERE id = $1`, ticketID)
 
 	result, err := h.db.Exec(`
 		UPDATE support_tickets SET status = 'open', updated_at = NOW()
@@ -435,6 +458,12 @@ func (h *Handler) APIAdminReopen(w http.ResponseWriter, r *http.Request) {
 	if rows == 0 {
 		h.jsonError(w, "Ticket not found", http.StatusNotFound)
 		return
+	}
+
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionTicketReopen,
+			adminlog.TargetTicket, ticketID, ticket.Subject, nil, r)
 	}
 
 	h.jsonOK(w, map[string]interface{}{"success": true})

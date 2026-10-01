@@ -10,9 +10,11 @@ import (
 
 	"github.com/botginx/botginx/modules/hosting/models"
 	"github.com/botginx/botginx/modules/hosting/services"
+	"github.com/botginx/botginx/pkg/adminlog"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
 )
 
 // Handler provides HTTP handlers for hosting operations
@@ -21,15 +23,17 @@ type Handler struct {
 	billing      *services.BillingService
 	provisioning *services.ProvisioningService
 	templates    *module.TemplateEngine
+	adminLogger  *adminlog.Logger
 }
 
 // NewHandler creates a new hosting handler instance
-func NewHandler(service *services.HostingService, billing *services.BillingService, provisioning *services.ProvisioningService, templates *module.TemplateEngine) *Handler {
+func NewHandler(service *services.HostingService, billing *services.BillingService, provisioning *services.ProvisioningService, templates *module.TemplateEngine, db *sqlx.DB) *Handler {
 	return &Handler{
 		service:      service,
 		billing:      billing,
 		provisioning: provisioning,
 		templates:    templates,
+		adminLogger:  adminlog.NewLogger(db),
 	}
 }
 
@@ -830,9 +834,18 @@ func (h *Handler) APITogglePackage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APISuspendAccount(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
+	// Get account info for logging
+	account, _ := h.service.GetAccount(id)
+
 	if err := h.service.SuspendAccount(id); err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil && account != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionHostingSuspend,
+			adminlog.TargetHosting, id, account.PanelUsername, nil, r)
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
@@ -842,9 +855,18 @@ func (h *Handler) APISuspendAccount(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APIUnsuspendAccount(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
+	// Get account info for logging
+	account, _ := h.service.GetAccount(id)
+
 	if err := h.service.UnsuspendAccount(id); err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil && account != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionHostingUnsuspend,
+			adminlog.TargetHosting, id, account.PanelUsername, nil, r)
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
@@ -854,9 +876,22 @@ func (h *Handler) APIUnsuspendAccount(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APIDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
+	// Get account info for logging before delete
+	account, _ := h.service.GetAccount(id)
+	accountName := ""
+	if account != nil {
+		accountName = account.PanelUsername
+	}
+
 	if err := h.service.DeleteAccount(id); err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionHostingDelete,
+			adminlog.TargetHosting, id, accountName, nil, r)
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})

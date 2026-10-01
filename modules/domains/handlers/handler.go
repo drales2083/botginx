@@ -10,6 +10,7 @@ import (
 
 	"github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/domains/services"
+	"github.com/botginx/botginx/pkg/adminlog"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/go-chi/chi/v5"
@@ -20,6 +21,7 @@ type Handler struct {
 	cpanelService *services.CpanelService
 	verification  *services.VerificationService
 	templates     *module.TemplateEngine
+	adminLogger   *adminlog.Logger
 }
 
 // canAccessDomain checks if the user owns a domain or is admin accessing a shared domain
@@ -39,7 +41,7 @@ func (h *Handler) canAccessDomain(r *http.Request, domain *models.Domain) bool {
 	return false
 }
 
-func NewHandler(service *services.DomainService, cpanelService *services.CpanelService, templates *module.TemplateEngine) *Handler {
+func NewHandler(service *services.DomainService, cpanelService *services.CpanelService, templates *module.TemplateEngine, adminLogger *adminlog.Logger) *Handler {
 	vs := services.NewVerificationService()
 
 	// Set server provider to get credentials from database
@@ -56,6 +58,7 @@ func NewHandler(service *services.DomainService, cpanelService *services.CpanelS
 		cpanelService: cpanelService,
 		verification:  vs,
 		templates:     templates,
+		adminLogger:   adminLogger,
 	}
 }
 
@@ -383,6 +386,13 @@ func (h *Handler) APIAdminAssign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil && h.adminLogger != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionDomainAdd,
+			adminlog.TargetDomain, domain.ID, input.Name,
+			map[string]interface{}{"assignedTo": input.UserID}, r)
+	}
+
 	h.json(w, http.StatusCreated, map[string]interface{}{
 		"success": true,
 		"domain":  domain,
@@ -412,10 +422,20 @@ func (h *Handler) APITransferOwnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get domain info for logging
+	domain, _ := h.service.Get(id)
+
 	// Transfer ownership
 	if err := h.service.TransferOwnership(id, input.UserID); err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Log activity
+	if h.adminLogger != nil && domain != nil {
+		h.adminLogger.Log(user.ID, user.Email, adminlog.ActionDomainTransfer,
+			adminlog.TargetDomain, id, domain.Name,
+			map[string]interface{}{"fromUser": domain.UserID, "toUser": input.UserID}, r)
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{

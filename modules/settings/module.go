@@ -78,9 +78,6 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 			r.Post("/api/test", m.handler.APITestProxy)
 		})
 
-		// Activity logs section
-		r.Get("/activity", m.handler.Activity)
-
 		return r
 	}
 	return chi.NewRouter()

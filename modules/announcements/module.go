@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/botginx/botginx/pkg/adminlog"
+	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/go-chi/chi/v5"
 )
@@ -16,7 +18,8 @@ var templatesFS embed.FS
 
 type Module struct {
 	*module.BaseModule
-	templates *module.TemplateEngine
+	templates   *module.TemplateEngine
+	adminLogger *adminlog.Logger
 }
 
 func New() *Module {
@@ -32,6 +35,7 @@ func New() *Module {
 func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 	m.templates = deps.Templates
+	m.adminLogger = adminlog.NewLogger(deps.DB)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -162,6 +166,12 @@ func (m *Module) apiCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil {
+		m.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionAnnouncementCreate,
+			adminlog.TargetAnnouncement, id, req.Title, nil, r)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "id": id})
 }
@@ -190,6 +200,12 @@ func (m *Module) apiUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil {
+		m.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionAnnouncementUpdate,
+			adminlog.TargetAnnouncement, id, req.Title, nil, r)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"ok":true}`))
 }
@@ -197,10 +213,20 @@ func (m *Module) apiUpdate(w http.ResponseWriter, r *http.Request) {
 func (m *Module) apiDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
+	// Get title for logging before delete
+	var title string
+	m.DB().Get(&title, `SELECT title FROM announcements WHERE id = $1`, id)
+
 	_, err := m.DB().Exec(`DELETE FROM announcements WHERE id = $1`, id)
 	if err != nil {
 		http.Error(w, `{"error":"database error"}`, http.StatusInternalServerError)
 		return
+	}
+
+	// Log activity
+	if adminUser := ctx.GetUser(r); adminUser != nil {
+		m.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionAnnouncementDelete,
+			adminlog.TargetAnnouncement, id, title, nil, r)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/botginx/botginx/modules/adminactivity"
 	"github.com/botginx/botginx/modules/admindash"
 	"github.com/botginx/botginx/modules/analogstats"
 	"github.com/botginx/botginx/modules/analytics"
@@ -329,6 +330,7 @@ func main() {
 	referralsModule := referrals.New()
 
 	registry.Register(admindash.New())           // Admin dashboard (stats)
+	registry.Register(adminactivity.New())       // Admin activity logs (audit)
 	registry.Register(announcements.New())       // News announcements (admin)
 	registry.Register(referralsModule)           // Referral commission system
 	registry.Register(twofactor.New())           // Two-factor authentication
