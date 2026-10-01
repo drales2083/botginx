@@ -7,8 +7,9 @@
 # here rather than on the box serving traffic.
 #
 # Traffic flow:
-#   Direct:  Internet → :443 (nginx+SSL) → :3001 (botginx)
-#   Antibot: Internet → :443 (nginx+SSL) → :8080 (botection) → :3001 (botginx)
+#   Direct:  Internet → :443 (nginx+SSL) → :3005 (botginx)
+#   Antibot: Internet → :443 (nginx+SSL) → :8080 (botection) → :3001 (internal-router) → :3005 (botginx)
+#   Docs:    Internet → :443 (nginx+SSL) → :8080 (botection) → :3001 (internal-router) → /var/www/docs
 #
 # Usage:
 #   ./deploy.sh                 deploy the binary
@@ -55,12 +56,12 @@ CONFIG_DIR="${CONFIG_DIR:-/etc/botginx}"
 SERVICE_NAME="${SERVICE_NAME:-botginx}"
 RUN_USER="${RUN_USER:-botginx}"
 
-APP_PORT="${APP_PORT:-3001}"
+APP_PORT="${APP_PORT:-3005}"
 PANEL_DOMAIN="${PANEL_DOMAIN:-}"
 DOCS_DOMAIN="${DOCS_DOMAIN:-}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
 
-# Antibot mode: nginx → botection (8080) → botginx (3001)
+# Antibot mode: nginx → botection (8080) → internal-router (3001) → botginx (3005)
 # Set ANTIBOT_MODE=true when botection is installed on the same server
 ANTIBOT_MODE="${ANTIBOT_MODE:-false}"
 ANTIBOT_PORT="${ANTIBOT_PORT:-8080}"
@@ -341,6 +342,14 @@ install_docs_nginx() {
         return 0
     fi
 
+    # Docs proxies through botection (8080) like the main site
+    local upstream_port
+    if [[ "$ANTIBOT_MODE" == "true" ]]; then
+        upstream_port="$ANTIBOT_PORT"
+    else
+        upstream_port="3001"
+    fi
+
     local conf
     conf="$(cat <<NGINXEOF
 server {
@@ -348,23 +357,14 @@ server {
     listen [::]:80;
     server_name ${DOCS_DOMAIN};
 
-    root /var/www/docs;
-    index index.html;
-
-    # SPA fallback for Starlight
     location / {
-        try_files \$uri \$uri/ \$uri.html /index.html;
+        proxy_pass http://127.0.0.1:${upstream_port};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
-
-    # Cache static assets
-    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # Gzip
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 }
 NGINXEOF
 )"
@@ -382,6 +382,73 @@ NGINXEOF"
     remote_sudo "systemctl reload nginx"
 
     ok "nginx configured for ${DOCS_DOMAIN}"
+}
+
+install_internal_router() {
+    # Internal router: botection → here (3001) → routes by Host to docs or botginx
+    if [[ "$ANTIBOT_MODE" != "true" ]]; then
+        return 0
+    fi
+
+    local conf
+    conf="$(cat <<NGINXEOF
+# Internal router - botection sends traffic here, routes by Host
+
+# Docs site
+server {
+    listen 127.0.0.1:3001;
+    server_name ${DOCS_DOMAIN:-_docs_placeholder_};
+
+    root /var/www/docs;
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+
+# Default - everything else goes to botginx
+server {
+    listen 127.0.0.1:3001 default_server;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:${APP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+NGINXEOF
+)"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        printf '%s  would install internal-router nginx config%s\n' "$DIM" "$RESET"
+        return 0
+    fi
+
+    remote_sudo "cat > /etc/nginx/sites-available/internal-router <<'NGINXEOF'
+${conf}
+NGINXEOF"
+    remote_sudo "ln -sf /etc/nginx/sites-available/internal-router /etc/nginx/sites-enabled/internal-router"
+    remote_sudo "nginx -t" || die "nginx config test failed"
+    remote_sudo "systemctl reload nginx"
+
+    # Enable preserve_host in botection so it routes by Host header
+    if remote_sudo "test -f /var/www/antibot/config/config.yaml"; then
+        remote_sudo "sed -i 's/preserve_host: false/preserve_host: true/' /var/www/antibot/config/config.yaml"
+        remote_sudo "systemctl restart botection 2>/dev/null || true"
+        log "updated botection: preserve_host=true"
+    fi
+
+    ok "internal router configured (port 3001)"
 }
 
 request_docs_certificate() {
@@ -406,7 +473,7 @@ request_docs_certificate() {
 # ----------------------------------------------------------------------------
 
 setup() {
-    STEP_TOTAL=9
+    STEP_TOTAL=10
     preflight
 
     step "Installing system dependencies"
@@ -481,6 +548,11 @@ ENVEOF"
         step "Configuring nginx for docs site"
         install_docs_nginx
         request_docs_certificate
+    fi
+
+    if [[ "$ANTIBOT_MODE" == "true" ]]; then
+        step "Configuring internal router for multi-site"
+        install_internal_router
     fi
 
     step "Setting up auto-deploy cron"
@@ -649,11 +721,11 @@ UNITEOF"
 }
 
 install_nginx() {
-    # When botection is installed, nginx proxies to it (8080), not directly to botginx (3001)
+    # When botection is installed, nginx proxies to it (8080), which routes to internal-router (3001)
     local upstream_port
     if [[ "$ANTIBOT_MODE" == "true" ]]; then
         upstream_port="$ANTIBOT_PORT"
-        log "antibot mode: nginx → :${ANTIBOT_PORT} (botection) → :${APP_PORT} (botginx)"
+        log "antibot mode: nginx → :${ANTIBOT_PORT} (botection) → :3001 (router) → :${APP_PORT} (botginx)"
     else
         upstream_port="$APP_PORT"
         log "direct mode: nginx → :${APP_PORT} (botginx)"
