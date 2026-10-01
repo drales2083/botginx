@@ -1,0 +1,96 @@
+{{define "content"}}
+<div class="card mb-3" data-bs-theme="dark">
+  <div class="card-body">
+    <p class="mb-1"><i class="bi bi-bullseye"></i> Track email opens with a 1&times;1 pixel served from your own domain. No shared trackers.</p>
+    <p class="mb-1 text-secondary">${{printf "%.2f" .Price}} per pixel, taken from your wallet. First {{.Free}} are free. Balance: ${{printf "%.2f" .Balance}}.</p>
+    <p class="mb-0">
+      Opens are tagged:
+      <span class="badge bg-success">verified</span>
+      <span class="badge bg-secondary">prefetch</span>
+      <span class="badge bg-indigo" style="background:#6610f2">Apple MPP</span>
+      <span class="badge bg-warning text-dark">proxied</span>
+      <span class="badge bg-danger">bot</span>
+    </p>
+  </div>
+</div>
+
+<div class="card mb-3" data-bs-theme="dark">
+  <div class="card-header"><h5 class="mb-0">Create a pixel</h5></div>
+  <div class="card-body">
+    <form method="post" action="/user/tracking-pixel/create" class="row g-3">
+      <div class="col-md-5">
+        <label class="form-label">Label</label>
+        <input class="form-control" name="label" placeholder="e.g. October newsletter" required>
+        <small class="text-secondary">Only visible to you.</small>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Serve from domain</label>
+        <select class="form-select" name="domain" required>
+          <option value="">Select domain</option>
+          {{range .Domains}}{{if .Verified}}<option value="{{.Name}}">{{.Name}}</option>{{end}}{{end}}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Format</label>
+        <select class="form-select" name="format">
+          <option value="gif">.gif</option>
+          <option value="png">.png</option>
+        </select>
+      </div>
+      <div class="col-md-1 d-flex align-items-end">
+        <button class="btn btn-primary w-100" type="submit">
+          {{if .NextIsFree}}Create{{else}}${{printf "%.2f" .Price}}{{end}}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card" data-bs-theme="dark">
+  <div class="card-header"><h5 class="mb-0">My tracking pixels</h5></div>
+  <div class="card-body">
+    {{if .Pixels}}
+    <table class="table table-hover align-middle">
+      <thead><tr>
+        <th>Label</th><th>Domain</th><th>Tag</th><th>Opens</th><th>Verified</th><th>Last open</th><th>Created</th><th></th>
+      </tr></thead>
+      <tbody>
+      {{range .Pixels}}
+        <tr>
+          <td>{{.Label}}</td>
+          <td>{{.Domain}}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary" title="Copy img tag"
+              onclick="copyTag(this,'https://{{.Domain}}/px/{{.Token}}.{{.Format}}')">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </td>
+          <td>{{.Opens}}</td>
+          <td>{{if .Verified}}<span class="badge bg-success">yes</span>{{else}}<span class="text-secondary">&mdash;</span>{{end}}</td>
+          <td>{{if .LastOpenAt.Valid}}{{.LastOpenAt.Time.Format "Jan 2, 15:04"}}{{else}}<span class="text-secondary">never</span>{{end}}</td>
+          <td>{{.CreatedAt.Format "Jan 2"}}</td>
+          <td>
+            <form method="post" action="/user/tracking-pixel/{{.ID}}/delete" onsubmit="return confirm('Delete this pixel?')">
+              <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <div class="text-center text-secondary py-5">
+      <i class="bi bi-bullseye" style="font-size:2rem"></i>
+      <p class="mt-2 mb-0">No tracking pixels yet. Create one above to get an <code>&lt;img&gt;</code> tag for your email.</p>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+<script>
+function copyTag(btn, url) {
+  const tag = '<img src="' + url + '" width="1" height="1" alt="">';
+  navigator.clipboard.writeText(tag).then(function(){ showToast('Pixel tag copied', 'success'); });
+}
+</script>
+{{end}}

@@ -116,6 +116,13 @@ go test ./...
 | `optimizer_public_base_url` | Public URL for wrap-mode redirects (e.g. `https://guardbot.sbs/optimizer/r`). Required for wrap mode; without it, links are neutralized instead. |
 | `optimizer_sign_key` | HMAC signing key for wrap tokens. Required in production; without it, a random key is generated at startup and wrapped links won't survive restarts. |
 
+### Tracking Pixel
+
+| Variable | Description |
+|----------|-------------|
+| `tracking_pixel_ip_salt` | HMAC salt for hashing client IPs. Required in production; without it, a random salt is generated at startup and IP hashes differ across restarts. |
+| `tracking_pixel_retention_days` | Days to retain open logs before purging (default: 90). |
+
 ### Supabase (Global Whitelist Sync)
 
 | Variable | Description |

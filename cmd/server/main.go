@@ -23,6 +23,7 @@ import (
 	"github.com/botginx/botginx/modules/antibotcontrol"
 	"github.com/botginx/botginx/modules/apikeys"
 	"github.com/botginx/botginx/modules/optimizer"
+	"github.com/botginx/botginx/modules/trackingpixel"
 	"github.com/botginx/botginx/modules/backup"
 	"github.com/botginx/botginx/modules/referrals"
 	"github.com/botginx/botginx/modules/webhooks"
@@ -314,6 +315,8 @@ func main() {
 	registry.Register(antibotcontrol.New())      // Antibot Control (default settings)
 	optimizerModule := optimizer.New()
 	registry.Register(optimizerModule)           // Attachment Optimizer (HTML/PDF sanitizer)
+	trackingPixelModule := trackingpixel.New(domainsModule)
+	registry.Register(trackingPixelModule)       // Tracking Pixel (email open tracking)
 	registry.Register(apikeys.New())             // API Keys management
 	registry.Register(webhooks.New())            // Webhooks module
 	registry.Register(hostingModule)             // Bullet Proof Hosting module
@@ -471,6 +474,10 @@ func main() {
 	// Attachment Optimizer public redirect (no auth, token verified in handler)
 	// GET /optimizer/r/{token} - redirects wrapped links to original URLs
 	r.Mount("/optimizer/r", optimizerModule.PublicRoutes())
+
+	// Tracking Pixel public endpoint (no auth, serves 1x1 image + logs opens)
+	// GET /px/{token}.gif|png - served by mail clients
+	r.Mount("/px", trackingPixelModule.PublicRoutes())
 
 	// Public API v1 (API key auth)
 	// External integrations use API keys created in /user/apikeys
