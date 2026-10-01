@@ -21,11 +21,17 @@ func processHTML(in []byte, opts Options, rep *Report) ([]byte, error) {
 	})
 
 	// Active / embedding / hijacking elements are removed outright.
-	doc.Find("iframe, object, embed, frame, frameset, applet, base, noscript, style").
+	doc.Find("iframe, object, embed, frame, frameset, applet, base, noscript").
 		Each(func(_ int, s *goquery.Selection) {
 			rep.ActiveContentRemoved++
 			s.Remove()
 		})
+	if opts.Level >= LevelAggressive {
+		doc.Find("style").Each(func(_ int, s *goquery.Selection) {
+			rep.ActiveContentRemoved++
+			s.Remove()
+		})
+	}
 	doc.Find("meta").Each(func(_ int, s *goquery.Selection) {
 		if v, ok := s.Attr("http-equiv"); ok && strings.EqualFold(strings.TrimSpace(v), "refresh") {
 			rep.ActiveContentRemoved++
@@ -35,6 +41,9 @@ func processHTML(in []byte, opts Options, rep *Report) ([]byte, error) {
 	// External resource links (CSS, imports, prefetch/preload) can carry
 	// beacons; icons and canonical/alternate links are left alone.
 	doc.Find("link").Each(func(_ int, s *goquery.Selection) {
+		if opts.Level < LevelAggressive {
+			return
+		}
 		rel, _ := s.Attr("rel")
 		for _, tok := range strings.Fields(strings.ToLower(rel)) {
 			switch tok {
@@ -55,6 +64,39 @@ func processHTML(in []byte, opts Options, rep *Report) ([]byte, error) {
 		}
 	})
 
+	if opts.Level == LevelMaximum {
+		doc.Find("video, audio, source, track").Each(func(_ int, s *goquery.Selection) {
+			if src, _ := s.Attr("src"); isRemoteURL(src) {
+				rep.ActiveContentRemoved++
+				s.Remove()
+			}
+		})
+		doc.Find("input").Each(func(_ int, s *goquery.Selection) {
+			typ, _ := s.Attr("type")
+			if src, ok := s.Attr("src"); ok && strings.EqualFold(strings.TrimSpace(typ), "image") && isRemoteURL(src) {
+				rep.ActiveContentRemoved++
+				s.RemoveAttr("src")
+			}
+		})
+		// Favicon fetches are beacons too.
+		doc.Find("link").Each(func(_ int, s *goquery.Selection) {
+			rel, _ := s.Attr("rel")
+			for _, tok := range strings.Fields(strings.ToLower(rel)) {
+				if strings.HasSuffix(tok, "icon") || strings.HasSuffix(tok, "icon-precomposed") {
+					rep.ActiveContentRemoved++
+					s.Remove()
+					return
+				}
+			}
+		})
+		doc.Find("img").Each(func(_ int, s *goquery.Selection) {
+			if src, _ := s.Attr("src"); isRemoteURL(src) {
+				rep.TrackersRemoved++
+				s.Remove()
+			}
+		})
+	}
+
 	// Attribute pass over every element.
 	doc.Find("*").Each(func(_ int, s *goquery.Selection) {
 		for _, node := range s.Nodes {
@@ -65,7 +107,22 @@ func processHTML(in []byte, opts Options, rep *Report) ([]byte, error) {
 				if len(key) > 2 && strings.HasPrefix(key, "on") || key == "srcdoc" {
 					continue // drop onclick, onload, ..., srcdoc
 				}
-				if key == "style" {
+				if opts.Level == LevelMaximum {
+					switch {
+					case (key == "srcset" || key == "poster" || key == "background") && isRemoteURL(a.Val),
+						key == "srcset" && strings.Contains(a.Val, "//"):
+						rep.ActiveContentRemoved++
+						continue
+					case (tag == "image" || tag == "use") &&
+						(key == "href" || key == "xlink:href" || strings.EqualFold(a.Namespace, "xlink")) &&
+						isRemoteURL(a.Val):
+						rep.ActiveContentRemoved++
+						a.Val = "#"
+						kept = append(kept, a)
+						continue
+					}
+				}
+				if key == "style" && opts.Level >= LevelAggressive {
 					lv := strings.ToLower(a.Val)
 					if strings.Contains(lv, "url(") || strings.Contains(lv, "expression(") {
 						rep.ActiveContentRemoved++
@@ -123,15 +180,31 @@ func isTrackerSize(v string) bool {
 	return false
 }
 
-// isDangerousScheme reports whether v uses a scripting or HTML-carrying
-// scheme. Whitespace and control characters browsers ignore are stripped first.
-func isDangerousScheme(v string) bool {
-	clean := strings.Map(func(r rune) rune {
-		if r <= ' ' {
+// normalizeURL mimics browser URL preprocessing: embedded whitespace and
+// control characters (tab, CR, LF, ...) are dropped, case is folded, and
+// backslashes count as slashes.
+func normalizeURL(v string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r <= ' ':
 			return -1
+		case r == '\\':
+			return '/'
 		}
 		return r
 	}, strings.ToLower(v))
+}
+
+// isDangerousScheme reports whether v uses a scripting or HTML-carrying scheme.
+func isDangerousScheme(v string) bool {
+	clean := normalizeURL(v)
 	return strings.HasPrefix(clean, "javascript:") || strings.HasPrefix(clean, "vbscript:") ||
 		strings.HasPrefix(clean, "data:text/html") || strings.HasPrefix(clean, "data:application/")
+}
+
+// isRemoteURL reports whether v is an http(s) or protocol-relative URL after
+// browser-style normalization.
+func isRemoteURL(v string) bool {
+	t := normalizeURL(v)
+	return strings.HasPrefix(t, "http://") || strings.HasPrefix(t, "https://") || strings.HasPrefix(t, "//")
 }

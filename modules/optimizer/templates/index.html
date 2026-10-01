@@ -2,7 +2,7 @@
 <div class="card" data-bs-theme="dark">
   <div class="card-header"><h5 class="mb-0"><i class="bi bi-file-earmark-zip"></i> Attachment Optimizer</h5></div>
   <div class="card-body">
-    <p class="text-secondary">Upload an HTML or PDF attachment. Trackers and scripts are removed, embedded PDF code is stripped, and links are either neutralized or wrapped. Nothing is stored — the cleaned file downloads straight back to you.</p>
+    <p class="text-secondary">Drop in an HTML or PDF. We tear out the trackers and scripts and clean up every link. The file comes straight back to you. Nothing's stored, ever.</p>
 
     <form id="optForm">
       <div class="mb-3">
@@ -10,15 +10,16 @@
         <input class="form-control" type="file" id="optFile" accept=".html,.htm,.pdf" required>
       </div>
       <div class="mb-3">
-        <label class="form-label">Link handling</label>
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="mode" id="modeNeutralize" value="neutralize" checked>
-          <label class="form-check-label" for="modeNeutralize">Neutralize — defang links in place (not clickable)</label>
+        <label class="form-label d-block">Obfuscation level</label>
+        <div class="btn-group" role="group" aria-label="Obfuscation level">
+          <input type="radio" class="btn-check" name="level" id="lvlStandard" value="standard" autocomplete="off">
+          <label class="btn btn-outline-primary" for="lvlStandard">Standard</label>
+          <input type="radio" class="btn-check" name="level" id="lvlAggressive" value="aggressive" autocomplete="off" checked>
+          <label class="btn btn-outline-primary" for="lvlAggressive">Aggressive</label>
+          <input type="radio" class="btn-check" name="level" id="lvlMaximum" value="maximum" autocomplete="off">
+          <label class="btn btn-outline-primary" for="lvlMaximum">Maximum</label>
         </div>
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="mode" id="modeWrap" value="wrap">
-          <label class="form-check-label" for="modeWrap">Wrap — route links through a safe redirector</label>
-        </div>
+        <div class="form-text">Standard keeps the page looking normal. Maximum rips out anything that can phone home, so the file may look broken.</div>
       </div>
       <button class="btn btn-primary" type="submit"><i class="bi bi-magic"></i> Optimize</button>
     </form>
@@ -42,7 +43,7 @@ document.getElementById('optForm').addEventListener('submit', async function (e)
   btn.disabled = true;
   const fd = new FormData();
   fd.append('file', fileEl.files[0]);
-  fd.append('mode', document.querySelector('input[name=mode]:checked').value);
+  fd.append('level', document.querySelector('input[name=level]:checked').value);
 
   try {
     const resp = await fetch('/user/optimizer/process', { method: 'POST', body: fd });

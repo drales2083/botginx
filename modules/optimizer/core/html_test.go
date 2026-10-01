@@ -67,9 +67,17 @@ func TestHTMLWrapLinks(t *testing.T) {
 	}
 }
 
+// hardenRun runs at LevelAggressive: the style/link/inline-style removal
+// tests it serves assert behaviors that are Aggressive-only.
 func hardenRun(t *testing.T, in string) (string, *Report) {
 	t.Helper()
+	return hardenRunAt(t, LevelAggressive, in)
+}
+
+func hardenRunAt(t *testing.T, lvl ObfuscationLevel, in string) (string, *Report) {
+	t.Helper()
 	opts, rep := htmlOpts(LinkNeutralize)
+	opts.Level = lvl
 	out, err := processHTML([]byte(in), opts, rep)
 	if err != nil {
 		t.Fatal(err)
@@ -189,5 +197,69 @@ func TestHTMLSVGPlainHrefDangerousNeutralized(t *testing.T) {
 	out, _ := hardenRun(t, `<svg><use href="javascript:alert(1)"/><image href="data:text/html,x"/></svg>`)
 	if strings.Contains(out, "javascript:") || strings.Contains(out, "data:text/html") {
 		t.Fatalf("dangerous href survived: %s", out)
+	}
+}
+
+func TestHTMLStandardKeepsStylingAndImages(t *testing.T) {
+	out, _ := hardenRunAt(t, LevelStandard, `<html><head><style>p{color:red}</style><link rel="stylesheet" href="https://e.com/a.css"></head><body>
+<div style="background:url(x)">d</div><img src="https://e.com/photo.jpg" width="200" height="100">
+<script>x()</script><iframe src="https://e.com"></iframe><img src="https://e.com/t.gif" width="1" height="1"><p onclick="x()">p</p></body></html>`)
+	for _, keep := range []string{"<style>", "a.css", "background:url(x)", "photo.jpg"} {
+		if !strings.Contains(out, keep) {
+			t.Errorf("Standard dropped %q: %s", keep, out)
+		}
+	}
+	for _, gone := range []string{"<script", "<iframe", "t.gif", "onclick"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("Standard kept %q: %s", gone, out)
+		}
+	}
+}
+
+func TestHTMLMaximumStripsRemoteMedia(t *testing.T) {
+	out, _ := hardenRunAt(t, LevelMaximum, `<body background="https://e.com/bg.png">
+<img src="https://e.com/p.jpg"><img src="//e.com/q.jpg"><img src="data:image/png;base64,AAAA">
+<img src="data:image/png;base64,BBBB" srcset="https://e.com/s.jpg 2x"><video poster="https://e.com/v.jpg"></video>
+<svg><image href="https://e.com/i.png"/><use xlink:href="https://e.com/u.svg#a"/></svg></body>`)
+	for _, gone := range []string{"e.com", "srcset", "poster", "background="} {
+		if strings.Contains(out, gone) {
+			t.Errorf("Maximum kept %q: %s", gone, out)
+		}
+	}
+	if !strings.Contains(out, "AAAA") || !strings.Contains(out, "BBBB") {
+		t.Errorf("data: images removed: %s", out)
+	}
+}
+
+func TestHTMLAggressiveKeepsRemoteImages(t *testing.T) {
+	out, _ := hardenRunAt(t, LevelAggressive, `<img src="https://e.com/p.jpg">`)
+	if !strings.Contains(out, "p.jpg") {
+		t.Error("Aggressive removed remote img")
+	}
+}
+
+func TestHTMLMaximumNormalizedRemoteBypass(t *testing.T) {
+	out, _ := hardenRunAt(t, LevelMaximum, "<body><img src=\"ht\ttps://e.com/a.jpg\"><img src=\"/\\e.com/b.jpg\"><img src=\"\\\\e.com/c.jpg\"><img src=\"HTTP:&#10;//e.com/d.jpg\"></body>")
+	if strings.Contains(out, "<img") || strings.Contains(out, "e.com") {
+		t.Errorf("obfuscated remote img survived: %s", out)
+	}
+}
+
+func TestHTMLMaximumMediaTagsAndFavicon(t *testing.T) {
+	in := `<html><head><link rel="icon" href="https://e.com/f.ico"><link rel="shortcut icon" href="https://e.com/g.ico"><link rel="apple-touch-icon" href="https://e.com/h.png"></head><body>
+<video src="https://e.com/v.mp4"></video><audio src="//e.com/a.mp3"></audio>
+<video><source src="https://e.com/s.mp4"><track src="https://e.com/t.vtt"></video>
+<input type="image" src="https://e.com/i.png"></body></html>`
+	out, _ := hardenRunAt(t, LevelMaximum, in)
+	if strings.Contains(out, "e.com") {
+		t.Errorf("Maximum kept remote ref: %s", out)
+	}
+	for _, lvl := range []ObfuscationLevel{LevelStandard, LevelAggressive} {
+		out, _ := hardenRunAt(t, lvl, in)
+		for _, keep := range []string{"f.ico", "g.ico", "h.png"} {
+			if !strings.Contains(out, keep) {
+				t.Errorf("level %d dropped icon %s", lvl, keep)
+			}
+		}
 	}
 }

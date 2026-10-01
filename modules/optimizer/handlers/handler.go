@@ -90,12 +90,20 @@ func (h *Handler) process(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mode := core.LinkNeutralize
-	if r.FormValue("mode") == "wrap" && core.IsHTTPURL(h.wrapBase) {
-		mode = core.LinkWrap
+	level := core.LevelAggressive
+	mode := core.LinkWrap
+	switch r.FormValue("level") {
+	case "standard":
+		level, mode = core.LevelStandard, core.LinkNeutralize
+	case "maximum":
+		level = core.LevelMaximum
+	}
+	if mode == core.LinkWrap && !core.IsHTTPURL(h.wrapBase) {
+		mode = core.LinkNeutralize
 	}
 
 	res, err := core.Optimize(in, hdr.Header.Get("Content-Type"), core.Options{
+		Level:    level,
 		LinkMode: mode,
 		WrapBase: h.wrapBase,
 		SignKey:  h.signKey,
