@@ -77,6 +77,12 @@ export default defineConfig({
 						{ label: 'Webhooks', slug: 'api/webhooks' },
 					],
 				},
+				{
+					label: 'Developers',
+					items: [
+						{ label: 'Creating Modules', slug: 'api/modules' },
+					],
+				},
 			],
 		}),
 	],
