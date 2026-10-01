@@ -8,6 +8,7 @@ import (
 	authservices "github.com/botginx/botginx/modules/auth/services"
 	"github.com/botginx/botginx/modules/users/models"
 	"github.com/botginx/botginx/modules/users/services"
+	"github.com/botginx/botginx/pkg/adminlog"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/subscription"
@@ -19,17 +20,20 @@ type Handler struct {
 	subscriptions *subscription.Service
 	templates     *module.TemplateEngine
 	authService   *authservices.AuthService
+	adminLogger   *adminlog.Logger
 }
 
 func NewHandler(
 	service *services.UserService,
 	subscriptions *subscription.Service,
 	templates *module.TemplateEngine,
+	adminLogger *adminlog.Logger,
 ) *Handler {
 	return &Handler{
 		service:       service,
 		subscriptions: subscriptions,
 		templates:     templates,
+		adminLogger:   adminLogger,
 	}
 }
 
@@ -119,6 +123,14 @@ func (h *Handler) APIGrantSubscription(w http.ResponseWriter, r *http.Request) {
 
 	grantedBy := ctx.GetUserID(r)
 
+	// Get target user for logging
+	targetUser, _ := h.service.Get(userID)
+	adminUser := ctx.GetUser(r)
+	adminEmail := ""
+	if adminUser != nil {
+		adminEmail = adminUser.Email
+	}
+
 	// An explicit date wins; otherwise extend by a number of days.
 	switch {
 	case input.ExpiresAt != "":
@@ -135,10 +147,24 @@ func (h *Handler) APIGrantSubscription(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Log activity
+		if h.adminLogger != nil {
+			h.adminLogger.Log(grantedBy, adminEmail, adminlog.ActionUserSubscriptionGrant,
+				adminlog.TargetUser, userID, targetUser.Email,
+				map[string]interface{}{"plan": input.Plan, "expiresAt": input.ExpiresAt, "notes": input.Notes}, r)
+		}
+
 	case input.Days > 0:
 		if err := h.subscriptions.Extend(userID, input.Days, grantedBy); err != nil {
 			h.jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+
+		// Log activity
+		if h.adminLogger != nil {
+			h.adminLogger.Log(grantedBy, adminEmail, adminlog.ActionUserSubscriptionGrant,
+				adminlog.TargetUser, userID, targetUser.Email,
+				map[string]interface{}{"days": input.Days}, r)
 		}
 
 	default:
@@ -156,9 +182,19 @@ func (h *Handler) APIGrantSubscription(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APIRevokeSubscription(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
 
+	// Get target user for logging
+	targetUser, _ := h.service.Get(userID)
+	adminUser := ctx.GetUser(r)
+
 	if err := h.subscriptions.Revoke(userID); err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Log activity
+	if h.adminLogger != nil && adminUser != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionUserSubscriptionRevoke,
+			adminlog.TargetUser, userID, targetUser.Email, nil, r)
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{
@@ -258,10 +294,13 @@ func (h *Handler) APITopUpBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := h.service.Get(userID); err != nil {
+	targetUser, err := h.service.Get(userID)
+	if err != nil {
 		h.jsonError(w, "User not found", http.StatusNotFound)
 		return
 	}
+
+	adminUser := ctx.GetUser(r)
 
 	description := input.Description
 	if description == "" {
@@ -274,6 +313,13 @@ func (h *Handler) APITopUpBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	balance, _ := h.service.GetBalance(userID)
+
+	// Log activity
+	if h.adminLogger != nil && adminUser != nil {
+		h.adminLogger.Log(adminUser.ID, adminUser.Email, adminlog.ActionUserBalanceTopup,
+			adminlog.TargetUser, userID, targetUser.Email,
+			map[string]interface{}{"amount": input.Amount, "description": description, "newBalance": balance}, r)
+	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{
 		"success": true,

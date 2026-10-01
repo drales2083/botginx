@@ -1,7 +1,6 @@
 package services
 
 import (
-	"log"
 	"os"
 )
 
@@ -57,12 +56,9 @@ func (g *BitGoGateway) GetTransaction(txid string) (*GatewayTransaction, error) 
 	walletID := g.client.GetWalletID()
 	for _, out := range tx.Outputs {
 		isOurs := out.Wallet == walletID && out.Wallet != tx.FromWallet
-		amountBTC := ToBTC(out.Value)
-		log.Printf("[bitgo] Output conversion: %d satoshis -> %.8f BTC, isOurs=%v (wallet=%s, ourWallet=%s, fromWallet=%s)",
-			out.Value, amountBTC, isOurs, out.Wallet, walletID, tx.FromWallet)
 		result.Outputs = append(result.Outputs, GatewayOutput{
 			Address: out.Address,
-			Amount:  amountBTC,
+			Amount:  ToBTC(out.Value),
 			IsOurs:  isOurs,
 		})
 	}

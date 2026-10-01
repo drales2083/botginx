@@ -1,0 +1,163 @@
+{{define "content"}}
+<div class="row mb-4">
+    <div class="col">
+        <h4><i class="bi bi-activity me-2"></i>Admin Activity Logs</h4>
+        <p class="text-secondary mb-0">Track all admin actions for audit purposes</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Admin</label>
+                <select name="admin" class="form-select">
+                    <option value="">All Admins</option>
+                    {{range .Admins}}
+                    <option value="{{.Email}}" {{if eq $.FilterAdmin .Email}}selected{{end}}>{{.Email}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Action Type</label>
+                <select name="action" class="form-select">
+                    <option value="">All Actions</option>
+                    <optgroup label="User">
+                        <option value="user.subscription" {{if eq .FilterAction "user.subscription"}}selected{{end}}>Subscription</option>
+                        <option value="user.balance" {{if eq .FilterAction "user.balance"}}selected{{end}}>Balance</option>
+                        <option value="user.enable" {{if eq .FilterAction "user.enable"}}selected{{end}}>Enable/Disable</option>
+                    </optgroup>
+                    <optgroup label="Payments">
+                        <option value="payment" {{if eq .FilterAction "payment"}}selected{{end}}>Payments</option>
+                    </optgroup>
+                    <optgroup label="Domain">
+                        <option value="domain" {{if eq .FilterAction "domain"}}selected{{end}}>Domains</option>
+                    </optgroup>
+                    <optgroup label="Support">
+                        <option value="ticket" {{if eq .FilterAction "ticket"}}selected{{end}}>Tickets</option>
+                    </optgroup>
+                    <optgroup label="System">
+                        <option value="announcement" {{if eq .FilterAction "announcement"}}selected{{end}}>Announcements</option>
+                        <option value="settings" {{if eq .FilterAction "settings"}}selected{{end}}>Settings</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Target Type</label>
+                <select name="target" class="form-select">
+                    <option value="">All Targets</option>
+                    <option value="user" {{if eq .FilterTarget "user"}}selected{{end}}>User</option>
+                    <option value="domain" {{if eq .FilterTarget "domain"}}selected{{end}}>Domain</option>
+                    <option value="ticket" {{if eq .FilterTarget "ticket"}}selected{{end}}>Ticket</option>
+                    <option value="payment" {{if eq .FilterTarget "payment"}}selected{{end}}>Payment</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-search me-1"></i>Filter
+                </button>
+                <a href="/admin/settings/activity" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Activity Table -->
+<div class="card">
+    <div class="card-body p-0">
+        {{if .Logs}}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Admin</th>
+                        <th>Action</th>
+                        <th>Target</th>
+                        <th>Details</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Logs}}
+                    <tr>
+                        <td>
+                            <small class="text-muted">{{.CreatedAt.Format "Jan 02, 15:04:05"}}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{.AdminEmail}}</span>
+                        </td>
+                        <td>
+                            {{if hasPrefix .Action "user.subscription.grant"}}
+                            <span class="badge bg-success"><i class="bi bi-gift me-1"></i>Grant Sub</span>
+                            {{else if hasPrefix .Action "user.subscription.revoke"}}
+                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Revoke Sub</span>
+                            {{else if hasPrefix .Action "user.balance.topup"}}
+                            <span class="badge bg-success"><i class="bi bi-plus-circle me-1"></i>Top-up</span>
+                            {{else if hasPrefix .Action "user.balance.deduct"}}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-dash-circle me-1"></i>Deduct</span>
+                            {{else if hasPrefix .Action "user.enable"}}
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Enable</span>
+                            {{else if hasPrefix .Action "user.disable"}}
+                            <span class="badge bg-danger"><i class="bi bi-slash-circle me-1"></i>Disable</span>
+                            {{else if hasPrefix .Action "ticket"}}
+                            <span class="badge bg-info"><i class="bi bi-chat me-1"></i>{{.Action}}</span>
+                            {{else if hasPrefix .Action "domain"}}
+                            <span class="badge bg-secondary"><i class="bi bi-globe me-1"></i>{{.Action}}</span>
+                            {{else if hasPrefix .Action "announcement"}}
+                            <span class="badge bg-info"><i class="bi bi-megaphone me-1"></i>{{.Action}}</span>
+                            {{else if hasPrefix .Action "admin.login"}}
+                            <span class="badge bg-dark"><i class="bi bi-box-arrow-in-right me-1"></i>Login</span>
+                            {{else}}
+                            <span class="badge bg-secondary">{{.Action}}</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            {{if .TargetName}}
+                            <code>{{.TargetName}}</code>
+                            {{else if .TargetID}}
+                            <code class="text-muted">{{.TargetID}}</code>
+                            {{else}}
+                            <span class="text-muted">-</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            {{if and .Details (ne .Details "{}")}}
+                            <button class="btn btn-sm btn-outline-secondary" type="button"
+                                    data-bs-toggle="popover" data-bs-trigger="hover"
+                                    data-bs-html="true"
+                                    data-bs-content="<pre class='mb-0' style='font-size:11px'>{{.Details}}</pre>">
+                                <i class="bi bi-info-circle"></i>
+                            </button>
+                            {{else}}
+                            <span class="text-muted">-</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            <small class="text-muted">{{.IPAddress}}</small>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="text-center py-5">
+            <i class="bi bi-activity display-1 text-muted mb-3"></i>
+            <h5>No activity logs found</h5>
+            <p class="text-muted">Admin actions will appear here</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    popoverTriggerList.map(function(el) {
+        return new bootstrap.Popover(el);
+    });
+});
+</script>
+{{end}}

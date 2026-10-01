@@ -9,6 +9,7 @@ import (
 	authservices "github.com/botginx/botginx/modules/auth/services"
 	"github.com/botginx/botginx/modules/users/handlers"
 	"github.com/botginx/botginx/modules/users/services"
+	"github.com/botginx/botginx/pkg/adminlog"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/subscription"
 	"github.com/go-chi/chi/v5"
@@ -42,7 +43,8 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 	m.service = services.NewUserService(deps.DB)
 	m.subscriptions = subscription.NewService(deps.DB)
-	m.handler = handlers.NewHandler(m.service, m.subscriptions, deps.Templates)
+	adminLogger := adminlog.NewLogger(deps.DB)
+	m.handler = handlers.NewHandler(m.service, m.subscriptions, deps.Templates, adminLogger)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
