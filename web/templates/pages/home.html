@@ -28,7 +28,11 @@
           <a href="/" class="logo">
             <img src="/static/img/logo.svg" alt="{{appName}}" height="28">
           </a>
+          {{if .User}}
+          <a href="/user/dashboard" class="btn-pill">Dashboard</a>
+          {{else}}
           <a href="/auth/signup" class="btn-pill">Get Started</a>
+          {{end}}
         </div>
       </header>
 
@@ -45,7 +49,11 @@
           <img src="/static/img/guardbot-logo.svg" alt="{{appName}}" class="hero-logo">
           <h1>Protect your links from<br>bots and fraud.</h1>
           <p class="hero-subtitle">Give every link bot protection, analytics, and control.<br>Block malicious traffic before it reaches your destination.</p>
+          {{if .User}}
+          <a href="/user/dashboard" class="btn-outline"><i class="bi bi-grid"></i> Go to Dashboard</a>
+          {{else}}
           <a href="/auth/signup" class="btn-outline"><i class="bi bi-rocket-takeoff"></i> Get Started Free</a>
+          {{end}}
         </div>
       </section>
 

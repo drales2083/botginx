@@ -611,6 +611,7 @@ func main() {
 			"appName":     getAppName(),
 			"appBuild":    buildinfo.Build(),
 			"currentYear": time.Now().Year(),
+			"User":        ctx.GetUser(r),
 		}
 		if err := homeTemplate.ExecuteTemplate(w, "home", data); err != nil {
 			log.Error().Err(err).Msg("failed to render homepage")
