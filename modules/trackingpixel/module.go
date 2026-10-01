@@ -13,6 +13,7 @@ import (
 	domainmodels "github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/trackingpixel/handlers"
 	"github.com/botginx/botginx/modules/trackingpixel/models"
+	"github.com/botginx/botginx/modules/trackingpixel/services"
 	"github.com/botginx/botginx/pkg/module"
 )
 
@@ -30,9 +31,10 @@ type DomainProvider interface {
 // Module is the Tracking Pixel host module.
 type Module struct {
 	*module.BaseModule
-	deps    *module.Dependencies
-	domains DomainProvider
-	handler *handlers.Handler
+	deps     *module.Dependencies
+	domains  DomainProvider
+	handler  *handlers.Handler
+	deployer *services.DeployService
 }
 
 // New constructs the module with an injected domain provider.
@@ -49,6 +51,17 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 	store := models.NewStore(deps.DB)
 	m.handler = handlers.New(deps, store, domainLister(m.domains), ipSalt(deps), retentionDays(deps))
+
+	// Get guard host from config (defaults to guardbot.sbs)
+	guardHost := "guardbot.sbs"
+	if deps.Config != nil {
+		if v, ok := deps.Config["panel_url"].(string); ok && v != "" {
+			guardHost = v
+		}
+	}
+	m.deployer = services.NewDeployService(guardHost)
+	m.handler.SetDeployer(m.deployer)
+
 	sub, err := fs.Sub(templatesFS, "templates")
 	if err != nil {
 		return err
@@ -91,6 +104,23 @@ func (m *Module) Routes() chi.Router { return m.handler.Routes() }
 // PublicRoutes serve the pixel; the host mounts them OUTSIDE auth, e.g.
 // r.Mount("/px", module.PublicRoutes()).
 func (m *Module) PublicRoutes() chi.Router { return m.handler.PublicRoutes() }
+
+// TrackingRoutes serve /t/{token} for px.{domain} subdomains.
+func (m *Module) TrackingRoutes() chi.Router { return m.handler.TrackingRoutes() }
+
+// SetDeployServer sets the Deploy VPS credentials for pixel subdomain deployment.
+func (m *Module) SetDeployServer(ip string, port int, user, password string) {
+	if m.deployer != nil {
+		m.deployer.SetServerProvider(func() (*services.ServerInfo, error) {
+			return &services.ServerInfo{
+				IP:       ip,
+				Port:     port,
+				User:     user,
+				Password: password,
+			}, nil
+		})
+	}
+}
 
 func (m *Module) Templates() fs.FS { sub, _ := fs.Sub(templatesFS, "templates"); return sub }
 

@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/botginx/botginx/modules/trackingpixel/core"
 	"github.com/botginx/botginx/modules/trackingpixel/models"
+	"github.com/botginx/botginx/modules/trackingpixel/services"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 )
@@ -29,6 +31,12 @@ type Domain struct {
 	Verified bool
 }
 
+// Deployer handles pixel subdomain deployment to Deploy VPS.
+type Deployer interface {
+	SetupPixelSubdomain(domain string) error
+	CheckPixelSubdomainExists(domain string) (bool, error)
+}
+
 // Handler serves the module's pages and the public pixel.
 type Handler struct {
 	deps        *module.Dependencies
@@ -36,11 +44,46 @@ type Handler struct {
 	listDomains func(userID string) ([]Domain, error)
 	ipSalt      []byte
 	retention   time.Duration
+	deployer    Deployer
 }
 
 func New(deps *module.Dependencies, store *models.Store,
 	listDomains func(string) ([]Domain, error), ipSalt []byte, retention time.Duration) *Handler {
 	return &Handler{deps: deps, store: store, listDomains: listDomains, ipSalt: ipSalt, retention: retention}
+}
+
+// SetDeployer sets the deploy service for pixel subdomain deployment.
+func (h *Handler) SetDeployer(d Deployer) {
+	h.deployer = d
+}
+
+// pixelURL generates the tracking pixel URL for a given token and domain.
+func pixelURL(domain, token, format string) string {
+	baseDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		baseDomain = strings.TrimPrefix(domain, "*.")
+	}
+	return fmt.Sprintf("https://px.%s/t/%s.%s", baseDomain, token, format)
+}
+
+// deployPixelSubdomainIfNeeded deploys nginx config for px.{domain} if not already done.
+func (h *Handler) deployPixelSubdomainIfNeeded(domain string) {
+	if h.deployer == nil {
+		return
+	}
+	exists, err := h.deployer.CheckPixelSubdomainExists(domain)
+	if err != nil {
+		log.Printf("tracking-pixel: check subdomain: %v", err)
+		return
+	}
+	if exists {
+		return
+	}
+	if err := h.deployer.SetupPixelSubdomain(domain); err != nil {
+		log.Printf("tracking-pixel: deploy subdomain px.%s: %v", services.GetBaseDomain(domain), err)
+	} else {
+		log.Printf("tracking-pixel: deployed subdomain px.%s", services.GetBaseDomain(domain))
+	}
 }
 
 func (h *Handler) Routes() chi.Router {
@@ -54,6 +97,14 @@ func (h *Handler) Routes() chi.Router {
 func (h *Handler) PublicRoutes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/{token}", h.serve) // token may include ".gif"/".png"
+	r.Head("/{token}", h.serve)
+	return r
+}
+
+// TrackingRoutes returns routes for /t/{token} used by px.{domain} subdomains.
+func (h *Handler) TrackingRoutes() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/{token}", h.serve)
 	r.Head("/{token}", h.serve)
 	return r
 }
@@ -161,6 +212,10 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+
+	// Deploy px.{domain} subdomain nginx config in background
+	go h.deployPixelSubdomainIfNeeded(domain)
+
 	http.Redirect(w, r, "/user/tracking-pixel", http.StatusSeeOther)
 }
 

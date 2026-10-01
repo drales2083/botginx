@@ -362,6 +362,12 @@ func main() {
 	redirectLinksModule.SetServerProvider(serversModule)
 	shortenerModule.SetServerProvider(serversModule)
 	iplistsModule.SetServerProvider(&iplistServerAdapter{servers: serversModule})
+
+	// Wire up tracking pixel deploy server (uses same deploy VPS as redirect links)
+	if srv, err := serversModule.PickRandom(); err == nil && srv != nil {
+		trackingPixelModule.SetDeployServer(srv.IP, srv.Port, srv.SSHUser, srv.SSHPassword)
+	}
+
 	hostingModule.SetPaymentProcessor(referralsModule)  // Referral commissions on hosting payments
 	authModule.SetSubscriptionService(subscriptions)    // Self-service subscription purchase
 	usersModule.SetAuthService(authModule.AuthService()) // Admin impersonation
@@ -476,8 +482,10 @@ func main() {
 	r.Mount("/optimizer/r", optimizerModule.PublicRoutes())
 
 	// Tracking Pixel public endpoint (no auth, serves 1x1 image + logs opens)
-	// GET /px/{token}.gif|png - served by mail clients
+	// GET /px/{token}.gif|png - served by mail clients (legacy path)
 	r.Mount("/px", trackingPixelModule.PublicRoutes())
+	// GET /t/{token}.gif|png - served via px.{domain} subdomains
+	r.Mount("/t", trackingPixelModule.TrackingRoutes())
 
 	// Public API v1 (API key auth)
 	// External integrations use API keys created in /user/apikeys
