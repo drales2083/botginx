@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -11,21 +12,30 @@ import (
 )
 
 type HealthService struct {
-	db *sqlx.DB
+	db            *sqlx.DB
+	safetyChecker *SafetyChecker
 }
 
 func NewHealthService(db *sqlx.DB) *HealthService {
 	return &HealthService{db: db}
 }
 
+// SetGoogleAPIKey sets the Google Safe Browsing API key
+func (s *HealthService) SetGoogleAPIKey(apiKey string) {
+	s.safetyChecker = NewSafetyChecker(apiKey)
+}
+
 type Domain struct {
-	ID          string    `db:"id"`
-	Name        string    `db:"name"`
-	DNSVerified bool      `db:"dns_verified"`
-	SSLEnabled  bool      `db:"ssl_enabled"`
-	ServerID    *string   `db:"server_id"`
-	VerifyToken string    `db:"verify_token"`
-	CreatedAt   time.Time `db:"created_at"`
+	ID              string     `db:"id"`
+	Name            string     `db:"name"`
+	DNSVerified     bool       `db:"dns_verified"`
+	SSLEnabled      bool       `db:"ssl_enabled"`
+	ServerID        *string    `db:"server_id"`
+	VerifyToken     string     `db:"verify_token"`
+	CreatedAt       time.Time  `db:"created_at"`
+	SafetyStatus    string     `db:"safety_status"`
+	SafetyCheckedAt *time.Time `db:"safety_checked_at"`
+	SafetyThreats   []byte     `db:"safety_threats"`
 }
 
 type HealthStatus struct {
@@ -38,12 +48,20 @@ type HealthStatus struct {
 	HTTPStatus   string
 	HTTPMessage  string
 	ResponseTime int64
+	// Safety check results
+	SafetyStatus  string
+	SafetyMessage string
+	Threats       []Threat
+	SafetyCached  bool
 }
 
 func (s *HealthService) GetUserDomains(userID string) ([]Domain, error) {
 	var domains []Domain
 	err := s.db.Select(&domains, `
-		SELECT id, name, dns_verified, ssl_enabled, server_id, verify_token, created_at
+		SELECT id, name, dns_verified, ssl_enabled, server_id, verify_token, created_at,
+		       COALESCE(safety_status, 'unknown') as safety_status,
+		       safety_checked_at,
+		       COALESCE(safety_threats, '[]'::jsonb) as safety_threats
 		FROM domains
 		WHERE user_id = $1
 		  AND COALESCE(is_marketplace, FALSE) = FALSE
@@ -56,7 +74,10 @@ func (s *HealthService) GetUserDomains(userID string) ([]Domain, error) {
 func (s *HealthService) GetDomain(id, userID string) (*Domain, error) {
 	var domain Domain
 	err := s.db.Get(&domain, `
-		SELECT id, name, dns_verified, ssl_enabled, server_id, verify_token, created_at
+		SELECT id, name, dns_verified, ssl_enabled, server_id, verify_token, created_at,
+		       COALESCE(safety_status, 'unknown') as safety_status,
+		       safety_checked_at,
+		       COALESCE(safety_threats, '[]'::jsonb) as safety_threats
 		FROM domains
 		WHERE id = $1 AND user_id = $2
 	`, id, userID)
@@ -106,7 +127,47 @@ func (s *HealthService) CheckDomain(domain Domain) HealthStatus {
 	// Check HTTP: verify domain is accessible via our VPS
 	status.HTTPStatus, status.HTTPMessage, status.ResponseTime = s.checkHTTP(domain.Name)
 
+	// Check Safety: use cached result if <24h old, otherwise fresh check
+	status.SafetyStatus, status.SafetyMessage, status.Threats, status.SafetyCached = s.checkSafety(domain)
+
 	return status
+}
+
+// checkSafety checks domain safety using cached results or fresh API calls
+func (s *HealthService) checkSafety(domain Domain) (status string, message string, threats []Threat, cached bool) {
+	// Check if we have a recent cached result (< 24 hours old)
+	if domain.SafetyCheckedAt != nil && time.Since(*domain.SafetyCheckedAt) < 24*time.Hour {
+		// Use cached result
+		var cachedThreats []Threat
+		if len(domain.SafetyThreats) > 0 {
+			json.Unmarshal(domain.SafetyThreats, &cachedThreats)
+		}
+
+		if domain.SafetyStatus == "flagged" {
+			return "error", fmt.Sprintf("%d threat(s) detected", len(cachedThreats)), cachedThreats, true
+		}
+		return "ok", "Clean", nil, true
+	}
+
+	// No cache or expired - perform fresh check
+	if s.safetyChecker == nil {
+		return "warning", "Safety check not configured", nil, false
+	}
+
+	result := s.safetyChecker.CheckDomain(domain.Name)
+
+	// Save to database
+	threatsJSON, _ := json.Marshal(result.Threats)
+	s.db.Exec(`
+		UPDATE domains
+		SET safety_status = $1, safety_checked_at = $2, safety_threats = $3
+		WHERE id = $4
+	`, string(result.Status), result.CheckedAt, threatsJSON, domain.ID)
+
+	if result.Status == SafetyFlagged {
+		return "error", fmt.Sprintf("%d threat(s) detected", len(result.Threats)), result.Threats, false
+	}
+	return "ok", "Clean", nil, false
 }
 
 // checkDNS verifies our TXT record is still present (same method as VerificationService.VerifyDNS)

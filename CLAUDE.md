@@ -123,6 +123,12 @@ go test ./...
 | `tracking_pixel_ip_salt` | HMAC salt for hashing client IPs. Required in production; without it, a random salt is generated at startup and IP hashes differ across restarts. |
 | `tracking_pixel_retention_days` | Days to retain open logs before purging (default: 90). |
 
+### Domain Health
+
+| Variable | Description |
+|----------|-------------|
+| `google_safe_browsing_api_key` | Google Safe Browsing API key for malware/phishing detection. Get one free at https://console.cloud.google.com/apis/library/safebrowsing.googleapis.com (10k queries/day). Without it, only URLhaus and PhishTank checks run. |
+
 ### Supabase (Global Whitelist Sync)
 
 | Variable | Description |

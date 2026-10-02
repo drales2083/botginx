@@ -13,6 +13,9 @@ import (
 //go:embed templates/*.html
 var templatesFS embed.FS
 
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
+
 type Module struct {
 	*module.BaseModule
 	service *services.HealthService
@@ -35,6 +38,13 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.service = services.NewHealthService(deps.DB)
 	m.handler = handlers.NewHandler(m.service, deps.Templates)
 
+	// Set Google Safe Browsing API key if configured
+	if deps.Config != nil {
+		if apiKey, ok := deps.Config["google_safe_browsing_api_key"].(string); ok && apiKey != "" {
+			m.service.SetGoogleAPIKey(apiKey)
+		}
+	}
+
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
 
@@ -42,7 +52,12 @@ func (m *Module) Init(deps *module.Dependencies) error {
 }
 
 func (m *Module) Migrate() error {
-	return nil
+	b, err := migrationsFS.ReadFile("migrations/001_safety_checks.sql")
+	if err != nil {
+		return err
+	}
+	_, err = m.DB().Exec(string(b))
+	return err
 }
 
 func (m *Module) Routes() chi.Router {

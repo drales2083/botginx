@@ -15,10 +15,11 @@
                 <thead>
                     <tr>
                         <th>Domain</th>
-                        <th class="text-center" style="width: 120px;">DNS</th>
-                        <th class="text-center" style="width: 120px;">SSL</th>
-                        <th class="text-center" style="width: 120px;">HTTP</th>
-                        <th class="text-end" style="width: 100px;">Actions</th>
+                        <th class="text-center" style="width: 100px;">DNS</th>
+                        <th class="text-center" style="width: 100px;">SSL</th>
+                        <th class="text-center" style="width: 100px;">HTTP</th>
+                        <th class="text-center" style="width: 120px;">Safety</th>
+                        <th class="text-end" style="width: 80px;"></th>
                     </tr>
                 </thead>
                 <tbody id="domainTable">
@@ -30,17 +31,22 @@
                         </td>
                         <td class="text-center">
                             <span class="status-badge status-pending" data-check="dns">
-                                <i class="bi bi-dash-circle"></i> Pending
+                                <i class="bi bi-dash-circle"></i>
                             </span>
                         </td>
                         <td class="text-center">
                             <span class="status-badge status-pending" data-check="ssl">
-                                <i class="bi bi-dash-circle"></i> Pending
+                                <i class="bi bi-dash-circle"></i>
                             </span>
                         </td>
                         <td class="text-center">
                             <span class="status-badge status-pending" data-check="http">
-                                <i class="bi bi-dash-circle"></i> Pending
+                                <i class="bi bi-dash-circle"></i>
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="status-badge status-pending" data-check="safety">
+                                <i class="bi bi-dash-circle"></i>
                             </span>
                         </td>
                         <td class="text-end">
@@ -125,7 +131,7 @@ async function checkAll() {
 }
 
 function setRowChecking(row) {
-    ['dns', 'ssl', 'http'].forEach(check => {
+    ['dns', 'ssl', 'http', 'safety'].forEach(check => {
         const badge = row.querySelector(`[data-check="${check}"]`);
         if (badge) {
             badge.className = 'status-badge status-checking';
@@ -135,11 +141,11 @@ function setRowChecking(row) {
 }
 
 function setRowError(row, msg) {
-    ['dns', 'ssl', 'http'].forEach(check => {
+    ['dns', 'ssl', 'http', 'safety'].forEach(check => {
         const badge = row.querySelector(`[data-check="${check}"]`);
         if (badge) {
             badge.className = 'status-badge status-error';
-            badge.innerHTML = '<i class="bi bi-x-circle"></i> Error';
+            badge.innerHTML = '<i class="bi bi-x-circle"></i>';
             badge.title = msg;
         }
     });
@@ -149,6 +155,7 @@ function updateRow(row, data) {
     updateBadge(row.querySelector('[data-check="dns"]'), data.dns);
     updateBadge(row.querySelector('[data-check="ssl"]'), data.ssl);
     updateBadge(row.querySelector('[data-check="http"]'), data.http);
+    updateSafetyBadge(row.querySelector('[data-check="safety"]'), data.safety);
 }
 
 function updateBadge(badge, check) {
@@ -158,8 +165,29 @@ function updateBadge(badge, check) {
     const icon = icons[check.status] || 'dash-circle';
 
     badge.className = `status-badge status-${check.status}`;
-    badge.innerHTML = `<i class="bi bi-${icon}"></i> ${statusLabel(check.status)}`;
+    badge.innerHTML = `<i class="bi bi-${icon}"></i>`;
     badge.title = check.message || '';
+}
+
+function updateSafetyBadge(badge, check) {
+    if (!badge || !check) return;
+
+    const icons = { ok: 'shield-check', warning: 'shield-exclamation', error: 'shield-x' };
+    const icon = icons[check.status] || 'shield';
+
+    badge.className = `status-badge status-${check.status}`;
+
+    let label = check.status === 'ok' ? 'Clean' : (check.status === 'error' ? 'Flagged' : '?');
+    if (check.cached) label += ' *';
+
+    badge.innerHTML = `<i class="bi bi-${icon}"></i> ${label}`;
+
+    let title = check.message || '';
+    if (check.threats && check.threats.length > 0) {
+        title += '\n\nThreats:\n' + check.threats.map(t => `• ${t.source}: ${t.description}`).join('\n');
+    }
+    if (check.cached) title += '\n\n* Cached result (< 24h old)';
+    badge.title = title;
 }
 
 function statusLabel(status) {

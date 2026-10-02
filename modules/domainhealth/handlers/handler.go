@@ -46,10 +46,16 @@ func (h *Handler) CheckDomain(w http.ResponseWriter, r *http.Request) {
 	status := h.service.CheckDomain(*domain)
 
 	h.json(w, http.StatusOK, map[string]interface{}{
-		"domain":       status.Domain.Name,
-		"dns":          map[string]string{"status": status.DNSStatus, "message": status.DNSMessage},
-		"ssl":          map[string]interface{}{"status": status.SSLStatus, "message": status.SSLMessage, "expiry": status.SSLExpiry},
-		"http":         map[string]interface{}{"status": status.HTTPStatus, "message": status.HTTPMessage, "responseTime": status.ResponseTime},
+		"domain": status.Domain.Name,
+		"dns":    map[string]string{"status": status.DNSStatus, "message": status.DNSMessage},
+		"ssl":    map[string]interface{}{"status": status.SSLStatus, "message": status.SSLMessage, "expiry": status.SSLExpiry},
+		"http":   map[string]interface{}{"status": status.HTTPStatus, "message": status.HTTPMessage, "responseTime": status.ResponseTime},
+		"safety": map[string]interface{}{
+			"status":  status.SafetyStatus,
+			"message": status.SafetyMessage,
+			"threats": status.Threats,
+			"cached":  status.SafetyCached,
+		},
 	})
 }
 
@@ -71,6 +77,12 @@ func (h *Handler) CheckAll(w http.ResponseWriter, r *http.Request) {
 			"dns":    map[string]string{"status": status.DNSStatus, "message": status.DNSMessage},
 			"ssl":    map[string]interface{}{"status": status.SSLStatus, "message": status.SSLMessage, "expiry": status.SSLExpiry},
 			"http":   map[string]interface{}{"status": status.HTTPStatus, "message": status.HTTPMessage, "responseTime": status.ResponseTime},
+			"safety": map[string]interface{}{
+				"status":  status.SafetyStatus,
+				"message": status.SafetyMessage,
+				"threats": status.Threats,
+				"cached":  status.SafetyCached,
+			},
 		})
 	}
 
