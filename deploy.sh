@@ -528,6 +528,8 @@ TG_SUPPORT_BOT_TOKEN=8559701777:AAEOEOJR2waR8rl3wF9yvNfdhbAv9ikvNSU
 TG_SUPPORT_CHAT_ID=-5518056987
 # Hosting module: AES-256-GCM encryption key for HestiaCP passwords
 HOSTING_ENCRYPTION_KEY=${encryption_key}
+# Domain Health: Google Safe Browsing API key (free: 10k queries/day)
+google_safe_browsing_api_key=AIzaSyDnRAEGuVysL3hinplk_5wH6Ak2lfJbwEE
 ENVEOF"
     remote_sudo "chown ${RUN_USER}:${RUN_USER} ${APP_DIR}/.env"
     remote_sudo "chmod 600 ${APP_DIR}/.env"
