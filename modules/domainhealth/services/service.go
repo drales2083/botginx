@@ -17,7 +17,10 @@ type HealthService struct {
 }
 
 func NewHealthService(db *sqlx.DB) *HealthService {
-	return &HealthService{db: db}
+	return &HealthService{
+		db:            db,
+		safetyChecker: NewSafetyChecker(""), // Initialize with no Google key (URLhaus + PhishTank still work)
+	}
 }
 
 // SetGoogleAPIKey sets the Google Safe Browsing API key
@@ -150,9 +153,6 @@ func (s *HealthService) checkSafety(domain Domain) (status string, message strin
 	}
 
 	// No cache or expired - perform fresh check
-	if s.safetyChecker == nil {
-		return "warning", "Safety check not configured", nil, false
-	}
 
 	result := s.safetyChecker.CheckDomain(domain.Name)
 

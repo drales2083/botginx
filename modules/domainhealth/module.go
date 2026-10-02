@@ -3,6 +3,7 @@ package domainhealth
 import (
 	"embed"
 	"io/fs"
+	"os"
 
 	"github.com/botginx/botginx/modules/domainhealth/handlers"
 	"github.com/botginx/botginx/modules/domainhealth/services"
@@ -38,11 +39,9 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.service = services.NewHealthService(deps.DB)
 	m.handler = handlers.NewHandler(m.service, deps.Templates)
 
-	// Set Google Safe Browsing API key if configured
-	if deps.Config != nil {
-		if apiKey, ok := deps.Config["google_safe_browsing_api_key"].(string); ok && apiKey != "" {
-			m.service.SetGoogleAPIKey(apiKey)
-		}
+	// Set Google Safe Browsing API key if configured (from .env)
+	if apiKey := os.Getenv("google_safe_browsing_api_key"); apiKey != "" {
+		m.service.SetGoogleAPIKey(apiKey)
 	}
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
