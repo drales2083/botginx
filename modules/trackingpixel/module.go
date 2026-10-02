@@ -132,6 +132,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 }
 
 // domainLister adapts DomainProvider to the plain closure handlers need.
+// Only returns domains ready for subdomain creation (have SSL or server assigned).
 func domainLister(dp DomainProvider) func(string) ([]handlers.Domain, error) {
 	return func(userID string) ([]handlers.Domain, error) {
 		if dp == nil {
@@ -143,7 +144,18 @@ func domainLister(dp DomainProvider) func(string) ([]handlers.Domain, error) {
 		}
 		out := make([]handlers.Domain, 0, len(ds))
 		for _, d := range ds {
-			out = append(out, handlers.Domain{Name: d.Name, Verified: d.DNSVerified})
+			hasServer := d.ServerID != nil && *d.ServerID != ""
+			// Only include domains ready for subdomains:
+			// - Must be DNS verified
+			// - Must have SSL enabled OR a deploy server assigned
+			if d.DNSVerified && (d.SSLEnabled || hasServer) {
+				out = append(out, handlers.Domain{
+					Name:       d.Name,
+					Verified:   d.DNSVerified,
+					SSLEnabled: d.SSLEnabled,
+					HasServer:  hasServer,
+				})
+			}
 		}
 		return out, nil
 	}

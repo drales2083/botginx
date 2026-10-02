@@ -27,8 +27,10 @@ const (
 
 // Domain is the minimal domain shape the handler needs.
 type Domain struct {
-	Name     string
-	Verified bool
+	Name       string
+	Verified   bool
+	SSLEnabled bool
+	HasServer  bool
 }
 
 // Deployer handles pixel subdomain deployment to Deploy VPS.
