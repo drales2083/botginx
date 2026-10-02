@@ -161,23 +161,25 @@ function updateRow(row, data) {
 function updateBadge(badge, check) {
     if (!badge || !check) return;
 
-    const icons = { ok: 'check-circle', warning: 'exclamation-triangle', error: 'x-circle' };
+    const icons = { ok: 'check-circle-fill', warning: 'exclamation-triangle-fill', error: 'x-circle-fill' };
     const icon = icons[check.status] || 'dash-circle';
+    const labels = { ok: 'OK', warning: 'Warn', error: 'Fail' };
+    const label = labels[check.status] || '?';
 
     badge.className = `status-badge status-${check.status}`;
-    badge.innerHTML = `<i class="bi bi-${icon}"></i>`;
+    badge.innerHTML = `<i class="bi bi-${icon}"></i> ${label}`;
     badge.title = check.message || '';
 }
 
 function updateSafetyBadge(badge, check) {
     if (!badge || !check) return;
 
-    const icons = { ok: 'shield-check', warning: 'shield-exclamation', error: 'shield-x' };
+    const icons = { ok: 'shield-fill-check', warning: 'shield-fill-exclamation', error: 'shield-fill-x' };
     const icon = icons[check.status] || 'shield';
 
     badge.className = `status-badge status-${check.status}`;
 
-    let label = check.status === 'ok' ? 'Clean' : (check.status === 'error' ? 'Flagged' : '?');
+    let label = check.status === 'ok' ? 'Clean' : (check.status === 'error' ? 'Flagged' : 'Warn');
     if (check.cached) label += ' *';
 
     badge.innerHTML = `<i class="bi bi-${icon}"></i> ${label}`;
