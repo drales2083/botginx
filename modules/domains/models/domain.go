@@ -68,6 +68,11 @@ type Domain struct {
 	CpanelConnectionID *string `db:"cpanel_connection_id" json:"cpanelConnectionId,omitempty"`
 	CpanelAutoDNS      bool    `db:"cpanel_auto_dns" json:"cpanelAutoDns"`
 
+	// Safety check fields (from Domain Health module)
+	SafetyStatus    *string    `db:"safety_status" json:"safetyStatus,omitempty"`
+	SafetyCheckedAt *time.Time `db:"safety_checked_at" json:"safetyCheckedAt,omitempty"`
+	SafetyThreats   []byte     `db:"safety_threats" json:"-"` // JSONB stored as bytes
+
 	// Joined fields
 	ServerName string `db:"server_name" json:"serverName,omitempty"`
 }
