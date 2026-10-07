@@ -73,6 +73,34 @@
       display: none !important;
     }
 
+    /* Sidebar collapse transitions */
+    .app-sidebar {
+      transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
+    }
+    .logo-xs, .logo-xl {
+      transition: opacity 0.25s ease-in-out, visibility 0.25s ease-in-out, width 0.3s ease-in-out;
+    }
+    .sidebar-menu .nav-link p,
+    .brand-text {
+      transition: opacity 0.25s ease-in-out, width 0.3s ease-in-out, margin-left 0.3s ease-in-out;
+    }
+    .sidebar-menu .nav-header {
+      transition: opacity 0.2s ease-in-out;
+    }
+    .sidebar-menu .nav-badge,
+    .sidebar-menu .nav-arrow {
+      transition: opacity 0.2s ease-in-out;
+    }
+    .app-main {
+      transition: margin-left 0.3s ease-in-out;
+    }
+    .sidebar-brand {
+      transition: padding 0.3s ease-in-out;
+    }
+    .sidebar-brand .brand-link {
+      transition: justify-content 0.3s ease-in-out;
+    }
+
     /* NOTE: Form switches, accordions, alerts, datatables are now styled by Kumo theme */
   </style>
   <script>
