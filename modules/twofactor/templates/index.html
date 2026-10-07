@@ -191,8 +191,20 @@ let setupSecret = '';
 
 async function startSetup() {
     try {
+        console.log('Starting 2FA setup...');
         const res = await fetch('/user/twofactor/api/setup', { method: 'POST', credentials: 'same-origin' });
-        const data = await res.json();
+        console.log('Response status:', res.status);
+        const text = await res.text();
+        console.log('Response body:', text);
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseErr) {
+            console.error('JSON parse error:', parseErr);
+            showToast('Server returned invalid response', 'danger');
+            return;
+        }
 
         if (!res.ok) {
             showToast(data.error || TRANSLATIONS.error, 'danger');
@@ -211,7 +223,8 @@ async function startSetup() {
         document.getElementById('setup-step-1').classList.add('d-none');
         document.getElementById('setup-step-2').classList.remove('d-none');
     } catch (e) {
-        showToast(TRANSLATIONS.error, 'danger');
+        console.error('startSetup error:', e);
+        showToast(TRANSLATIONS.error + ': ' + e.message, 'danger');
     }
 }
 
