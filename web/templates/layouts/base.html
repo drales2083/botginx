@@ -75,8 +75,17 @@
 
     /* NOTE: Form switches, accordions, alerts, datatables are now styled by Kumo theme */
   </style>
+  <script>
+    // Apply sidebar state immediately to prevent flash
+    try {
+      if (localStorage.getItem('sidebar-collapsed') === 'true') {
+        document.write('<style id="sidebar-no-flash">.app-sidebar,.logo-xl,.logo-xs{transition:none!important}.logo-xs{display:inline-block!important;visibility:visible!important;opacity:1!important}.logo-xl,.sidebar-menu .nav-link p,.brand-text{display:none!important;visibility:hidden!important}.app-sidebar{width:73px!important}</style>');
+        document.documentElement.dataset.sidebarCollapsed = 'true';
+      }
+    } catch (e) {}
+  </script>
 </head>
-<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<body class="layout-fixed sidebar-mini sidebar-without-hover bg-body-tertiary">
   <div class="app-wrapper">
     <!-- Header -->
     <nav class="app-header navbar navbar-expand bg-dark" data-bs-theme="dark">
@@ -156,8 +165,9 @@
     <!-- Sidebar -->
     <aside class="app-sidebar bg-dark shadow" data-bs-theme="dark">
       <div class="sidebar-brand">
-        <a href="https://guardbot.sbs" class="brand-link">
-          <img src="/static/img/logo.svg" alt="{{appName}}" style="height: 32px;">
+        <a href="/user/dashboard" class="brand-link">
+          <img src="/static/img/logo-icon.svg" alt="{{appName}}" class="brand-image logo-xs" style="height: 38px;">
+          <img src="/static/img/logo.svg" alt="{{appName}}" class="brand-image logo-xl" style="height: 32px;">
         </a>
       </div>
       <div class="sidebar-wrapper" data-overlayscrollbars-options='{"scrollbars":{"autoHide":"scroll"}}'>
@@ -346,6 +356,37 @@
 
   <script src="/static/js/adminlte.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/umd/simple-datatables.min.js"></script>
+  <script>
+    // Sidebar state persistence
+    (function() {
+      const STORAGE_KEY = 'sidebar-collapsed';
+
+      // Apply saved state from head script marker
+      if (document.documentElement.dataset.sidebarCollapsed === 'true') {
+        document.body.classList.add('sidebar-collapse');
+      }
+
+      // Override sidebar toggle behavior
+      document.addEventListener('DOMContentLoaded', function() {
+        // Remove no-flash style to restore transitions
+        const noFlash = document.getElementById('sidebar-no-flash');
+        if (noFlash) setTimeout(() => noFlash.remove(), 100);
+
+        const toggleBtn = document.querySelector('[data-lte-toggle="sidebar"]');
+        if (!toggleBtn) return;
+
+        // Remove AdminLTE's default handler and add our own
+        toggleBtn.removeAttribute('data-lte-toggle');
+        toggleBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const isCollapsed = document.body.classList.toggle('sidebar-collapse');
+          try {
+            localStorage.setItem(STORAGE_KEY, isCollapsed ? 'true' : 'false');
+          } catch (e) {}
+        });
+      });
+    })();
+  </script>
   <script>
     // Feedback for every create, update and delete.
     //
