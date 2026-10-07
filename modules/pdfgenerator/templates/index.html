@@ -1,0 +1,15 @@
+{{define "content"}}
+{{template "pdf-customizer" .}}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initPDFCustomizer({
+        links: {{.Links | json}},
+        backgrounds: {{.Backgrounds | json}},
+        previewUrl: '/user/generate-pdf/api/preview',
+        generateUrl: '/user/generate-pdf/api/generate',
+        backgroundsUrl: '/user/generate-pdf/api/backgrounds'
+    });
+});
+</script>
+{{end}}

@@ -23,6 +23,7 @@ import (
 	"github.com/botginx/botginx/modules/antibotcontrol"
 	"github.com/botginx/botginx/modules/apikeys"
 	"github.com/botginx/botginx/modules/optimizer"
+	// "github.com/botginx/botginx/modules/pdfgenerator" // Disabled - not ready for users
 	"github.com/botginx/botginx/modules/trackingpixel"
 	"github.com/botginx/botginx/modules/backup"
 	"github.com/botginx/botginx/modules/referrals"
@@ -317,6 +318,7 @@ func main() {
 	registry.Register(optimizerModule)           // Attachment Optimizer (HTML/PDF sanitizer)
 	trackingPixelModule := trackingpixel.New(domainsModule)
 	registry.Register(trackingPixelModule)       // Tracking Pixel (email open tracking)
+	// registry.Register(pdfgenerator.New())        // PDF Generator (CTA PDFs with blurred backgrounds) - Disabled
 	registry.Register(apikeys.New())             // API Keys management
 	registry.Register(webhooks.New())            // Webhooks module
 	registry.Register(hostingModule)             // Bullet Proof Hosting module
@@ -564,6 +566,11 @@ func main() {
 		if dhMod, ok := registry.Get("domainhealth"); ok {
 			r.Mount("/domains/health", dhMod.Routes())
 		}
+
+		// PDF Generator: create PDFs with blurred backgrounds and CTA buttons. - Disabled
+		// if pdfMod, ok := registry.Get("pdfgenerator"); ok {
+		// 	r.Mount("/generate-pdf", pdfMod.Routes())
+		// }
 
 		// Analog Stats: classic web server statistics.
 		if asMod, ok := registry.Get("analogstats"); ok {

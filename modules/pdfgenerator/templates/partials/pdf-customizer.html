@@ -1,0 +1,839 @@
+{{define "pdf-customizer"}}
+<style>
+  .pdf-app {
+    display: flex;
+    height: calc(100vh - 200px);
+    min-height: 500px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius-lg);
+    overflow: hidden;
+  }
+
+  .pdf-controls {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--bs-border-color);
+    background: var(--bs-dark-bg-subtle);
+  }
+  @media (max-width: 991.98px) {
+    .pdf-app {
+      flex-direction: column;
+      height: auto;
+    }
+    .pdf-controls {
+      width: 100%;
+      border-right: none;
+      border-bottom: 1px solid var(--bs-border-color);
+      max-height: 50vh;
+    }
+  }
+
+  .pdf-preview-header {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bs-dark-bg-subtle);
+  }
+  .pdf-preview-header .bi-eye {
+    font-size: 1rem;
+    color: var(--bs-primary);
+  }
+  .pdf-preview-header span.title {
+    flex: 1;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+
+  .pdf-controls-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .pdf-section {
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+  .pdf-section:last-child {
+    border-bottom: none;
+  }
+  .pdf-section-header {
+    padding: 0.65rem 1rem;
+    background: rgba(0,0,0,0.1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .pdf-section-header:hover {
+    background: rgba(0,0,0,0.2);
+  }
+  .pdf-section-header i.bi-chevron-down {
+    transition: transform 0.2s;
+    font-size: 0.75rem;
+  }
+  .pdf-section.collapsed .pdf-section-header i.bi-chevron-down {
+    transform: rotate(-90deg);
+  }
+  .pdf-section-body {
+    padding: 0.75rem 1rem;
+    background: rgba(0,0,0,0.05);
+  }
+  .pdf-section.collapsed .pdf-section-body {
+    display: none;
+  }
+
+  .pdf-row {
+    margin-bottom: 0.65rem;
+  }
+  .pdf-row:last-child {
+    margin-bottom: 0;
+  }
+  .pdf-row > label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .pdf-color-picker {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .pdf-color-picker input[type="color"] {
+    width: 36px;
+    height: 32px;
+    padding: 2px;
+    border-radius: var(--bs-border-radius);
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    cursor: pointer;
+  }
+  .pdf-color-picker input[type="text"] {
+    flex: 1;
+    font-family: monospace;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+  }
+
+  .pdf-range-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .pdf-range-row input[type="range"] {
+    flex: 1;
+  }
+  .pdf-range-row .pdf-range-value {
+    min-width: 2.5rem;
+    text-align: right;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--bs-secondary-color);
+  }
+
+  .pdf-upload-area {
+    border: 2px dashed var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    padding: 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .pdf-upload-area:hover {
+    border-color: var(--bs-primary);
+  }
+  .pdf-upload-area.has-image {
+    border-style: solid;
+    padding: 0.5rem;
+  }
+  .pdf-upload-preview {
+    max-width: 100%;
+    max-height: 80px;
+    border-radius: var(--bs-border-radius);
+  }
+  .pdf-upload-actions {
+    margin-top: 0.4rem;
+  }
+
+  .pdf-bg-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+  }
+  .pdf-bg-item {
+    aspect-ratio: 1;
+    border-radius: var(--bs-border-radius);
+    border: 2px solid transparent;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .pdf-bg-item:hover {
+    border-color: var(--bs-secondary);
+  }
+  .pdf-bg-item.selected {
+    border-color: var(--bs-primary);
+  }
+  .pdf-bg-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .pdf-toggle-group {
+    display: flex;
+    gap: 0;
+  }
+  .pdf-toggle-btn {
+    flex: 1;
+    padding: 0.4rem 0.75rem;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    color: var(--bs-secondary-color);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pdf-toggle-btn:first-child {
+    border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
+  }
+  .pdf-toggle-btn:last-child {
+    border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
+    border-left: none;
+  }
+  .pdf-toggle-btn.active {
+    background: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
+  }
+
+  .pdf-actions {
+    padding: 0.75rem 1rem;
+    background: rgba(0,0,0,0.15);
+    border-top: 1px solid var(--bs-border-color);
+    display: flex;
+    gap: 0.5rem;
+  }
+  .pdf-actions .btn {
+    flex: 1;
+  }
+
+  .pdf-preview {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pdf-preview-frame {
+    flex: 1;
+    background: #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .pdf-preview-container {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+  }
+  .pdf-preview-container img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    border-radius: 4px;
+  }
+  .pdf-preview-placeholder {
+    color: #666;
+    text-align: center;
+  }
+  .pdf-preview-placeholder i {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .pdf-button-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-weight: 600;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+</style>
+
+<div class="pdf-app" id="pdf-customizer-root">
+  <aside class="pdf-controls">
+    <div class="pdf-controls-body">
+      <!-- Background Section -->
+      <div class="pdf-section" data-section="background">
+        <div class="pdf-section-header" onclick="togglePDFSection(this)">
+          <span><i class="bi bi-image me-2"></i>Background</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="pdf-section-body">
+          <div class="pdf-row">
+            <label>Source</label>
+            <div class="pdf-toggle-group">
+              <button type="button" class="pdf-toggle-btn active" data-mode="presets" onclick="setBgMode('presets')">Presets</button>
+              <button type="button" class="pdf-toggle-btn" data-mode="upload" onclick="setBgMode('upload')">Upload</button>
+            </div>
+          </div>
+
+          <div class="pdf-row" id="pdf-presets-row">
+            <label>Select Background</label>
+            <div class="pdf-bg-grid" id="pdf-bg-grid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <div class="pdf-row" id="pdf-upload-row" style="display:none;">
+            <label>Image</label>
+            <div class="pdf-upload-area" id="pdf-uploadArea" onclick="document.getElementById('pdf-imageFile').click()">
+              <div id="pdf-uploadPlaceholder">
+                <i class="bi bi-cloud-upload fs-5 d-block mb-1"></i>
+                <span class="text-muted small">Click or drag image (max 5MB)</span>
+              </div>
+              <img id="pdf-uploadPreview" class="pdf-upload-preview" style="display:none;">
+              <div class="pdf-upload-actions" id="pdf-uploadActions" style="display:none;">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearPDFImage(event)">
+                  <i class="bi bi-trash"></i> Remove
+                </button>
+              </div>
+            </div>
+            <input type="file" id="pdf-imageFile" accept="image/jpeg,image/png" style="display:none;">
+          </div>
+
+          <div class="pdf-row">
+            <label>Blur Level</label>
+            <div class="pdf-range-row">
+              <input type="range" class="form-range" id="pdf-blur" min="0" max="20" value="5">
+              <span class="pdf-range-value" id="pdf-blur-value">5px</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Button Section -->
+      <div class="pdf-section" data-section="button">
+        <div class="pdf-section-header" onclick="togglePDFSection(this)">
+          <span><i class="bi bi-hand-index me-2"></i>Button</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="pdf-section-body">
+          <div class="pdf-row">
+            <label>Button Text</label>
+            <input type="text" class="form-control form-control-sm" id="pdf-buttonText" value="Click Here" maxlength="50">
+          </div>
+          <div class="pdf-row">
+            <label>Button Color</label>
+            <div class="pdf-color-picker">
+              <input type="color" id="pdf-buttonColor" value="#dc3545">
+              <input type="text" class="form-control form-control-sm" id="pdf-buttonColor-text" value="#DC3545" maxlength="7">
+            </div>
+          </div>
+          <div class="pdf-row">
+            <label>Text Color</label>
+            <div class="pdf-color-picker">
+              <input type="color" id="pdf-textColor" value="#ffffff">
+              <input type="text" class="form-control form-control-sm" id="pdf-textColor-text" value="#FFFFFF" maxlength="7">
+            </div>
+          </div>
+          <div class="pdf-row">
+            <label>Border Radius</label>
+            <div class="pdf-range-row">
+              <input type="range" class="form-range" id="pdf-borderRadius" min="0" max="50" value="8">
+              <span class="pdf-range-value" id="pdf-borderRadius-value">8px</span>
+            </div>
+          </div>
+          <div class="pdf-row">
+            <label>Font Size</label>
+            <div class="pdf-range-row">
+              <input type="range" class="form-range" id="pdf-fontSize" min="14" max="32" value="18">
+              <span class="pdf-range-value" id="pdf-fontSize-value">18px</span>
+            </div>
+          </div>
+          <div class="pdf-row">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="pdf-shadow" checked>
+              <label class="form-check-label" for="pdf-shadow">Button Shadow</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Destination Section -->
+      <div class="pdf-section" data-section="destination">
+        <div class="pdf-section-header" onclick="togglePDFSection(this)">
+          <span><i class="bi bi-link-45deg me-2"></i>Destination</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="pdf-section-body">
+          <div class="pdf-row">
+            <label>Link Type</label>
+            <div class="pdf-toggle-group">
+              <button type="button" class="pdf-toggle-btn active" data-mode="mylinks" onclick="setLinkMode('mylinks')">My Links</button>
+              <button type="button" class="pdf-toggle-btn" data-mode="custom" onclick="setLinkMode('custom')">Custom URL</button>
+            </div>
+          </div>
+          <div class="pdf-row" id="pdf-mylinks-row">
+            <label>Select Link</label>
+            <select class="form-select form-select-sm" id="pdf-linkSelect">
+              <option value="">-- Select a link --</option>
+            </select>
+          </div>
+          <div class="pdf-row" id="pdf-customurl-row" style="display:none;">
+            <label>Custom URL</label>
+            <input type="url" class="form-control form-control-sm" id="pdf-customUrl" placeholder="https://example.com/page">
+          </div>
+        </div>
+      </div>
+
+      <!-- PDF Settings Section -->
+      <div class="pdf-section collapsed" data-section="settings">
+        <div class="pdf-section-header" onclick="togglePDFSection(this)">
+          <span><i class="bi bi-file-earmark me-2"></i>PDF Settings</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="pdf-section-body">
+          <div class="pdf-row">
+            <label>Page Size</label>
+            <select class="form-select form-select-sm" id="pdf-pageSize">
+              <option value="a4" selected>A4 (210 × 297 mm)</option>
+              <option value="letter">Letter (8.5 × 11 in)</option>
+            </select>
+          </div>
+          <div class="pdf-row">
+            <label>Orientation</label>
+            <div class="pdf-toggle-group">
+              <button type="button" class="pdf-toggle-btn active" data-mode="portrait" onclick="setOrientation('portrait')">Portrait</button>
+              <button type="button" class="pdf-toggle-btn" data-mode="landscape" onclick="setOrientation('landscape')">Landscape</button>
+            </div>
+          </div>
+          <div class="pdf-row">
+            <label>Margins</label>
+            <div class="pdf-range-row">
+              <input type="range" class="form-range" id="pdf-margins" min="0" max="50" value="10">
+              <span class="pdf-range-value" id="pdf-margins-value">10mm</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pdf-actions">
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetPDFSettings()">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+      </button>
+      <button type="button" class="btn btn-primary btn-sm" id="pdf-generate-btn" onclick="generatePDF()">
+        <i class="bi bi-download me-1"></i>Generate PDF
+      </button>
+    </div>
+  </aside>
+
+  <section class="pdf-preview">
+    <header class="pdf-preview-header">
+      <i class="bi bi-eye"></i>
+      <span class="title">Live Preview</span>
+      <button class="btn btn-outline-secondary btn-sm" type="button" title="Refresh" onclick="refreshPDFPreview()">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+    </header>
+    <div class="pdf-preview-frame">
+      <div class="pdf-preview-placeholder" id="pdf-preview-placeholder">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span>Select a background to preview</span>
+      </div>
+      <div class="pdf-preview-container" id="pdf-preview-container" style="display:none;">
+        <img id="pdf-preview-img">
+        <div class="pdf-button-overlay" id="pdf-button-overlay">Click Here</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function() {
+  let pdfState = {
+    previewUrl: '',
+    generateUrl: '',
+    backgroundsUrl: '',
+    links: [],
+    backgrounds: [],
+    bgMode: 'presets',
+    linkMode: 'mylinks',
+    orientation: 'portrait',
+    selectedPreset: '',
+    uploadedImageDataUrl: '',
+    debounceTimer: null
+  };
+
+  window.togglePDFSection = function(header) {
+    const section = header.closest('.pdf-section');
+    section.classList.toggle('collapsed');
+  };
+
+  window.setBgMode = function(mode) {
+    pdfState.bgMode = mode;
+    document.querySelectorAll('[data-mode="presets"], [data-mode="upload"]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    document.getElementById('pdf-presets-row').style.display = mode === 'presets' ? 'block' : 'none';
+    document.getElementById('pdf-upload-row').style.display = mode === 'upload' ? 'block' : 'none';
+    schedulePDFPreviewUpdate();
+  };
+
+  window.setLinkMode = function(mode) {
+    pdfState.linkMode = mode;
+    document.querySelectorAll('[data-mode="mylinks"], [data-mode="custom"]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    document.getElementById('pdf-mylinks-row').style.display = mode === 'mylinks' ? 'block' : 'none';
+    document.getElementById('pdf-customurl-row').style.display = mode === 'custom' ? 'block' : 'none';
+  };
+
+  window.setOrientation = function(orientation) {
+    pdfState.orientation = orientation;
+    document.querySelectorAll('[data-mode="portrait"], [data-mode="landscape"]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === orientation);
+    });
+    schedulePDFPreviewUpdate();
+  };
+
+  function selectPreset(filename) {
+    pdfState.selectedPreset = filename;
+    document.querySelectorAll('.pdf-bg-item').forEach(item => {
+      item.classList.toggle('selected', item.dataset.filename === filename);
+    });
+    schedulePDFPreviewUpdate();
+  }
+
+  window.clearPDFImage = function(e) {
+    e.stopPropagation();
+    pdfState.uploadedImageDataUrl = '';
+    document.getElementById('pdf-uploadPreview').src = '';
+    document.getElementById('pdf-uploadPreview').style.display = 'none';
+    document.getElementById('pdf-uploadPlaceholder').style.display = 'block';
+    document.getElementById('pdf-uploadActions').style.display = 'none';
+    document.getElementById('pdf-uploadArea').classList.remove('has-image');
+    document.getElementById('pdf-imageFile').value = '';
+    schedulePDFPreviewUpdate();
+  };
+
+  function syncColorInputs(colorId) {
+    const colorInput = document.getElementById(colorId);
+    const textInput = document.getElementById(colorId + '-text');
+    if (!colorInput || !textInput) return;
+
+    colorInput.addEventListener('input', () => {
+      textInput.value = colorInput.value.toUpperCase();
+      schedulePDFPreviewUpdate();
+    });
+
+    textInput.addEventListener('input', () => {
+      let val = textInput.value;
+      if (!val.startsWith('#')) val = '#' + val;
+      if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        colorInput.value = val;
+        schedulePDFPreviewUpdate();
+      }
+    });
+
+    textInput.addEventListener('blur', () => {
+      textInput.value = colorInput.value.toUpperCase();
+    });
+  }
+
+  function syncRangeDisplay(rangeId, suffix) {
+    const range = document.getElementById(rangeId);
+    const display = document.getElementById(rangeId + '-value');
+    if (!range || !display) return;
+
+    range.addEventListener('input', () => {
+      display.textContent = range.value + suffix;
+      schedulePDFPreviewUpdate();
+    });
+  }
+
+  function schedulePDFPreviewUpdate() {
+    clearTimeout(pdfState.debounceTimer);
+    pdfState.debounceTimer = setTimeout(refreshPDFPreview, 400);
+  }
+
+  function getPDFSettings() {
+    return {
+      imageDataUrl: pdfState.bgMode === 'upload' ? pdfState.uploadedImageDataUrl : '',
+      presetImage: pdfState.bgMode === 'presets' ? pdfState.selectedPreset : '',
+      blurLevel: parseInt(document.getElementById('pdf-blur').value),
+      buttonText: document.getElementById('pdf-buttonText').value || 'Click Here',
+      buttonColor: document.getElementById('pdf-buttonColor').value,
+      textColor: document.getElementById('pdf-textColor').value,
+      borderRadius: parseInt(document.getElementById('pdf-borderRadius').value),
+      paddingX: 40,
+      paddingY: 16,
+      fontSize: parseInt(document.getElementById('pdf-fontSize').value),
+      shadow: document.getElementById('pdf-shadow').checked,
+      linkUrl: pdfState.linkMode === 'mylinks'
+        ? document.getElementById('pdf-linkSelect').value
+        : document.getElementById('pdf-customUrl').value,
+      pageSize: document.getElementById('pdf-pageSize').value,
+      orientation: pdfState.orientation,
+      margins: parseInt(document.getElementById('pdf-margins').value)
+    };
+  }
+
+  function updateButtonOverlay(settings) {
+    const btn = document.getElementById('pdf-button-overlay');
+    btn.textContent = settings.buttonText || 'Click Here';
+    btn.style.backgroundColor = settings.buttonColor || '#dc3545';
+    btn.style.color = settings.textColor || '#ffffff';
+    btn.style.borderRadius = (settings.borderRadius || 8) + 'px';
+    btn.style.fontSize = (settings.fontSize || 18) + 'px';
+    btn.style.boxShadow = settings.shadow ? '0 4px 12px rgba(0,0,0,0.3)' : 'none';
+  }
+
+  window.refreshPDFPreview = function() {
+    const settings = getPDFSettings();
+
+    // Update button overlay immediately for instant feedback
+    updateButtonOverlay(settings);
+
+    if (!settings.imageDataUrl && !settings.presetImage) {
+      document.getElementById('pdf-preview-placeholder').style.display = 'block';
+      document.getElementById('pdf-preview-container').style.display = 'none';
+      return;
+    }
+
+    fetch(pdfState.previewUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.preview) {
+        document.getElementById('pdf-preview-placeholder').style.display = 'none';
+        const container = document.getElementById('pdf-preview-container');
+        const img = document.getElementById('pdf-preview-img');
+        img.src = data.preview;
+        container.style.display = 'block';
+      }
+    })
+    .catch(err => {
+      console.error('Preview error:', err);
+    });
+  };
+
+  window.generatePDF = function() {
+    const settings = getPDFSettings();
+
+    if (!settings.imageDataUrl && !settings.presetImage) {
+      showToast('Please select a background image', 'warning');
+      return;
+    }
+    if (!settings.linkUrl) {
+      showToast('Please select or enter a destination link', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('pdf-generate-btn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+
+    fetch(pdfState.generateUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(settings)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Generation failed');
+      return res.arrayBuffer();
+    })
+    .then(buffer => {
+      if (buffer.byteLength === 0) {
+        throw new Error('Empty response from server');
+      }
+      return new Blob([buffer], { type: 'application/pdf' });
+    })
+    .then(blob => {
+      // Direct download
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'generated.pdf';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        a.remove();
+      }, 10000);
+      showToast('PDF downloaded!', 'success');
+    })
+    .catch(err => {
+      showToast('Failed to generate PDF: ' + err.message, 'danger');
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    });
+  };
+
+  window.resetPDFSettings = function() {
+    pdfState.selectedPreset = '';
+    pdfState.uploadedImageDataUrl = '';
+    pdfState.bgMode = 'presets';
+    pdfState.linkMode = 'mylinks';
+    pdfState.orientation = 'portrait';
+
+    document.getElementById('pdf-blur').value = 5;
+    document.getElementById('pdf-blur-value').textContent = '5px';
+    document.getElementById('pdf-buttonText').value = 'Click Here';
+    document.getElementById('pdf-buttonColor').value = '#dc3545';
+    document.getElementById('pdf-buttonColor-text').value = '#DC3545';
+    document.getElementById('pdf-textColor').value = '#ffffff';
+    document.getElementById('pdf-textColor-text').value = '#FFFFFF';
+    document.getElementById('pdf-borderRadius').value = 8;
+    document.getElementById('pdf-borderRadius-value').textContent = '8px';
+    document.getElementById('pdf-fontSize').value = 18;
+    document.getElementById('pdf-fontSize-value').textContent = '18px';
+    document.getElementById('pdf-shadow').checked = true;
+    document.getElementById('pdf-pageSize').value = 'a4';
+    document.getElementById('pdf-margins').value = 10;
+    document.getElementById('pdf-margins-value').textContent = '10mm';
+    document.getElementById('pdf-linkSelect').value = '';
+    document.getElementById('pdf-customUrl').value = '';
+
+    setBgMode('presets');
+    setLinkMode('mylinks');
+    setOrientation('portrait');
+    clearPDFImage({ stopPropagation: function(){} });
+
+    document.querySelectorAll('.pdf-bg-item').forEach(item => item.classList.remove('selected'));
+
+    document.getElementById('pdf-preview-placeholder').style.display = 'block';
+    document.getElementById('pdf-preview-container').style.display = 'none';
+  };
+
+  function populateBackgrounds() {
+    const grid = document.getElementById('pdf-bg-grid');
+    grid.innerHTML = '';
+
+    pdfState.backgrounds.forEach(bg => {
+      const item = document.createElement('div');
+      item.className = 'pdf-bg-item';
+      item.dataset.filename = bg.filename;
+      item.title = bg.name;
+      item.onclick = () => selectPreset(bg.filename);
+
+      const img = document.createElement('img');
+      img.src = pdfState.backgroundsUrl + '/' + bg.filename;
+      img.alt = bg.name;
+      item.appendChild(img);
+
+      grid.appendChild(item);
+    });
+  }
+
+  function populateLinks() {
+    const select = document.getElementById('pdf-linkSelect');
+    select.innerHTML = '<option value="">-- Select a link --</option>';
+
+    pdfState.links.forEach(link => {
+      const opt = document.createElement('option');
+      opt.value = link.url;
+      opt.textContent = link.name;
+      select.appendChild(opt);
+    });
+  }
+
+  window.initPDFCustomizer = function(config) {
+    pdfState.previewUrl = config.previewUrl;
+    pdfState.generateUrl = config.generateUrl;
+    pdfState.backgroundsUrl = config.backgroundsUrl;
+    pdfState.links = config.links || [];
+    pdfState.backgrounds = config.backgrounds || [];
+
+    syncColorInputs('pdf-buttonColor');
+    syncColorInputs('pdf-textColor');
+    syncRangeDisplay('pdf-blur', 'px');
+    syncRangeDisplay('pdf-borderRadius', 'px');
+    syncRangeDisplay('pdf-fontSize', 'px');
+    syncRangeDisplay('pdf-margins', 'mm');
+
+    document.getElementById('pdf-buttonText').addEventListener('input', schedulePDFPreviewUpdate);
+
+    const fileInput = document.getElementById('pdf-imageFile');
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Image must be under 5MB', 'warning');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        pdfState.uploadedImageDataUrl = evt.target.result;
+        const preview = document.getElementById('pdf-uploadPreview');
+        preview.src = evt.target.result;
+        preview.style.display = 'block';
+        document.getElementById('pdf-uploadPlaceholder').style.display = 'none';
+        document.getElementById('pdf-uploadActions').style.display = 'block';
+        document.getElementById('pdf-uploadArea').classList.add('has-image');
+        schedulePDFPreviewUpdate();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    const uploadArea = document.getElementById('pdf-uploadArea');
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = 'var(--bs-primary)';
+    });
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.style.borderColor = '';
+    });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '';
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const input = document.getElementById('pdf-imageFile');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+
+    populateBackgrounds();
+    populateLinks();
+  };
+})();
+</script>
+{{end}}

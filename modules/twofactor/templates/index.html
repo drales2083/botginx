@@ -191,7 +191,7 @@ let setupSecret = '';
 
 async function startSetup() {
     try {
-        const res = await fetch('/user/twofactor/api/setup', { method: 'POST' });
+        const res = await fetch('/user/twofactor/api/setup', { method: 'POST', credentials: 'same-origin' });
         const data = await res.json();
 
         if (!res.ok) {
@@ -232,6 +232,7 @@ async function enableTwoFactor() {
         const res = await fetch('/user/twofactor/api/enable', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({ code })
         });
         const data = await res.json();
@@ -271,6 +272,7 @@ async function disableTwoFactor() {
         const res = await fetch('/user/twofactor/api/disable', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({ code })
         });
         const data = await res.json();
@@ -306,6 +308,7 @@ async function doRegenerateBackup() {
         const res = await fetch('/user/twofactor/api/regenerate-backup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({ code })
         });
         const data = await res.json();
