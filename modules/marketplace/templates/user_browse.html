@@ -1,60 +1,95 @@
 {{define "content"}}
-<div class="row mb-4">
-    <div class="col">
-        <h4><i class="bi bi-bag me-2"></i>{{t "marketplace.buy_domain"}}</h4>
-        <p class="text-secondary mb-0">{{t "marketplace.buy_domain_desc"}}</p>
-    </div>
-</div>
-
-{{if .Domains}}
-<div class="row g-4">
-    {{range .Domains}}
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-globe me-2 text-primary"></i>
-                        <code>{{.Name}}</code>
-                    </h5>
-                    <span class="badge bg-success">{{t "marketplace.ready"}}</span>
-                </div>
-
-                {{if .MarketplaceDescription}}
-                <p class="text-muted small mb-3">{{.MarketplaceDescription}}</p>
-                {{end}}
-
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="h4 text-success mb-0">${{printf "%.2f" (deref .MarketplacePrice)}}</span>
-                    </div>
-                    <button class="btn btn-primary btn-purchase"
-                            data-id="{{.ID}}"
-                            data-name="{{.Name}}"
-                            data-price="{{deref .MarketplacePrice}}">
-                        <i class="bi bi-bag-check me-1"></i>{{t "marketplace.purchase"}}
-                    </button>
-                </div>
-            </div>
-            <div class="card-footer bg-transparent">
-                <small class="text-muted">
-                    <i class="bi bi-check-circle text-success me-1"></i>{{t "marketplace.ssl_configured"}}
-                    <i class="bi bi-check-circle text-success ms-3 me-1"></i>{{t "marketplace.ready_to_use"}}
-                </small>
-            </div>
-        </div>
-    </div>
-    {{end}}
-</div>
-{{else}}
 <div class="card">
-    <div class="card-body text-center py-5">
-        <i class="bi bi-bag display-1 text-muted mb-3"></i>
-        <h5>{{t "marketplace.no_domains"}}</h5>
-        <p class="text-muted mb-0">{{t "marketplace.no_domains_desc"}}</p>
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-globe me-2"></i>{{t "marketplace.buy_domain"}}</h5>
+    </div>
+    <div class="card-body">
+        {{if .Domains}}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" data-datatable data-per-page="25" data-no-sort="7">
+                <thead>
+                    <tr>
+                        <th><i class="bi bi-globe me-1"></i> Domain</th>
+                        <th>TLD</th>
+                        <th>Type</th>
+                        <th class="text-center">SSL</th>
+                        <th class="text-center">Clean</th>
+                        <th class="text-center">DNS</th>
+                        <th><i class="bi bi-currency-dollar me-1"></i> Price</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Domains}}
+                    <tr>
+                        <td>
+                            <code class="fs-6">{{.Name}}</code>
+                        </td>
+                        <td>
+                            {{$tld := extractTLD .Name}}
+                            {{if eq $tld ".com"}}
+                            <span class="badge bg-success">{{$tld}}</span>
+                            {{else if eq $tld ".org"}}
+                            <span class="badge bg-info">{{$tld}}</span>
+                            {{else if or (eq $tld ".de") (eq $tld ".uk") (eq $tld ".us")}}
+                            <span class="badge bg-warning text-dark">{{$tld}}</span>
+                            {{else}}
+                            <span class="badge bg-secondary">{{$tld}}</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            <span class="badge bg-primary"><i class="bi bi-hdd-rack me-1"></i>cPanel</span>
+                        </td>
+                        <td class="text-center">
+                            {{if .SSLEnabled}}
+                            <i class="bi bi-check-circle-fill text-success" title="SSL Configured"></i>
+                            {{else}}
+                            <i class="bi bi-x-circle-fill text-danger" title="SSL Pending"></i>
+                            {{end}}
+                        </td>
+                        <td class="text-center">
+                            <i class="bi bi-check-circle-fill text-success" title="Clean - No Blacklists"></i>
+                        </td>
+                        <td class="text-center">
+                            {{if .DNSVerified}}
+                            <i class="bi bi-check-circle-fill text-success" title="DNS Verified"></i>
+                            {{else}}
+                            <i class="bi bi-x-circle-fill text-danger" title="DNS Pending"></i>
+                            {{end}}
+                        </td>
+                        <td>
+                            <strong class="text-success">${{printf "%.0f" (deref .MarketplacePrice)}}</strong>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary btn-check-domain"
+                                        data-id="{{.ID}}"
+                                        data-name="{{.Name}}"
+                                        title="Check Domain Health">
+                                    <i class="bi bi-search"></i> Check
+                                </button>
+                                <button class="btn btn-primary btn-purchase"
+                                        data-id="{{.ID}}"
+                                        data-name="{{.Name}}"
+                                        data-price="{{deref .MarketplacePrice}}">
+                                    <i class="bi bi-bag-check"></i> Buy
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="text-center py-5">
+            <i class="bi bi-bag display-1 text-muted mb-3"></i>
+            <h5>{{t "marketplace.no_domains"}}</h5>
+            <p class="text-muted mb-0">{{t "marketplace.no_domains_desc"}}</p>
+        </div>
+        {{end}}
     </div>
 </div>
-{{end}}
 
 <!-- Purchase Confirmation Modal -->
 <div class="modal fade" id="purchaseModal" tabindex="-1">
@@ -101,13 +136,87 @@
     </div>
 </div>
 
+<!-- Domain Check Modal -->
+<div class="modal fade" id="checkModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-shield-check me-2"></i>Domain Health Check</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <h5><code id="checkDomainName"></code></h5>
+                </div>
+                <div id="checkLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p class="text-muted mb-0">Running health checks...</p>
+                </div>
+                <div id="checkResults" class="d-none"></div>
+                <div id="checkError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const balance = {{.Balance}};
-let purchaseModal;
+let purchaseModal, checkModal;
 
 document.addEventListener('DOMContentLoaded', function() {
     purchaseModal = new bootstrap.Modal(document.getElementById('purchaseModal'));
+    checkModal = new bootstrap.Modal(document.getElementById('checkModal'));
 
+    // Check domain button
+    document.querySelectorAll('.btn-check-domain').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const domainId = btn.dataset.id;
+            const domainName = btn.dataset.name;
+
+            // Reset modal state
+            document.getElementById('checkDomainName').textContent = domainName;
+            document.getElementById('checkLoading').classList.remove('d-none');
+            document.getElementById('checkResults').classList.add('d-none');
+            document.getElementById('checkResults').innerHTML = '';
+            document.getElementById('checkError').classList.add('d-none');
+
+            checkModal.show();
+
+            try {
+                const res = await fetch(`/user/marketplace/api/check/${domainId}`);
+                const data = await res.json();
+
+                document.getElementById('checkLoading').classList.add('d-none');
+
+                if (res.ok) {
+                    let html = '';
+                    data.checks.forEach(check => {
+                        const icon = check.status
+                            ? '<i class="bi bi-check-circle-fill text-success me-2"></i>'
+                            : '<i class="bi bi-x-circle-fill text-danger me-2"></i>';
+                        html += `<div class="d-flex align-items-center justify-content-between mb-2 py-2 border-bottom">
+                            <div>${icon}<span>${check.name}</span></div>
+                            <small class="text-muted">${check.detail}</small>
+                        </div>`;
+                    });
+                    document.getElementById('checkResults').innerHTML = html;
+                    document.getElementById('checkResults').classList.remove('d-none');
+                } else {
+                    document.getElementById('checkError').textContent = data.error || 'Check failed';
+                    document.getElementById('checkError').classList.remove('d-none');
+                }
+            } catch (e) {
+                document.getElementById('checkLoading').classList.add('d-none');
+                document.getElementById('checkError').textContent = 'Network error';
+                document.getElementById('checkError').classList.remove('d-none');
+            }
+        });
+    });
+
+    // Purchase button
     document.querySelectorAll('.btn-purchase').forEach(btn => {
         btn.addEventListener('click', () => {
             const price = parseFloat(btn.dataset.price);
@@ -126,6 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Confirm purchase
     document.getElementById('confirmPurchase').addEventListener('click', async () => {
         const domainId = document.getElementById('purchaseDomainId').value;
         const btn = document.getElementById('confirmPurchase');

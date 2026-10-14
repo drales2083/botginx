@@ -62,6 +62,7 @@ func (m *Module) Routes() chi.Router {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/domains", m.handler.APIListAvailable)
 		r.Post("/purchase/{domainID}", m.handler.APIPurchase)
+		r.Get("/check/{domainID}", m.handler.APICheckDomain)
 	})
 
 	return r

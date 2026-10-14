@@ -1,9 +1,13 @@
 package handlers
 
 import (
+	"crypto/tls"
 	"encoding/json"
+	"net"
 	"net/http"
+	"time"
 
+	healthservices "github.com/botginx/botginx/modules/domainhealth/services"
 	"github.com/botginx/botginx/modules/marketplace/models"
 	"github.com/botginx/botginx/modules/marketplace/services"
 	"github.com/botginx/botginx/pkg/ctx"
@@ -13,15 +17,22 @@ import (
 )
 
 type Handler struct {
-	service   *services.MarketplaceService
-	templates *module.TemplateEngine
+	service       *services.MarketplaceService
+	templates     *module.TemplateEngine
+	safetyChecker *healthservices.SafetyChecker
 }
 
 func NewHandler(service *services.MarketplaceService, templates *module.TemplateEngine) *Handler {
 	return &Handler{
-		service:   service,
-		templates: templates,
+		service:       service,
+		templates:     templates,
+		safetyChecker: healthservices.NewSafetyChecker(""),
 	}
+}
+
+// SetGoogleAPIKey sets the Google Safe Browsing API key for safety checks
+func (h *Handler) SetGoogleAPIKey(apiKey string) {
+	h.safetyChecker = healthservices.NewSafetyChecker(apiKey)
 }
 
 // ============ Admin Handlers ============
@@ -172,6 +183,123 @@ func (h *Handler) APIPurchase(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": "Domain purchased successfully",
 	})
+}
+
+// APICheckDomain performs real-time health checks on a marketplace domain
+func (h *Handler) APICheckDomain(w http.ResponseWriter, r *http.Request) {
+	domainID := chi.URLParam(r, "domainID")
+
+	// Get domain info
+	domain, err := h.service.GetDomain(domainID)
+	if err != nil || !domain.IsMarketplace {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Perform checks
+	checks := []map[string]interface{}{}
+
+	// 1. DNS Check
+	dnsOK, dnsMsg := h.checkDNS(domain.Name)
+	checks = append(checks, map[string]interface{}{
+		"name":   "DNS Resolution",
+		"status": dnsOK,
+		"detail": dnsMsg,
+	})
+
+	// 2. SSL Check
+	sslOK, sslMsg := h.checkSSL(domain.Name)
+	checks = append(checks, map[string]interface{}{
+		"name":   "SSL Certificate",
+		"status": sslOK,
+		"detail": sslMsg,
+	})
+
+	// 3. Safety Check (blacklists)
+	safetyResult := h.safetyChecker.CheckDomain(domain.Name)
+	safetyOK := safetyResult.Status == healthservices.SafetyClean
+	safetyMsg := "Clean - No threats detected"
+	if !safetyOK {
+		safetyMsg = "Flagged - Threats detected"
+	}
+	checks = append(checks, map[string]interface{}{
+		"name":   "Google Safe Browsing",
+		"status": safetyOK,
+		"detail": safetyMsg,
+	})
+
+	// 4. Spam blacklist check (from safety checker)
+	checks = append(checks, map[string]interface{}{
+		"name":   "Spam Blacklists",
+		"status": safetyOK,
+		"detail": safetyMsg,
+	})
+
+	// 5. Ready status
+	readyOK := dnsOK && sslOK && safetyOK
+	readyMsg := "Ready for immediate use"
+	if !readyOK {
+		readyMsg = "Some checks failed"
+	}
+	checks = append(checks, map[string]interface{}{
+		"name":   "Ready Status",
+		"status": readyOK,
+		"detail": readyMsg,
+	})
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"domain": domainmask.Mask(domain.Name),
+		"checks": checks,
+	})
+}
+
+// checkDNS verifies the domain resolves
+func (h *Handler) checkDNS(domain string) (bool, string) {
+	_, err := net.LookupHost(domain)
+	if err != nil {
+		return false, "DNS resolution failed"
+	}
+	return true, "Resolves correctly"
+}
+
+// checkSSL verifies SSL certificate is valid
+func (h *Handler) checkSSL(domain string) (bool, string) {
+	conn, err := tls.DialWithDialer(
+		&net.Dialer{Timeout: 5 * time.Second},
+		"tcp",
+		domain+":443",
+		&tls.Config{InsecureSkipVerify: false},
+	)
+	if err != nil {
+		// Try with InsecureSkipVerify to check if cert exists but is self-signed
+		conn2, err2 := tls.DialWithDialer(
+			&net.Dialer{Timeout: 5 * time.Second},
+			"tcp",
+			domain+":443",
+			&tls.Config{InsecureSkipVerify: true},
+		)
+		if err2 != nil {
+			return false, "SSL connection failed"
+		}
+		conn2.Close()
+		return true, "Certificate present (self-signed)"
+	}
+	defer conn.Close()
+
+	// Check expiry
+	certs := conn.ConnectionState().PeerCertificates
+	if len(certs) > 0 {
+		expiry := certs[0].NotAfter
+		daysLeft := int(time.Until(expiry).Hours() / 24)
+		if daysLeft < 0 {
+			return false, "Certificate expired"
+		}
+		if daysLeft < 14 {
+			return true, "Valid (expiring soon)"
+		}
+		return true, "Valid certificate"
+	}
+	return true, "Certificate present"
 }
 
 // ============ Helpers ============

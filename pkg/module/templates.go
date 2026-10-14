@@ -128,6 +128,22 @@ func defaultFuncs() template.FuncMap {
 			}
 			return pct
 		},
+		// Extract TLD from domain name (example.com -> .com, sub.example.co.uk -> .co.uk)
+		"extractTLD": func(domain string) string {
+			// Handle common multi-part TLDs
+			multiPart := []string{".co.uk", ".com.de", ".org.uk", ".com.au", ".co.nz", ".org.in", ".co.in"}
+			for _, tld := range multiPart {
+				if strings.HasSuffix(domain, tld) {
+					return tld
+				}
+			}
+			// Single TLD
+			lastDot := strings.LastIndex(domain, ".")
+			if lastDot == -1 {
+				return ""
+			}
+			return domain[lastDot:]
+		},
 		// Format large numbers (1000 -> 1K, 1000000 -> 1M)
 		"formatNumber": func(n any) string {
 			v := toFloat(n)
