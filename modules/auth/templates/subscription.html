@@ -73,6 +73,20 @@
         </div>
 
         {{if not .Subscription.Active}}
+        {{if .User.IsResellerClient}}
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0"><i class="bi bi-person-lines-fill me-2"></i>Subscription Renewal</h5>
+            </div>
+            <div class="card-body text-center py-4">
+                <div class="mb-3">
+                    <i class="bi bi-chat-left-text display-4 text-info"></i>
+                </div>
+                <h5>Contact admin for subscription renewal</h5>
+                <p class="text-muted mb-0">Your subscription is managed by your administrator.</p>
+            </div>
+        </div>
+        {{else}}
         <div class="card mt-4">
             <div class="card-header bg-primary text-white">
                 <h5 class="card-title mb-0"><i class="bi bi-star me-2"></i>Subscribe Now</h5>
@@ -109,7 +123,22 @@
                 </div>
             </div>
         </div>
+        {{end}}
         {{else if eq .Subscription.Status "expiring"}}
+        {{if .User.IsResellerClient}}
+        <div class="card mt-4">
+            <div class="card-header bg-warning">
+                <h5 class="card-title mb-0"><i class="bi bi-clock me-2"></i>Subscription Expiring Soon</h5>
+            </div>
+            <div class="card-body text-center py-4">
+                <div class="mb-3">
+                    <i class="bi bi-chat-left-text display-4 text-warning"></i>
+                </div>
+                <h5>Contact admin for subscription renewal</h5>
+                <p class="text-muted mb-0">Your subscription is managed by your administrator.</p>
+            </div>
+        </div>
+        {{else}}
         <div class="card mt-4">
             <div class="card-header bg-warning">
                 <h5 class="card-title mb-0"><i class="bi bi-arrow-repeat me-2"></i>Renew Subscription</h5>
@@ -146,6 +175,7 @@
                 </div>
             </div>
         </div>
+        {{end}}
         {{end}}
 
         <script>

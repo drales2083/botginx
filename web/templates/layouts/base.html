@@ -127,7 +127,7 @@
         </ul>
         <ul class="navbar-nav ms-auto">
           <!--begin::Balance-->
-          {{if .User}}
+          {{if and .User (not .User.IsResellerClient)}}
           <li class="nav-item d-flex align-items-center">
             <a class="btn btn-header-balance" href="/user/payments" title="{{t "add_funds"}}">
               <i class="bi bi-plus-lg"></i>

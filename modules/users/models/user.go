@@ -10,15 +10,16 @@ const (
 )
 
 type User struct {
-	ID           string    `db:"id" json:"id"`
-	Email        string    `db:"email" json:"email"`
-	PasswordHash string    `db:"password_hash" json:"-"`
-	Name         string    `db:"name" json:"name"`
-	Role         UserRole  `db:"role" json:"role"`
-	IsActive     bool      `db:"is_active" json:"isActive"`
-	Balance      float64   `db:"balance" json:"balance"`
-	CreatedAt    time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time `db:"updated_at" json:"updatedAt"`
+	ID               string    `db:"id" json:"id"`
+	Email            string    `db:"email" json:"email"`
+	PasswordHash     string    `db:"password_hash" json:"-"`
+	Name             string    `db:"name" json:"name"`
+	Role             UserRole  `db:"role" json:"role"`
+	IsActive         bool      `db:"is_active" json:"isActive"`
+	IsResellerClient bool      `db:"is_reseller_client" json:"isResellerClient"`
+	Balance          float64   `db:"balance" json:"balance"`
+	CreatedAt        time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt        time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 type CreateUserInput struct {
@@ -29,9 +30,10 @@ type CreateUserInput struct {
 }
 
 type UpdateUserInput struct {
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	Role     string `json:"role"`
-	IsActive *bool  `json:"isActive"`
-	Password string `json:"password"` // Optional password change
+	Email            string `json:"email"`
+	Name             string `json:"name"`
+	Role             string `json:"role"`
+	IsActive         *bool  `json:"isActive"`
+	IsResellerClient *bool  `json:"isResellerClient"`
+	Password         string `json:"password"` // Optional password change
 }

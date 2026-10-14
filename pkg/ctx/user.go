@@ -11,11 +11,12 @@ const UserKey contextKey = "user"
 
 // User represents the authenticated user in context
 type User struct {
-	ID      string
-	Email   string
-	Name    string
-	Role    string // "user" or "admin"
-	Balance float64
+	ID               string
+	Email            string
+	Name             string
+	Role             string // "user" or "admin"
+	Balance          float64
+	IsResellerClient bool
 }
 
 // IsAdmin returns true if the user has admin role

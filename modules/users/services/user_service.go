@@ -32,13 +32,13 @@ func (s *UserService) generateID() string {
 
 func (s *UserService) List() ([]models.User, error) {
 	var users []models.User
-	err := s.db.Select(&users, `SELECT id, email, password_hash, name, role, is_active, COALESCE(balance, 0) as balance, created_at, updated_at FROM users ORDER BY created_at DESC`)
+	err := s.db.Select(&users, `SELECT id, email, password_hash, name, role, is_active, COALESCE(is_reseller_client, false) as is_reseller_client, COALESCE(balance, 0) as balance, created_at, updated_at FROM users ORDER BY created_at DESC`)
 	return users, err
 }
 
 func (s *UserService) Get(id string) (*models.User, error) {
 	var user models.User
-	err := s.db.Get(&user, `SELECT id, email, password_hash, name, role, is_active, COALESCE(balance, 0) as balance, created_at, updated_at FROM users WHERE id = $1`, id)
+	err := s.db.Get(&user, `SELECT id, email, password_hash, name, role, is_active, COALESCE(is_reseller_client, false) as is_reseller_client, COALESCE(balance, 0) as balance, created_at, updated_at FROM users WHERE id = $1`, id)
 	if err != nil {
 		return nil, ErrUserNotFound
 	}
@@ -100,6 +100,9 @@ func (s *UserService) Update(id string, input models.UpdateUserInput) (*models.U
 	if input.IsActive != nil {
 		user.IsActive = *input.IsActive
 	}
+	if input.IsResellerClient != nil {
+		user.IsResellerClient = *input.IsResellerClient
+	}
 	if input.Password != "" {
 		hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -116,6 +119,7 @@ func (s *UserService) Update(id string, input models.UpdateUserInput) (*models.U
 			name = :name,
 			role = :role,
 			is_active = :is_active,
+			is_reseller_client = :is_reseller_client,
 			updated_at = :updated_at
 		WHERE id = :id
 	`, user)
