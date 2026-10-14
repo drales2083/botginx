@@ -1,0 +1,529 @@
+<title>Generate PDF — Mockup</title>
+<style>
+  :root {
+    /* AdminLTE dark mode with red accent */
+    --bg: #1a1d21;
+    --bg-subtle: #23272b;
+    --bg-card: #2c3034;
+    --border: #3d4349;
+    --fg: #e9ecef;
+    --fg-muted: #8b949e;
+    --accent: #dc3545;
+    --accent-hover: #c82333;
+    --success: #28a745;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f4f6f9;
+      --bg-subtle: #e9ecef;
+      --bg-card: #ffffff;
+      --border: #dee2e6;
+      --fg: #212529;
+      --fg-muted: #6c757d;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f9;
+    --bg-subtle: #e9ecef;
+    --bg-card: #ffffff;
+    --border: #dee2e6;
+    --fg: #212529;
+    --fg-muted: #6c757d;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 16px;
+    min-height: 100vh;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    color: var(--fg-muted);
+    font-size: 14px;
+  }
+  .page-header a {
+    color: var(--fg-muted);
+    text-decoration: none;
+  }
+  .page-header a:hover { color: var(--accent); }
+
+  .customizer {
+    display: flex;
+    height: calc(100vh - 100px);
+    min-height: 500px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* Controls sidebar */
+  .controls {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: var(--bg-subtle);
+  }
+
+  .controls-body {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* Sections */
+  .section {
+    border-bottom: 1px solid var(--border);
+  }
+  .section-header {
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.15);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    user-select: none;
+  }
+  .section-header:hover { background: rgba(0,0,0,0.25); }
+  .section-header .icon { margin-right: 8px; opacity: 0.7; }
+  .section-header .chevron {
+    font-size: 10px;
+    transition: transform 0.2s;
+  }
+  .section.collapsed .section-body { display: none; }
+  .section.collapsed .chevron { transform: rotate(-90deg); }
+
+  .section-body {
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.08);
+  }
+
+  /* Form rows */
+  .row {
+    margin-bottom: 12px;
+  }
+  .row:last-child { margin-bottom: 0; }
+  .row > label {
+    display: block;
+    font-size: 11px;
+    color: var(--fg-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  /* Inputs */
+  input[type="text"],
+  input[type="url"],
+  select {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--fg);
+    font-size: 13px;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* Color picker row */
+  .color-picker {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .color-picker input[type="color"] {
+    width: 36px;
+    height: 32px;
+    padding: 2px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    cursor: pointer;
+  }
+  .color-picker input[type="text"] {
+    flex: 1;
+    font-family: monospace;
+    text-transform: uppercase;
+  }
+
+  /* Range slider */
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .range-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+  .range-value {
+    min-width: 40px;
+    text-align: right;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+
+  /* Upload area */
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .upload-area:hover { border-color: var(--accent); }
+  .upload-area .icon {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 8px;
+    opacity: 0.5;
+  }
+  .upload-area span {
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+
+  /* Toggle buttons */
+  .toggle-group {
+    display: flex;
+    gap: 4px;
+  }
+  .toggle-btn {
+    flex: 1;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--fg-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle-btn:first-child { border-radius: 4px 0 0 4px; }
+  .toggle-btn:last-child { border-radius: 0 4px 4px 0; }
+  .toggle-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  /* Switch */
+  .switch-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .switch {
+    width: 36px;
+    height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .switch.on { background: var(--accent); }
+  .switch::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+  }
+  .switch.on::after { transform: translateX(16px); }
+  .switch-label { font-size: 13px; }
+
+  /* Actions footer */
+  .actions {
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+  .btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--fg-muted);
+  }
+  .btn-outline:hover { background: rgba(255,255,255,0.05); }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+
+  /* Preview section */
+  .preview {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .preview-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-subtle);
+    font-size: 14px;
+  }
+  .preview-header .icon { color: var(--accent); }
+  .preview-header .title { flex: 1; font-weight: 500; }
+
+  .preview-frame {
+    flex: 1;
+    background: #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* PDF preview mockup */
+  .pdf-preview {
+    width: 280px;
+    height: 396px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 4px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    position: relative;
+    overflow: hidden;
+    filter: blur(5px);
+  }
+  .pdf-preview::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+  }
+  .pdf-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #dc3545;
+    color: white;
+    padding: 14px 40px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(220,53,69,0.4);
+    filter: blur(0);
+    z-index: 1;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .customizer {
+      flex-direction: column;
+      height: auto;
+    }
+    .controls {
+      width: 100%;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      max-height: 50vh;
+    }
+    .preview-frame { min-height: 400px; }
+  }
+</style>
+
+<div class="page-header">
+  <a href="#">← Traffic</a>
+  <span>/</span>
+  <span>Generate PDF</span>
+</div>
+
+<div class="customizer">
+  <!-- Left: Controls -->
+  <aside class="controls">
+    <div class="controls-body">
+
+      <!-- Background Section -->
+      <div class="section">
+        <div class="section-header">
+          <span><span class="icon">🖼</span>Background</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="row">
+            <label>Image</label>
+            <div class="upload-area">
+              <span class="icon">☁</span>
+              <span>Click or drag image (max 5MB)</span>
+            </div>
+          </div>
+          <div class="row">
+            <label>Blur Level</label>
+            <div class="range-row">
+              <input type="range" min="0" max="20" value="5">
+              <span class="range-value">5px</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Button Section -->
+      <div class="section">
+        <div class="section-header">
+          <span><span class="icon">👆</span>Button</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="row">
+            <label>Button Text</label>
+            <input type="text" value="Click Here">
+          </div>
+          <div class="row">
+            <label>Button Color</label>
+            <div class="color-picker">
+              <input type="color" value="#dc3545">
+              <input type="text" value="#DC3545">
+            </div>
+          </div>
+          <div class="row">
+            <label>Text Color</label>
+            <div class="color-picker">
+              <input type="color" value="#ffffff">
+              <input type="text" value="#FFFFFF">
+            </div>
+          </div>
+          <div class="row">
+            <label>Border Radius</label>
+            <div class="range-row">
+              <input type="range" min="0" max="50" value="8">
+              <span class="range-value">8px</span>
+            </div>
+          </div>
+          <div class="row">
+            <label>Font Size</label>
+            <div class="range-row">
+              <input type="range" min="14" max="32" value="18">
+              <span class="range-value">18px</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="switch-row">
+              <div class="switch on"></div>
+              <span class="switch-label">Button Shadow</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Destination Section -->
+      <div class="section">
+        <div class="section-header">
+          <span><span class="icon">🔗</span>Destination</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="row">
+            <label>Link Type</label>
+            <div class="toggle-group">
+              <button class="toggle-btn active">My Links</button>
+              <button class="toggle-btn">Custom URL</button>
+            </div>
+          </div>
+          <div class="row">
+            <label>Select Link</label>
+            <select>
+              <option>promo.innoeventec.com/sale</option>
+              <option>offer.mysite.com/deal</option>
+              <option>click.brand.co/signup</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- PDF Settings Section -->
+      <div class="section">
+        <div class="section-header">
+          <span><span class="icon">📄</span>PDF Settings</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="row">
+            <label>Page Size</label>
+            <select>
+              <option selected>A4 (210 × 297 mm)</option>
+              <option>Letter (8.5 × 11 in)</option>
+              <option>Custom</option>
+            </select>
+          </div>
+          <div class="row">
+            <label>Orientation</label>
+            <div class="toggle-group">
+              <button class="toggle-btn active">Portrait</button>
+              <button class="toggle-btn">Landscape</button>
+            </div>
+          </div>
+          <div class="row">
+            <label>Margins</label>
+            <div class="range-row">
+              <input type="range" min="0" max="50" value="10">
+              <span class="range-value">10mm</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn btn-outline">↺ Reset</button>
+      <button class="btn btn-primary">⬇ Generate PDF</button>
+    </div>
+  </aside>
+
+  <!-- Right: Preview -->
+  <section class="preview">
+    <header class="preview-header">
+      <span class="icon">👁</span>
+      <span class="title">Live Preview</span>
+    </header>
+    <div class="preview-frame">
+      <div class="pdf-preview"></div>
+      <div class="pdf-button">Click Here</div>
+    </div>
+  </section>
+</div>

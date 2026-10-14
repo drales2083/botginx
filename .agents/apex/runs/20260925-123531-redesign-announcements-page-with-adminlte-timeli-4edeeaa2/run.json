@@ -1,0 +1,98 @@
+{
+  "baseline": {
+    "available": true,
+    "branch": "feature/cpanel-dashboard",
+    "branch_fingerprint": "ad598139984bf9ebc80b71fe41f17782c3b7e1e385c838f3911b12fb9f2d9bc5",
+    "changes": [
+      {
+        "path": "cmd/server/main.go",
+        "status": " M"
+      },
+      {
+        "path": "go.mod",
+        "status": " M"
+      },
+      {
+        "path": "go.sum",
+        "status": " M"
+      },
+      {
+        "path": "modules/announcements/module.go",
+        "status": " M"
+      },
+      {
+        "path": "modules/auth/models/user.go",
+        "status": " M"
+      },
+      {
+        "path": "modules/dashboard/module.go",
+        "status": " M"
+      },
+      {
+        "path": "modules/dashboard/templates/index.html",
+        "status": " M"
+      },
+      {
+        "path": "modules/iplists/module.go",
+        "status": " M"
+      },
+      {
+        "path": "modules/referrals/templates/index.html",
+        "status": " M"
+      },
+      {
+        "path": "pkg/module/templates.go",
+        "status": " M"
+      },
+      {
+        "path": "web/templates/layouts/base.html",
+        "status": " M"
+      },
+      {
+        "path": ".agents/",
+        "status": "??"
+      },
+      {
+        "path": ".claude/skills/",
+        "status": "??"
+      },
+      {
+        "path": "docs/COMING-SOON-FEATURES.md",
+        "status": "??"
+      },
+      {
+        "path": "modules/announcements/templates/user.html",
+        "status": "??"
+      },
+      {
+        "path": "modules/twofactor/",
+        "status": "??"
+      },
+      {
+        "path": "skills-lock.json",
+        "status": "??"
+      },
+      {
+        "path": "web/static/img/fluent-emoji-flat/",
+        "status": "??"
+      }
+    ],
+    "errors": [],
+    "paths_redacted": false,
+    "revision": "4a58398f3ba909d9148266adfbc601e95570003c",
+    "status_fingerprint": "d3fe18ece0cb69bb0cbd7eabd8cd4004452d316d9a16b7de1e68ede9da661920",
+    "upstream": null,
+    "upstream_error": "fatal: no upstream configured for branch 'feature/cpanel-dashboard'",
+    "verified": true
+  },
+  "checkpoints": [],
+  "created_at": "2026-09-25T19:35:31+00:00",
+  "current_phase": "execute",
+  "last_event_id": "2df1a582-2df5-423b-8c35-bb9320c9fca8",
+  "root": "/home/this/dev/code/botginx",
+  "run_id": "20260925-123531-redesign-announcements-page-with-adminlte-timeli-4edeeaa2",
+  "schema_version": 1,
+  "status": "active",
+  "task": "Redesign announcements page with AdminLTE timeline design",
+  "updated_at": "2026-09-25T19:36:16+00:00"
+}

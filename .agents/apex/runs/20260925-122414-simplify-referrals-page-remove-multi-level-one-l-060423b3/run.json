@@ -1,0 +1,70 @@
+{
+  "baseline": {
+    "available": true,
+    "branch": "feature/cpanel-dashboard",
+    "branch_fingerprint": "ad598139984bf9ebc80b71fe41f17782c3b7e1e385c838f3911b12fb9f2d9bc5",
+    "changes": [
+      {
+        "path": "modules/dashboard/module.go",
+        "status": " M"
+      },
+      {
+        "path": "modules/dashboard/templates/index.html",
+        "status": " M"
+      },
+      {
+        "path": "modules/iplists/module.go",
+        "status": " M"
+      },
+      {
+        "path": "modules/referrals/templates/index.html",
+        "status": " M"
+      },
+      {
+        "path": "pkg/module/templates.go",
+        "status": " M"
+      },
+      {
+        "path": "web/templates/layouts/base.html",
+        "status": " M"
+      },
+      {
+        "path": ".agents/",
+        "status": "??"
+      },
+      {
+        "path": ".claude/skills/",
+        "status": "??"
+      },
+      {
+        "path": "docs/COMING-SOON-FEATURES.md",
+        "status": "??"
+      },
+      {
+        "path": "skills-lock.json",
+        "status": "??"
+      },
+      {
+        "path": "web/static/img/fluent-emoji-flat/",
+        "status": "??"
+      }
+    ],
+    "errors": [],
+    "paths_redacted": false,
+    "revision": "4a58398f3ba909d9148266adfbc601e95570003c",
+    "status_fingerprint": "8be48cbe06ea483a8a1c314e372e0ad9c0a3335cbeefc91c537e160b4735be34",
+    "upstream": null,
+    "upstream_error": "fatal: no upstream configured for branch 'feature/cpanel-dashboard'",
+    "verified": true
+  },
+  "checkpoints": [],
+  "created_at": "2026-09-25T19:24:14+00:00",
+  "current_phase": "validate",
+  "last_event_id": "6f5dc79f-5ab4-4b96-8e34-303c97432b8f",
+  "root": "/home/this/dev/code/botginx",
+  "run_id": "20260925-122414-simplify-referrals-page-remove-multi-level-one-l-060423b3",
+  "schema_version": 1,
+  "status": "active",
+  "task": "Simplify referrals page - remove multi-level, one level earning, clean professional look",
+  "updated_at": "2026-09-25T19:24:43+00:00"
+}

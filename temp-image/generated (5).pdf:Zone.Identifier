@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=http://localhost:3001/user/generate-pdf
+HostUrl=http://localhost:3001/
