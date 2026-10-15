@@ -318,12 +318,12 @@ async function saveArticle() {
         content: easyMDE.value(),
         status: document.getElementById('status').value,
         featured: document.getElementById('featured').checked,
-        category_id: document.getElementById('category_id').value,
-        tag_ids: tags,
-        author_name: document.getElementById('author_name').value,
-        cover_image: document.getElementById('cover_image').value,
-        meta_title: document.getElementById('meta_title').value,
-        meta_description: document.getElementById('meta_description').value
+        categoryId: document.getElementById('category_id').value,
+        tagIds: tags,
+        authorName: document.getElementById('author_name').value,
+        coverImage: document.getElementById('cover_image').value,
+        metaTitle: document.getElementById('meta_title').value,
+        metaDescription: document.getElementById('meta_description').value
     };
 
     const method = articleId ? 'PUT' : 'POST';
