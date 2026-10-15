@@ -176,69 +176,71 @@ document.addEventListener('DOMContentLoaded', function() {
     purchaseModal = new bootstrap.Modal(document.getElementById('purchaseModal'));
     checkModal = new bootstrap.Modal(document.getElementById('checkModal'));
 
-    // Check domain button
-    document.querySelectorAll('.btn-check-domain').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const domainId = btn.dataset.id;
-            const domainName = btn.dataset.name;
+    // Check domain button (event delegation for DataTables compatibility)
+    document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.btn-check-domain');
+        if (!btn) return;
 
-            // Reset modal state
-            document.getElementById('checkDomainName').textContent = domainName;
-            document.getElementById('checkLoading').classList.remove('d-none');
-            document.getElementById('checkResults').classList.add('d-none');
-            document.getElementById('checkResults').innerHTML = '';
-            document.getElementById('checkError').classList.add('d-none');
+        const domainId = btn.dataset.id;
+        const domainName = btn.dataset.name;
 
-            checkModal.show();
+        // Reset modal state
+        document.getElementById('checkDomainName').textContent = domainName;
+        document.getElementById('checkLoading').classList.remove('d-none');
+        document.getElementById('checkResults').classList.add('d-none');
+        document.getElementById('checkResults').innerHTML = '';
+        document.getElementById('checkError').classList.add('d-none');
 
-            try {
-                const res = await fetch(`/user/marketplace/api/check/${domainId}`);
-                const data = await res.json();
+        checkModal.show();
 
-                document.getElementById('checkLoading').classList.add('d-none');
+        try {
+            const res = await fetch(`/user/marketplace/api/check/${domainId}`);
+            const data = await res.json();
 
-                if (res.ok) {
-                    let html = '';
-                    data.checks.forEach(check => {
-                        const icon = check.status
-                            ? '<i class="bi bi-check-circle-fill text-success me-2"></i>'
-                            : '<i class="bi bi-x-circle-fill text-danger me-2"></i>';
-                        html += `<div class="d-flex align-items-center justify-content-between mb-2 py-2 border-bottom">
-                            <div>${icon}<span>${check.name}</span></div>
-                            <small class="text-muted">${check.detail}</small>
-                        </div>`;
-                    });
-                    document.getElementById('checkResults').innerHTML = html;
-                    document.getElementById('checkResults').classList.remove('d-none');
-                } else {
-                    document.getElementById('checkError').textContent = data.error || 'Check failed';
-                    document.getElementById('checkError').classList.remove('d-none');
-                }
-            } catch (e) {
-                document.getElementById('checkLoading').classList.add('d-none');
-                document.getElementById('checkError').textContent = 'Network error';
+            document.getElementById('checkLoading').classList.add('d-none');
+
+            if (res.ok) {
+                let html = '';
+                data.checks.forEach(check => {
+                    const icon = check.status
+                        ? '<i class="bi bi-check-circle-fill text-success me-2"></i>'
+                        : '<i class="bi bi-x-circle-fill text-danger me-2"></i>';
+                    html += `<div class="d-flex align-items-center justify-content-between mb-2 py-2 border-bottom">
+                        <div>${icon}<span>${check.name}</span></div>
+                        <small class="text-muted">${check.detail}</small>
+                    </div>`;
+                });
+                document.getElementById('checkResults').innerHTML = html;
+                document.getElementById('checkResults').classList.remove('d-none');
+            } else {
+                document.getElementById('checkError').textContent = data.error || 'Check failed';
                 document.getElementById('checkError').classList.remove('d-none');
             }
-        });
+        } catch (e) {
+            document.getElementById('checkLoading').classList.add('d-none');
+            document.getElementById('checkError').textContent = 'Network error';
+            document.getElementById('checkError').classList.remove('d-none');
+        }
     });
 
-    // Purchase button
-    document.querySelectorAll('.btn-purchase').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const price = parseFloat(btn.dataset.price);
+    // Purchase button (event delegation for DataTables compatibility)
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-purchase');
+        if (!btn) return;
 
-            if (balance < price) {
-                showToast('{{t "marketplace.insufficient_balance"}}', 'warning');
-                return;
-            }
+        const price = parseFloat(btn.dataset.price);
 
-            document.getElementById('purchaseDomainId').value = btn.dataset.id;
-            document.getElementById('purchaseDomainName').textContent = btn.dataset.name;
-            document.getElementById('purchasePrice').textContent = '$' + price.toFixed(2);
-            document.getElementById('balanceAfter').textContent = '$' + (balance - price).toFixed(2);
+        if (balance < price) {
+            showToast('{{t "marketplace.insufficient_balance"}}', 'warning');
+            return;
+        }
 
-            purchaseModal.show();
-        });
+        document.getElementById('purchaseDomainId').value = btn.dataset.id;
+        document.getElementById('purchaseDomainName').textContent = btn.dataset.name;
+        document.getElementById('purchasePrice').textContent = '$' + price.toFixed(2);
+        document.getElementById('balanceAfter').textContent = '$' + (balance - price).toFixed(2);
+
+        purchaseModal.show();
     });
 
     // Confirm purchase
