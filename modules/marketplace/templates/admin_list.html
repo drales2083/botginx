@@ -87,6 +87,7 @@
                                         data-name="{{.Name}}"
                                         data-price="{{deref .MarketplacePrice}}"
                                         data-description="{{.MarketplaceDescription}}"
+                                        data-type="{{.MarketplaceType}}"
                                         title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </button>
@@ -170,6 +171,14 @@
                 </div>
                 {{end}}
                 <div class="mb-3">
+                    <label class="form-label">Domain Type</label>
+                    <select class="form-select" id="addDomainType">
+                        <option value="brand_new">Brand New</option>
+                        <option value="cpanel" selected>Cpanel</option>
+                        <option value="hacked">Hacked</option>
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label class="form-label">Price (USD)</label>
                     <div class="input-group">
                         <span class="input-group-text">$</span>
@@ -202,6 +211,14 @@
             <div class="modal-body">
                 <p>Domain: <code id="editDomainName"></code></p>
                 <input type="hidden" id="editDomainId">
+                <div class="mb-3">
+                    <label class="form-label">Domain Type</label>
+                    <select class="form-select" id="editDomainType">
+                        <option value="brand_new">Brand New</option>
+                        <option value="cpanel">Cpanel</option>
+                        <option value="hacked">Hacked</option>
+                    </select>
+                </div>
                 <div class="mb-3">
                     <label class="form-label">Price (USD)</label>
                     <div class="input-group">
@@ -257,6 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add domain to marketplace
     document.getElementById('confirmAdd').addEventListener('click', async () => {
         const domainId = document.getElementById('addDomainId').value.trim();
+        const domainType = document.getElementById('addDomainType').value;
         const price = parseFloat(document.getElementById('addPrice').value);
         const description = document.getElementById('addDescription').value.trim();
 
@@ -272,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const res = await fetch('/admin/marketplace/api/domains', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domainId, price, description })
+            body: JSON.stringify({ domainId, price, description, domainType })
         });
 
         if (res.ok) {
@@ -291,6 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editDomainName').textContent = btn.dataset.name;
             document.getElementById('editPrice').value = btn.dataset.price;
             document.getElementById('editDescription').value = btn.dataset.description || '';
+            document.getElementById('editDomainType').value = btn.dataset.type || 'cpanel';
             editModal.show();
         });
     });
@@ -298,6 +317,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Save edit
     document.getElementById('confirmEdit').addEventListener('click', async () => {
         const domainId = document.getElementById('editDomainId').value;
+        const domainType = document.getElementById('editDomainType').value;
         const price = parseFloat(document.getElementById('editPrice').value);
         const description = document.getElementById('editDescription').value.trim();
 
@@ -309,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const res = await fetch(`/admin/marketplace/api/domains/${domainId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ price, description })
+            body: JSON.stringify({ price, description, domainType })
         });
 
         if (res.ok) {

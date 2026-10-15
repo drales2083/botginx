@@ -38,7 +38,13 @@
                             {{end}}
                         </td>
                         <td>
-                            <span class="badge bg-primary"><i class="bi bi-hdd-rack me-1"></i>cPanel</span>
+                            {{if eq .MarketplaceType "brand_new"}}
+                            <span class="badge bg-success"><i class="bi bi-stars me-1"></i>Brand New</span>
+                            {{else if eq .MarketplaceType "hacked"}}
+                            <span class="badge bg-danger"><i class="bi bi-shield-exclamation me-1"></i>Hacked</span>
+                            {{else}}
+                            <span class="badge bg-primary"><i class="bi bi-hdd-rack me-1"></i>Cpanel</span>
+                            {{end}}
                         </td>
                         <td class="text-center">
                             {{if .SSLEnabled}}

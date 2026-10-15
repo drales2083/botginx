@@ -30,7 +30,8 @@ func (s *MarketplaceService) ListForSale() ([]models.MarketplaceDomain, error) {
 	var domains []models.MarketplaceDomain
 	err := s.db.Select(&domains, `
 		SELECT id, name, user_id, dns_verified, ssl_enabled, is_marketplace,
-		       marketplace_price, marketplace_description, marketplace_listed_at, created_at
+		       marketplace_price, marketplace_description, COALESCE(marketplace_type, 'cpanel') as marketplace_type,
+		       marketplace_listed_at, created_at
 		FROM domains
 		WHERE is_marketplace = TRUE
 		ORDER BY marketplace_listed_at DESC
@@ -43,7 +44,8 @@ func (s *MarketplaceService) ListAvailable() ([]models.MarketplaceDomain, error)
 	var domains []models.MarketplaceDomain
 	err := s.db.Select(&domains, `
 		SELECT id, name, user_id, dns_verified, ssl_enabled, is_marketplace,
-		       marketplace_price, marketplace_description, marketplace_listed_at, created_at
+		       marketplace_price, marketplace_description, COALESCE(marketplace_type, 'cpanel') as marketplace_type,
+		       marketplace_listed_at, created_at
 		FROM domains
 		WHERE is_marketplace = TRUE AND dns_verified = TRUE AND ssl_enabled = TRUE
 		ORDER BY marketplace_listed_at DESC
@@ -56,7 +58,8 @@ func (s *MarketplaceService) GetDomain(domainID string) (*models.MarketplaceDoma
 	var domain models.MarketplaceDomain
 	err := s.db.Get(&domain, `
 		SELECT id, name, user_id, dns_verified, ssl_enabled, is_marketplace,
-		       marketplace_price, marketplace_description, marketplace_listed_at, created_at
+		       marketplace_price, marketplace_description, COALESCE(marketplace_type, 'cpanel') as marketplace_type,
+		       marketplace_listed_at, created_at
 		FROM domains WHERE id = $1
 	`, domainID)
 	if err != nil {
@@ -68,17 +71,25 @@ func (s *MarketplaceService) GetDomain(domainID string) (*models.MarketplaceDoma
 // MarkForSale marks a domain as for sale in marketplace
 // For wildcard domains, requires acme_cname_verified=TRUE (CNAME delegation to our acme-dns)
 // This ensures SSL renewals will work automatically for the buyer
-func (s *MarketplaceService) MarkForSale(domainID string, price float64, description string) error {
+func (s *MarketplaceService) MarkForSale(domainID string, price float64, description string, domainType string) error {
 	if price <= 0 {
 		return errors.New("price must be greater than 0")
 	}
 
+	// Validate domain type
+	if domainType == "" {
+		domainType = models.TypeCpanel
+	}
+	if domainType != models.TypeBrandNew && domainType != models.TypeCpanel && domainType != models.TypeHacked {
+		return errors.New("invalid domain type")
+	}
+
 	// First check if it's a wildcard domain that needs CNAME verification
 	var domain struct {
-		IsWildcard        bool  `db:"is_wildcard"`
-		AcmeCnameVerified bool  `db:"acme_cname_verified"`
-		DNSVerified       bool  `db:"dns_verified"`
-		SSLEnabled        bool  `db:"ssl_enabled"`
+		IsWildcard        bool    `db:"is_wildcard"`
+		AcmeCnameVerified bool    `db:"acme_cname_verified"`
+		DNSVerified       bool    `db:"dns_verified"`
+		SSLEnabled        bool    `db:"ssl_enabled"`
 		ServerID          *string `db:"server_id"`
 	}
 	err := s.db.Get(&domain, `SELECT is_wildcard, acme_cname_verified, dns_verified, ssl_enabled, server_id FROM domains WHERE id = $1`, domainID)
@@ -106,9 +117,10 @@ func (s *MarketplaceService) MarkForSale(domainID string, price float64, descrip
 			is_marketplace = TRUE,
 			marketplace_price = $2,
 			marketplace_description = $3,
-			marketplace_listed_at = $4
+			marketplace_type = $4,
+			marketplace_listed_at = $5
 		WHERE id = $1
-	`, domainID, price, description, time.Now())
+	`, domainID, price, description, domainType, time.Now())
 	if err != nil {
 		return err
 	}
@@ -137,6 +149,14 @@ func (s *MarketplaceService) UpdateListing(domainID string, input models.UpdateL
 	if input.Description != nil {
 		updates = append(updates, fmt.Sprintf("marketplace_description = $%d", argNum))
 		args = append(args, *input.Description)
+		argNum++
+	}
+	if input.DomainType != nil {
+		if *input.DomainType != models.TypeBrandNew && *input.DomainType != models.TypeCpanel && *input.DomainType != models.TypeHacked {
+			return errors.New("invalid domain type")
+		}
+		updates = append(updates, fmt.Sprintf("marketplace_type = $%d", argNum))
+		args = append(args, *input.DomainType)
 		argNum++
 	}
 

@@ -85,7 +85,7 @@ func (h *Handler) APIMarkForSale(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.MarkForSale(input.DomainID, input.Price, input.Description); err != nil {
+	if err := h.service.MarkForSale(input.DomainID, input.Price, input.Description, input.DomainType); err != nil {
 		h.jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

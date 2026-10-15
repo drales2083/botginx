@@ -12,9 +12,17 @@ type MarketplaceDomain struct {
 	IsMarketplace          bool       `db:"is_marketplace" json:"isMarketplace"`
 	MarketplacePrice       *float64   `db:"marketplace_price" json:"marketplacePrice,omitempty"`
 	MarketplaceDescription *string    `db:"marketplace_description" json:"marketplaceDescription,omitempty"`
+	MarketplaceType        string     `db:"marketplace_type" json:"marketplaceType"`
 	MarketplaceListedAt    *time.Time `db:"marketplace_listed_at" json:"marketplaceListedAt,omitempty"`
 	CreatedAt              time.Time  `db:"created_at" json:"createdAt"`
 }
+
+// Domain type constants
+const (
+	TypeBrandNew = "brand_new"
+	TypeCpanel   = "cpanel"
+	TypeHacked   = "hacked"
+)
 
 // Sale records a marketplace purchase
 type Sale struct {
@@ -34,10 +42,12 @@ type ListForSaleInput struct {
 	DomainID    string  `json:"domainId"`
 	Price       float64 `json:"price"`
 	Description string  `json:"description"`
+	DomainType  string  `json:"domainType"`
 }
 
 // UpdateListingInput for updating marketplace listing
 type UpdateListingInput struct {
 	Price       *float64 `json:"price"`
 	Description *string  `json:"description"`
+	DomainType  *string  `json:"domainType"`
 }
