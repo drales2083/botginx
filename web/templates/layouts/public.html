@@ -1,0 +1,51 @@
+{{define "public"}}
+<!doctype html>
+<html lang="{{currentLang}}" data-bs-theme="dark" data-lte-primary="danger">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#e63946">
+  {{block "head" .}}<title>{{.Title}} | {{appName}}</title>{{end}}
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-icon-180x180.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="/static/css/adminlte.css" />
+  <link rel="stylesheet" href="/static/css/adminlte-colors.css" />
+  <link rel="stylesheet" href="/static/css/kumo-foundation.css?v={{appBuild}}" />
+</head>
+<body>
+  <nav class="navbar navbar-expand border-bottom border-secondary">
+    <div class="container">
+      <a href="/" class="navbar-brand"><img src="/static/img/logo.svg" alt="{{appName}}" height="28"></a>
+      <ul class="navbar-nav ms-auto align-items-center">
+        <li class="nav-item"><a class="nav-link" href="/intel">Intel</a></li>
+        <li class="nav-item">
+          {{if .User}}<a class="btn btn-sm btn-danger" href="/user/dashboard">Dashboard</a>
+          {{else}}<a class="btn btn-sm btn-danger" href="/auth/signup">Get Started</a>{{end}}
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    {{template "content" .}}
+  </main>
+
+  <footer class="border-top border-secondary py-4 mt-5">
+    <div class="container d-flex flex-wrap justify-content-between gap-2 small text-muted">
+      <span>&copy; {{currentYear}} {{appName}}</span>
+      <span class="d-flex gap-3">
+        <a href="/intel" class="text-muted">Intel</a>
+        <a href="/privacy" class="text-muted">Privacy Policy</a>
+        <a href="/terms" class="text-muted">Terms of Use</a>
+        <a href="/cookies" class="text-muted">Cookies</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>
+{{end}}

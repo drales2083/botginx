@@ -35,6 +35,7 @@ import (
 	"github.com/botginx/botginx/modules/dashboard"
 	"github.com/botginx/botginx/modules/domainhealth"
 	"github.com/botginx/botginx/modules/domains"
+	"github.com/botginx/botginx/modules/intel"
 	"github.com/botginx/botginx/modules/help"
 	"github.com/botginx/botginx/modules/hosting"
 	hostingmodels "github.com/botginx/botginx/modules/hosting/models"
@@ -232,6 +233,7 @@ func main() {
 		"appVersion": buildinfo.Version,
 		"appBuild":   buildinfo.Build,
 		"appName":    getAppName,
+		"currentYear": func() int { return time.Now().Year() },
 		"hasPrefix":  strings.HasPrefix,
 		"formatBytes": func(b int64) string {
 			const unit = 1024
@@ -340,6 +342,8 @@ func main() {
 	registry.Register(admindash.New())           // Admin dashboard (stats)
 	registry.Register(adminactivity.New())       // Admin activity logs (audit)
 	registry.Register(announcements.New())       // News announcements (admin)
+	intelModule := intel.New()
+	registry.Register(intelModule)               // Intel blog (public /intel, admin /admin/intel)
 	registry.Register(referralsModule)           // Referral commission system
 	registry.Register(twofactor.New())           // Two-factor authentication
 	registry.Register(modulesmgmt.New(registry)) // Module management (admin)
@@ -631,6 +635,9 @@ func main() {
 		subscriptions.Attach(http.HandlerFunc(notFound)),
 	).ServeHTTP)
 
+	// Intel blog (public). Admin routes are mounted under /admin by the registry.
+	r.Mount("/intel", authModule.Handler.OptionalAuthMiddleware(intelModule.Routes()))
+
 	// Homepage (public landing page)
 	homeTemplate := loadHomeTemplate()
 	r.Get("/", authModule.Handler.OptionalAuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -641,6 +648,11 @@ func main() {
 			"appBuild":    buildinfo.Build(),
 			"currentYear": time.Now().Year(),
 			"User":        ctx.GetUser(r),
+		}
+		if articles, err := intelModule.GetLatestArticles(3); err != nil {
+			log.Warn().Err(err).Msg("failed to load intel articles for homepage")
+		} else {
+			data["IntelArticles"] = articles
 		}
 		if err := homeTemplate.ExecuteTemplate(w, "home", data); err != nil {
 			log.Error().Err(err).Msg("failed to render homepage")

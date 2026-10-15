@@ -355,6 +355,15 @@ func RenderUserSection(w http.ResponseWriter, r *http.Request, te *TemplateEngin
 	}
 }
 
+// RenderPublic renders a standalone public page (no admin chrome).
+// A template may define "head" to supply its own <title> and SEO tags.
+func RenderPublic(w http.ResponseWriter, r *http.Request, te *TemplateEngine, name string, data map[string]interface{}) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := te.RenderPublic(w, r, name, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 // RenderAuth renders with auth layout (no sidebar, centered form)
 func RenderAuth(w http.ResponseWriter, r *http.Request, te *TemplateEngine, name string, data map[string]interface{}) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

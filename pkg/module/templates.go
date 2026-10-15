@@ -316,6 +316,11 @@ func (te *TemplateEngine) RenderUserSection(w io.Writer, r *http.Request, name s
 	return te.renderWithLayout(w, r, name, "base", data, menuUser)
 }
 
+// RenderPublic renders a standalone public page: no sidebar, no menus.
+func (te *TemplateEngine) RenderPublic(w io.Writer, r *http.Request, name string, data map[string]interface{}) error {
+	return te.renderWithLayout(w, r, name, "public", data, menuNone)
+}
+
 // RenderAuth renders a template with the auth layout (no sidebar)
 func (te *TemplateEngine) RenderAuth(w io.Writer, r *http.Request, name string, data map[string]interface{}) error {
 	return te.renderWithLayout(w, r, name, "auth", data, menuNone)

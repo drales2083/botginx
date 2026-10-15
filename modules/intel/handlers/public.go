@@ -82,7 +82,7 @@ func (h *PublicHandler) listPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	module.Render(w, r, h.templates, "intel:public/list.html", map[string]interface{}{
+	module.RenderPublic(w, r, h.templates, "intel:public/list.html", map[string]interface{}{
 		"Title":       "Intel",
 		"Articles":    result.Articles,
 		"Categories":  categories,
@@ -123,7 +123,7 @@ func (h *PublicHandler) showPage(w http.ResponseWriter, r *http.Request) {
 		publishedAt = &article.PublishedAt.Time
 	}
 
-	module.Render(w, r, h.templates, "intel:public/show.html", map[string]interface{}{
+	module.RenderPublic(w, r, h.templates, "intel:public/show.html", map[string]interface{}{
 		"Title":       article.Title,
 		"Article":     article,
 		"Content":     html,
@@ -134,6 +134,7 @@ func (h *PublicHandler) showPage(w http.ResponseWriter, r *http.Request) {
 		"MetaDesc":    article.MetaDescription,
 		"CoverImage":  article.CoverImage,
 		"PublishedAt": publishedAt,
+		"BaseURL":     baseURL(r),
 	})
 }
 
@@ -160,7 +161,7 @@ func (h *PublicHandler) categoryPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	module.Render(w, r, h.templates, "intel:public/category.html", map[string]interface{}{
+	module.RenderPublic(w, r, h.templates, "intel:public/category.html", map[string]interface{}{
 		"Title":       category.Name,
 		"Category":    category,
 		"Categories":  categories,
@@ -195,7 +196,7 @@ func (h *PublicHandler) tagPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	module.Render(w, r, h.templates, "intel:public/tag.html", map[string]interface{}{
+	module.RenderPublic(w, r, h.templates, "intel:public/tag.html", map[string]interface{}{
 		"Title":       tag.Name,
 		"Tag":         tag,
 		"Categories":  categories,

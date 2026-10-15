@@ -1,6 +1,6 @@
 {{define "head"}}
 <!-- SEO Meta Tags -->
-<title>{{if .MetaTitle}}{{.MetaTitle}}{{else}}{{.Article.Title}}{{end}} | Intel | {{.AppName}}</title>
+<title>{{if .MetaTitle}}{{.MetaTitle}}{{else}}{{.Article.Title}}{{end}} | Intel | {{appName}}</title>
 <meta name="description" content="{{if .MetaDesc}}{{.MetaDesc}}{{else}}{{.Article.Excerpt}}{{end}}">
 <link rel="canonical" href="{{.BaseURL}}/intel/{{.Article.Slug}}">
 
@@ -33,7 +33,7 @@
     },
     "publisher": {
         "@type": "Organization",
-        "name": "{{.AppName}}"
+        "name": "{{appName}}"
     },
     {{if .PublishedAt}}"datePublished": "{{.PublishedAt.Format "2006-01-02T15:04:05Z07:00"}}",{{end}}
     "dateModified": "{{.Article.UpdatedAt.Format "2006-01-02T15:04:05Z07:00"}}",
@@ -177,7 +177,7 @@ hljs.highlightAll();
 
 function copyLink() {
     navigator.clipboard.writeText(window.location.href);
-    showToast('Link copied!', 'success');
+    
 }
 </script>
 {{end}}
