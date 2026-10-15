@@ -233,6 +233,7 @@ func main() {
 		"appVersion":  buildinfo.Version,
 		"appBuild":    buildinfo.Build,
 		"appName":     getAppName,
+		"siteURL":     getSiteURL,
 		"currentYear": func() int { return time.Now().Year() },
 		"hasPrefix":   strings.HasPrefix,
 		"formatBytes": func(b int64) string {
@@ -775,9 +776,21 @@ func getAppName() string {
 	return "GuardBot"
 }
 
+func getSiteURL() string {
+	if url := os.Getenv("PANEL_URL"); url != "" {
+		// Ensure it has https:// prefix
+		if !strings.HasPrefix(url, "http") {
+			return "https://" + url
+		}
+		return url
+	}
+	return "https://guardbot.sbs"
+}
+
 func loadPageTemplate(name string) *template.Template {
 	tmpl := template.New(name).Funcs(template.FuncMap{
 		"appName":     getAppName,
+		"siteURL":     getSiteURL,
 		"appBuild":    buildinfo.Build,
 		"currentYear": func() int { return time.Now().Year() },
 		"currentLang": func() string { return "en" },

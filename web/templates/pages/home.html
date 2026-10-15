@@ -12,14 +12,14 @@
   <meta name="keywords" content="bot protection, link shortener, redirect links, antibot, click fraud prevention, marketing link protection, URL shortener, link analytics" />
   <meta name="author" content="{{appName}}" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-  <link rel="canonical" href="https://guardbot.sbs/" />
+  <link rel="canonical" href="{{siteURL}}/" />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://guardbot.sbs/" />
+  <meta property="og:url" content="{{siteURL}}/" />
   <meta property="og:title" content="{{appName}} - Bot Protection & Link Management" />
   <meta property="og:description" content="Protect your marketing links from bots and fraud. AI-powered detection blocks scrapers while letting real humans through." />
-  <meta property="og:image" content="https://guardbot.sbs/static/img/og-image.png" />
+  <meta property="og:image" content="{{siteURL}}/static/img/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="GuardBot - Bot Protection for Marketing Links" />
@@ -28,10 +28,10 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://guardbot.sbs/" />
+  <meta name="twitter:url" content="{{siteURL}}/" />
   <meta name="twitter:title" content="{{appName}} - Bot Protection & Link Management" />
   <meta name="twitter:description" content="Protect your marketing links from bots and fraud. AI-powered detection blocks scrapers while letting real humans through." />
-  <meta name="twitter:image" content="https://guardbot.sbs/static/img/og-image.png" />
+  <meta name="twitter:image" content="{{siteURL}}/static/img/og-image.png" />
 
   <!-- Favicon -->
   <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-icon-180x180.png">
@@ -52,12 +52,12 @@
     "@graph": [
       {
         "@type": "Organization",
-        "@id": "https://guardbot.sbs/#organization",
+        "@id": "{{siteURL}}/#organization",
         "name": "GuardBot",
-        "url": "https://guardbot.sbs",
+        "url": "{{siteURL}}",
         "logo": {
           "@type": "ImageObject",
-          "url": "https://guardbot.sbs/static/img/logo.svg",
+          "url": "{{siteURL}}/static/img/logo.svg",
           "width": 200,
           "height": 50
         },
@@ -68,18 +68,18 @@
       },
       {
         "@type": "WebSite",
-        "@id": "https://guardbot.sbs/#website",
-        "url": "https://guardbot.sbs",
+        "@id": "{{siteURL}}/#website",
+        "url": "{{siteURL}}",
         "name": "GuardBot",
         "description": "Protect your marketing links from bots and fraud",
         "publisher": {
-          "@id": "https://guardbot.sbs/#organization"
+          "@id": "{{siteURL}}/#organization"
         },
         "inLanguage": "en-US"
       },
       {
         "@type": "SoftwareApplication",
-        "@id": "https://guardbot.sbs/#software",
+        "@id": "{{siteURL}}/#software",
         "name": "GuardBot",
         "applicationCategory": "SecurityApplication",
         "operatingSystem": "Web",
@@ -99,23 +99,23 @@
           "IP whitelisting",
           "Real-time monitoring"
         ],
-        "screenshot": "https://guardbot.sbs/static/img/og-image.png"
+        "screenshot": "{{siteURL}}/static/img/og-image.png"
       },
       {
         "@type": "WebPage",
-        "@id": "https://guardbot.sbs/#webpage",
-        "url": "https://guardbot.sbs",
+        "@id": "{{siteURL}}/#webpage",
+        "url": "{{siteURL}}",
         "name": "GuardBot - Bot Protection & Link Management for Marketers",
         "description": "Protect your marketing links from bots and fraud. AI-powered bot detection blocks scrapers and fake traffic while letting real humans through.",
         "isPartOf": {
-          "@id": "https://guardbot.sbs/#website"
+          "@id": "{{siteURL}}/#website"
         },
         "about": {
-          "@id": "https://guardbot.sbs/#software"
+          "@id": "{{siteURL}}/#software"
         },
         "primaryImageOfPage": {
           "@type": "ImageObject",
-          "url": "https://guardbot.sbs/static/img/og-image.png"
+          "url": "{{siteURL}}/static/img/og-image.png"
         },
         "inLanguage": "en-US"
       }
