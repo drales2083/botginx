@@ -6,15 +6,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#e63946">
-  {{block "head" .}}<title>{{.Title}} | {{appName}}</title>{{end}}
+
+  <!-- Page-specific head content (title, description, OG tags) -->
+  {{block "head" .}}
+  <title>{{.Title}} | {{appName}}</title>
+  <meta name="description" content="{{appName}} - Bot protection and link management for digital marketers." />
+  <meta name="robots" content="index, follow" />
+  {{end}}
+
+  <!-- Default Open Graph (can be overridden by block "head") -->
+  {{block "og" .}}
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="{{appName}}" />
+  <meta property="og:locale" content="en_US" />
+  {{end}}
+
+  <!-- Favicon -->
   <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-icon-180x180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
   <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
+
+  <!-- Preconnect & Styles -->
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="/static/css/kumo-homepage.css?v={{appBuild}}" />
   <link rel="stylesheet" href="/static/css/intel.css?v={{appBuild}}" />
+
+  <!-- Structured Data -->
+  {{block "structured-data" .}}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "{{.Title}} | {{appName}}",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "GuardBot",
+      "url": "https://guardbot.sbs"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "GuardBot",
+      "url": "https://guardbot.sbs"
+    }
+  }
+  </script>
+  {{end}}
 </head>
 <body>
 

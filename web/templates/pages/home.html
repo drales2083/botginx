@@ -3,18 +3,125 @@
 <html lang="{{currentLang}}" data-bs-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>{{appName}} - Protect Your Links from Bots</title>
+  <title>{{appName}} - Bot Protection & Link Management for Marketers</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Advanced bot protection and link management. Keep bots out, let humans in." />
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Protect your marketing links from bots and fraud. AI-powered bot detection blocks scrapers and fake traffic while letting real humans through. Analytics, QR codes, and custom domains included." />
+  <meta name="keywords" content="bot protection, link shortener, redirect links, antibot, click fraud prevention, marketing link protection, URL shortener, link analytics" />
+  <meta name="author" content="{{appName}}" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <link rel="canonical" href="https://guardbot.sbs/" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://guardbot.sbs/" />
+  <meta property="og:title" content="{{appName}} - Bot Protection & Link Management" />
+  <meta property="og:description" content="Protect your marketing links from bots and fraud. AI-powered detection blocks scrapers while letting real humans through." />
+  <meta property="og:image" content="https://guardbot.sbs/static/img/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="GuardBot - Bot Protection for Marketing Links" />
+  <meta property="og:site_name" content="{{appName}}" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://guardbot.sbs/" />
+  <meta name="twitter:title" content="{{appName}} - Bot Protection & Link Management" />
+  <meta name="twitter:description" content="Protect your marketing links from bots and fraud. AI-powered detection blocks scrapers while letting real humans through." />
+  <meta name="twitter:image" content="https://guardbot.sbs/static/img/og-image.png" />
+
+  <!-- Favicon -->
   <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-icon-180x180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
   <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
   <meta name="theme-color" content="#e63946">
+
+  <!-- Preconnect & Styles -->
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="/static/css/kumo-homepage.css?v={{appBuild}}" />
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://guardbot.sbs/#organization",
+        "name": "GuardBot",
+        "url": "https://guardbot.sbs",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://guardbot.sbs/static/img/logo.svg",
+          "width": 200,
+          "height": 50
+        },
+        "description": "Bot protection and link management platform for digital marketers",
+        "sameAs": [
+          "https://docs.guardbot.sbs"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://guardbot.sbs/#website",
+        "url": "https://guardbot.sbs",
+        "name": "GuardBot",
+        "description": "Protect your marketing links from bots and fraud",
+        "publisher": {
+          "@id": "https://guardbot.sbs/#organization"
+        },
+        "inLanguage": "en-US"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://guardbot.sbs/#software",
+        "name": "GuardBot",
+        "applicationCategory": "SecurityApplication",
+        "operatingSystem": "Web",
+        "description": "AI-powered bot protection for redirect links. Block malicious traffic, track analytics, and manage custom domains.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "Free tier available"
+        },
+        "featureList": [
+          "AI-powered bot detection",
+          "Redirect link creation",
+          "Click analytics and tracking",
+          "Custom domain support",
+          "QR code generation",
+          "IP whitelisting",
+          "Real-time monitoring"
+        ],
+        "screenshot": "https://guardbot.sbs/static/img/og-image.png"
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://guardbot.sbs/#webpage",
+        "url": "https://guardbot.sbs",
+        "name": "GuardBot - Bot Protection & Link Management for Marketers",
+        "description": "Protect your marketing links from bots and fraud. AI-powered bot detection blocks scrapers and fake traffic while letting real humans through.",
+        "isPartOf": {
+          "@id": "https://guardbot.sbs/#website"
+        },
+        "about": {
+          "@id": "https://guardbot.sbs/#software"
+        },
+        "primaryImageOfPage": {
+          "@type": "ImageObject",
+          "url": "https://guardbot.sbs/static/img/og-image.png"
+        },
+        "inLanguage": "en-US"
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
 
