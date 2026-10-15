@@ -651,7 +651,7 @@ func (s *NameSiloService) registerWithAcmeDNS(domainID string) (*acmedns.Registr
 	}
 	err := s.db.Get(&server, `
 		SELECT ip, COALESCE(port, 22) as port, ssh_user, ssh_password
-		FROM servers WHERE name = 'deploy' OR name LIKE '%deploy%' LIMIT 1
+		FROM servers WHERE status = 'ready' ORDER BY created_at LIMIT 1
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("no deploy server found: %w", err)
@@ -710,7 +710,7 @@ func (s *NameSiloService) GenerateWildcardSSLWithAcmeDNS(domain, acmeSubdomain, 
 	}
 	err := s.db.Get(&server, `
 		SELECT ip, COALESCE(port, 22) as port, ssh_user, ssh_password
-		FROM servers WHERE name = 'deploy' OR name LIKE '%deploy%' LIMIT 1
+		FROM servers WHERE status = 'ready' ORDER BY created_at LIMIT 1
 	`)
 	if err != nil {
 		return fmt.Errorf("no deploy server found: %w", err)
