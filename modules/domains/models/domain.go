@@ -68,6 +68,12 @@ type Domain struct {
 	CpanelConnectionID *string `db:"cpanel_connection_id" json:"cpanelConnectionId,omitempty"`
 	CpanelAutoDNS      bool    `db:"cpanel_auto_dns" json:"cpanelAutoDns"`
 
+	// NameSilo/provider integration fields
+	Source             string  `db:"source" json:"source"`                                     // manual, namesilo, cpanel
+	ProviderDomainID   *string `db:"provider_domain_id" json:"providerDomainId,omitempty"`     // ID at the provider
+	DNSAutoConfigured  bool    `db:"dns_auto_configured" json:"dnsAutoConfigured"`             // DNS was auto-configured
+	DNSConfigError     *string `db:"dns_config_error" json:"dnsConfigError,omitempty"`         // Last DNS config error
+
 	// Safety check fields (from Domain Health module)
 	SafetyStatus    *string    `db:"safety_status" json:"safetyStatus,omitempty"`
 	SafetyCheckedAt *time.Time `db:"safety_checked_at" json:"safetyCheckedAt,omitempty"`
