@@ -61,6 +61,11 @@ func (s *ArticleService) List(opts ListOptions) (*ListResult, error) {
 		args = append(args, opts.CategoryID)
 		argNum++
 	}
+	if opts.TagID != "" {
+		where = append(where, fmt.Sprintf("EXISTS (SELECT 1 FROM intel_article_tags t WHERE t.article_id = a.id AND t.tag_id = $%d)", argNum))
+		args = append(args, opts.TagID)
+		argNum++
+	}
 	if opts.Search != "" {
 		where = append(where, fmt.Sprintf("(a.title ILIKE $%d OR a.excerpt ILIKE $%d)", argNum, argNum))
 		args = append(args, "%"+opts.Search+"%")
