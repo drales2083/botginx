@@ -689,6 +689,86 @@ func main() {
 	r.Get("/terms", renderLegalPage(termsTemplate, "terms"))
 	r.Get("/cookies", renderLegalPage(cookiesTemplate, "cookies"))
 
+	// Sitemap.xml - index of all sitemaps
+	r.Get("/sitemap.xml", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siteURL := getSiteURL()
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>%s/sitemap-pages.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>%s/intel/sitemap.xml</loc>
+  </sitemap>
+</sitemapindex>`, siteURL, siteURL)
+	}))
+
+	// Sitemap for static pages
+	r.Get("/sitemap-pages.xml", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siteURL := getSiteURL()
+		now := time.Now().Format("2006-01-02")
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>%s/</loc>
+    <lastmod>%s</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>%s/intel</loc>
+    <lastmod>%s</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>%s/auth/signup</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>%s/privacy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>%s/terms</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>%s/cookies</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>`, siteURL, now, siteURL, now, siteURL, siteURL, siteURL, siteURL)
+	}))
+
+	// robots.txt for search engines
+	r.Get("/robots.txt", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siteURL := getSiteURL()
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		fmt.Fprintf(w, `User-agent: *
+Allow: /
+Allow: /intel
+Allow: /auth/signup
+Disallow: /auth/login
+Disallow: /auth/forgot-password
+Disallow: /auth/reset-password
+Disallow: /user/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /webhooks/
+
+Sitemap: %s/sitemap.xml
+`, siteURL)
+	}))
+
 	// Start server
 	srv := &http.Server{
 		Addr:    cfg.Server.Listen,
