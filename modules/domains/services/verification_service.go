@@ -455,7 +455,7 @@ certbot certonly --manual --preferred-challenges dns \
 		if strings.Contains(output, "Certificate not yet due for renewal") {
 			return nil
 		}
-		return fmt.Errorf("SSL generation failed: %s", parseCertbotError(output))
+		return fmt.Errorf("%s", parseCertbotError(output))
 	}
 
 	// Check if certificate was created
