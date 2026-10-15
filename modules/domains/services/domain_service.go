@@ -450,11 +450,13 @@ func (s *DomainService) ListUnverified() ([]models.Domain, error) {
 }
 
 // ListVerifiedWithoutSSL returns domains that are verified but don't have SSL enabled
+// Excludes domains with ssl_error to prevent retry loops that cause rate limiting
 func (s *DomainService) ListVerifiedWithoutSSL() ([]models.Domain, error) {
 	var domains []models.Domain
 	err := s.db.Select(&domains, `
 		SELECT * FROM domains
 		WHERE dns_verified = TRUE AND ssl_enabled = FALSE
+		AND (ssl_error IS NULL OR ssl_error = '')
 		ORDER BY created_at DESC
 	`)
 	return domains, err
