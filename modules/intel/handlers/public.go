@@ -61,7 +61,9 @@ func pageParam(r *http.Request) int {
 
 func baseURL(r *http.Request) string {
 	scheme := "https"
-	if r.TLS == nil {
+	if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {
+		scheme = proto
+	} else if r.TLS == nil {
 		scheme = "http"
 	}
 	return fmt.Sprintf("%s://%s", scheme, r.Host)
