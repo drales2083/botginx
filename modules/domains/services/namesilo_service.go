@@ -679,8 +679,8 @@ done
 # Add new TXT record
 curl -s "https://www.namesilo.com/api/dnsAddRecord?version=1&type=json&key=${API_KEY}&domain=${DOMAIN}&rrtype=TXT&rrhost=_acme-challenge&rrvalue=${CERTBOT_VALIDATION}&rrttl=3600" > /dev/null
 
-# Wait for NameSilo DNS propagation (they're slow - need 120-180s)
-sleep 180
+# Wait for NameSilo DNS propagation (they're very slow - need 5+ minutes)
+sleep 300
 `, domainName, apiKey)
 
 	// Create cleanup hook
@@ -714,7 +714,7 @@ done
 	sshClient.Run(fmt.Sprintf("cat > %s << 'CLEANEOF'\n%sCLEANEOF\nchmod +x %s", cleanupPath, cleanupHook, cleanupPath))
 
 	// Run certbot for wildcard cert
-	// Note: This will take ~6-7 minutes (180s wait × 2 domains)
+	// Note: This will take ~10-12 minutes (300s wait × 2 domains)
 	certbotCmd := fmt.Sprintf(`certbot certonly --manual --preferred-challenges dns \
 		-d "*.%s" -d "%s" \
 		--manual-auth-hook %s \
