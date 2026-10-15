@@ -6,6 +6,13 @@
       "sourceType": "github",
       "skillPath": "skills/apex/SKILL.md",
       "computedHash": "8778a40b7283b0fc889525aef1da389ac1f27862cfae58d379f6943453b90b45"
+    },
+    "blog-post": {
+      "source": "smithery.ai",
+      "sourceUrl": "https://smithery.ai/skills/langchain-ai/blog-post",
+      "sourceType": "well-known",
+      "computedHash": "4a695b9be73d15798cf887a5c55732a8247e4926d2ce3d844c97ae57c44bb3f2",
+      "wellKnownDigest": "sha256:4314df284c73c9c254a42c3ad6bcae04e3b7ff51de5426096b5082afc548217b"
     }
   }
 }

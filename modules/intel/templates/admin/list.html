@@ -89,30 +89,30 @@ async function loadArticles() {
         loading.classList.add('d-none');
         table.classList.remove('d-none');
 
-        if (!data.success || !data.data.Articles) {
+        if (!data.success || !data.data.articles || data.data.articles.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No articles found</td></tr>';
             return;
         }
 
-        tbody.innerHTML = data.data.Articles.map(a => `
+        tbody.innerHTML = data.data.articles.map(a => `
             <tr>
                 <td>
-                    ${a.Featured ? '<i class="bi bi-star-fill text-warning me-1"></i>' : ''}
-                    <a href="/admin/intel/${a.ID}/edit" class="text-decoration-none">${escapeHtml(a.Title)}</a>
+                    ${a.featured ? '<i class="bi bi-star-fill text-warning me-1"></i>' : ''}
+                    <a href="/admin/intel/${a.id}/edit" class="text-decoration-none">${escapeHtml(a.title)}</a>
                 </td>
-                <td>${a.CategoryName ? escapeHtml(a.CategoryName) : '<span class="text-muted">—</span>'}</td>
+                <td>${a.categoryName ? escapeHtml(a.categoryName) : '<span class="text-muted">—</span>'}</td>
                 <td>
-                    ${a.Status === 'published' ? '<span class="badge bg-success">Published</span>' :
-                      a.Status === 'draft' ? '<span class="badge bg-warning">Draft</span>' :
+                    ${a.status === 'published' ? '<span class="badge bg-success">Published</span>' :
+                      a.status === 'draft' ? '<span class="badge bg-warning">Draft</span>' :
                       '<span class="badge bg-secondary">Archived</span>'}
                 </td>
-                <td>${formatDate(a.CreatedAt)}</td>
+                <td>${formatDate(a.createdAt)}</td>
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
-                        <a href="/admin/intel/${a.ID}/edit" class="btn btn-outline-primary">
+                        <a href="/admin/intel/${a.id}/edit" class="btn btn-outline-primary">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        <button type="button" class="btn btn-outline-danger" onclick="deleteArticle('${a.ID}', '${escapeHtml(a.Title)}')">
+                        <button type="button" class="btn btn-outline-danger" onclick="deleteArticle('${a.id}', '${escapeHtml(a.title)}')">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
