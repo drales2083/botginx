@@ -33,6 +33,15 @@ func (s *CategoryService) GetBySlug(slugStr string) (*models.Category, error) {
 	return &cat, nil
 }
 
+func (s *CategoryService) GetByID(id string) (*models.Category, error) {
+	var cat models.Category
+	err := s.db.Get(&cat, `SELECT * FROM intel_categories WHERE id = $1`, id)
+	if err != nil {
+		return nil, err
+	}
+	return &cat, nil
+}
+
 func (s *CategoryService) Create(name, description string) (*models.Category, error) {
 	slugStr := slug.Make(name)
 	var cat models.Category
