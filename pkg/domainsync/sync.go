@@ -471,21 +471,30 @@ func (s *Service) adoptAcmeDnsSubdomain(domain *Domain, server Server, existingF
 	// Now update the acme-dns database to change the new subdomain to the existing one
 	// This allows us to use new credentials with the user's existing CNAME
 	updateCmd := fmt.Sprintf(`
-		# Delete any existing record with this subdomain
-		sqlite3 /var/lib/acme-dns/acme-dns.db "DELETE FROM records WHERE Subdomain = '%s';"
-		# Update the new record to use the existing subdomain
-		sqlite3 /var/lib/acme-dns/acme-dns.db "UPDATE records SET Subdomain = '%s' WHERE Username = '%s';"
-		# Add TXT table entries for the subdomain
-		sqlite3 /var/lib/acme-dns/acme-dns.db "INSERT OR IGNORE INTO txt (Subdomain, Value, LastUpdate) VALUES ('%s', '', 0);"
-		sqlite3 /var/lib/acme-dns/acme-dns.db "INSERT OR IGNORE INTO txt (Subdomain, Value, LastUpdate) VALUES ('%s', '', 0);"
-		echo "OK"
-	`, existingSubdomain, existingSubdomain, regResp.Username, existingSubdomain, existingSubdomain)
+set -e
+# Delete any existing record with this subdomain (ignore if not found)
+sqlite3 /var/lib/acme-dns/acme-dns.db "DELETE FROM records WHERE Subdomain = '%s';" || true
+# Update the new record to use the existing subdomain
+sqlite3 /var/lib/acme-dns/acme-dns.db "UPDATE records SET Subdomain = '%s' WHERE Username = '%s';"
+# Verify the update worked
+ACTUAL=$(sqlite3 /var/lib/acme-dns/acme-dns.db "SELECT Subdomain FROM records WHERE Username = '%s';")
+if [ "$ACTUAL" != "%s" ]; then
+  echo "VERIFY_FAILED: expected %s, got $ACTUAL"
+  exit 1
+fi
+# Add TXT table entries for the subdomain
+sqlite3 /var/lib/acme-dns/acme-dns.db "INSERT OR IGNORE INTO txt (Subdomain, Value, LastUpdate) VALUES ('%s', '', 0);"
+echo "OK"
+	`, existingSubdomain, existingSubdomain, regResp.Username, regResp.Username, existingSubdomain, existingSubdomain, existingSubdomain)
 
 	result, err = client.Exec(updateCmd)
 	if err != nil {
 		return fmt.Errorf("failed to update acme-dns database: %w", err)
 	}
 
+	if strings.Contains(result.Output, "VERIFY_FAILED") {
+		return fmt.Errorf("acme-dns subdomain adoption verification failed: %s", result.Output)
+	}
 	if !strings.Contains(result.Output, "OK") {
 		return fmt.Errorf("acme-dns database update failed: %s", result.Output)
 	}
@@ -503,7 +512,15 @@ func (s *Service) adoptAcmeDnsSubdomain(domain *Domain, server Server, existingF
 		WHERE id = $5
 	`, existingSubdomain, regResp.Username, regResp.Password, existingFulldomain, domain.ID)
 	if err != nil {
-		return fmt.Errorf("failed to update database: %w", err)
+		// Critical: acme-dns was updated but botginx wasn't - log for manual intervention
+		log.Printf("[DomainSync] CRITICAL: acme-dns updated but botginx update failed for %s (subdomain: %s, new user: %s): %v",
+			domain.Name, existingSubdomain, regResp.Username, err)
+		return fmt.Errorf("failed to update database (acme-dns was already updated - credentials may be out of sync): %w", err)
+	}
+
+	// Verify the credentials work by testing them against acme-dns
+	if !s.testAcmeDnsCredentials(server, existingSubdomain, regResp.Username, regResp.Password) {
+		log.Printf("[DomainSync] WARNING: Credentials saved but verification failed for %s - they may not work", domain.Name)
 	}
 
 	// Update domain object
