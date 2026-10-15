@@ -431,6 +431,10 @@ func main() {
 	r.Handle("/static/preview/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
 	r.Handle("/static/*", staticHandler)
 
+	// Serve uploaded files from disk (not embedded)
+	uploadsHandler := http.StripPrefix("/static/uploads/", noDirectoryListing(http.FileServer(http.Dir("static/uploads"))))
+	r.Handle("/static/uploads/*", uploadsHandler)
+
 	// Health check
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
