@@ -252,3 +252,40 @@ func (c *Client) SetupDNS(ctx context.Context, domain, serverIP string) (rootID,
 
 	return rootID, wildcardID, nil
 }
+
+// AddVerificationTXT adds the GuardBot verification TXT record
+// Creates: _guardbot-verify.domain.com → token
+func (c *Client) AddVerificationTXT(ctx context.Context, domain, token string) (string, error) {
+	// First check if it already exists and delete it
+	records, err := c.ListDNSRecords(ctx, domain)
+	if err == nil {
+		for _, r := range records {
+			if r.Type == "TXT" && r.Host == "_guardbot-verify" {
+				c.DeleteDNSRecord(ctx, domain, r.RecordID)
+			}
+		}
+	}
+
+	return c.AddDNSRecord(ctx, domain, DNSRecordInput{
+		Type:  "TXT",
+		Host:  "_guardbot-verify",
+		Value: token,
+		TTL:   3600,
+	})
+}
+
+// RemoveVerificationTXT removes the GuardBot verification TXT record
+func (c *Client) RemoveVerificationTXT(ctx context.Context, domain string) error {
+	records, err := c.ListDNSRecords(ctx, domain)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range records {
+		if r.Type == "TXT" && r.Host == "_guardbot-verify" {
+			return c.DeleteDNSRecord(ctx, domain, r.RecordID)
+		}
+	}
+
+	return nil // Not found, nothing to delete
+}

@@ -219,14 +219,15 @@ func (s *NameSiloService) ImportDomain(ctx context.Context, userID string, input
 		return existingID, errors.New("domain already imported")
 	}
 
-	// Generate domain ID
+	// Generate domain ID and verify token
 	domainID := fmt.Sprintf("dom_%s", generateID(12))
+	verifyToken := fmt.Sprintf("guardbot-%s", generateID(12))
 
-	// Insert domain
+	// Insert domain with verify_token
 	_, err = s.db.Exec(`
-		INSERT INTO domains (id, user_id, name, source, provider_domain_id, created_at, updated_at)
-		VALUES ($1, $2, $3, 'namesilo', $4, $5, $5)
-	`, domainID, userID, input.Domain, input.Domain, time.Now())
+		INSERT INTO domains (id, user_id, name, verify_token, source, provider_domain_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, 'namesilo', $5, $6, $6)
+	`, domainID, userID, input.Domain, verifyToken, input.Domain, time.Now())
 	if err != nil {
 		return "", fmt.Errorf("inserting domain: %w", err)
 	}
@@ -240,12 +241,22 @@ func (s *NameSiloService) ImportDomain(ctx context.Context, userID string, input
 				UPDATE domains SET dns_config_error = $1 WHERE id = $2
 			`, err.Error(), domainID)
 		} else {
+			// Add A records (root + wildcard)
 			_, _, err = client.SetupDNS(ctx, input.Domain, serverIP)
 			if err != nil {
 				s.db.Exec(`
 					UPDATE domains SET dns_config_error = $1 WHERE id = $2
 				`, err.Error(), domainID)
 			} else {
+				// Add verification TXT record
+				_, txtErr := client.AddVerificationTXT(ctx, input.Domain, verifyToken)
+				if txtErr != nil {
+					// Log TXT error but don't fail - A records are more important
+					s.db.Exec(`
+						UPDATE domains SET dns_config_error = $1 WHERE id = $2
+					`, "A records OK, TXT failed: "+txtErr.Error(), domainID)
+				}
+
 				s.db.Exec(`
 					UPDATE domains SET dns_auto_configured = true WHERE id = $1
 				`, domainID)
