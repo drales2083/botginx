@@ -1,16 +1,6 @@
-# Telegram Backup Manifest Format
+# Backup Manifest Reference
 
-Technical reference for the Telegram backup system. Backups upload database dumps and config files as chat documents, plus a `_manifest.json` with SHA256 checksums and Telegram `file_id`s.
-
-## Features
-
-- **20MB chunk limit** - Files split automatically for Telegram's `getFile` API
-- **SHA256 verification** - Every chunk and merged file verified
-- **Any chat type** - Works with private chats, groups, or channels
-- **Fresh server restore** - Works on brand new server with empty database
-- **Scheduled backups** - Automatic backups at configurable intervals
-
----
+Technical reference for the Telegram backup manifest format, chunking, and Telegram API methods.
 
 ## Manifest Format
 
@@ -38,26 +28,6 @@ The `_manifest.json` file contains everything needed for restore:
             "file_id": "BQACAgIAAxkBAAI...",
             "file_unique_id": "AgADAgAT..."
           }
-        },
-        {
-          "part": 2,
-          "name": "db.dump.part002",
-          "size": 20971520,
-          "sha256": "2b3c4d5e6f7g...",
-          "telegram": {
-            "file_id": "BQACAgIAAxkBAAJ...",
-            "file_unique_id": "AgADAgAU..."
-          }
-        },
-        {
-          "part": 3,
-          "name": "db.dump.part003",
-          "size": 10485760,
-          "sha256": "3c4d5e6f7g8h...",
-          "telegram": {
-            "file_id": "BQACAgIAAxkBAAK...",
-            "file_unique_id": "AgADAgAV..."
-          }
         }
       ]
     },
@@ -75,7 +45,7 @@ The `_manifest.json` file contains everything needed for restore:
 }
 ```
 
-### Key Fields
+## Field Reference
 
 | Field | Description |
 |-------|-------------|
@@ -91,37 +61,35 @@ The `_manifest.json` file contains everything needed for restore:
 | `chunks[].part` | Chunk order (1, 2, 3...) |
 | `chunks[].sha256` | SHA256 of this chunk |
 
----
+## Chunking
 
-## Technical Details
+Files over 20MB are split into chunks for Telegram's `getFile` API limit.
 
-### Chunk Size
-
-- **Default**: 20MB
-- **Maximum**: 20MB (Telegram `getFile` API limit)
-- **Configurable**: Yes, in settings (5-20MB)
+| Setting | Value |
+|---------|-------|
+| Default chunk size | 20MB |
+| Maximum chunk size | 20MB (Telegram API limit) |
+| Minimum chunk size | 5MB (configurable) |
 
 Files ≤ chunk size are uploaded as-is. Larger files split into `filename.partNNN` chunks.
 
-### Database Backup
+## Database Backup
 
 Uses PostgreSQL custom format with compression:
 
 ```bash
+# Backup
 pg_dump --format=custom --no-owner --no-acl --compress=6
-```
 
-Restore uses:
-
-```bash
+# Restore
 pg_restore --no-owner --no-acl --single-transaction
 ```
 
-### Config Backup
+## Config Backup
 
 Archives specified paths (default: `.env`, `.env.local`) into `config.tar.gz`.
 
-### Telegram API Methods
+## Telegram API Methods
 
 | Operation | API Method |
 |-----------|------------|
@@ -129,23 +97,14 @@ Archives specified paths (default: `.env`, `.env.local`) into `config.tar.gz`.
 | Get file info | `getFile` |
 | Download file | `https://api.telegram.org/file/bot<token>/<file_path>` |
 
-### Chat ID Formats
-
-| Chat Type | Format | Example |
-|-----------|--------|---------|
-| Private | Positive integer | `123456789` |
-| Group | Negative integer | `-123456789` |
-| Supergroup | Starts with -100 | `-1001234567890` |
-| Channel | Starts with -100 | `-1001234567890` |
-| Username | @name | `@mybackupchannel` |
-
----
-
-## Security Notes
+## Security
 
 1. **Bot token** is encrypted in database using AES-256-GCM
-2. **Backup files** are NOT encrypted on Telegram (consider private chat)
-3. **file_id** is tied to your bot - others cannot download your files
+2. **Backup files** are NOT encrypted on Telegram (use private chat)
+3. **file_id** is tied to your bot — others cannot download your files
 4. **Manifest** contains no sensitive data, just file metadata
 
----
+## Related Documentation
+
+- [How to Back Up to Telegram](../how-to/backup-to-telegram.md)
+- [How to Restore from Telegram](../how-to/restore-from-telegram.md)

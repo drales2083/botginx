@@ -1,6 +1,10 @@
 # CloudPanel Settings Reference
 
+Technical reference for CloudPanel hosting server settings, metrics, and directory structure.
+
 ## Settings File Format
+
+Each domain gets a settings file at `/etc/botection/links/{domainID}.json`:
 
 ```json
 {
@@ -23,30 +27,32 @@
 
 | Setting | Values | Description |
 |---------|--------|-------------|
-| country_mode | off, allow, block | Country filtering mode |
-| country_list | ISO codes | Countries to allow/block |
-| device_mode | off, allow, block | Device filtering mode |
-| device_list | desktop, mobile, tablet | Devices to allow/block |
-| block_bots | true/false | Block known bots |
-| block_tor | true/false | Block Tor exit nodes |
-| block_proxy | true/false | Block proxy/VPN IPs |
-| block_datacenter | true/false | Block datacenter IPs |
-| block_headless | true/false | Block headless browsers |
-| min_behavior_score | 0-100 | Minimum behavior score required |
-| redirect_on_block | URL | Redirect blocked visitors here |
+| `country_mode` | `off`, `allow`, `block` | Country filtering mode |
+| `country_list` | ISO codes | Countries to allow/block |
+| `device_mode` | `off`, `allow`, `block` | Device filtering mode |
+| `device_list` | `desktop`, `mobile`, `tablet` | Devices to allow/block |
+| `block_bots` | `true`/`false` | Block known bots |
+| `block_tor` | `true`/`false` | Block Tor exit nodes |
+| `block_proxy` | `true`/`false` | Block proxy/VPN IPs |
+| `block_datacenter` | `true`/`false` | Block datacenter IPs |
+| `block_headless` | `true`/`false` | Block headless browsers |
+| `min_behavior_score` | `0`-`100` | Minimum behavior score required |
+| `redirect_on_block` | URL | Redirect blocked visitors here |
 
-## Available Metrics
+## Analytics Metrics
+
+The stats API (`127.0.0.1:8080/api/stats`) returns:
 
 | Metric | Description |
 |--------|-------------|
-| Total Requests | All requests to the domain |
-| Allowed Requests | Requests that passed filtering |
-| Blocked Requests | Requests that were blocked |
-| Block Rate | Percentage of requests blocked |
-| Block Reasons | Breakdown by block reason (bot, tor, proxy, etc.) |
-| Recent Blocks | Last N blocked requests with IP, path, reason |
+| `total_requests` | All requests to the domain |
+| `allowed_requests` | Requests that passed filtering |
+| `blocked_requests` | Requests that were blocked |
+| `block_rate` | Percentage of requests blocked |
+| `module_blocks` | Breakdown by block reason |
+| `recent_blocks` | Last N blocked requests |
 
-## Stats API Response
+### Stats API Response
 
 ```json
 {
@@ -73,7 +79,7 @@
 }
 ```
 
-## Directory structure
+## Directory Structure
 
 On the CloudPanel server:
 
@@ -81,24 +87,53 @@ On the CloudPanel server:
 /etc/botection/
 ├── links/                    # Domain settings (pushed from botginx)
 │   ├── {domainID1}.json
-│   ├── {domainID2}.json
 │   └── ...
-├── config/                   # Botection configuration
+├── config/
 │   └── config.yaml
-├── default-settings.json     # Default settings template
-└── cloudpanel.env            # CloudPanel-specific env vars
+├── default-settings.json
+└── cloudpanel.env
 
-/var/www/antibot/             # Botection installation
+/var/www/antibot/
 ├── antibot                   # Binary
 ├── config/
-│   └── config.yaml           # Main config
+│   └── config.yaml
 └── logs/
 ```
 
-## Security Notes
+## Branding Files
 
-- SSH access is required from botginx to CloudPanel servers
-- Use strong SSH passwords or SSH keys
-- Botection stats API only listens on 127.0.0.1 (not exposed externally)
-- Settings files are readable by botection process only
+```
+/opt/cloudpanel-branding/
+├── css/
+│   └── custom-branding.css
+├── logos/
+│   ├── logo-light.png
+│   ├── logo-dark.png
+│   └── favicon.ico
+└── cloudpanel-branding.sh
+```
 
+## Branding Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PANEL_NAME` | GuardHost | Custom panel name |
+| `PRIMARY_COLOR` | #dc3545 | Theme color (hex) |
+| `FORCE_DARK_THEME` | true | Dark mode as default |
+| `LOGO_LIGHT` | - | Light theme logo path |
+| `LOGO_DARK` | - | Dark theme logo path |
+| `LOGO_FAVICON` | - | Favicon path |
+
+## Port Configuration
+
+| Port | Service | Purpose |
+|------|---------|---------|
+| 8443 | CloudPanel Panel | Admin interface |
+| 8081 | CloudPanel nginx | Backend web server |
+| 8080 | Botection | Antibot reverse proxy |
+| 443 | External nginx | SSL termination |
+
+## Related Documentation
+
+- [CloudPanel Architecture](../explanation/cloudpanel-architecture.md)
+- [How to Setup CloudPanel Server](../how-to/setup-cloudpanel-hosting.md)
