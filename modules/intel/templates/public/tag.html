@@ -1,0 +1,74 @@
+{{define "content"}}
+<div class="intel-page">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <span class="badge bg-secondary fs-6 mb-3">Tag</span>
+            <h1 class="display-5 fw-bold">{{.Tag.Name}}</h1>
+        </div>
+
+        <!-- Back to Intel -->
+        <div class="mb-4">
+            <a href="/intel" class="text-decoration-none">
+                <i class="bi bi-arrow-left me-1"></i>Back to Intel
+            </a>
+        </div>
+
+        <!-- Articles grid -->
+        {{if .Articles}}
+        <div class="row g-4">
+            {{range .Articles}}
+            <div class="col-md-6 col-lg-4">
+                <article class="card h-100 intel-card">
+                    {{if .CoverImage}}
+                    <a href="/intel/{{.Slug}}">
+                        <img src="{{.CoverImage}}" class="card-img-top" alt="{{.Title}}" style="height: 200px; object-fit: cover;">
+                    </a>
+                    {{end}}
+                    <div class="card-body d-flex flex-column">
+                        {{if .CategoryName}}
+                        <span class="badge bg-primary mb-2" style="width: fit-content;">{{.CategoryName}}</span>
+                        {{end}}
+                        <h3 class="card-title h5">
+                            <a href="/intel/{{.Slug}}" class="text-decoration-none text-body">{{.Title}}</a>
+                        </h3>
+                        <p class="card-text text-muted flex-grow-1">{{.Excerpt}}</p>
+                        <div class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top">
+                            <small class="text-muted">{{.ReadingTime}} min read</small>
+                            <a href="/intel/{{.Slug}}" class="btn btn-sm btn-outline-primary">Read more</a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Pagination -->
+        {{if or .HasPrev .HasNext}}
+        <nav class="mt-5">
+            <ul class="pagination justify-content-center">
+                {{if .HasPrev}}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{sub .CurrentPage 1}}">Previous</a>
+                </li>
+                {{end}}
+                <li class="page-item disabled">
+                    <span class="page-link">Page {{.CurrentPage}} of {{.TotalPages}}</span>
+                </li>
+                {{if .HasNext}}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{add .CurrentPage 1}}">Next</a>
+                </li>
+                {{end}}
+            </ul>
+        </nav>
+        {{end}}
+
+        {{else}}
+        <div class="text-center py-5">
+            <p class="text-muted">No articles with this tag yet.</p>
+            <a href="/intel" class="btn btn-primary">View all articles</a>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}
