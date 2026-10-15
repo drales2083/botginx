@@ -80,7 +80,7 @@ func (s *MarketplaceService) MarkForSale(domainID string, price float64, descrip
 	if domainType == "" {
 		domainType = models.TypeCpanel
 	}
-	if domainType != models.TypeBrandNew && domainType != models.TypeCpanel && domainType != models.TypeHacked {
+	if domainType != models.TypeBrandNew && domainType != models.TypeCpanel && domainType != models.TypeHacked && domainType != models.TypeOld {
 		return errors.New("invalid domain type")
 	}
 

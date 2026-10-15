@@ -22,6 +22,7 @@ const (
 	TypeBrandNew = "brand_new"
 	TypeCpanel   = "cpanel"
 	TypeHacked   = "hacked"
+	TypeOld      = "old"
 )
 
 // Sale records a marketplace purchase
