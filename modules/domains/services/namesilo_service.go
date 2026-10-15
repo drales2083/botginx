@@ -222,19 +222,20 @@ func (s *NameSiloService) ImportDomain(ctx context.Context, userID string, input
 	// Generate domain ID and verify token
 	domainID := fmt.Sprintf("dom_%s", generateID(12))
 	verifyToken := fmt.Sprintf("guardbot-%s", generateID(12))
+	serverID := s.getDeployServerID()
 
-	// Insert domain with verify_token
+	// Insert domain with verify_token and server_id for SSL generation
 	_, err = s.db.Exec(`
-		INSERT INTO domains (id, user_id, name, verify_token, source, provider_domain_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, 'namesilo', $5, $6, $6)
-	`, domainID, userID, input.Domain, verifyToken, input.Domain, time.Now())
+		INSERT INTO domains (id, user_id, name, verify_token, server_id, source, provider_domain_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NULLIF($5, ''), 'namesilo', $6, $7, $7)
+	`, domainID, userID, input.Domain, verifyToken, serverID, input.Domain, time.Now())
 	if err != nil {
 		return "", fmt.Errorf("inserting domain: %w", err)
 	}
 
 	// Auto-configure DNS if requested
 	if input.ConfigureDNS {
-		serverIP, err := s.getServerIP()
+		serverIP, err := s.getDeployServerIP()
 		if err != nil {
 			// Log but don't fail the import
 			s.db.Exec(`
@@ -275,7 +276,7 @@ func (s *NameSiloService) SetupDNS(ctx context.Context, userID, domainName strin
 		return err
 	}
 
-	serverIP, err := s.getServerIP()
+	serverIP, err := s.getDeployServerIP()
 	if err != nil {
 		return fmt.Errorf("getting server IP: %w", err)
 	}
@@ -415,7 +416,7 @@ func (s *NameSiloService) ReconfigureAllDomains(ctx context.Context, newIP strin
 
 // ReconfigureUserDomains updates DNS for all of a user's NameSilo domains
 func (s *NameSiloService) ReconfigureUserDomains(ctx context.Context, userID string) ([]ReconfigureResult, error) {
-	serverIP, err := s.getServerIP()
+	serverIP, err := s.getDeployServerIP()
 	if err != nil {
 		return nil, fmt.Errorf("getting server IP: %w", err)
 	}
@@ -471,17 +472,33 @@ func (s *NameSiloService) ReconfigureUserDomains(ctx context.Context, userID str
 	return results, nil
 }
 
-// getServerIP returns the public IP of this server
-func (s *NameSiloService) getServerIP() (string, error) {
-	// First check environment variable
+// getDeployServerIP returns the IP of the deploy server (where SSL/traffic goes)
+// This is different from the panel server - DNS should point to deploy server
+func (s *NameSiloService) getDeployServerIP() (string, error) {
+	// First check environment variable override
+	if ip := os.Getenv("DEPLOY_SERVER_IP"); ip != "" {
+		return ip, nil
+	}
+
+	// Query the deploy server from database
+	var ip string
+	err := s.db.QueryRow(`
+		SELECT ip FROM servers
+		WHERE status = 'ready'
+		ORDER BY created_at LIMIT 1
+	`).Scan(&ip)
+	if err == nil && ip != "" {
+		return ip, nil
+	}
+
+	// Fallback to environment variable (legacy)
 	if ip := os.Getenv("SERVER_PUBLIC_IP"); ip != "" {
 		return ip, nil
 	}
 
-	// Query external service
+	// Last resort: auto-detect (not recommended for production)
 	resp, err := http.Get("https://api.ipify.org")
 	if err != nil {
-		// Try backup service
 		resp, err = http.Get("https://ifconfig.me/ip")
 		if err != nil {
 			return "", fmt.Errorf("could not determine server IP: %w", err)
@@ -494,12 +511,23 @@ func (s *NameSiloService) getServerIP() (string, error) {
 		return "", err
 	}
 
-	ip := strings.TrimSpace(string(body))
+	ip = strings.TrimSpace(string(body))
 	if net.ParseIP(ip) == nil {
 		return "", fmt.Errorf("invalid IP response: %s", ip)
 	}
 
 	return ip, nil
+}
+
+// getDeployServerID returns the ID of the deploy server
+func (s *NameSiloService) getDeployServerID() string {
+	var id string
+	s.db.QueryRow(`
+		SELECT id FROM servers
+		WHERE status = 'ready'
+		ORDER BY created_at LIMIT 1
+	`).Scan(&id)
+	return id
 }
 
 // encrypt encrypts a string using AES-256-GCM
