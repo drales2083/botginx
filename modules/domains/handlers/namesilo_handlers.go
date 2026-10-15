@@ -215,6 +215,25 @@ func (h *NameSiloHandler) Reconfigure(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ReconfigureDomain updates DNS for a single domain
+func (h *NameSiloHandler) ReconfigureDomain(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	domainID := chi.URLParam(r, "id")
+
+	if domainID == "" {
+		h.jsonError(w, "Domain ID is required", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.namesiloService.ReconfigureDomain(r.Context(), userID, domainID)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.jsonSuccess(w, result)
+}
+
 // AdminReconfigureAll updates DNS for ALL NameSilo domains across all users (admin only)
 func (h *NameSiloHandler) AdminReconfigureAll(w http.ResponseWriter, r *http.Request) {
 	// Get the new IP from request body, or auto-detect

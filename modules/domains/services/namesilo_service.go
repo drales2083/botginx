@@ -662,6 +662,112 @@ func (s *NameSiloService) ReconfigureUserDomains(ctx context.Context, userID str
 	return results, nil
 }
 
+// ReconfigureDomain updates DNS for a single domain
+func (s *NameSiloService) ReconfigureDomain(ctx context.Context, userID, domainID string) (*ReconfigureResult, error) {
+	serverIP, err := s.getDeployServerIP()
+	if err != nil {
+		return nil, fmt.Errorf("getting server IP: %w", err)
+	}
+
+	// Get the domain
+	type domainInfo struct {
+		ID                string  `db:"id"`
+		Name              string  `db:"name"`
+		VerifyToken       string  `db:"verify_token"`
+		AcmeFulldomain    *string `db:"acme_fulldomain"`
+		AcmeSubdomain     *string `db:"acme_subdomain"`
+		AcmeUsername      *string `db:"acme_username"`
+		AcmePassword      *string `db:"acme_password"`
+		AcmeCnameVerified bool    `db:"acme_cname_verified"`
+		SSLEnabled        bool    `db:"ssl_enabled"`
+	}
+
+	var d domainInfo
+	err = s.db.Get(&d, `
+		SELECT id, name, verify_token, acme_fulldomain, acme_subdomain,
+		       acme_username, acme_password, acme_cname_verified, ssl_enabled
+		FROM domains
+		WHERE id = $1 AND user_id = $2 AND source = 'namesilo'
+	`, domainID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("domain not found or not a NameSilo domain")
+	}
+
+	client, err := s.GetClient(userID)
+	if err != nil {
+		return nil, fmt.Errorf("getting API client: %w", err)
+	}
+
+	// Setup DNS
+	_, _, err = client.SetupDNS(ctx, d.Name, serverIP)
+	if err != nil {
+		s.db.Exec(`UPDATE domains SET dns_config_error = $1, updated_at = NOW() WHERE id = $2`, err.Error(), d.ID)
+		return &ReconfigureResult{Domain: d.Name, Success: false, Error: err.Error()}, nil
+	}
+
+	// Ensure TXT verification record exists
+	if d.VerifyToken != "" {
+		client.AddVerificationTXT(ctx, d.Name, d.VerifyToken)
+	}
+
+	// Register with acme-dns if not already registered
+	if d.AcmeFulldomain == nil || *d.AcmeFulldomain == "" {
+		log.Printf("[NameSilo] ReconfigureDomain: registering acme-dns for %s", d.Name)
+		acmeReg, regErr := s.registerWithAcmeDNS(d.ID)
+		if regErr != nil {
+			log.Printf("[NameSilo] ReconfigureDomain: acme-dns registration failed for %s: %v", d.Name, regErr)
+		} else {
+			if _, cnameErr := client.AddAcmeDNSCname(ctx, d.Name, acmeReg.Fulldomain); cnameErr != nil {
+				log.Printf("[NameSilo] ReconfigureDomain: CNAME failed for %s: %v", d.Name, cnameErr)
+			} else {
+				log.Printf("[NameSilo] ReconfigureDomain: Added CNAME for %s → %s", d.Name, acmeReg.Fulldomain)
+				go func(domID, domain, subdomain, username, password string) {
+					log.Printf("[NameSilo] ReconfigureDomain: generating SSL for %s", domain)
+					time.Sleep(60 * time.Second)
+					if err := s.GenerateWildcardSSLWithAcmeDNS(domain, subdomain, username, password); err != nil {
+						log.Printf("[NameSilo] ReconfigureDomain: SSL failed for %s: %v", domain, err)
+						s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+					} else {
+						log.Printf("[NameSilo] ReconfigureDomain: SSL completed for %s", domain)
+						s.db.Exec(`UPDATE domains SET ssl_enabled = true, ssl_error = NULL, acme_cname_verified = true WHERE id = $1`, domID)
+					}
+				}(d.ID, d.Name, acmeReg.Subdomain, acmeReg.Username, acmeReg.Password)
+			}
+		}
+	} else if !d.AcmeCnameVerified {
+		log.Printf("[NameSilo] ReconfigureDomain: adding acme-dns CNAME for %s → %s", d.Name, *d.AcmeFulldomain)
+		if _, cnameErr := client.AddAcmeDNSCname(ctx, d.Name, *d.AcmeFulldomain); cnameErr != nil {
+			log.Printf("[NameSilo] ReconfigureDomain: CNAME failed for %s: %v", d.Name, cnameErr)
+		} else if !d.SSLEnabled && d.AcmeSubdomain != nil && d.AcmeUsername != nil && d.AcmePassword != nil {
+			go func(domID, domain string, subdomain, username, password string) {
+				log.Printf("[NameSilo] ReconfigureDomain: generating SSL for %s", domain)
+				time.Sleep(60 * time.Second)
+				if err := s.GenerateWildcardSSLWithAcmeDNS(domain, subdomain, username, password); err != nil {
+					log.Printf("[NameSilo] ReconfigureDomain: SSL failed for %s: %v", domain, err)
+					s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+				} else {
+					log.Printf("[NameSilo] ReconfigureDomain: SSL completed for %s", domain)
+					s.db.Exec(`UPDATE domains SET ssl_enabled = true, ssl_error = NULL, acme_cname_verified = true WHERE id = $1`, domID)
+				}
+			}(d.ID, d.Name, *d.AcmeSubdomain, *d.AcmeUsername, *d.AcmePassword)
+		}
+	} else if !d.SSLEnabled && d.AcmeSubdomain != nil && d.AcmeUsername != nil && d.AcmePassword != nil {
+		go func(domID, domain string, subdomain, username, password string) {
+			log.Printf("[NameSilo] ReconfigureDomain: generating SSL for %s", domain)
+			if err := s.GenerateWildcardSSLWithAcmeDNS(domain, subdomain, username, password); err != nil {
+				log.Printf("[NameSilo] ReconfigureDomain: SSL failed for %s: %v", domain, err)
+				s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+			} else {
+				log.Printf("[NameSilo] ReconfigureDomain: SSL completed for %s", domain)
+				s.db.Exec(`UPDATE domains SET ssl_enabled = true, ssl_error = NULL WHERE id = $1`, domID)
+			}
+		}(d.ID, d.Name, *d.AcmeSubdomain, *d.AcmeUsername, *d.AcmePassword)
+	}
+
+	s.db.Exec(`UPDATE domains SET dns_config_error = NULL, dns_verified = true, updated_at = NOW() WHERE id = $1`, d.ID)
+	return &ReconfigureResult{Domain: d.Name, Success: true}, nil
+}
+
 // getDeployServerIP returns the IP of the deploy server (where SSL/traffic goes)
 // This is different from the panel server - DNS should point to deploy server
 func (s *NameSiloService) getDeployServerIP() (string, error) {

@@ -119,8 +119,9 @@ func (m *Module) Routes() chi.Router {
 		r.Post("/api/import", m.namesiloHandler.Import)
 		r.Post("/api/dns/{domain}", m.namesiloHandler.SetupDNS)
 		r.Get("/api/dns/{domain}", m.namesiloHandler.GetDNSRecords)
-		r.Post("/api/reconfigure", m.namesiloHandler.Reconfigure)       // Update all domains with current IP
-		r.Post("/api/ssl/{domain}", m.namesiloHandler.GenerateSSL)      // Generate wildcard SSL
+		r.Post("/api/reconfigure", m.namesiloHandler.Reconfigure)             // Update all domains with current IP
+		r.Post("/api/reconfigure/{id}", m.namesiloHandler.ReconfigureDomain) // Update single domain
+		r.Post("/api/ssl/{domain}", m.namesiloHandler.GenerateSSL)           // Generate wildcard SSL
 	})
 
 	r.Get("/{id}", m.handler.Show)

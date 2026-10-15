@@ -58,14 +58,9 @@
                 <div id="domains-table" class="d-none">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0">Your NameSilo domains</h5>
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="reconfigureDNS()">
-                                <i class="bi bi-gear me-1"></i>Reconfigure DNS
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadDomains()">
-                                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-                            </button>
-                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadDomains()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                        </button>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
@@ -227,24 +222,22 @@ document.getElementById('confirm-disconnect-btn').addEventListener('click', asyn
     btn.innerHTML = '<i class="bi bi-x-lg me-1"></i>Disconnect';
 });
 
-async function reconfigureDNS() {
+async function reconfigureDomain(domainId, domainName) {
     const btn = event.target.closest('button');
     const originalHTML = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Reconfiguring...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
     try {
-        const res = await fetch('/user/domains/namesilo/api/reconfigure', { method: 'POST' });
+        const res = await fetch(`/user/domains/namesilo/api/reconfigure/${domainId}`, { method: 'POST' });
         const data = await res.json();
 
         if (data.success) {
             const result = data.data;
-            if (result.total === 0) {
-                showToast('No domains to reconfigure', 'info');
-            } else if (result.failCount === 0) {
-                showToast(`Reconfigured ${result.successCount} domain(s) successfully`, 'success');
+            if (result.success) {
+                showToast(`${domainName} reconfigured successfully`, 'success');
             } else {
-                showToast(`Reconfigured ${result.successCount}/${result.total} domains. ${result.failCount} failed.`, 'warning');
+                showToast(`${domainName}: ${result.error}`, 'danger');
             }
         } else {
             showToast(data.error || 'Reconfiguration failed', 'danger');
@@ -298,9 +291,14 @@ async function loadDomains() {
                 </td>
                 <td class="text-end">
                     ${d.isImported
-                        ? `<a href="/user/domains/${d.localId}" class="btn btn-sm btn-outline-secondary">
-                               <i class="bi bi-gear me-1"></i>Manage
-                           </a>`
+                        ? `<div class="btn-group btn-group-sm">
+                               <button type="button" class="btn btn-outline-primary" onclick="reconfigureDomain('${d.localId}', '${escapeHtml(d.domain)}')">
+                                   <i class="bi bi-arrow-repeat me-1"></i>Reconfigure
+                               </button>
+                               <a href="/user/domains/${d.localId}" class="btn btn-outline-secondary">
+                                   <i class="bi bi-gear me-1"></i>Manage
+                               </a>
+                           </div>`
                         : `<button type="button" class="btn btn-sm btn-primary" onclick="showImportModal('${escapeHtml(d.domain)}')">
                                <i class="bi bi-download me-1"></i>Import
                            </button>`}
