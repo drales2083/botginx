@@ -32,7 +32,6 @@
     color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
     font-size: 0.9rem;
-    transition: all 0.2s ease;
 }
 
 .intel-tabs a:hover {
@@ -62,7 +61,7 @@
     overflow: hidden;
     text-decoration: none;
     color: inherit;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.15s ease;
 }
 
 .intel-card:hover {
@@ -262,7 +261,6 @@
     font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
-    transition: color 0.15s ease;
 }
 
 .toc a:hover {
@@ -279,7 +277,6 @@
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
-    transition: all 0.2s ease;
 }
 
 .tag-badge:hover {
@@ -308,7 +305,6 @@
     color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
     font-size: 0.9rem;
-    transition: all 0.2s ease;
 }
 
 .intel-pagination a:hover {
