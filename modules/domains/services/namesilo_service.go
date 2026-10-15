@@ -792,7 +792,16 @@ certbot certonly --manual --preferred-challenges dns \
 		return fmt.Errorf("certificate not created")
 	}
 
-	// Setup nginx config for the domain
+	// Check if nginx config already exists - if so, just reload to pick up new cert
+	// Don't overwrite existing config (it may have custom proxy settings)
+	configExists := fmt.Sprintf(`test -f /etc/nginx/sites-enabled/%s.conf && echo "EXISTS"`, baseDomain)
+	if out, _ := sshClient.Run(configExists); strings.Contains(out, "EXISTS") {
+		// Config exists - just reload nginx to pick up new cert
+		sshClient.Run("nginx -t && systemctl reload nginx")
+		return nil
+	}
+
+	// No config exists - create one
 	if err := s.setupNginxConfig(sshClient, baseDomain); err != nil {
 		log.Printf("[NameSilo] nginx setup warning for %s: %v", baseDomain, err)
 	}
@@ -966,6 +975,14 @@ done
 
 	if !strings.Contains(output, "Successfully received certificate") {
 		return fmt.Errorf("certbot did not succeed: %s", output)
+	}
+
+	// Check if nginx config already exists - if so, just reload to pick up new cert
+	configExists := fmt.Sprintf(`test -f /etc/nginx/sites-enabled/%s.conf && echo "EXISTS"`, domainName)
+	if out, _ := sshClient.Run(configExists); strings.Contains(out, "EXISTS") {
+		sshClient.Run("nginx -t && systemctl reload nginx")
+		log.Printf("[NameSilo] Wildcard SSL generated for *.%s (existing nginx config reloaded)", domainName)
+		return nil
 	}
 
 	// Create nginx config for wildcard domain
