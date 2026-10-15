@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/pkg/providers/namesilo"
+	"github.com/botginx/botginx/pkg/sshexec"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -224,10 +226,11 @@ func (s *NameSiloService) ImportDomain(ctx context.Context, userID string, input
 	verifyToken := fmt.Sprintf("guardbot-%s", generateID(12))
 	serverID := s.getDeployServerID()
 
-	// Insert domain with verify_token and server_id for SSL generation
+	// Insert domain as wildcard (redirect links use random subdomains)
+	// NameSilo-imported domains need wildcard SSL via DNS-01 challenge
 	_, err = s.db.Exec(`
-		INSERT INTO domains (id, user_id, name, verify_token, server_id, source, provider_domain_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NULLIF($5, ''), 'namesilo', $6, $7, $7)
+		INSERT INTO domains (id, user_id, name, verify_token, server_id, source, provider_domain_id, is_wildcard, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NULLIF($5, ''), 'namesilo', $6, true, $7, $7)
 	`, domainID, userID, input.Domain, verifyToken, serverID, input.Domain, time.Now())
 	if err != nil {
 		return "", fmt.Errorf("inserting domain: %w", err)
@@ -261,6 +264,19 @@ func (s *NameSiloService) ImportDomain(ctx context.Context, userID string, input
 				s.db.Exec(`
 					UPDATE domains SET dns_auto_configured = true WHERE id = $1
 				`, domainID)
+
+				// Generate wildcard SSL in background (takes ~7 minutes due to DNS propagation)
+				go func(uid, domain, domID string) {
+					log.Printf("[NameSilo] Starting background wildcard SSL generation for %s", domain)
+					bgCtx := context.Background()
+					if err := s.GenerateWildcardSSL(bgCtx, uid, domain); err != nil {
+						log.Printf("[NameSilo] Wildcard SSL failed for %s: %v", domain, err)
+						s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+					} else {
+						log.Printf("[NameSilo] Wildcard SSL completed for %s", domain)
+						s.db.Exec(`UPDATE domains SET ssl_enabled = true, ssl_error = NULL WHERE id = $1`, domID)
+					}
+				}(userID, input.Domain, domainID)
 			}
 		}
 	}
@@ -590,4 +606,171 @@ func generateID(length int) string {
 		b[i] = chars[b[i]%byte(len(chars))]
 	}
 	return string(b)
+}
+
+// GenerateWildcardSSL generates a wildcard SSL certificate using NameSilo DNS for DNS-01 challenge
+// This runs certbot with hooks that call NameSilo API directly via curl on the deploy server
+func (s *NameSiloService) GenerateWildcardSSL(ctx context.Context, userID, domainName string) error {
+	// Get the user's NameSilo API key
+	var encryptedKey string
+	err := s.db.QueryRow(`SELECT namesilo_api_key_encrypted FROM users WHERE id = $1`, userID).Scan(&encryptedKey)
+	if err != nil || encryptedKey == "" {
+		return fmt.Errorf("user not connected to NameSilo")
+	}
+
+	apiKey, err := s.decrypt(encryptedKey)
+	if err != nil {
+		return fmt.Errorf("decrypting API key: %w", err)
+	}
+
+	// Get deploy server credentials
+	var server struct {
+		IP       string `db:"ip"`
+		Port     int    `db:"port"`
+		User     string `db:"ssh_user"`
+		Password string `db:"ssh_password"`
+	}
+	err = s.db.Get(&server, `
+		SELECT ip, port, ssh_user, ssh_password FROM servers
+		WHERE status = 'ready' ORDER BY created_at LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("no deploy server available: %w", err)
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	sshClient, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer sshClient.Close()
+
+	log.Printf("[NameSilo] Generating wildcard SSL for *.%s", domainName)
+
+	// Create auth hook that adds TXT record via NameSilo API
+	// Note: We escape $ for shell but not for Go's Sprintf
+	authHook := fmt.Sprintf(`#!/bin/bash
+DOMAIN="%s"
+API_KEY="%s"
+
+# Delete existing _acme-challenge TXT records
+RECORDS=$(curl -s "https://www.namesilo.com/api/dnsListRecords?version=1&type=json&key=${API_KEY}&domain=${DOMAIN}")
+OLD_IDS=$(echo "$RECORDS" | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    recs=d.get('reply',{}).get('resource_record',[])
+    recs=[recs] if isinstance(recs,dict) else (recs or [])
+    for r in recs:
+        if r.get('host')=='_acme-challenge' and r.get('type')=='TXT':
+            print(r['record_id'])
+except: pass
+" 2>/dev/null)
+
+for id in $OLD_IDS; do
+    curl -s "https://www.namesilo.com/api/dnsDeleteRecord?version=1&type=json&key=${API_KEY}&domain=${DOMAIN}&rrid=${id}" > /dev/null
+    sleep 3
+done
+
+# Add new TXT record
+curl -s "https://www.namesilo.com/api/dnsAddRecord?version=1&type=json&key=${API_KEY}&domain=${DOMAIN}&rrtype=TXT&rrhost=_acme-challenge&rrvalue=${CERTBOT_VALIDATION}&rrttl=3600" > /dev/null
+
+# Wait for NameSilo DNS propagation (they're slow - need 120-180s)
+sleep 180
+`, domainName, apiKey)
+
+	// Create cleanup hook
+	cleanupHook := fmt.Sprintf(`#!/bin/bash
+DOMAIN="%s"
+API_KEY="%s"
+
+RECORDS=$(curl -s "https://www.namesilo.com/api/dnsListRecords?version=1&type=json&key=${API_KEY}&domain=${DOMAIN}")
+IDS=$(echo "$RECORDS" | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    recs=d.get('reply',{}).get('resource_record',[])
+    recs=[recs] if isinstance(recs,dict) else (recs or [])
+    for r in recs:
+        if r.get('host')=='_acme-challenge' and r.get('type')=='TXT':
+            print(r['record_id'])
+except: pass
+" 2>/dev/null)
+
+for id in $IDS; do
+    curl -s "https://www.namesilo.com/api/dnsDeleteRecord?version=1&type=json&key=${API_KEY}&domain=${DOMAIN}&rrid=${id}" > /dev/null
+done
+`, domainName, apiKey)
+
+	// Write hooks to deploy server
+	authPath := fmt.Sprintf("/tmp/namesilo_auth_%s.sh", domainName)
+	cleanupPath := fmt.Sprintf("/tmp/namesilo_cleanup_%s.sh", domainName)
+
+	sshClient.Run(fmt.Sprintf("cat > %s << 'AUTHEOF'\n%sAUTHEOF\nchmod +x %s", authPath, authHook, authPath))
+	sshClient.Run(fmt.Sprintf("cat > %s << 'CLEANEOF'\n%sCLEANEOF\nchmod +x %s", cleanupPath, cleanupHook, cleanupPath))
+
+	// Run certbot for wildcard cert
+	// Note: This will take ~6-7 minutes (180s wait × 2 domains)
+	certbotCmd := fmt.Sprintf(`certbot certonly --manual --preferred-challenges dns \
+		-d "*.%s" -d "%s" \
+		--manual-auth-hook %s \
+		--manual-cleanup-hook %s \
+		--agree-tos --email admin@%s \
+		--non-interactive --force-renewal 2>&1`,
+		domainName, domainName, authPath, cleanupPath, domainName)
+
+	output, err := sshClient.Run(certbotCmd)
+	if err != nil {
+		return fmt.Errorf("certbot failed: %w\nOutput: %s", err, output)
+	}
+
+	if !strings.Contains(output, "Successfully received certificate") {
+		return fmt.Errorf("certbot did not succeed: %s", output)
+	}
+
+	// Create nginx config for wildcard domain
+	nginxConf := fmt.Sprintf(`server {
+    listen 80;
+    server_name %s *.%s;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name %s *.%s;
+
+    ssl_certificate /etc/letsencrypt/live/%s/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/%s/privkey.pem;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/sites/%s;
+        allow all;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}`, domainName, domainName, domainName, domainName, domainName, domainName, domainName)
+
+	confPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", domainName)
+	sshClient.Run(fmt.Sprintf("cat > %s << 'NGINXEOF'\n%sNGINXEOF", confPath, nginxConf))
+	sshClient.Run(fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/", confPath))
+
+	// Test and reload nginx
+	testOut, err := sshClient.Run("nginx -t 2>&1")
+	if err != nil || strings.Contains(testOut, "failed") {
+		return fmt.Errorf("nginx config invalid: %s", testOut)
+	}
+	sshClient.Run("systemctl reload nginx")
+
+	log.Printf("[NameSilo] Wildcard SSL generated successfully for *.%s", domainName)
+	return nil
 }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -264,5 +265,30 @@ func (h *NameSiloHandler) AdminReconfigureAll(w http.ResponseWriter, r *http.Req
 		"total":        len(results),
 		"successCount": successCount,
 		"failCount":    failCount,
+	})
+}
+
+// GenerateSSL triggers wildcard SSL generation for a NameSilo domain
+func (h *NameSiloHandler) GenerateSSL(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	domain := chi.URLParam(r, "domain")
+
+	if domain == "" {
+		h.jsonError(w, "Domain is required", http.StatusBadRequest)
+		return
+	}
+
+	// Start SSL generation in background (takes ~7 minutes)
+	go func() {
+		bgCtx := context.Background()
+		if err := h.namesiloService.GenerateWildcardSSL(bgCtx, userID, domain); err != nil {
+			// Log error - we can't return it since this is async
+			println("[NameSilo] SSL generation failed for", domain, ":", err.Error())
+		}
+	}()
+
+	h.jsonSuccess(w, map[string]interface{}{
+		"message": "Wildcard SSL generation started. This takes ~7 minutes due to DNS propagation.",
+		"domain":  domain,
 	})
 }
