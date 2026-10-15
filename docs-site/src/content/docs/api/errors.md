@@ -1,6 +1,6 @@
 ---
 title: Errors
-description: API error responses and codes.
+description: Error response format and codes.
 ---
 
 All errors return a consistent JSON structure:
@@ -9,8 +9,8 @@ All errors return a consistent JSON structure:
 {
   "success": false,
   "error": {
-    "code": "invalid_api_key",
-    "message": "The provided API key is invalid or expired."
+    "code": "error_code",
+    "message": "Human-readable description"
   }
 }
 ```
@@ -29,7 +29,7 @@ All errors return a consistent JSON structure:
 
 ## Validation Errors
 
-Validation errors include details about which fields failed:
+Validation errors include field-level details:
 
 ```json
 {

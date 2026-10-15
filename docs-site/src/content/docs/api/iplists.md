@@ -11,7 +11,7 @@ GET /api/v1/iplists/whitelist
 
 **Scope:** `iplists:read`
 
-Retrieve all whitelisted IPs:
+Returns all whitelisted IPs.
 
 ```bash
 curl "https://guardbot.sbs/api/v1/iplists/whitelist" \
@@ -28,7 +28,7 @@ POST /api/v1/iplists/whitelist
 
 **Scope:** `iplists:write`
 
-Add an IP to the whitelist:
+Adds an IP to the whitelist. Whitelisted IPs bypass bot protection on all links.
 
 ```bash
 curl -X POST "https://guardbot.sbs/api/v1/iplists/whitelist" \
@@ -41,11 +41,7 @@ curl -X POST "https://guardbot.sbs/api/v1/iplists/whitelist" \
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `ip` | string | Yes | IP address or CIDR range (e.g., 192.168.1.0/24) |
-
-:::note
-Whitelisted IPs bypass bot protection on all your links.
-:::
+| `ip` | string | Yes | IP address or CIDR range (e.g., `192.168.1.0/24`) |
 
 ---
 
@@ -56,8 +52,6 @@ DELETE /api/v1/iplists/whitelist/{id}
 ```
 
 **Scope:** `iplists:write`
-
-Remove an IP from the whitelist:
 
 ```bash
 curl -X DELETE "https://guardbot.sbs/api/v1/iplists/whitelist/wl_abc123" \

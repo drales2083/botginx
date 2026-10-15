@@ -1,9 +1,9 @@
 ---
-title: Payments
-description: Add funds to your account using Bitcoin.
+title: How to Add Funds
+description: Deposit Bitcoin to your account balance.
 ---
 
-GuardBot runs on account balance. You deposit crypto, it converts to USD credit, you spend it on hosting and features. No credit cards, no chargebacks, no payment processor hassles.
+This guide shows you how to add funds to your GuardBot account using Bitcoin. Your balance pays for hosting packages, subscription renewals, and premium features.
 
 ## Supported Currencies
 
@@ -11,33 +11,20 @@ GuardBot runs on account balance. You deposit crypto, it converts to USD credit,
 |----------|---------|-----------------|
 | Bitcoin (BTC) | Bitcoin mainnet | 0.0001 BTC |
 
-More currencies coming. For now, Bitcoin is the only option.
+## Make a Deposit
 
-## Making a Deposit
+1. Go to **Payments** → **Deposit** in your dashboard
+2. Click **Generate Address** to get a Bitcoin address unique to your account
+3. Send Bitcoin from your wallet to the address shown
+4. Wait for network confirmation (roughly 10 minutes for 1 confirmation)
 
-### Step 1: Go to Deposit
+Your deposit shows as "Pending" immediately after the transaction broadcasts. After 1 confirmation, the funds credit to your balance at the current exchange rate.
 
-Navigate to **Payments** → **Deposit** in your dashboard.
+The deposit address is yours permanently. You can reuse it for future deposits or generate a new one.
 
-### Step 2: Generate an Address
+## View Transactions
 
-Click **Generate Address**. You'll get a Bitcoin address unique to your account.
-
-This address is yours permanently. You can reuse it for future deposits or generate a new one if you prefer.
-
-### Step 3: Send Bitcoin
-
-Send Bitcoin from your wallet to the address shown. Double-check the address before confirming. Crypto transactions can't be reversed.
-
-### Step 4: Wait for Confirmation
-
-Your deposit shows as "Pending" immediately after the transaction broadcasts to the network.
-
-After 1 confirmation (roughly 10 minutes), the funds credit to your balance. You'll see the USD amount based on the exchange rate at confirmation time.
-
-## Viewing Transactions
-
-Go to **Payments** → **Transactions** to see your history:
+Go to **Payments** → **Transactions** to see:
 
 - All crypto deposits with status
 - Balance changes (purchases, refunds, commissions)
@@ -51,9 +38,7 @@ Go to **Payments** → **Transactions** to see your history:
 | Confirmed | Credited to your balance |
 | Failed | Something went wrong (rare) |
 
-## Using Your Balance
-
-Balance pays for:
+## What Your Balance Pays For
 
 - **Hosting packages**: Monthly fees deducted automatically
 - **Subscription renewal**: Keep your account active
@@ -63,44 +48,25 @@ Charges pull from your balance. If you don't have enough, the purchase fails. Ke
 
 ## Exchange Rates
 
-Deposits convert to USD at the market rate when the transaction confirms. The rate comes from CoinGecko.
+Deposits convert to USD at the market rate when the transaction confirms. The rate comes from CoinGecko. No hidden fees on the conversion.
 
-You see the exact USD amount credited. No hidden fees on the conversion.
+## Troubleshooting
 
-## Minimum Deposit
+**Deposit not showing**: The transaction appears as pending immediately after broadcast. Full confirmation takes roughly 10 minutes for Bitcoin.
 
-The minimum is 0.0001 BTC, roughly a few dollars depending on the current price. Deposits below the minimum don't credit to your account.
+**Large deposits slow**: Large amounts may take longer to confirm depending on network congestion.
 
-## Refunds
+**Sent to wrong address**: If you sent to someone else's address, the funds cannot be recovered. Triple-check addresses before sending.
 
-Crypto deposits can't be refunded. Only deposit what you intend to use.
+**Minimum not met**: Deposits below 0.0001 BTC don't credit to your account.
 
-If you deposit by mistake (sent too much, sent to wrong account), contact support. We'll look into it, but no guarantees.
+## Important Notes
+
+- Crypto deposits cannot be refunded. Only deposit what you intend to use.
+- If you deposit by mistake, contact support. We'll investigate but cannot guarantee recovery.
+- Withdrawals are not currently available. Balance is for spending on GuardBot services.
+- The conversion rate locks at confirmation time. Price changes afterward don't affect your credited balance.
 
 ## Security
 
 Your deposit address is generated through BitGo, a regulated custody provider. Funds go directly to your account. We don't hold large amounts in hot wallets.
-
-The address is unique to you. Don't share it publicly unless you want random people sending you money (which, sure, fine, but weird).
-
-## FAQ
-
-**How long until my deposit shows?**
-
-The transaction appears as pending immediately after broadcast. It credits after 1 network confirmation, typically 10 minutes for Bitcoin.
-
-**Is there a maximum deposit?**
-
-No maximum, but large deposits may take longer to confirm depending on network congestion.
-
-**What if I sent to the wrong address?**
-
-If you sent to someone else's address, the funds are gone. Triple-check addresses before sending.
-
-**Can I withdraw my balance?**
-
-Currently no. Balance is for spending on GuardBot services. Withdrawal functionality may come later.
-
-**What happens if the price changes after I deposit?**
-
-The conversion rate locks at confirmation time. Price changes afterward don't affect your credited balance.

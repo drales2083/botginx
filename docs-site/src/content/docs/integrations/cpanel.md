@@ -1,216 +1,98 @@
 ---
-title: cPanel Integration
-description: Connect your cPanel hosting account to manage domains and auto-configure DNS.
+title: How to Connect cPanel
+description: Import domains from your cPanel hosting account and auto-configure DNS.
 ---
 
-Connect your cPanel hosting account to GuardBot. Import domains directly from your hosting, get automatic DNS configuration, and manage everything from one dashboard.
+This guide shows you how to connect your cPanel hosting account to GuardBot. Once connected, you can import domains directly and let GuardBot configure DNS automatically.
 
-## Why Connect cPanel?
+## Get Your API Token
 
-When you connect cPanel, GuardBot can:
+1. Log into your cPanel hosting account
+2. Go to **Security** → **Manage API Tokens**
+3. Click **Create** to make a new token
+4. Name it `GuardBot` and set expiration to "Never expires"
+5. Click **Create** and copy the token immediately (you won't see it again)
 
-- **Import domains** directly from your hosting account
-- **Auto-configure DNS** records when you add domains
-- **Set up wildcard subdomains** automatically for your redirect links
-- **Add verification records** without manual DNS editing
-- **Configure SSL certificates** via ACME DNS challenges
+If you don't see the API Tokens option, your hosting provider may have disabled API access. Contact their support.
 
-No more copying DNS records manually. Connect once, import domains with one click.
+## Connect to GuardBot
 
-## Getting Your API Token
+1. In your GuardBot dashboard, go to **Domains** → **Connect cPanel**
+2. Enter your connection details:
 
-cPanel uses API tokens for secure third-party access. Here's how to create one:
-
-### Step 1: Log Into cPanel
-
-Go to your hosting provider's cPanel login page. Enter your credentials.
-
-### Step 2: Find API Tokens
-
-Look for **Security** section in cPanel. Click **Manage API Tokens**.
-
-If you don't see this option, your hosting provider may have disabled API access. Contact their support.
-
-### Step 3: Create a Token
-
-Click **Create** to make a new token.
-
-- **Name**: Enter something recognizable like `GuardBot`
-- **Expiration**: Set to "Never expires" or a far future date
-
-Click **Create**. cPanel shows the token once. Copy it immediately — you won't see it again.
-
-### Step 4: Save the Token
-
-Store the token securely. You'll need it to connect GuardBot.
-
-## Connecting to GuardBot
-
-### Step 1: Go to cPanel Settings
-
-In your GuardBot dashboard, navigate to **Domains** → **Connect cPanel**.
-
-### Step 2: Enter Connection Details
-
-Fill in the form:
-
-| Field | What to Enter |
-|-------|---------------|
+| Field | Value |
+|-------|-------|
 | **cPanel Host** | Your cPanel URL (e.g., `server.yourhost.com` or `yourhost.com:2083`) |
 | **Username** | Your cPanel username |
 | **API Token** | The token you created |
 
-### Step 3: Test Connection
+3. Click **Test Connection** to verify
+4. If the test passes, click **Connect**
 
-Click **Test Connection**. GuardBot verifies it can reach your cPanel and authenticate.
+### If connection fails
 
-If the test fails:
-- Check the hostname is correct
-- Verify the username matches your cPanel login
-- Make sure the API token was copied completely
-- Confirm your hosting allows API access
+- Double-check the hostname (try with and without port number)
+- Verify the username matches your cPanel login exactly
+- Make sure you copied the complete API token
+- Confirm your hosting provider allows API access
 
-### Step 4: Save
+## Import a Domain
 
-Once the test passes, click **Connect**. Your cPanel is now linked.
-
-## Importing Domains
-
-After connecting, you can import domains from cPanel.
-
-### Step 1: View Your Domains
-
-Go to **Domains** → **cPanel**. Click on your connection. You'll see all domains in your cPanel account:
-
-- Main domain
-- Addon domains
-- Subdomains
-- Parked domains
-
-### Step 2: Select a Domain
-
-Click **Import** next to the domain you want to add to GuardBot.
-
-### Step 3: Auto-Configure DNS
+1. Go to **Domains** → **cPanel** and click your connection
+2. You'll see all domains in your cPanel account (main, addon, subdomains, parked)
+3. Click **Import** next to the domain you want
 
 When importing, GuardBot offers to configure DNS automatically:
 
-- **Verification TXT record**: Proves you own the domain
-- **Wildcard A record**: Points `*.yourdomain.com` to the deploy server
-- **ACME CNAME**: For automatic SSL certificate generation
+- **Verification TXT record** proves you own the domain
+- **Wildcard A record** points `*.yourdomain.com` to the deploy server
+- **ACME CNAME** enables automatic SSL certificate generation
 
 Leave auto-configure enabled unless you manage DNS elsewhere (like Cloudflare).
 
-### Step 4: Complete Setup
+4. Click **Import** to complete
 
-Click **Import**. GuardBot:
+GuardBot adds the domain, creates DNS records, verifies the domain, and starts SSL certificate generation. The domain is ready within minutes.
 
-1. Adds the domain to your account
-2. Creates DNS records via cPanel API
-3. Verifies the domain
-4. Starts SSL certificate generation
+## Update API Token
 
-The domain is ready to use within minutes.
+If you regenerate your API token in cPanel:
 
-## Managing Connections
-
-### View Connected Accounts
-
-Go to **Domains** → **cPanel** to see all your connections. Each shows:
-
-- Hostname and username
-- Number of domains imported
-- Last used date
-- Connection status
-
-### Update Credentials
-
-If you regenerate your API token, update it in GuardBot:
-
-1. Click on the connection
+1. Go to **Domains** → **cPanel** and click your connection
 2. Click **Edit**
 3. Enter the new token
 4. Test and save
 
-### Remove a Connection
+## Disconnect cPanel
 
-To disconnect cPanel:
-
-1. Click on the connection
+1. Click on your connection
 2. Click **Disconnect**
 3. Confirm
 
-Your imported domains remain in GuardBot. Only the cPanel link is removed. DNS records created by GuardBot stay in place unless you delete them manually.
+Your imported domains remain in GuardBot. Only the cPanel link is removed. DNS records stay in place unless you delete them manually.
 
-## Auto-DNS Features
+## DNS Records Created
 
-### Verification Records
-
-When you add a domain, GuardBot creates a TXT record:
+When you import with auto-configure enabled:
 
 ```
-_guardbot-verify.yourdomain.com → [verification-token]
+_guardbot-verify.yourdomain.com → [verification-token]  (TXT)
+*.yourdomain.com → [deploy-server-ip]  (A)
+_acme-challenge.yourdomain.com → [acme-dns-target]  (CNAME)
 ```
-
-This proves domain ownership without uploading files.
-
-### Wildcard A Records
-
-GuardBot adds a wildcard A record pointing to the deploy server:
-
-```
-*.yourdomain.com → [deploy-server-ip]
-```
-
-This enables any subdomain to work for your redirect links.
-
-### ACME Challenge Records
-
-For SSL certificates, GuardBot manages ACME DNS challenges:
-
-```
-_acme-challenge.yourdomain.com → [acme-dns-target]
-```
-
-This enables automatic wildcard SSL without manual intervention.
 
 ## Troubleshooting
 
-### Connection Fails
+**DNS not updating**: Changes can take 5-15 minutes to propagate. Wait and check again.
 
-**"Invalid credentials"**: Double-check username and API token. Tokens are long strings — make sure you copied the whole thing.
-
-**"Cannot connect to host"**: Verify the hostname. Try with and without port number. Some hosts use non-standard ports.
-
-**"API access denied"**: Your hosting provider may restrict API access. Contact their support to enable it.
-
-### DNS Not Updating
-
-**Records not appearing**: DNS changes can take 5-15 minutes to propagate. Wait and check again.
-
-**Wrong IP address**: Make sure your deploy server is configured in GuardBot admin settings.
+**Wrong IP address**: Verify your deploy server is configured in GuardBot admin settings.
 
 **Permission denied**: The cPanel user must have DNS zone access for the domain. Check addon domain permissions.
 
-### Domains Not Showing
-
-**Missing domains**: Only domains with DNS zones in cPanel appear. Domains using external DNS (like Cloudflare) won't show even if hosted on cPanel.
-
-**Addon vs subdomain confusion**: Addon domains show as their own entry. Subdomains of addon domains show under the addon.
+**Domains not showing**: Only domains with DNS zones in cPanel appear. Domains using external DNS (like Cloudflare) won't show even if hosted on cPanel.
 
 ## Security Notes
 
 - API tokens have full account access. Only connect cPanel accounts you control.
-- Store tokens securely. Never share them in tickets or chat.
 - You can revoke a token anytime in cPanel without affecting other connections.
-- GuardBot stores tokens encrypted. Even database access doesn't reveal them.
-
-## Multiple Accounts
-
-You can connect multiple cPanel accounts. Useful when you have:
-
-- Different hosting providers
-- Separate accounts for different clients
-- Staging and production environments
-
-Each connection is independent. Import domains from any connected account.
+- GuardBot stores tokens encrypted.

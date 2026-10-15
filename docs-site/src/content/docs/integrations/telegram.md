@@ -1,36 +1,24 @@
 ---
-title: Telegram Bot
-description: Create links, check stats, and get notifications through Telegram.
+title: How to Connect Telegram
+description: Manage links, check stats, and get notifications through Telegram.
 ---
 
-The GuardBot Telegram bot lets you manage your account without opening the dashboard. Create links, check analytics, get alerts when things happen.
+This guide shows you how to connect your Telegram account to GuardBot. Once connected, you can create links, check analytics, and receive notifications without opening the dashboard.
 
-## Connecting Your Account
+## Connect Your Account
 
-### Step 1: Find the Bot
+1. Go to **Settings** in your GuardBot dashboard
+2. Find the Telegram section and click the link to start a chat with the bot (or search for the bot username shown)
+3. Send `/start` to the bot
+4. Back in GuardBot settings, click **Connect Telegram** and copy the verification code
+5. Paste the code into your Telegram chat with the bot
 
-Go to **Settings** in your GuardBot dashboard. Look for the Telegram section. You'll see a link to start a chat with the bot.
+The bot verifies your identity and links your account.
 
-Or search for the bot directly in Telegram using the username shown in settings.
+## Available Commands
 
-### Step 2: Start the Conversation
-
-Send `/start` to the bot. It responds with a welcome message and asks you to link your account.
-
-### Step 3: Get Your Verification Code
-
-Back in GuardBot settings, click **Connect Telegram**. Copy the verification code that appears.
-
-### Step 4: Send the Code
-
-Paste the code into your Telegram chat with the bot. It verifies your identity and links your account.
-
-Done. The bot now knows who you are.
-
-## Commands
-
-| Command | What It Does |
-|---------|--------------|
+| Command | Description |
+|---------|-------------|
 | `/start` | Initialize or restart the bot |
 | `/help` | Show available commands |
 | `/stats` | Quick overview of your account stats |
@@ -38,7 +26,7 @@ Done. The bot now knows who you are.
 | `/links` | List your recent links |
 | `/balance` | Check your account balance |
 
-### Creating Links
+### Create a Link
 
 Send `/newlink` followed by the destination URL:
 
@@ -46,11 +34,11 @@ Send `/newlink` followed by the destination URL:
 /newlink https://my-landing-page.com/offer
 ```
 
-The bot creates the link on your default domain and sends back the URL. Quick way to make links without logging in.
+The bot creates the link on your default domain and sends back the URL.
 
-### Checking Stats
+### Check Stats
 
-Send `/stats` to get a summary:
+Send `/stats` to get:
 
 - Total clicks today
 - Active links count
@@ -58,31 +46,23 @@ Send `/stats` to get a summary:
 
 For detailed analytics, use the dashboard or API.
 
-## Notifications
+## Configure Notifications
 
-The bot can alert you when things happen:
+Go to **Settings** → **Telegram** in your dashboard to toggle notifications:
 
-**Traffic alerts**: Get notified when a link passes a click threshold. Useful for knowing when a campaign takes off.
+| Notification | Description |
+|--------------|-------------|
+| **Traffic alerts** | When a link passes a click threshold |
+| **Bot attacks** | When blocked traffic spikes |
+| **SSL expiring** | Before domain certificates need renewal |
+| **Support replies** | When an admin responds to your ticket |
+| **Balance warnings** | When your balance runs low |
 
-**Bot attacks**: Alerts when blocked traffic spikes. Someone might be hitting your links.
+Set thresholds where applicable (like "notify after 100 visits").
 
-**SSL expiring**: Warnings before your domain certificates need renewal.
+## Unlink Your Account
 
-**Support replies**: Know immediately when an admin responds to your ticket.
-
-**Balance warnings**: Alerts when your balance runs low.
-
-### Configuring Notifications
-
-Go to **Settings** → **Telegram** in your dashboard. Toggle which notifications you want. Set thresholds where applicable (like "notify after 100 visits").
-
-## Security
-
-Only your linked Telegram account can control your GuardBot. Commands are authenticated using your Telegram user ID.
-
-Don't share your verification code. Don't click links from strangers claiming to be GuardBot. The real bot never asks for your password or API keys.
-
-You can unlink your Telegram anytime from Settings. After unlinking, the bot stops responding to your commands.
+Go to **Settings** in GuardBot and click **Disconnect Telegram**. The bot stops responding to your commands immediately.
 
 ## Troubleshooting
 
@@ -93,3 +73,9 @@ You can unlink your Telegram anytime from Settings. After unlinking, the bot sto
 **Not getting notifications**: Verify notifications are enabled in Settings. Check your Telegram notification settings too. Make sure the bot chat isn't muted.
 
 **Wrong account linked**: Unlink from Settings, then link again with the correct Telegram account.
+
+## Security
+
+Only your linked Telegram account can control your GuardBot. Commands are authenticated using your Telegram user ID.
+
+Don't share your verification code. Don't click links from strangers claiming to be GuardBot. The real bot never asks for your password or API keys.

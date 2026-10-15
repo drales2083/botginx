@@ -1,6 +1,6 @@
 ---
 title: Domains
-description: Manage custom domains for your redirect links.
+description: Manage custom domains for redirect links.
 ---
 
 ## List Domains
@@ -37,12 +37,10 @@ curl -X POST "https://guardbot.sbs/api/v1/domains" \
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | Yes | Domain name (e.g., example.com) |
+| `name` | string | Yes | Domain name (e.g., `example.com`) |
 | `serverId` | string | No | Server ID for hosting integration |
 
-:::note
-After adding a domain, point its DNS to the server IP shown in the response. SSL is provisioned automatically once DNS propagates.
-:::
+**Response** includes the server IP to configure in DNS. SSL is provisioned automatically once DNS propagates.
 
 ---
 
@@ -54,9 +52,24 @@ POST /api/v1/domains/{id}/verify
 
 **Scope:** `domains:manage`
 
-Trigger DNS verification for a domain:
+Triggers DNS verification for a domain:
 
 ```bash
 curl -X POST "https://guardbot.sbs/api/v1/domains/dom_abc123/verify" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
+## Delete Domain
+
+```http
+DELETE /api/v1/domains/{id}
+```
+
+**Scope:** `domains:manage`
+
+```bash
+curl -X DELETE "https://guardbot.sbs/api/v1/domains/dom_abc123" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```

@@ -11,7 +11,7 @@ GET /api/v1/analytics/overview
 
 **Scope:** `analytics:read`
 
-Get account-wide analytics summary:
+Returns account-wide analytics summary.
 
 ```bash
 curl "https://guardbot.sbs/api/v1/analytics/overview" \
@@ -44,7 +44,7 @@ GET /api/v1/analytics/links/{id}
 
 **Scope:** `analytics:read`
 
-Get analytics for a specific link:
+Returns analytics for a specific link.
 
 ```bash
 curl "https://guardbot.sbs/api/v1/analytics/links/lnk_abc123" \
@@ -61,12 +61,14 @@ GET /api/v1/analytics/links/{id}/timeline
 
 **Scope:** `analytics:read`
 
-Get click timeline data:
+Returns click timeline data.
 
 ```bash
 curl "https://guardbot.sbs/api/v1/analytics/links/lnk_abc123/timeline?days=7" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
+
+### Query Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -82,7 +84,7 @@ GET /api/v1/analytics/links/{id}/countries
 
 **Scope:** `analytics:read`
 
-Get geographic breakdown:
+Returns geographic breakdown.
 
 ```bash
 curl "https://guardbot.sbs/api/v1/analytics/links/lnk_abc123/countries" \
@@ -99,7 +101,7 @@ GET /api/v1/analytics/links/{id}/devices
 
 **Scope:** `analytics:read`
 
-Get device breakdown:
+Returns device type breakdown (desktop, mobile, tablet).
 
 ```bash
 curl "https://guardbot.sbs/api/v1/analytics/links/lnk_abc123/devices" \

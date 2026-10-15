@@ -1,94 +1,55 @@
 ---
-title: Hosting
-description: Deploy landing pages on infrastructure that handles abuse reports and stays online.
+title: About Hosting
+description: Web hosting built for pages that attract complaints.
 ---
 
-GuardBot Hosting gives you web hosting built for pages that attract complaints. Affiliate landing pages, aggressive marketing, anything where uptime matters more than a polite terms of service.
+GuardBot Hosting provides web hosting for landing pages that need to stay online when things get hostile. Affiliate landing pages, aggressive marketing, anything where uptime matters more than a polite terms of service.
+
+## Why Specialized Hosting
+
+Standard hosting providers suspend accounts when abuse reports come in. A competitor sends a DMCA complaint, and your page goes down while you appeal. An overzealous filter flags your content, and you're offline for days.
+
+GuardBot Hosting handles abuse reports properly. We review them. We don't auto-suspend on the first complaint. Your pages stay up while issues get resolved.
 
 ## What You Get
 
 **Panel access** to manage files, databases, email, and domains. You get cPanel or CloudPanel depending on the server.
 
-**Automatic SSL** via Let's Encrypt. Add a domain, point DNS, get a certificate. No manual setup.
+**Automatic SSL** via Let's Encrypt. Point your domain's DNS at the server, and certificates get provisioned automatically. No manual setup, no renewal headaches.
 
-**Bot protection** on every domain. Same detection that powers your redirect links, built into the hosting.
+**Bot protection** on every hosted domain. The same detection that powers your redirect links protects your landing pages too. Bots get blocked before they hit your server.
 
-**Analytics** for hosted domains. See visitors, countries, devices, and bot traffic without adding tracking scripts.
+**Analytics** for hosted domains. See visitors, countries, devices, and bot traffic without adding tracking scripts to your pages.
 
-## Buying a Hosting Package
+## How It Works
 
-Go to **Hosting** in the sidebar. Click **Buy Hosting**.
+You purchase a hosting package based on your storage and bandwidth needs. The account provisions automatically within minutes. You get panel credentials to manage your hosting.
 
-Pick a package based on storage and bandwidth. Complete payment using your account balance (top up via crypto if needed).
+Add domains through the hosting panel. Point their DNS at your server IP. GuardBot detects the DNS records, issues SSL certificates, and your domain is live.
 
-After purchase, your account provisions automatically. Takes a few minutes. You'll see your panel URL and credentials once it's ready.
+Upload files through the file manager, FTP/SFTP, or SSH (if your package includes shell access). Set up databases through the panel. Configure email if you need it.
 
-## Accessing Your Panel
+Bot protection settings for hosted domains are managed in your GuardBot dashboard, not the hosting panel. This keeps all your protection rules in one place.
 
-Click **Show Credentials** on your hosting account card. You'll see:
+## File Management Options
 
-- Panel URL
-- Username
-- Password
+**File Manager** in your hosting panel works for quick edits and small uploads. Web-based, no software needed.
 
-Log into the panel to manage files, create email accounts, add databases, and configure settings.
+**FTP/SFTP** is better for bulk uploads or syncing from your local machine. Get credentials from your panel.
 
-## Adding Domains
+**SSH** gives you full command line control for advanced configuration. Available on packages that include shell access.
 
-### From the Hosting Panel
+## Billing
 
-Use your panel's domain management to add domains. The exact steps depend on whether you have cPanel or CloudPanel.
-
-### DNS Configuration
-
-Point your domain at the hosting server IP:
-
-```
-Type: A
-Name: @
-Value: [Server IP from your account]
-TTL: 300
-```
-
-For wildcard subdomains:
-
-```
-Type: A  
-Name: *
-Value: [Server IP]
-TTL: 300
-```
-
-DNS propagation takes minutes to hours. Once GuardBot sees the records, SSL gets issued automatically.
-
-## File Management
-
-Access files through:
-
-**File Manager** in your hosting panel. Web-based, works for quick edits and uploads.
-
-**FTP/SFTP** using credentials from your panel. Better for bulk uploads or syncing from your local machine.
-
-**SSH** if your package includes shell access. Full command line control.
-
-## Bot Protection on Hosted Domains
-
-Every domain on your hosting account gets bot protection automatically. Configure it per domain:
-
-1. Go to your domain in GuardBot (not the hosting panel)
-2. Open protection settings
-3. Toggle the rules you want
-
-Traffic stats show up in GuardBot analytics alongside your redirect link data.
+Hosting packages bill monthly against your account balance. Keep your balance funded to avoid interruptions. If your balance runs dry, the account gets suspended until you add funds.
 
 ## Backups
 
-Your hosting panel may include backup tools. Use them.
+Your hosting panel may include backup tools. Use them regularly. Download copies of important files and databases.
 
-GuardBot doesn't manage backups for you. Download copies of important files and databases regularly. If something breaks, you're responsible for restoring it.
+GuardBot doesn't manage backups for you. If something breaks, you're responsible for restoring it.
 
-## Renewals
+## Related Topics
 
-Hosting packages bill monthly against your account balance. Make sure you've got funds to cover renewal. If your balance runs dry, the account gets suspended until you top up.
-
-Check **Payments** to see your balance and add funds.
+- [How to Add Funds](/integrations/payments/) for topping up your balance
+- [How to Connect cPanel](/integrations/cpanel/) for importing domains from cPanel

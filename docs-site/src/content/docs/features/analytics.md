@@ -1,18 +1,36 @@
 ---
-title: Analytics
-description: Track clicks, visitors, countries, devices, and bot detection rates.
+title: About Analytics
+description: Understanding your traffic data and what gets tracked.
 ---
 
 Every click through GuardBot gets logged. You see where your traffic comes from, what devices they use, and how much of it is bots.
 
-## Dashboard Overview
+## What Gets Tracked
+
+Every request logs:
+
+- **Timestamp** of when the click happened
+- **IP address** of the visitor (hashed in exports for privacy)
+- **Country** derived from IP geolocation
+- **Device type** (desktop, mobile, tablet)
+- **Browser and OS** from the user agent
+- **Referrer URL** showing where the click originated
+- **Bot detection result** (passed, blocked, challenged)
+- **Protection rule** that triggered, if blocked
+
+GuardBot doesn't track across sites or build user profiles. Each visit is logged independently. When a visitor leaves, that's it.
+
+## Dashboard Metrics
 
 The main dashboard shows aggregate stats across all your links:
 
-- **Total Visits** since you started
-- **Today's Visits** for quick pulse checks
-- **Unique Visitors** deduplicated by IP
-- **Bot Rate** as a percentage of total traffic
+**Total Visits** is your cumulative click count since you started.
+
+**Today's Visits** gives you a quick pulse check on current traffic.
+
+**Unique Visitors** deduplicates by IP to show actual people rather than repeat clicks.
+
+**Bot Rate** shows what percentage of traffic gets blocked or flagged. High bot rates mean either your protection is working or you've got a traffic quality problem worth investigating.
 
 These update in near real-time. A click shows up within seconds.
 
@@ -20,91 +38,43 @@ These update in near real-time. A click shows up within seconds.
 
 Click into any link to see its specific data:
 
-### Traffic Over Time
+**Traffic timeline** shows visits by hour, day, or week. Spot patterns like weekend spikes or campaign end dates.
 
-A chart showing visits by hour, day, or week. Switch between views to spot patterns. Maybe your traffic spikes on weekends. Maybe it died after a campaign ended. The timeline tells you.
+**Geographic breakdown** ranks visitors by country. Check if your targeting works. If you're running US-only ads and half your traffic is from Russia, something's wrong.
 
-### Geographic Breakdown
+**Device split** shows desktop vs mobile vs tablet. If 90% is mobile, make sure your landing pages work on phones.
 
-Where your visitors come from, ranked by country. Useful for checking if your targeting works. If you're running US-only ads and half your traffic is from Russia, something's wrong.
+**Bot vs human** breaks down traffic that passed protection vs traffic that got blocked.
 
-### Device Split
+**Referrers** show where clicks originate: direct visits, social platforms, search engines, or specific URLs.
 
-Desktop vs mobile vs tablet. Tells you how people access your links. If 90% is mobile, make sure your landing pages work on phones.
+## Date Filtering
 
-### Bot vs Human
-
-A breakdown of traffic that passed protection vs traffic that got blocked. High bot rates mean either your protection is working, or you've got a traffic quality problem worth investigating.
-
-### Referrers
-
-Where clicks originate. Direct visits, social platforms, search engines, or specific URLs. Helps you understand which traffic sources actually send people.
-
-## Filtering Data
-
-Use date filters to narrow your view:
+Narrow your view with date filters:
 
 - Today
-- Yesterday  
+- Yesterday
 - Last 7 days
 - Last 30 days
 - Custom range
 
-The numbers recalculate based on your selection.
+All metrics recalculate based on your selection.
 
 ## Exporting Data
 
-Click **Export** to download analytics as CSV. The export includes:
+Export analytics as CSV for reporting, deeper analysis, or importing into other tools. Exports include timestamp, country, device type, referrer, and bot status.
 
-- Timestamp
-- IP (hashed for privacy)
-- Country
-- Device type
-- Referrer
-- Bot status (passed, blocked, challenged)
-
-Use exports for reporting, deeper analysis, or importing into other tools.
+IP addresses are hashed in exports to protect visitor privacy while still letting you identify patterns.
 
 ## Real-Time Monitoring
 
-The **Antibot Dashboard** shows live traffic:
-
-- Requests per minute
-- Active blocked IPs
-- Recent threat log entries
-
-Good for watching a campaign launch or investigating a traffic spike as it happens.
-
-## API Access
-
-Pull analytics programmatically through the API:
-
-```bash
-curl "https://guardbot.sbs/api/v1/analytics/links/lnk_abc123" \
-  -H "Authorization: Bearer YOUR_API_KEY"
-```
-
-Returns JSON with the same data you see in the dashboard. Useful for building custom dashboards or automated reporting.
-
-See [Analytics API](/api/analytics/) for full endpoint documentation.
-
-## What Gets Tracked
-
-Every request logs:
-
-- Timestamp
-- IP address
-- Country (from IP geolocation)
-- Device type
-- Browser and OS
-- Referrer URL
-- Bot detection result
-- Protection rule that triggered (if blocked)
-
-GuardBot doesn't track across sites or build user profiles. Each visit is logged independently. When a visitor leaves, that's it.
+The antibot dashboard shows live traffic: requests per minute, active blocked IPs, recent threat log entries. Useful for watching a campaign launch or investigating a spike as it happens.
 
 ## Data Retention
 
-Analytics data stays available indefinitely on active accounts. If your account lapses, data may be purged after 30 days.
+Analytics data stays available indefinitely on active accounts. If your subscription lapses, data may be purged after 30 days. Export anything important before letting your subscription expire.
 
-Export anything important before letting your subscription expire.
+## Related Topics
+
+- [Analytics API Reference](/api/analytics/) for pulling data programmatically
+- [About Bot Protection](/features/bot-protection/) for understanding the bot/human classification

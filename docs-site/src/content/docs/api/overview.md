@@ -1,9 +1,9 @@
 ---
 title: API Overview
-description: GuardBot REST API for managing links, domains, and analytics.
+description: REST API for managing links, domains, analytics, and more.
 ---
 
-The GuardBot API provides full control over your redirect links, custom domains, analytics data, QR codes, and IP whitelists. All endpoints return JSON and require authentication via API key.
+The GuardBot API provides programmatic access to redirect links, custom domains, analytics data, QR codes, and IP lists. All endpoints return JSON and require authentication.
 
 ## Base URL
 
@@ -11,16 +11,20 @@ The GuardBot API provides full control over your redirect links, custom domains,
 https://guardbot.sbs/api/v1
 ```
 
-## Quick Example
+## Authentication
+
+Include your API key in the `Authorization` header:
 
 ```bash
 curl "https://guardbot.sbs/api/v1/links" \
   -H "Authorization: Bearer bg_live_xxxxxxxxxxxxxxxxxxxx"
 ```
 
+See [Authentication](/api/authentication/) for key types and scopes.
+
 ## Response Format
 
-All successful responses follow this structure:
+Successful responses:
 
 ```json
 {
@@ -29,7 +33,21 @@ All successful responses follow this structure:
 }
 ```
 
-## Available Endpoints
+Error responses:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "error_code",
+    "message": "Description"
+  }
+}
+```
+
+See [Errors](/api/errors/) for error codes.
+
+## Endpoints
 
 | Resource | Description |
 |----------|-------------|
@@ -40,4 +58,10 @@ All successful responses follow this structure:
 | [Shortener](/api/shortener/) | Create short links |
 | [IP Lists](/api/iplists/) | Manage IP whitelists |
 | [Account](/api/account/) | Account information |
-| [Webhooks](/api/webhooks/) | Real-time notifications |
+| [Webhooks](/api/webhooks/) | Real-time event notifications |
+
+## Rate Limits
+
+Default limit: 1000 requests per hour per API key.
+
+See [Rate Limiting](/api/rate-limiting/) for headers and best practices.

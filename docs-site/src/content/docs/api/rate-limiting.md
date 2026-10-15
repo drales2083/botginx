@@ -1,13 +1,21 @@
 ---
 title: Rate Limiting
-description: API rate limits and headers.
+description: Request limits and rate limit headers.
 ---
 
-Each API key has a request limit per hour. The default is **1000 requests per hour**.
+Each API key is limited to **1000 requests per hour**.
 
-## Rate Limit Headers
+## Response Headers
 
 Every response includes rate limit information:
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests per hour |
+| `X-RateLimit-Remaining` | Requests remaining in current window |
+| `X-RateLimit-Reset` | Unix timestamp when limit resets |
+
+Example:
 
 ```http
 X-RateLimit-Limit: 1000
@@ -15,15 +23,9 @@ X-RateLimit-Remaining: 950
 X-RateLimit-Reset: 1695700800
 ```
 
-| Header | Description |
-|--------|-------------|
-| `X-RateLimit-Limit` | Maximum requests per hour |
-| `X-RateLimit-Remaining` | Requests remaining |
-| `X-RateLimit-Reset` | Unix timestamp when limit resets |
+## Rate Limit Exceeded
 
-## Exceeding the Limit
-
-When the limit is exceeded, the API returns `429 Too Many Requests`:
+When the limit is exceeded, the API returns HTTP 429:
 
 ```json
 {
@@ -37,7 +39,7 @@ When the limit is exceeded, the API returns `429 Too Many Requests`:
 
 ## Best Practices
 
-- **Cache responses** — Don't fetch the same data repeatedly
-- **Use webhooks** — For real-time updates instead of polling
-- **Batch operations** — Combine multiple operations when possible
-- **Implement backoff** — Wait before retrying failed requests
+- Cache responses to avoid redundant requests
+- Use [webhooks](/api/webhooks/) for real-time updates instead of polling
+- Batch operations when possible
+- Implement exponential backoff for retries

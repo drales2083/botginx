@@ -1,103 +1,73 @@
 ---
-title: Bot Protection
-description: Block scrapers, fake clicks, and unwanted traffic before it reaches your pages.
+title: About Bot Protection
+description: How GuardBot detects and blocks unwanted traffic.
 ---
 
 Bot protection runs on every click before the redirect happens. GuardBot checks the visitor against your rules and either lets them through or blocks them. You configure what gets blocked per link.
+
+## Why Block Bots
+
+Not all traffic is created equal. Bots inflate your analytics, drain your ad budgets, and can abuse your landing pages. They include:
+
+**Scrapers** that harvest content, prices, or competitor intelligence. They hit your links repeatedly, looking for changes.
+
+**Click fraud** from competitors or fraud networks trying to exhaust your ad spend. Each fake click costs you money.
+
+**Crawlers** from search engines and indexing services. Sometimes useful, sometimes just noise in your data.
+
+**Automation tools** running in datacenters, probing your infrastructure or testing stolen credentials.
+
+By filtering this traffic at the redirect layer, bots never reach your actual landing pages. Your analytics stay clean. Your conversions stay real.
 
 ## How Detection Works
 
 GuardBot examines each request using multiple signals:
 
-**IP reputation** checks the visitor's IP against known bot networks, datacenter ranges, VPN providers, and Tor exit nodes. Bad IPs get flagged before anything else.
+**IP reputation** checks the visitor's IP against known bot networks, datacenter ranges, VPN providers, and Tor exit nodes. Bad IPs get flagged before anything else runs.
 
-**User agent analysis** looks at the browser string. Known bot signatures (Googlebot, scrapers, headless browsers) get caught here.
+**User agent analysis** looks at the browser string. Known bot signatures—Googlebot, scrapers, headless browsers like Puppeteer—get caught here.
 
-**Behavioral signals** watch for patterns that humans don't produce. Requests with no JavaScript execution, missing headers, or impossible timing get flagged.
+**Behavioral signals** watch for patterns humans don't produce. Requests with no JavaScript execution, missing standard headers, or impossible timing get flagged.
 
 **Fingerprinting** (in challenge mode) collects browser characteristics to identify automation tools even when they try to look human.
 
+No single signal is definitive. GuardBot combines them to make decisions. A request from a datacenter IP with a headless browser user agent is almost certainly a bot. A residential IP with a normal Chrome user agent is probably human.
+
 ## Protection Levels
 
-Each link can run at a different protection level.
+Each link can run at a different level:
 
-### Off
+**Off** lets all traffic through. You still get analytics, but nothing gets blocked. Use this when testing or when you genuinely want all traffic.
 
-No protection. All traffic passes through and gets redirected. You still get analytics, but nothing gets blocked.
+**Block Known Bots** catches obvious bots: search engine crawlers, known scraper signatures, headless browser user agents. Real users on corporate networks or VPNs still get through. Good starting point with minimal false positives.
 
-Use this when you're testing, or when you genuinely want all traffic including bots.
+**Block Datacenter IPs** adds IP-based blocking. Traffic from AWS, Google Cloud, DigitalOcean, and similar providers gets blocked. Most real users browse from residential or mobile IPs. Traffic from datacenters is usually bots.
 
-### Block Known Bots
+**Block VPNs and Proxies** extends datacenter blocking to commercial VPN services and proxy networks. Catches more bad traffic but also blocks privacy-conscious users.
 
-Catches obvious bots: search engine crawlers, known scraper signatures, headless browser user agents.
+**Challenge Mode** shows a verification page before redirecting. The page runs JavaScript checks and collects fingerprint data. Catches sophisticated bots that mimic real browsers. Adds a small delay (under a second for real users).
 
-Doesn't block datacenter IPs or VPNs. Real users on corporate networks or privacy tools still get through.
+## Finding the Right Balance
 
-This is a good starting point. It stops the obvious stuff without risking false positives.
+Stricter protection catches more bots but risks blocking real users. The right level depends on your traffic:
 
-### Block Datacenter IPs
+If you're running ads to a general audience, start with "Block Known Bots" and add datacenter blocking if you're still seeing junk.
 
-Adds IP-based blocking on top of user agent checks. Traffic from AWS, Google Cloud, DigitalOcean, and similar providers gets blocked.
+If your audience is enterprise users on corporate networks, be careful with IP-based blocking. Some legitimate traffic comes through cloud-hosted proxies.
 
-Most real users browse from residential or mobile IPs. Traffic from datacenters is usually bots, scrapers, or competitors clicking your ads.
+If you're getting sophisticated bot attacks, enable challenge mode. The extra friction is worth it for clean data.
 
-Exception: some corporate users browse through cloud-hosted proxies. If your audience includes enterprise users, test this carefully.
-
-### Block VPNs and Proxies
-
-Extends datacenter blocking to include commercial VPN services and known proxy networks.
-
-This catches more bad traffic but also blocks privacy-conscious users. Works well for campaigns where you don't expect VPN usage.
-
-### Challenge Mode
-
-Instead of an instant redirect, visitors see a verification page first. The page runs JavaScript checks and collects fingerprint data. Visitors who pass get redirected. Those who fail get blocked.
-
-Challenge mode catches sophisticated bots that mimic real browsers. It adds a small delay (under a second for real users), so use it when you need strict filtering and can accept the friction.
-
-## Per-Link Settings
-
-Open any link and go to its protection settings. You can toggle:
-
-| Setting | What It Does |
-|---------|--------------|
-| Block Known Bots | User agent detection |
-| Block Datacenter IPs | IP range blocking |
-| Block VPNs | Commercial VPN blocking |
-| Block Tor | Tor exit node blocking |
-| Challenge Mode | JavaScript verification |
-| Block Empty Referrers | Require a referrer header |
-
-Mix and match based on what your traffic looks like.
+Watch your conversion rates after enabling protection. If they drop unexpectedly, you might be blocking real users. Check the threat log to see what's getting caught.
 
 ## IP Whitelisting
 
-Sometimes you need to let specific IPs through regardless of rules. Partners, affiliates, your own testing.
-
-Go to **IP Lists** in the sidebar. Add IPs to your whitelist. Whitelisted IPs bypass all protection on all your links.
-
-You can add single IPs or CIDR ranges like `192.168.1.0/24`.
+Some IPs need to bypass protection regardless of rules. Partners, affiliates, your own testing. Add them to your whitelist, and they'll pass through without checks.
 
 ## Viewing Blocked Traffic
 
-The **Threat Log** shows every blocked request:
+The threat log shows every blocked request: timestamp, IP, block reason, user agent, and requested URL. Use it to verify protection is working and catch false positives. If you see a legitimate IP getting blocked, add it to your whitelist.
 
-- Timestamp
-- IP address
-- Block reason (datacenter, bot signature, failed challenge, etc.)
-- User agent
-- Requested URL
+## Related Topics
 
-Use this to verify protection is working and to catch false positives. If you see a legitimate IP getting blocked, add it to your whitelist.
-
-## Tuning Your Settings
-
-Start with light protection and tighten as needed.
-
-1. Enable "Block Known Bots" first
-2. Check your analytics and threat log after a day
-3. If you're still seeing junk traffic, add datacenter blocking
-4. If bots are sophisticated, enable challenge mode
-5. Whitelist any legitimate IPs that got caught
-
-The goal is blocking bad traffic without losing real visitors. Check your conversion rates after enabling each level. If they drop unexpectedly, you might be blocking real users.
+- [Getting Started](/guides/quick-start/) for enabling protection on a link
+- [IP Lists API Reference](/api/iplists/) for managing whitelists via API

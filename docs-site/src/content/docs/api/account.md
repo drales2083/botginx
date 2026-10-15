@@ -1,6 +1,6 @@
 ---
 title: Account
-description: Access account information and API usage.
+description: Account information and API usage.
 ---
 
 ## Account Info
@@ -11,7 +11,7 @@ GET /api/v1/account
 
 **Scope:** `account:read`
 
-Get account information:
+Returns account information.
 
 ```bash
 curl "https://guardbot.sbs/api/v1/account" \
@@ -43,9 +43,23 @@ GET /api/v1/account/usage
 
 **Scope:** `account:read`
 
-Get API usage statistics:
+Returns API usage statistics.
 
 ```bash
 curl "https://guardbot.sbs/api/v1/account/usage" \
   -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "requestsThisHour": 42,
+    "requestsToday": 156,
+    "rateLimit": 1000,
+    "rateLimitRemaining": 958
+  }
+}
 ```

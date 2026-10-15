@@ -48,8 +48,8 @@ curl -X POST "https://guardbot.sbs/api/v1/shortener" \
 | `path` | string | No | URL path (auto-generated if empty) |
 | `rotationMode` | string | No | `sequential`, `random`, or `weighted` |
 | `botError` | integer | No | HTTP error code for bots (0 = pass through) |
-| `qrEnabled` | boolean | No | Enable QR code generation |
-| `protectionSettings` | object | No | Bot protection settings |
+| `qrEnabled` | boolean | No | Generate QR code |
+| `protectionSettings` | object | No | Bot protection configuration |
 
 ### Protection Settings
 
@@ -63,6 +63,21 @@ curl -X POST "https://guardbot.sbs/api/v1/shortener" \
 
 ---
 
+## Get Short Link
+
+```http
+GET /api/v1/shortener/{id}
+```
+
+**Scope:** `shortener:read`
+
+```bash
+curl "https://guardbot.sbs/api/v1/shortener/sht_abc123" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
 ## Get Stats
 
 ```http
@@ -71,9 +86,24 @@ GET /api/v1/shortener/{id}/stats
 
 **Scope:** `shortener:read`
 
-Get click statistics for a short link:
+Returns click statistics for a short link.
 
 ```bash
 curl "https://guardbot.sbs/api/v1/shortener/sht_abc123/stats" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
+## Delete Short Link
+
+```http
+DELETE /api/v1/shortener/{id}
+```
+
+**Scope:** `shortener:write`
+
+```bash
+curl -X DELETE "https://guardbot.sbs/api/v1/shortener/sht_abc123" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```

@@ -1,45 +1,41 @@
 ---
-title: Introduction
-description: GuardBot protects your redirect links from bots and tracks every click.
+title: What is GuardBot?
+description: A redirect link manager with bot protection and click tracking.
 ---
 
 GuardBot sits between your traffic sources and your landing pages. When someone clicks your link, GuardBot checks if they're human, logs the visit, then sends them through. Bots get blocked. Humans get redirected. You get data on both.
 
-## Why This Exists
+## The Problem
 
 Affiliate links, ad campaigns, and landing pages attract bots. Scrapers crawl them. Competitors click them. Fraud networks abuse them. You end up paying for fake traffic or losing commissions to invalid clicks.
 
-GuardBot stops that. Every link you create runs through bot detection before the redirect happens. You control the rules. Block datacenter IPs, challenge suspicious browsers, or let everything through. Your call.
+## How GuardBot Solves It
 
-## What You Can Do
+Every link you create runs through bot detection before the redirect happens. You control the rules: block datacenter IPs, challenge suspicious browsers, or let everything through.
 
-**Create redirect links** with custom paths on your own domains. Point `yourdomain.com/offer` at any URL. Change the destination anytime without touching your traffic sources.
-
-**Block bots** using behavioral detection, IP reputation, and fingerprinting. Configure protection per link. Some links need strict filtering. Others don't.
-
-**Track visits** with country, device, referrer, and bot/human classification. Export the data or pull it through the API.
-
-**Host landing pages** on infrastructure that stays up when things get hostile. Built-in SSL, automatic DNS setup, bot protection included.
-
-**Generate QR codes** for any link. Print them, embed them, track scans the same way you track clicks.
-
-**Manage everything via API** or Telegram bot. Create links, check stats, update settings without opening the dashboard.
-
-## How It Works
-
-You add a domain to GuardBot and point its DNS at our servers. Then you create links on that domain. Each link has a destination URL, optional bot protection settings, and analytics.
-
-When traffic hits the link:
+When traffic hits your link:
 
 1. GuardBot checks the request against your protection rules
 2. If the visitor passes, they're redirected to the destination
 3. If they fail, they get blocked or challenged
 4. Either way, the visit is logged
 
-You see all of this in your dashboard. Clicks, blocks, countries, devices, bots caught.
+You see all of this in your dashboard: clicks, blocks, countries, devices, bots caught.
 
-## Getting Started
+## Core Capabilities
 
-The fastest path: create your first link and watch it work.
+**Redirect links** with custom paths on your own domains. Point `yourdomain.com/offer` at any URL. Change the destination anytime without touching your traffic sources.
 
-Go to [Quick Start](/guides/quick-start/) for the steps.
+**Bot protection** using behavioral detection, IP reputation, and fingerprinting. Configure protection per link based on your needs.
+
+**Analytics** with country, device, referrer, and bot/human classification. Export the data or pull it through the API.
+
+**Hosting** for landing pages on infrastructure that handles abuse reports. Built-in SSL, automatic DNS setup, bot protection included.
+
+**QR codes** for any link. Print them, embed them, track scans the same way you track clicks.
+
+**Automation** via API or Telegram bot. Create links, check stats, update settings without opening the dashboard.
+
+## Next Steps
+
+Ready to get started? Follow the [Getting Started tutorial](/guides/quick-start/) to create your first protected link.

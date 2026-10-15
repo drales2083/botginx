@@ -1,9 +1,9 @@
 ---
 title: Webhooks
-description: Receive real-time notifications when events occur.
+description: Real-time event notifications.
 ---
 
-Webhooks push event data to your server when links are visited, bots are blocked, or domains are verified. Configure webhooks in the [Webhooks](https://guardbot.sbs/user/webhooks) section.
+Webhooks push event data to your server when links are visited, bots are blocked, or domains are verified.
 
 ## Event Types
 
@@ -16,7 +16,7 @@ Webhooks push event data to your server when links are visited, bots are blocked
 
 ## Payload Format
 
-Webhook payloads include an HMAC-SHA256 signature in the `X-Webhook-Signature` header:
+All payloads include an event ID, type, timestamp, and event-specific data:
 
 ```json
 {
@@ -33,9 +33,9 @@ Webhook payloads include an HMAC-SHA256 signature in the `X-Webhook-Signature` h
 }
 ```
 
-## Verifying Signatures
+## Signature Verification
 
-Verify the webhook signature to ensure the request came from GuardBot:
+Webhooks include an HMAC-SHA256 signature in the `X-Webhook-Signature` header. Verify it to ensure the request came from GuardBot.
 
 ```javascript
 const crypto = require('crypto');
@@ -54,11 +54,17 @@ function verifySignature(payload, signature, secret) {
 
 ## Retry Policy
 
-If your endpoint returns a non-2xx status code, GuardBot will retry:
+If your endpoint returns a non-2xx status code, GuardBot retries:
 
-- 1st retry: 1 minute
-- 2nd retry: 5 minutes
-- 3rd retry: 30 minutes
-- Final retry: 2 hours
+| Attempt | Delay |
+|---------|-------|
+| 1st retry | 1 minute |
+| 2nd retry | 5 minutes |
+| 3rd retry | 30 minutes |
+| Final retry | 2 hours |
 
 After 4 failed attempts, the webhook is marked as failed.
+
+## Managing Webhooks
+
+Configure webhooks at [guardbot.sbs/user/webhooks](https://guardbot.sbs/user/webhooks).

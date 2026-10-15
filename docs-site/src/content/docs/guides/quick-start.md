@@ -1,70 +1,79 @@
 ---
-title: Quick Start
-description: Create your first protected redirect link in under five minutes.
+title: Getting Started
+description: Create your first protected redirect link in five minutes.
 ---
 
-This guide gets you from zero to a working link with bot protection. Takes about five minutes.
+In this tutorial, we'll create a redirect link with bot protection and watch the analytics come in. By the end, you'll have a working link that blocks bots and tracks every click.
 
 ## What You'll Need
 
 - A GuardBot account (sign up at guardbot.sbs if you don't have one)
 - A domain you control, or use a shared domain while testing
 
-## Step 1: Add a Domain
+## Add Your Domain
 
-You can skip this if you're using a shared domain for testing.
+First, we need a domain to host your links on. If you're using a shared domain for testing, skip ahead to creating a link.
 
-Go to **Domains** in the sidebar. Click **Add Domain**. Enter your domain name.
+Go to **Domains** in the sidebar and click **Add Domain**. Enter your domain name.
 
 GuardBot shows you the DNS records to add. Point your domain's A record at the IP shown. If you want subdomains too, add a wildcard A record.
 
 DNS propagation takes anywhere from a few minutes to a few hours. GuardBot checks automatically. Once it sees the right records, your domain goes active and gets an SSL certificate.
 
-## Step 2: Create a Link
+You'll see a green "Verified" badge when your domain is ready.
 
-Go to **Redirect Links** in the sidebar. Click **New Link**.
+## Create Your First Link
 
-Fill in:
+Now let's create a redirect link.
+
+Go to **Redirect Links** in the sidebar and click **New Link**.
+
+Fill in these fields:
 
 - **Domain**: Pick from your verified domains
-- **Path**: The URL path (like `/offer` or `/promo-summer`)
-- **Destination**: Where visitors should end up
+- **Path**: Enter `/offer` (or any path you like)
+- **Destination**: Enter the URL where visitors should end up
 
-Leave bot protection off for now. You can turn it on after testing.
+Leave bot protection off for now. We'll enable it after testing.
 
-Click **Create**. Your link is live.
+Click **Create**. Your link is now live.
 
-## Step 3: Test It
+## Test the Link
 
-Open your new link in a browser. You should land on the destination URL.
+Open your new link in a browser. You should land on the destination URL you entered.
 
-Check your dashboard. The visit shows up in analytics within a few seconds. You'll see the country, device type, and whether it was flagged as a bot.
+Now check your dashboard. Within a few seconds, you'll see your visit appear in the analytics. Notice it shows your country, device type, and that it passed as human traffic.
 
-## Step 4: Enable Bot Protection
+Try visiting the link from your phone too. You'll see that visit logged separately with "mobile" as the device type.
 
-Go back to your link's settings. Turn on bot protection. You've got options:
+## Enable Bot Protection
 
-- **Block known bots**: Catches scrapers and crawlers by user agent
-- **Block datacenter IPs**: Stops traffic from hosting providers and VPNs
-- **Challenge mode**: Shows a verification page before redirecting
+Now let's add protection. Go back to your link's settings by clicking on it in the list.
 
-Start with "Block known bots" and see how your traffic looks. Add more protection if you're still seeing junk.
+Find the protection options and enable **Block Known Bots**. This catches scrapers and crawlers by their user agent signatures.
 
-## Step 5: Check Analytics
+Save the changes. Protection is now active.
 
-Click into your link to see visit data. You'll find:
+## Watch It Work
 
-- Total clicks and unique visitors
-- Country breakdown
-- Device split (desktop, mobile, tablet)
-- Bot vs human ratio
-- Timeline showing traffic over time
+Visit your link again from your browser. You'll still get through because you're a real human.
+
+To see the protection in action, check the **Threat Log** in your dashboard over the next few days. As bots discover your link, you'll see them getting blocked with reasons like "datacenter IP" or "bot signature detected."
+
+## What You've Built
+
+You now have a redirect link that:
+
+- Forwards human visitors to your destination
+- Blocks known bot signatures
+- Logs every visit with country, device, and bot classification
+- Shows you exactly what's happening in real-time analytics
 
 ## What's Next
 
-You've got a working link. Here's where to go from here:
+Now that you have a working link, explore these topics:
 
-- [Redirect Links](/features/redirect-links/) for link types, rotation, and advanced settings
-- [Bot Protection](/features/bot-protection/) for fine-tuning your blocking rules
-- [Analytics](/features/analytics/) for understanding your traffic data
-- [API Reference](/api/overview/) if you want to automate link creation
+- [About Redirect Links](/features/redirect-links/) to understand rotation, HTML content, and advanced options
+- [About Bot Protection](/features/bot-protection/) to learn how detection works and tune your settings
+- [About Analytics](/features/analytics/) to understand your traffic data
+- [API Overview](/api/overview/) if you want to automate link creation

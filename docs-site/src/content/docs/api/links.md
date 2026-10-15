@@ -1,6 +1,6 @@
 ---
 title: Links
-description: Create and manage redirect links with bot protection.
+description: Create and manage redirect links.
 ---
 
 ## List Links
@@ -63,13 +63,13 @@ curl -X POST "https://guardbot.sbs/api/v1/links" \
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `domainId` | string | Yes | Domain ID to host the link |
-| `type` | string | No | `redirect`, `html`, or `rotation` (default: redirect) |
-| `destinationUrls` | array | Yes* | Destination URLs (required for redirect/rotation) |
-| `htmlContent` | string | Yes* | HTML content (required for html type) |
+| `type` | string | No | `redirect`, `html`, or `rotation` (default: `redirect`) |
+| `destinationUrls` | array | Yes* | Destination URLs (*required for redirect/rotation) |
+| `htmlContent` | string | Yes* | HTML content (*required for html type) |
 | `subdomain` | string | No | Subdomain for the link |
 | `path` | string | No | URL path (auto-generated if empty) |
-| `botProtection` | boolean | No | Enable bot protection (default: false) |
-| `passParams` | boolean | No | Pass query params to destination (default: false) |
+| `botProtection` | boolean | No | Enable bot protection (default: `false`) |
+| `passParams` | boolean | No | Pass query params to destination (default: `false`) |
 
 ---
 

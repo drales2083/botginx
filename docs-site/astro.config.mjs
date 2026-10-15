@@ -34,12 +34,12 @@ export default defineConfig({
 				{
 					label: 'Getting Started',
 					items: [
-						{ label: 'Introduction', slug: 'guides/introduction' },
-						{ label: 'Quick Start', slug: 'guides/quick-start' },
+						{ label: 'What is GuardBot?', slug: 'guides/introduction' },
+						{ label: 'Tutorial: First Link', slug: 'guides/quick-start' },
 					],
 				},
 				{
-					label: 'Features',
+					label: 'Concepts',
 					items: [
 						{ label: 'Redirect Links', slug: 'features/redirect-links' },
 						{ label: 'Bot Protection', slug: 'features/bot-protection' },
@@ -49,12 +49,12 @@ export default defineConfig({
 					],
 				},
 				{
-					label: 'Integrations',
+					label: 'How-to Guides',
 					items: [
-						{ label: 'cPanel', slug: 'integrations/cpanel' },
-						{ label: 'NameSilo', slug: 'integrations/namesilo' },
-						{ label: 'Telegram Bot', slug: 'integrations/telegram' },
-						{ label: 'Payments', slug: 'integrations/payments' },
+						{ label: 'Connect cPanel', slug: 'integrations/cpanel' },
+						{ label: 'Connect NameSilo', slug: 'integrations/namesilo' },
+						{ label: 'Connect Telegram', slug: 'integrations/telegram' },
+						{ label: 'Add Funds', slug: 'integrations/payments' },
 					],
 				},
 				{

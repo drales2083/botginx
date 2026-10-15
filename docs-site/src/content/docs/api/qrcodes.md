@@ -1,6 +1,6 @@
 ---
 title: QR Codes
-description: Generate and manage QR codes for your links.
+description: Generate and manage QR codes.
 ---
 
 ## List QR Codes
@@ -42,11 +42,26 @@ curl -X POST "https://guardbot.sbs/api/v1/qrcodes" \
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `title` | string | Yes | Display title for the QR code |
+| `title` | string | Yes | Display title |
 | `url` | string | Yes | URL the QR code points to |
 | `redirectLinkId` | string | No | Associate with a redirect link |
-| `fgColor` | string | No | Foreground color (default: #000000) |
-| `bgColor` | string | No | Background color (default: #FFFFFF) |
+| `fgColor` | string | No | Foreground color (default: `#000000`) |
+| `bgColor` | string | No | Background color (default: `#FFFFFF`) |
+
+---
+
+## Get QR Code
+
+```http
+GET /api/v1/qrcodes/{id}
+```
+
+**Scope:** `qrcodes:read`
+
+```bash
+curl "https://guardbot.sbs/api/v1/qrcodes/qr_abc123" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
 
 ---
 
@@ -58,7 +73,7 @@ GET /api/v1/qrcodes/{id}/download
 
 **Scope:** `qrcodes:read`
 
-Download QR code image:
+Downloads QR code as image file.
 
 ```bash
 curl "https://guardbot.sbs/api/v1/qrcodes/qr_abc123/download?format=png" \
@@ -66,6 +81,23 @@ curl "https://guardbot.sbs/api/v1/qrcodes/qr_abc123/download?format=png" \
   -o qrcode.png
 ```
 
+### Query Parameters
+
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `format` | string | png | `png` or `svg` |
+| `format` | string | `png` | Image format: `png` or `svg` |
+
+---
+
+## Delete QR Code
+
+```http
+DELETE /api/v1/qrcodes/{id}
+```
+
+**Scope:** `qrcodes:write`
+
+```bash
+curl -X DELETE "https://guardbot.sbs/api/v1/qrcodes/qr_abc123" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
