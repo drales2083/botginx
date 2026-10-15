@@ -263,7 +263,7 @@ func (s *NameSiloService) ImportDomain(ctx context.Context, userID string, input
 				}
 
 				s.db.Exec(`
-					UPDATE domains SET dns_auto_configured = true WHERE id = $1
+					UPDATE domains SET dns_auto_configured = true, dns_verified = true WHERE id = $1
 				`, domainID)
 
 				// Setup acme-dns for instant wildcard SSL (no DNS propagation delay)
@@ -523,7 +523,7 @@ func (s *NameSiloService) ReconfigureAllDomains(ctx context.Context, newIP strin
 					Success: true,
 				})
 				s.db.Exec(`
-					UPDATE domains SET dns_config_error = NULL, updated_at = NOW()
+					UPDATE domains SET dns_config_error = NULL, dns_verified = true, updated_at = NOW()
 					WHERE id = $1
 				`, d.ID)
 			}
@@ -656,7 +656,7 @@ func (s *NameSiloService) ReconfigureUserDomains(ctx context.Context, userID str
 			Domain:  d.Name,
 			Success: true,
 		})
-		s.db.Exec(`UPDATE domains SET dns_config_error = NULL, updated_at = NOW() WHERE id = $1`, d.ID)
+		s.db.Exec(`UPDATE domains SET dns_config_error = NULL, dns_verified = true, updated_at = NOW() WHERE id = $1`, d.ID)
 	}
 
 	return results, nil
