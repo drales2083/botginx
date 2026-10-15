@@ -17,8 +17,21 @@
             </div>
             <div class="card-body">
                 {{if not .Domain.DNSVerified}}
+                {{if and (eq .Domain.Source "namesilo") .Domain.DNSAutoConfigured}}
+                <!-- NameSilo auto-configured: show waiting UI -->
+                <div class="d-flex align-items-center mb-4 p-3 bg-info bg-opacity-10 rounded">
+                    <div class="spinner-border spinner-border-sm text-info me-3" role="status"></div>
+                    <div>
+                        <strong>DNS is being configured automatically</strong>
+                        <div class="text-muted small">NameSilo DNS changes may take 5-15 minutes to propagate. SSL generation will start automatically.</div>
+                    </div>
+                </div>
+                <h6 class="text-muted mb-3"><i class="bi bi-gear me-1"></i>DNS Records (Auto-configured)</h6>
+                <p class="text-muted small">These records were added automatically via NameSilo API:</p>
+                {{else}}
                 <h6 class="text-muted mb-3"><i class="bi bi-gear me-1"></i>DNS Configuration</h6>
                 <p class="text-muted small">Add these records in your domain registrar (Cloudflare, Namecheap, GoDaddy, etc.)</p>
+                {{end}}
 
                 <div class="table-responsive">
                     <table class="table table-sm mb-4">
@@ -214,7 +227,8 @@
 
 <script>
 // Auto-redirect to setup wizard for wildcard domains that need setup
-{{if and .Domain.IsWildcard (not .Domain.SSLEnabled) (ne .Domain.SetupStep "complete")}}
+// Skip for NameSilo auto-configured domains (DNS is being set up automatically)
+{{if and .Domain.IsWildcard (not .Domain.SSLEnabled) (ne .Domain.SetupStep "complete") (not (and (eq .Domain.Source "namesilo") .Domain.DNSAutoConfigured))}}
 {{if .Domain.CpanelConnectionID}}
 window.location.href = '/user/domains/cpanel/{{.Domain.CpanelConnectionID}}/domains?domain={{.Domain.ID}}';
 {{else}}
