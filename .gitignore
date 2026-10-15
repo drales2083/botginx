@@ -23,3 +23,7 @@ server
 docs-site/node_modules/
 docs-site/dist/
 docs-site/.astro/
+
+# Intel uploads
+static/uploads/intel/
+web/static/uploads/intel/

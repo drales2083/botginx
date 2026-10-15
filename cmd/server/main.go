@@ -18,27 +18,22 @@ import (
 	"github.com/botginx/botginx/modules/admindash"
 	"github.com/botginx/botginx/modules/analogstats"
 	"github.com/botginx/botginx/modules/analytics"
-	"github.com/botginx/botginx/modules/awstats"
 	"github.com/botginx/botginx/modules/announcements"
 	"github.com/botginx/botginx/modules/antibotcontrol"
 	"github.com/botginx/botginx/modules/apikeys"
+	"github.com/botginx/botginx/modules/awstats"
 	"github.com/botginx/botginx/modules/optimizer"
 	// "github.com/botginx/botginx/modules/pdfgenerator" // Disabled - not ready for users
-	"github.com/botginx/botginx/modules/trackingpixel"
-	"github.com/botginx/botginx/modules/backup"
-	"github.com/botginx/botginx/modules/referrals"
-	"github.com/botginx/botginx/modules/webhooks"
-	"github.com/botginx/botginx/pkg/api/v1"
-	"github.com/botginx/botginx/pkg/apiauth"
 	analyticshandlers "github.com/botginx/botginx/modules/analytics/handlers"
 	"github.com/botginx/botginx/modules/auth"
+	"github.com/botginx/botginx/modules/backup"
 	"github.com/botginx/botginx/modules/dashboard"
 	"github.com/botginx/botginx/modules/domainhealth"
 	"github.com/botginx/botginx/modules/domains"
-	"github.com/botginx/botginx/modules/intel"
 	"github.com/botginx/botginx/modules/help"
 	"github.com/botginx/botginx/modules/hosting"
 	hostingmodels "github.com/botginx/botginx/modules/hosting/models"
+	"github.com/botginx/botginx/modules/intel"
 	"github.com/botginx/botginx/modules/iplists"
 	iplistsvc "github.com/botginx/botginx/modules/iplists/services"
 	"github.com/botginx/botginx/modules/marketplace"
@@ -47,15 +42,20 @@ import (
 	"github.com/botginx/botginx/modules/qrcodes"
 	qrcodeshandlers "github.com/botginx/botginx/modules/qrcodes/handlers"
 	"github.com/botginx/botginx/modules/redirectlinks"
+	"github.com/botginx/botginx/modules/referrals"
 	"github.com/botginx/botginx/modules/reports"
 	"github.com/botginx/botginx/modules/servers"
-	"github.com/botginx/botginx/modules/shortener"
 	"github.com/botginx/botginx/modules/settings"
+	"github.com/botginx/botginx/modules/shortener"
 	"github.com/botginx/botginx/modules/support"
 	"github.com/botginx/botginx/modules/telegram"
 	"github.com/botginx/botginx/modules/threatlog"
+	"github.com/botginx/botginx/modules/trackingpixel"
 	"github.com/botginx/botginx/modules/twofactor"
 	"github.com/botginx/botginx/modules/users"
+	"github.com/botginx/botginx/modules/webhooks"
+	"github.com/botginx/botginx/pkg/api/v1"
+	"github.com/botginx/botginx/pkg/apiauth"
 	"github.com/botginx/botginx/pkg/buildinfo"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/database"
@@ -230,11 +230,11 @@ func main() {
 	templates := module.NewTemplateEngine(layoutsSub)
 	templates.AddFuncs(translator.TemplateFuncs())
 	templates.AddFuncs(template.FuncMap{
-		"appVersion": buildinfo.Version,
-		"appBuild":   buildinfo.Build,
-		"appName":    getAppName,
+		"appVersion":  buildinfo.Version,
+		"appBuild":    buildinfo.Build,
+		"appName":     getAppName,
 		"currentYear": func() int { return time.Now().Year() },
-		"hasPrefix":  strings.HasPrefix,
+		"hasPrefix":   strings.HasPrefix,
 		"formatBytes": func(b int64) string {
 			const unit = 1024
 			if b < unit {
@@ -300,48 +300,48 @@ func main() {
 
 	registry.Register(authModule)
 	registry.Register(dashboard.New())
-	registry.Register(serversModule)             // Admin module
+	registry.Register(serversModule) // Admin module
 	registry.Register(domainsModule)
 	registry.Register(redirectLinksModule)
-	registry.Register(analyticsModule)           // Analytics module
-	registry.Register(iplistsModule)             // IP Lists module
-	registry.Register(shortenerModule)           // Link Shortener module
+	registry.Register(analyticsModule) // Analytics module
+	registry.Register(iplistsModule)   // IP Lists module
+	registry.Register(shortenerModule) // Link Shortener module
 	qrcodesModule := qrcodes.New()
-	registry.Register(qrcodesModule)             // QR Codes module
+	registry.Register(qrcodesModule) // QR Codes module
 	reportsModule := reports.New()
-	registry.Register(reportsModule)             // Reports module (CSV export)
+	registry.Register(reportsModule) // Reports module (CSV export)
 	domainHealthModule := domainhealth.New()
-	registry.Register(domainHealthModule)        // Domain health checker
-	registry.Register(analogstats.New())         // Analog Stats (classic web stats)
-	registry.Register(awstats.New())             // AWStats (advanced web statistics)
-	registry.Register(threatlog.New())           // Threat Log (security monitoring)
-	registry.Register(antibotcontrol.New())      // Antibot Control (default settings)
+	registry.Register(domainHealthModule)   // Domain health checker
+	registry.Register(analogstats.New())    // Analog Stats (classic web stats)
+	registry.Register(awstats.New())        // AWStats (advanced web statistics)
+	registry.Register(threatlog.New())      // Threat Log (security monitoring)
+	registry.Register(antibotcontrol.New()) // Antibot Control (default settings)
 	optimizerModule := optimizer.New()
-	registry.Register(optimizerModule)           // Attachment Optimizer (HTML/PDF sanitizer)
+	registry.Register(optimizerModule) // Attachment Optimizer (HTML/PDF sanitizer)
 	trackingPixelModule := trackingpixel.New(domainsModule)
-	registry.Register(trackingPixelModule)       // Tracking Pixel (email open tracking)
+	registry.Register(trackingPixelModule) // Tracking Pixel (email open tracking)
 	// registry.Register(pdfgenerator.New())        // PDF Generator (CTA PDFs with blurred backgrounds) - Disabled
-	registry.Register(apikeys.New())             // API Keys management
-	registry.Register(webhooks.New())            // Webhooks module
-	registry.Register(hostingModule)             // Bullet Proof Hosting module
-	registry.Register(marketplaceModule)         // Domain marketplace
-	registry.Register(paymentsModule)            // Crypto payments
-	registry.Register(help.New())                // Help/FAQ module
+	registry.Register(apikeys.New())     // API Keys management
+	registry.Register(webhooks.New())    // Webhooks module
+	registry.Register(hostingModule)     // Bullet Proof Hosting module
+	registry.Register(marketplaceModule) // Domain marketplace
+	registry.Register(paymentsModule)    // Crypto payments
+	registry.Register(help.New())        // Help/FAQ module
 	supportModule := support.New()
-	registry.Register(supportModule)             // Support tickets
+	registry.Register(supportModule) // Support tickets
 	telegramModule := telegram.New()
-	registry.Register(telegramModule)            // Telegram bot integration
+	registry.Register(telegramModule) // Telegram bot integration
 	settingsModule := settings.New(telegramModule)
-	registry.Register(settingsModule)            // Admin settings (telegram, etc.)
+	registry.Register(settingsModule) // Admin settings (telegram, etc.)
 	backupModule := backup.New()
-	registry.Register(backupModule)              // Telegram backup system
+	registry.Register(backupModule) // Telegram backup system
 	usersModule := users.New()
-	registry.Register(usersModule)               // Admin module
+	registry.Register(usersModule) // Admin module
 	referralsModule := referrals.New()
 
-	registry.Register(admindash.New())           // Admin dashboard (stats)
-	registry.Register(adminactivity.New())       // Admin activity logs (audit)
-	registry.Register(announcements.New())       // News announcements (admin)
+	registry.Register(admindash.New())     // Admin dashboard (stats)
+	registry.Register(adminactivity.New()) // Admin activity logs (audit)
+	registry.Register(announcements.New()) // News announcements (admin)
 	intelModule := intel.New()
 	registry.Register(intelModule)               // Intel blog (public /intel, admin /admin/intel)
 	registry.Register(referralsModule)           // Referral commission system
@@ -374,10 +374,10 @@ func main() {
 		trackingPixelModule.SetDeployServer(srv.IP, srv.Port, srv.SSHUser, srv.SSHPassword)
 	}
 
-	hostingModule.SetPaymentProcessor(referralsModule)  // Referral commissions on hosting payments
-	authModule.SetSubscriptionService(subscriptions)    // Self-service subscription purchase
-	usersModule.SetAuthService(authModule.AuthService()) // Admin impersonation
-	supportModule.SetNotifier(telegramModule.Handler)    // Telegram notifications for tickets
+	hostingModule.SetPaymentProcessor(referralsModule)         // Referral commissions on hosting payments
+	authModule.SetSubscriptionService(subscriptions)           // Self-service subscription purchase
+	usersModule.SetAuthService(authModule.AuthService())       // Admin impersonation
+	supportModule.SetNotifier(telegramModule.Handler)          // Telegram notifications for tickets
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
 
 	// QR codes needs redirect links list
@@ -817,8 +817,8 @@ type previewRateLimiter struct {
 func newPreviewRateLimiter() *previewRateLimiter {
 	rl := &previewRateLimiter{
 		requests: make(map[string][]time.Time),
-		limit:    60,               // 60 requests
-		window:   time.Minute * 1,  // per minute
+		limit:    60,              // 60 requests
+		window:   time.Minute * 1, // per minute
 	}
 	// Cleanup old entries every minute
 	go func() {

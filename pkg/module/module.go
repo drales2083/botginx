@@ -52,7 +52,7 @@ type Dependencies struct {
 // MenuItem for sidebar navigation
 type MenuItem struct {
 	Title    string
-	Icon     string      // Bootstrap icon class
+	Icon     string // Bootstrap icon class
 	Path     string
 	Badge    string      // Optional badge text
 	Children []MenuItem  // Nested items
@@ -64,12 +64,12 @@ type MenuItem struct {
 
 // Widget for dashboard
 type Widget struct {
-	ID       string                 // Unique widget ID
-	Title    string                 // Widget title
-	Icon     string                 // Bootstrap icon
-	Size     string                 // "small", "medium", "large"
-	Order    int                    // Display order
-	Template string                 // Template name (module:widget.html)
+	ID       string                      // Unique widget ID
+	Title    string                      // Widget title
+	Icon     string                      // Bootstrap icon
+	Size     string                      // "small", "medium", "large"
+	Order    int                         // Display order
+	Template string                      // Template name (module:widget.html)
 	Data     func() (interface{}, error) // Dynamic data loader
 }
 
@@ -323,12 +323,12 @@ func NewBaseModule(id, name, description string) *BaseModule {
 	}
 }
 
-func (b *BaseModule) ID() string             { return b.id }
-func (b *BaseModule) Name() string           { return b.name }
-func (b *BaseModule) Description() string    { return b.description }
-func (b *BaseModule) Templates() fs.FS       { return nil }
-func (b *BaseModule) MenuItems() []MenuItem  { return nil }
-func (b *BaseModule) Widgets() []Widget      { return nil }
+func (b *BaseModule) ID() string            { return b.id }
+func (b *BaseModule) Name() string          { return b.name }
+func (b *BaseModule) Description() string   { return b.description }
+func (b *BaseModule) Templates() fs.FS      { return nil }
+func (b *BaseModule) MenuItems() []MenuItem { return nil }
+func (b *BaseModule) Widgets() []Widget     { return nil }
 
 func (b *BaseModule) SetDeps(deps *Dependencies) {
 	b.deps = deps
