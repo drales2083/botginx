@@ -73,16 +73,33 @@ func (s *DeployService) SetupPixelSubdomain(domain string) error {
 	}
 
 	// Get SSL cert path - use parent domain's wildcard cert
-	// Check for Let's Encrypt wildcard cert first, then self-signed
+	// Check for Let's Encrypt cert first, then self-signed, create if neither exists
 	certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", baseDomain)
 	keyPath := fmt.Sprintf("/etc/letsencrypt/live/%s/privkey.pem", baseDomain)
 
 	checkCert := fmt.Sprintf("test -f %s && echo LE || echo MISSING", certPath)
 	certOut, _ := client.Run(checkCert)
 	if strings.TrimSpace(certOut) != "LE" {
-		// Try self-signed
+		// Try self-signed path
 		certPath = fmt.Sprintf("/etc/nginx/ssl/%s.pem", baseDomain)
 		keyPath = fmt.Sprintf("/etc/nginx/ssl/%s.key", baseDomain)
+
+		// Check if self-signed exists
+		checkSelfSigned := fmt.Sprintf("test -f %s && echo EXISTS || echo MISSING", certPath)
+		selfSignedOut, _ := client.Run(checkSelfSigned)
+		if strings.TrimSpace(selfSignedOut) != "EXISTS" {
+			// Neither cert exists - generate self-signed for this subdomain
+			generateCmd := fmt.Sprintf(`
+mkdir -p /etc/nginx/ssl
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/%s.key \
+    -out /etc/nginx/ssl/%s.pem \
+    -subj "/CN=%s" 2>/dev/null
+`, baseDomain, baseDomain, pxDomain)
+			if _, err := client.Run(generateCmd); err != nil {
+				return fmt.Errorf("failed to generate self-signed cert: %w", err)
+			}
+		}
 	}
 
 	// Create nginx config for px.{domain} that proxies to Guard VPS
@@ -114,10 +131,24 @@ func (s *DeployService) SetupPixelSubdomain(domain string) error {
 		return fmt.Errorf("failed to write nginx config: %w", err)
 	}
 
-	// Enable site and reload nginx
-	enableCmd := fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx", configPath)
-	if _, err := client.Run(enableCmd); err != nil {
+	// Enable site
+	linkCmd := fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/", configPath)
+	if _, err := client.Run(linkCmd); err != nil {
 		return fmt.Errorf("failed to enable site: %w", err)
+	}
+
+	// Test nginx config before reload - if it fails, disable the site
+	testOut, err := client.Run("nginx -t 2>&1")
+	if err != nil || strings.Contains(testOut, "failed") {
+		// Disable the broken config
+		disableCmd := fmt.Sprintf("rm -f /etc/nginx/sites-enabled/%s.conf", pxDomain)
+		client.Run(disableCmd)
+		return fmt.Errorf("nginx config invalid, disabled: %s", testOut)
+	}
+
+	// Reload nginx
+	if _, err := client.Run("systemctl reload nginx"); err != nil {
+		return fmt.Errorf("failed to reload nginx: %w", err)
 	}
 
 	return nil
