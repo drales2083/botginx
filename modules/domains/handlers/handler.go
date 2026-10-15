@@ -1218,8 +1218,15 @@ func (h *Handler) APIGetSetupStatus(w http.ResponseWriter, r *http.Request) {
 		status.VerifyTXT.Found = domain.VerifyToken
 		status.VerifyTXT.Message = "Ownership verified"
 	} else if verifyErr != nil {
-		status.VerifyTXT.Status = "not_found"
-		status.VerifyTXT.Message = fmt.Sprintf("TXT record not found at _guardbot-verify.%s", baseDomain)
+		// Distinguish mismatch from not found
+		errMsg := verifyErr.Error()
+		if strings.Contains(errMsg, "TXT mismatch") {
+			status.VerifyTXT.Status = "mismatch"
+			status.VerifyTXT.Message = errMsg
+		} else {
+			status.VerifyTXT.Status = "not_found"
+			status.VerifyTXT.Message = fmt.Sprintf("TXT record not found at _guardbot-verify.%s", baseDomain)
+		}
 		status.ErrorMessage = status.VerifyTXT.Message
 	} else {
 		status.VerifyTXT.Status = "not_found"
