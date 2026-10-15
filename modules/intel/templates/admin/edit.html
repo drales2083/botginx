@@ -1,0 +1,265 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    <i class="bi bi-pencil me-2"></i>{{if .Article}}Edit Article{{else}}New Article{{end}}
+                </h3>
+            </div>
+            <div class="card-body">
+                <form id="article-form">
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-control" id="title" name="title"
+                               value="{{if .Article}}{{.Article.Title}}{{end}}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Slug</label>
+                        <input type="text" class="form-control" id="slug" name="slug"
+                               value="{{if .Article}}{{.Article.Slug}}{{end}}" placeholder="auto-generated from title">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Excerpt</label>
+                        <textarea class="form-control" id="excerpt" name="excerpt" rows="2"
+                                  placeholder="Brief summary for cards and SEO">{{if .Article}}{{.Article.Excerpt}}{{end}}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Content</label>
+                        <textarea class="form-control" id="content" name="content">{{if .Article}}{{.Article.Content}}{{end}}</textarea>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Publish</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="draft" {{if and .Article (eq .Article.Status "draft")}}selected{{end}}>Draft</option>
+                        <option value="published" {{if and .Article (eq .Article.Status "published")}}selected{{end}}>Published</option>
+                        <option value="archived" {{if and .Article (eq .Article.Status "archived")}}selected{{end}}>Archived</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="featured" name="featured"
+                               {{if and .Article .Article.Featured}}checked{{end}}>
+                        <label class="form-check-label" for="featured">Featured article</label>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary" onclick="saveArticle()">
+                        <i class="bi bi-check-lg me-1"></i>Save
+                    </button>
+                    <a href="/admin/intel" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="category_id" name="category_id">
+                        <option value="">No category</option>
+                        {{range .Categories}}
+                        <option value="{{.ID}}" {{if and $.Article (eq $.Article.CategoryID.String .ID)}}selected{{end}}>{{.Name}}</option>
+                        {{end}}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Tags</label>
+                    <select class="form-select" id="tags" name="tags" multiple>
+                        {{range .Tags}}
+                        <option value="{{.ID}}">{{.Name}}</option>
+                        {{end}}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Author</label>
+                    <input type="text" class="form-control" id="author_name" name="author_name"
+                           value="{{if .Article}}{{.Article.AuthorName}}{{else}}Admin{{end}}">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Cover Image</label>
+                    <input type="file" class="form-control" id="cover-upload" accept="image/*">
+                    <input type="hidden" id="cover_image" name="cover_image"
+                           value="{{if .Article}}{{.Article.CoverImage}}{{end}}">
+                    <div id="cover-preview" class="mt-2">
+                        {{if and .Article .Article.CoverImage}}
+                        <img src="{{.Article.CoverImage}}" class="img-fluid rounded" style="max-height: 150px;">
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">SEO</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Meta Title <small class="text-muted">(60 chars)</small></label>
+                    <input type="text" class="form-control" id="meta_title" name="meta_title" maxlength="60"
+                           value="{{if .Article}}{{.Article.MetaTitle}}{{end}}">
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label">Meta Description <small class="text-muted">(160 chars)</small></label>
+                    <textarea class="form-control" id="meta_description" name="meta_description" rows="3" maxlength="160">{{if .Article}}{{.Article.MetaDescription}}{{end}}</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+<script>
+let easyMDE;
+const articleId = '{{if .Article}}{{.Article.ID}}{{end}}';
+
+document.addEventListener('DOMContentLoaded', function() {
+    easyMDE = new EasyMDE({
+        element: document.getElementById('content'),
+        spellChecker: false,
+        autosave: {
+            enabled: true,
+            uniqueId: 'intel-article-' + (articleId || 'new'),
+            delay: 5000
+        },
+        toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'code', 'unordered-list', 'ordered-list', '|',
+                  'link', 'image', 'table', '|', 'preview', 'side-by-side', 'fullscreen', '|', 'guide'],
+        uploadImage: true,
+        imageUploadFunction: uploadImage,
+        renderingConfig: {
+            codeSyntaxHighlighting: true
+        }
+    });
+
+    // Auto-generate slug from title
+    document.getElementById('title').addEventListener('blur', function() {
+        const slugField = document.getElementById('slug');
+        if (!slugField.value && this.value) {
+            slugField.value = this.value.toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+        }
+    });
+
+    // Cover image upload
+    document.getElementById('cover-upload').addEventListener('change', async function() {
+        const file = this.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            const res = await fetch('/admin/intel/api/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('cover_image').value = data.data.url;
+                document.getElementById('cover-preview').innerHTML =
+                    `<img src="${data.data.url}" class="img-fluid rounded" style="max-height: 150px;">`;
+            } else {
+                showToast(data.error || 'Upload failed', 'danger');
+            }
+        } catch (err) {
+            showToast('Upload failed', 'danger');
+        }
+    });
+
+    // Set selected tags if editing
+    {{if .Article}}
+    const selectedTags = [{{range .Article.Tags}}'{{.ID}}',{{end}}];
+    selectedTags.forEach(id => {
+        const opt = document.querySelector(`#tags option[value="${id}"]`);
+        if (opt) opt.selected = true;
+    });
+    {{end}}
+});
+
+function uploadImage(file, onSuccess, onError) {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    fetch('/admin/intel/api/upload', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                onSuccess(data.data.url);
+            } else {
+                onError(data.error || 'Upload failed');
+            }
+        })
+        .catch(() => onError('Upload failed'));
+}
+
+async function saveArticle() {
+    const tags = Array.from(document.getElementById('tags').selectedOptions).map(o => o.value);
+
+    const payload = {
+        title: document.getElementById('title').value,
+        slug: document.getElementById('slug').value,
+        excerpt: document.getElementById('excerpt').value,
+        content: easyMDE.value(),
+        status: document.getElementById('status').value,
+        featured: document.getElementById('featured').checked,
+        category_id: document.getElementById('category_id').value,
+        tag_ids: tags,
+        author_name: document.getElementById('author_name').value,
+        cover_image: document.getElementById('cover_image').value,
+        meta_title: document.getElementById('meta_title').value,
+        meta_description: document.getElementById('meta_description').value
+    };
+
+    const method = articleId ? 'PUT' : 'POST';
+    const url = articleId ? `/admin/intel/api/articles/${articleId}` : '/admin/intel/api/articles';
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            // Clear autosave
+            if (easyMDE.options.autosave.enabled) {
+                localStorage.removeItem('smde_intel-article-' + (articleId || 'new'));
+            }
+            flashToast('Article saved!', 'success');
+            window.location.href = '/admin/intel';
+        } else {
+            showToast(data.error || 'Save failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+}
+</script>
+{{end}}

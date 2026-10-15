@@ -1,0 +1,155 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0"><i class="bi bi-journal-text me-2"></i>Intel Articles</h3>
+                <div>
+                    <a href="/admin/intel/categories" class="btn btn-outline-secondary btn-sm me-2">
+                        <i class="bi bi-folder me-1"></i>Categories
+                    </a>
+                    <a href="/admin/intel/tags" class="btn btn-outline-secondary btn-sm me-2">
+                        <i class="bi bi-tags me-1"></i>Tags
+                    </a>
+                    <a href="/admin/intel/new" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg me-1"></i>New Article
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filters -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="status-filter">
+                            <option value="">All Status</option>
+                            <option value="published">Published</option>
+                            <option value="draft">Draft</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="category-filter">
+                            <option value="">All Categories</option>
+                            {{range .Categories}}
+                            <option value="{{.ID}}">{{.Name}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                </div>
+
+                <div id="articles-loading" class="text-center py-4">
+                    <span class="spinner-border spinner-border-sm me-2"></span>Loading articles...
+                </div>
+
+                <div id="articles-table" class="d-none">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="articles-datatable">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="articles-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', loadArticles);
+document.getElementById('status-filter').addEventListener('change', loadArticles);
+document.getElementById('category-filter').addEventListener('change', loadArticles);
+
+async function loadArticles() {
+    const loading = document.getElementById('articles-loading');
+    const table = document.getElementById('articles-table');
+    const tbody = document.getElementById('articles-body');
+
+    const status = document.getElementById('status-filter').value;
+    const category = document.getElementById('category-filter').value;
+
+    loading.classList.remove('d-none');
+    table.classList.add('d-none');
+
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (category) params.set('category', category);
+
+    try {
+        const res = await fetch('/admin/intel/api/articles?' + params);
+        const data = await res.json();
+
+        loading.classList.add('d-none');
+        table.classList.remove('d-none');
+
+        if (!data.success || !data.data.Articles) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No articles found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.data.Articles.map(a => `
+            <tr>
+                <td>
+                    ${a.Featured ? '<i class="bi bi-star-fill text-warning me-1"></i>' : ''}
+                    <a href="/admin/intel/${a.ID}/edit" class="text-decoration-none">${escapeHtml(a.Title)}</a>
+                </td>
+                <td>${a.CategoryName ? escapeHtml(a.CategoryName) : '<span class="text-muted">—</span>'}</td>
+                <td>
+                    ${a.Status === 'published' ? '<span class="badge bg-success">Published</span>' :
+                      a.Status === 'draft' ? '<span class="badge bg-warning">Draft</span>' :
+                      '<span class="badge bg-secondary">Archived</span>'}
+                </td>
+                <td>${formatDate(a.CreatedAt)}</td>
+                <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                        <a href="/admin/intel/${a.ID}/edit" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" onclick="deleteArticle('${a.ID}', '${escapeHtml(a.Title)}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        loading.innerHTML = '<span class="text-danger">Failed to load articles</span>';
+    }
+}
+
+async function deleteArticle(id, title) {
+    if (!confirm(`Delete "${title}"?`)) return;
+
+    try {
+        const res = await fetch(`/admin/intel/api/articles/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Article deleted', 'success');
+            loadArticles();
+        } else {
+            showToast(data.error || 'Delete failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+</script>
+{{end}}
