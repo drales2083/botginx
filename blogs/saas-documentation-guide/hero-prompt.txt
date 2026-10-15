@@ -1,0 +1,10 @@
+COVER IMAGE PROMPT FOR: SaaS Documentation Best Practices
+
+Isometric 3D illustration of an open book transforming into a digital interface.
+The book pages are morphing into floating UI cards, search bars, and code snippets.
+Small human figures are climbing the pages like stairs, representing users finding their way.
+A glowing lightbulb floats above, symbolizing understanding and "aha moments."
+Deep navy background (#0a192f) with warm orange (#f97316) and teal (#14b8a6) accents.
+Clean minimal tech aesthetic with lots of negative space at top for title overlay.
+Professional SaaS/documentation style, 16:9 aspect ratio.
+Soft ambient lighting with subtle gradients.
