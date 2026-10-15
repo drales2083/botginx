@@ -496,19 +496,19 @@
       {{if .IntelArticles}}
       <section class="section section-intel">
         <div class="section-inner">
-          <div class="d-flex justify-content-between align-items-center mb-4" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-            <h2 style="margin:0;">Latest Intel</h2>
+          <div class="intel-header">
+            <h2>Latest Intel</h2>
             <a href="/intel" class="btn-outline">View all <i class="bi bi-arrow-right"></i></a>
           </div>
-          <div class="intel-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;">
+          <div class="intel-grid">
             {{range .IntelArticles}}
-            <a href="/intel/{{.Slug}}" class="intel-card" style="display:block;border:1px solid rgba(255,255,255,.15);border-radius:8px;overflow:hidden;color:inherit;text-decoration:none;">
-              {{if .CoverImage}}<img src="{{.CoverImage}}" alt="{{.Title}}" style="width:100%;height:180px;object-fit:cover;">{{end}}
-              <div style="padding:1rem;">
+            <a href="/intel/{{.Slug}}" class="intel-card">
+              {{if .CoverImage}}<img src="{{.CoverImage}}" alt="{{.Title}}">{{end}}
+              <div>
                 {{if .CategoryName}}<span class="eyebrow">{{.CategoryName}}</span>{{end}}
-                <h3 style="font-size:1.1rem;margin:.5rem 0;">{{.Title}}</h3>
-                <p style="opacity:.7;font-size:.9rem;margin:0 0 .75rem;">{{.Excerpt}}</p>
-                <small style="opacity:.6;">{{.ReadingTime}} min read</small>
+                <h3>{{.Title}}</h3>
+                <p>{{.Excerpt}}</p>
+                <small>{{.ReadingTime}} min read</small>
               </div>
             </a>
             {{end}}

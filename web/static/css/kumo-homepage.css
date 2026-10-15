@@ -908,6 +908,89 @@ a {
 }
 
 /* ==========================================================================
+   Intel Section (blog/articles)
+   ========================================================================== */
+
+.section-intel {
+  padding: 80px 0;
+}
+
+.section-intel .intel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.section-intel h2 {
+  font-size: 32px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.section-intel .intel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.section-intel .intel-card {
+  display: block;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.section-intel .intel-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.section-intel .intel-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.section-intel .intel-card > div {
+  padding: 20px;
+}
+
+.section-intel .intel-card .eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.section-intel .intel-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0 0 12px;
+}
+
+.section-intel .intel-card p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.section-intel .intel-card small {
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* ==========================================================================
    Statement Section (centered)
    ========================================================================== */
 
@@ -1301,6 +1384,31 @@ a {
 
   .cta-content {
     padding: 48px 20px;
+  }
+
+  /* Intel mobile */
+  .section-intel {
+    padding: 48px 0;
+  }
+
+  .section-intel .intel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .section-intel h2 {
+    font-size: 24px;
+  }
+
+  .section-intel .intel-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .section-intel .intel-card h3 {
+    font-size: 16px;
   }
 }
 
