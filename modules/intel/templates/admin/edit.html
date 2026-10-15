@@ -134,6 +134,96 @@
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+/* EasyMDE Dark Theme - matches Kumo/AdminLTE */
+.EasyMDEContainer {
+    --mde-bg: #1a1d21;
+    --mde-border: rgba(255,255,255,0.12);
+    --mde-text: rgba(255,255,255,0.9);
+    --mde-muted: rgba(255,255,255,0.5);
+    --mde-accent: #dc3545;
+}
+.EasyMDEContainer .CodeMirror {
+    background: var(--mde-bg);
+    color: var(--mde-text);
+    border: 1px solid var(--mde-border);
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+.EasyMDEContainer .CodeMirror-cursor {
+    border-left-color: var(--mde-accent);
+}
+.EasyMDEContainer .CodeMirror-selected {
+    background: rgba(220,53,69,0.25);
+}
+.EasyMDEContainer .editor-toolbar {
+    background: var(--mde-bg);
+    border: 1px solid var(--mde-border);
+    border-bottom: none;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 8px;
+}
+.EasyMDEContainer .editor-toolbar button {
+    color: var(--mde-muted);
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+}
+.EasyMDEContainer .editor-toolbar button:hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--mde-text);
+}
+.EasyMDEContainer .editor-toolbar button.active {
+    background: var(--mde-accent);
+    color: #fff;
+}
+.EasyMDEContainer .editor-toolbar i.separator {
+    color: var(--mde-border);
+    margin: 0 4px;
+}
+.EasyMDEContainer .editor-statusbar {
+    background: var(--mde-bg);
+    border: 1px solid var(--mde-border);
+    border-top: none;
+    color: var(--mde-muted);
+    padding: 8px 12px;
+    font-size: 12px;
+}
+.EasyMDEContainer .editor-preview,
+.EasyMDEContainer .editor-preview-side {
+    background: var(--mde-bg);
+    color: var(--mde-text);
+    border: 1px solid var(--mde-border);
+}
+.EasyMDEContainer .editor-preview pre,
+.EasyMDEContainer .editor-preview-side pre {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--mde-border);
+    border-radius: 4px;
+}
+.EasyMDEContainer .editor-preview code,
+.EasyMDEContainer .editor-preview-side code {
+    background: rgba(255,255,255,0.08);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+.EasyMDEContainer .cm-header {
+    color: var(--mde-text);
+}
+.EasyMDEContainer .cm-link {
+    color: var(--mde-accent);
+}
+.EasyMDEContainer .cm-url {
+    color: var(--mde-muted);
+}
+.EasyMDEContainer .cm-quote {
+    color: var(--mde-muted);
+    font-style: italic;
+}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
