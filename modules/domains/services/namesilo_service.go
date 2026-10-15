@@ -338,14 +338,15 @@ type ReconfigureResult struct {
 func (s *NameSiloService) ReconfigureAllDomains(ctx context.Context, newIP string) ([]ReconfigureResult, error) {
 	// Find all domains with source='namesilo' and dns_auto_configured=true
 	type domainInfo struct {
-		ID     string `db:"id"`
-		Name   string `db:"name"`
-		UserID string `db:"user_id"`
+		ID          string `db:"id"`
+		Name        string `db:"name"`
+		UserID      string `db:"user_id"`
+		VerifyToken string `db:"verify_token"`
 	}
 
 	var domains []domainInfo
 	err := s.db.Select(&domains, `
-		SELECT id, name, user_id FROM domains
+		SELECT id, name, user_id, verify_token FROM domains
 		WHERE source = 'namesilo' AND dns_auto_configured = true
 	`)
 	if err != nil {
@@ -388,17 +389,19 @@ func (s *NameSiloService) ReconfigureAllDomains(ctx context.Context, newIP strin
 					Success: false,
 					Error:   err.Error(),
 				})
-				// Update error in database
 				s.db.Exec(`
 					UPDATE domains SET dns_config_error = $1, updated_at = NOW()
 					WHERE id = $2
 				`, err.Error(), d.ID)
 			} else {
+				// Also ensure TXT verification record exists
+				if d.VerifyToken != "" {
+					client.AddVerificationTXT(ctx, d.Name, d.VerifyToken)
+				}
 				results = append(results, ReconfigureResult{
 					Domain:  d.Name,
 					Success: true,
 				})
-				// Clear any previous error
 				s.db.Exec(`
 					UPDATE domains SET dns_config_error = NULL, updated_at = NOW()
 					WHERE id = $1
@@ -419,13 +422,14 @@ func (s *NameSiloService) ReconfigureUserDomains(ctx context.Context, userID str
 
 	// Find all domains for this user with auto-configured DNS
 	type domainInfo struct {
-		ID   string `db:"id"`
-		Name string `db:"name"`
+		ID          string `db:"id"`
+		Name        string `db:"name"`
+		VerifyToken string `db:"verify_token"`
 	}
 
 	var domains []domainInfo
 	err = s.db.Select(&domains, `
-		SELECT id, name FROM domains
+		SELECT id, name, verify_token FROM domains
 		WHERE user_id = $1 AND source = 'namesilo' AND dns_auto_configured = true
 	`, userID)
 	if err != nil {
@@ -452,6 +456,10 @@ func (s *NameSiloService) ReconfigureUserDomains(ctx context.Context, userID str
 			})
 			s.db.Exec(`UPDATE domains SET dns_config_error = $1, updated_at = NOW() WHERE id = $2`, err.Error(), d.ID)
 		} else {
+			// Also ensure TXT verification record exists
+			if d.VerifyToken != "" {
+				client.AddVerificationTXT(ctx, d.Name, d.VerifyToken)
+			}
 			results = append(results, ReconfigureResult{
 				Domain:  d.Name,
 				Success: true,
