@@ -40,7 +40,7 @@ GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o botginx-linux
 sha256sum botginx-linux-* > SHA256SUMS
 ```
 
-See `docs/DEPLOYMENT.md` for full deployment guide.
+See `docs/how-to/deploy-botginx.md` for full deployment guide.
 
 ### Deploy Scripts
 
@@ -77,7 +77,7 @@ Botginx provides a callback API for botection (antibot reverse proxy):
 
 - **Endpoint:** `POST /api/botection/should-block`
 - **Purpose:** Per-link blocking decisions based on user settings
-- **Docs:** `docs/BOTECTION-CALLBACK-API.md`
+- **Docs:** `docs/reference/botection-callback-api.md`
 
 Botection calls this endpoint before making block decisions. Settings changes take effect within 30 seconds (cache TTL).
 
@@ -171,6 +171,6 @@ Sends notifications for new support tickets and user replies. Pre-configured in 
 
 ## Related Documentation
 
-- `docs/DEPLOYMENT.md` — Full deployment guide
-- `docs/BOTECTION-CALLBACK-API.md` — Callback API specification
-- `ENFORCEMENT-PLAN.md` — Bot protection architecture
+- `docs/how-to/deploy-botginx.md` — Full deployment guide
+- `docs/reference/botection-callback-api.md` — Callback API specification
+- `docs/explanation/enforcement-architecture.md` — Bot protection architecture

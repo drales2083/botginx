@@ -267,5 +267,5 @@ Users configure per-link settings at `/user/analytics/link/{id}/settings`:
 
 ## Related Documentation
 
-- [ENFORCEMENT-PLAN.md](../ENFORCEMENT-PLAN.md) - Full enforcement architecture
+- [enforcement-architecture.md](../explanation/enforcement-architecture.md) - Full enforcement architecture
 - Botection config: `/home/this/dev/code/msf-tokens/antibot/config.yaml`
