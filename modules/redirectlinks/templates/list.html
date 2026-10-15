@@ -127,20 +127,18 @@
                                     <i class="bi bi-clipboard"></i>
                                 </button>
                                 {{if $canWrite}}
-                                <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="{{t "more"}}">
-                                        <i class="bi bi-three-dots-vertical"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        {{if eq .Type "HTML"}}
-                                        <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/edit-html"><i class="bi bi-code-slash me-2"></i>{{t "redirectlinks.edit_html"}}</a></li>
-                                        {{else}}
-                                        <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/customize"><i class="bi bi-palette me-2"></i>{{t "customize"}}</a></li>
-                                        {{end}}
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>{{t "delete"}}</a></li>
-                                    </ul>
-                                </div>
+                                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="{{t "more"}}">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    {{if eq .Type "HTML"}}
+                                    <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/edit-html"><i class="bi bi-code-slash me-2"></i>{{t "redirectlinks.edit_html"}}</a></li>
+                                    {{else}}
+                                    <li><a class="dropdown-item" href="/user/redirectlinks/{{.ID}}/customize"><i class="bi bi-palette me-2"></i>{{t "customize"}}</a></li>
+                                    {{end}}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger btn-delete" href="#" data-id="{{.ID}}"><i class="bi bi-trash me-2"></i>{{t "delete"}}</a></li>
+                                </ul>
                                 {{end}}
                             </div>
                         </td>

@@ -1,0 +1,386 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0"><i class="bi bi-box me-2"></i>NameSilo</h3>
+                {{if .Connection.IsConnected}}
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="disconnect()">
+                    <i class="bi bi-x-lg me-1"></i>Disconnect
+                </button>
+                {{end}}
+            </div>
+            <div class="card-body">
+                {{if not .Connection.IsConnected}}
+                <!-- Not Connected State -->
+                <div class="text-center py-5" id="connect-form">
+                    <div class="mb-4">
+                        <i class="bi bi-box text-primary" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4 class="mb-3">Connect your NameSilo account</h4>
+                    <p class="text-muted mb-4">Import domains and auto-configure DNS with one click</p>
+
+                    <div class="row justify-content-center">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="input-group mb-3">
+                                <input type="password" class="form-control" id="api-key" placeholder="Enter your API key">
+                                <button class="btn btn-primary" type="button" onclick="connect()">
+                                    <i class="bi bi-plug me-1"></i>Connect
+                                </button>
+                            </div>
+                            <p class="text-muted small">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Get your API key from <a href="https://www.namesilo.com/account/api-manager" target="_blank">namesilo.com → Account → API Manager</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {{else}}
+                <!-- Connected State -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-success me-2"><i class="bi bi-check-circle me-1"></i>Connected</span>
+                        <span class="text-muted small">
+                            Since {{.Connection.ConnectedAt.Format "Jan 02, 2006"}}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Domains List -->
+                <div id="domains-loading" class="text-center py-4">
+                    <span class="spinner-border spinner-border-sm me-2"></span>Loading domains...
+                </div>
+
+                <div id="domains-empty" class="text-center py-4 d-none">
+                    <p class="text-muted mb-0">No domains found in your NameSilo account</p>
+                </div>
+
+                <div id="domains-table" class="d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Your NameSilo domains</h5>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="reconfigureDNS()">
+                                <i class="bi bi-gear me-1"></i>Reconfigure DNS
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadDomains()">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Domain</th>
+                                    <th>Expires</th>
+                                    <th>Status</th>
+                                    <th>Imported</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="domains-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="import-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-download me-2"></i>Import domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Import <strong id="import-domain-name"></strong> to your account.</p>
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="configure-dns" checked>
+                    <label class="form-check-label" for="configure-dns">
+                        Auto-configure DNS records
+                    </label>
+                </div>
+
+                <div id="dns-preview" class="alert alert-info small">
+                    <strong>DNS changes:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li><code>A @ → <span id="server-ip">auto-detect</span></code> (root domain)</li>
+                        <li><code>A * → <span id="server-ip2">auto-detect</span></code> (wildcard)</li>
+                    </ul>
+                </div>
+
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>DNS changes may take up to 15 minutes to propagate.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-import-btn">
+                    <i class="bi bi-download me-1"></i>Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Disconnect Confirmation Modal -->
+<div class="modal fade" id="disconnect-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Disconnect NameSilo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Are you sure you want to disconnect your NameSilo account?</p>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>Your imported domains will remain in GuardBot. Only the API connection will be removed.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-disconnect-btn">
+                    <i class="bi bi-x-lg me-1"></i>Disconnect
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let importModal = null;
+let disconnectModal = null;
+let importDomain = null;
+
+{{if .Connection.IsConnected}}
+document.addEventListener('DOMContentLoaded', loadDomains);
+{{end}}
+
+async function connect() {
+    const apiKey = document.getElementById('api-key').value.trim();
+    if (!apiKey) {
+        showToast('Please enter your API key', 'warning');
+        return;
+    }
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Connecting...';
+
+    try {
+        const res = await fetch('/user/domains/namesilo/api/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            flashToast('Connected to NameSilo!', 'success');
+            window.location.reload();
+        } else {
+            showToast(data.error || 'Connection failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plug me-1"></i>Connect';
+}
+
+function disconnect() {
+    if (!disconnectModal) {
+        disconnectModal = new bootstrap.Modal(document.getElementById('disconnect-modal'));
+    }
+    disconnectModal.show();
+}
+
+document.getElementById('confirm-disconnect-btn').addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Disconnecting...';
+
+    try {
+        const res = await fetch('/user/domains/namesilo/api/disconnect', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+            disconnectModal.hide();
+            flashToast('Disconnected from NameSilo', 'success');
+            window.location.reload();
+        } else {
+            showToast(data.error || 'Disconnect failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-x-lg me-1"></i>Disconnect';
+});
+
+async function reconfigureDNS() {
+    const btn = event.target.closest('button');
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Reconfiguring...';
+
+    try {
+        const res = await fetch('/user/domains/namesilo/api/reconfigure', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+            const result = data.data;
+            if (result.total === 0) {
+                showToast('No domains to reconfigure', 'info');
+            } else if (result.failCount === 0) {
+                showToast(`Reconfigured ${result.successCount} domain(s) successfully`, 'success');
+            } else {
+                showToast(`Reconfigured ${result.successCount}/${result.total} domains. ${result.failCount} failed.`, 'warning');
+            }
+        } else {
+            showToast(data.error || 'Reconfiguration failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+}
+
+async function loadDomains() {
+    const loading = document.getElementById('domains-loading');
+    const empty = document.getElementById('domains-empty');
+    const table = document.getElementById('domains-table');
+    const tbody = document.getElementById('domains-body');
+
+    loading.classList.remove('d-none');
+    empty.classList.add('d-none');
+    table.classList.add('d-none');
+
+    try {
+        const res = await fetch('/user/domains/namesilo/api/domains');
+        const data = await res.json();
+
+        loading.classList.add('d-none');
+
+        if (!data.success || !data.data || data.data.length === 0) {
+            empty.classList.remove('d-none');
+            return;
+        }
+
+        table.classList.remove('d-none');
+        tbody.innerHTML = data.data.map(d => `
+            <tr>
+                <td><code class="fs-6">${escapeHtml(d.domain)}</code></td>
+                <td>
+                    ${d.expires ? formatDate(d.expires) : '—'}
+                    ${isExpiringSoon(d.expires) ? '<span class="badge bg-warning ms-1">Expiring soon</span>' : ''}
+                </td>
+                <td>
+                    ${d.status === 'Active'
+                        ? '<span class="badge bg-success">Active</span>'
+                        : `<span class="badge bg-secondary">${escapeHtml(d.status)}</span>`}
+                </td>
+                <td>
+                    ${d.isImported
+                        ? '<span class="badge bg-primary"><i class="bi bi-check me-1"></i>Imported</span>'
+                        : '<span class="text-muted">—</span>'}
+                </td>
+                <td class="text-end">
+                    ${d.isImported
+                        ? `<a href="/user/domains/${d.localId}" class="btn btn-sm btn-outline-secondary">
+                               <i class="bi bi-gear me-1"></i>Manage
+                           </a>`
+                        : `<button type="button" class="btn btn-sm btn-primary" onclick="showImportModal('${escapeHtml(d.domain)}')">
+                               <i class="bi bi-download me-1"></i>Import
+                           </button>`}
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (err) {
+        console.error('Failed to load domains:', err);
+        loading.innerHTML = '<span class="text-danger">Failed to load domains</span>';
+    }
+}
+
+function showImportModal(domain) {
+    importDomain = domain;
+    document.getElementById('import-domain-name').textContent = domain;
+
+    if (!importModal) {
+        importModal = new bootstrap.Modal(document.getElementById('import-modal'));
+    }
+    importModal.show();
+}
+
+document.getElementById('confirm-import-btn').addEventListener('click', async function() {
+    if (!importDomain) return;
+
+    const btn = this;
+    const configureDns = document.getElementById('configure-dns').checked;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Importing...';
+
+    try {
+        const res = await fetch('/user/domains/namesilo/api/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                domain: importDomain,
+                configureDns: configureDns
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            importModal.hide();
+            flashToast('Domain imported successfully!', 'success');
+
+            // Redirect to the domain page
+            if (data.data && data.data.domainId) {
+                window.location.href = '/user/domains/' + data.data.domainId;
+            } else {
+                loadDomains();
+            }
+        } else {
+            showToast(data.error || 'Import failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-download me-1"></i>Import';
+});
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function isExpiringSoon(dateStr) {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffDays = (d - now) / (1000 * 60 * 60 * 24);
+    return diffDays > 0 && diffDays < 30;
+}
+</script>
+{{end}}

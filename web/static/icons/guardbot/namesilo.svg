@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Database cylinder stack (NameSilo style) -->
+  <ellipse cx="20" cy="8" rx="14" ry="4"/>
+  <path d="M6 8v8c0 2.2 6.3 4 14 4s14-1.8 14-4V8"/>
+  <path d="M6 16v8c0 2.2 6.3 4 14 4s14-1.8 14-4v-8"/>
+  <path d="M6 24v8c0 2.2 6.3 4 14 4s14-1.8 14-4v-8"/>
+  <ellipse cx="20" cy="32" rx="14" ry="4"/>
+  <!-- API badge in red -->
+  <g stroke="#dc3545">
+    <circle cx="38" cy="38" r="7" fill="#dc3545"/>
+    <text x="38" y="41" font-family="Arial,sans-serif" font-size="7" font-weight="bold" fill="white" stroke="none" text-anchor="middle">API</text>
+  </g>
+</svg>

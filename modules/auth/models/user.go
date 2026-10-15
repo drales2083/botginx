@@ -25,6 +25,10 @@ type User struct {
 	TOTPEnabledAt    *time.Time     `db:"totp_enabled_at" json:"totpEnabledAt,omitempty"`
 	CreatedAt        time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time      `db:"updated_at" json:"updatedAt"`
+
+	// NameSilo integration
+	NameSiloAPIKeyEncrypted *string    `db:"namesilo_api_key_encrypted" json:"-"`
+	NameSiloConnectedAt     *time.Time `db:"namesilo_connected_at" json:"namesiloConnectedAt,omitempty"`
 }
 
 type SignupInput struct {

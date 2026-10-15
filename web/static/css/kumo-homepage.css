@@ -175,7 +175,6 @@ a {
   font-size: clamp(40px, 5vw, 56px);
   font-weight: 600;
   line-height: 1.1;
-  letter-spacing: -0.03em;
   margin-bottom: 20px;
 }
 
@@ -351,7 +350,7 @@ a {
 .demo-stat .stat-num {
   display: block;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 4px;
 }
 
@@ -651,7 +650,7 @@ a {
 
 .map-stat-value {
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -809,7 +808,6 @@ a {
   font-size: 40px;
   font-weight: 600;
   line-height: 1.15;
-  letter-spacing: -0.02em;
   margin-bottom: 20px;
 }
 
@@ -952,7 +950,6 @@ a {
 .section-statement h2 {
   font-size: 40px;
   font-weight: 600;
-  letter-spacing: -0.02em;
   margin-bottom: 16px;
 }
 
@@ -983,7 +980,6 @@ a {
   font-size: clamp(40px, 4.2vw, 56px);
   font-weight: 300;
   line-height: 1.02;
-  letter-spacing: -0.035em;
   margin-bottom: 32px;
 }
 

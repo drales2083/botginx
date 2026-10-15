@@ -51,6 +51,8 @@ export default defineConfig({
 				{
 					label: 'Integrations',
 					items: [
+						{ label: 'cPanel', slug: 'integrations/cpanel' },
+						{ label: 'NameSilo', slug: 'integrations/namesilo' },
 						{ label: 'Telegram Bot', slug: 'integrations/telegram' },
 						{ label: 'Payments', slug: 'integrations/payments' },
 					],

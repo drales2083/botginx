@@ -179,9 +179,11 @@
 
 [data-bs-theme="dark"] .modal-content {
   background: #18181b !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: none !important;
   border-radius: var(--kumo-radius-lg) !important;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 16px 48px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
 
@@ -258,9 +260,11 @@
 
 [data-bs-theme="dark"] .dropdown-menu {
   background: #18181b !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: none !important;
   border-radius: var(--kumo-radius-md) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.4);
   padding: 0.5rem;
 }
 

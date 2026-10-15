@@ -23,11 +23,13 @@ var migrationsFS embed.FS
 
 type Module struct {
 	*module.BaseModule
-	service       *services.DomainService
-	cpanelService *services.CpanelService
-	handler       *handlers.Handler
-	cpanelHandler *handlers.CpanelHandler
-	background    *services.BackgroundVerifier
+	service         *services.DomainService
+	cpanelService   *services.CpanelService
+	namesiloService *services.NameSiloService
+	handler         *handlers.Handler
+	cpanelHandler   *handlers.CpanelHandler
+	namesiloHandler *handlers.NameSiloHandler
+	background      *services.BackgroundVerifier
 }
 
 func New() *Module {
@@ -45,8 +47,10 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 	m.service = services.NewDomainService(deps.DB)
 	m.cpanelService = services.NewCpanelService(deps.DB)
+	m.namesiloService = services.NewNameSiloService(deps.DB)
 	m.handler = handlers.NewHandler(m.service, m.cpanelService, deps.Templates, adminlog.NewLogger(deps.DB))
 	m.cpanelHandler = handlers.NewCpanelHandler(m.cpanelService)
+	m.namesiloHandler = handlers.NewNameSiloHandler(m.namesiloService, deps.Templates)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -101,6 +105,21 @@ func (m *Module) Routes() chi.Router {
 		r.Delete("/api/{id}", m.handler.APIDeleteCpanelConnection)
 		r.Post("/api/{id}/test", m.cpanelHandler.TestConnection)
 		r.Get("/api/{id}/domains", m.cpanelHandler.ListDomains)
+	})
+
+	// NameSilo integration (pages and API)
+	r.Route("/namesilo", func(r chi.Router) {
+		// Pages
+		r.Get("/", m.namesiloHandler.Page) // Main NameSilo page
+
+		// API
+		r.Post("/api/connect", m.namesiloHandler.Connect)
+		r.Post("/api/disconnect", m.namesiloHandler.Disconnect)
+		r.Get("/api/domains", m.namesiloHandler.ListDomains)
+		r.Post("/api/import", m.namesiloHandler.Import)
+		r.Post("/api/dns/{domain}", m.namesiloHandler.SetupDNS)
+		r.Get("/api/dns/{domain}", m.namesiloHandler.GetDNSRecords)
+		r.Post("/api/reconfigure", m.namesiloHandler.Reconfigure) // Update all domains with current IP
 	})
 
 	r.Get("/{id}", m.handler.Show)
@@ -177,6 +196,9 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 		r.Post("/{id}/acme-dns/register", m.handler.APIRegisterAcmeDNS)
 		r.Post("/{id}/acme-dns/verify", m.handler.APICheckAcmeCname)
 		r.Post("/{id}/ssl/acme-dns", m.handler.APIGenerateSSLAcmeDNS)
+
+		// NameSilo admin operations
+		r.Post("/namesilo/reconfigure-all", m.namesiloHandler.AdminReconfigureAll)
 	})
 
 	return r
@@ -194,6 +216,22 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Icon:    "bi-globe",
 			Path:    "/user/domains",
 			Order:   35,
+			Section: module.MenuSectionUser,
+			Group:   "Infrastructure",
+		},
+		{
+			Title:   "cPanel",
+			Icon:    "bi-hdd-rack",
+			Path:    "/user/domains/cpanel",
+			Order:   36,
+			Section: module.MenuSectionUser,
+			Group:   "Infrastructure",
+		},
+		{
+			Title:   "NameSilo",
+			Icon:    "bi-box",
+			Path:    "/user/domains/namesilo",
+			Order:   37,
 			Section: module.MenuSectionUser,
 			Group:   "Infrastructure",
 		},

@@ -27,6 +27,7 @@
   "menu.my_domains": "Мои домены",
   "menu.add_domain": "Добавить домен",
   "menu.connect_cpanel": "Подключить cPanel",
+  "menu.connect_namesilo": "Подключить NameSilo",
   "menu.domain_store": "Магазин доменов",
   "menu.domain_health": "Состояние доменов",
   "menu.metrics": "Метрики",
