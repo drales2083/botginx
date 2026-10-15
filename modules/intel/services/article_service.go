@@ -79,7 +79,7 @@ func (s *ArticleService) List(opts ListOptions) (*ListResult, error) {
 	s.db.Get(&total, countQuery, args...)
 
 	query := fmt.Sprintf(`
-		SELECT a.*, c.name as category_name, c.slug as category_slug
+		SELECT a.*, COALESCE(c.name, '') as category_name, COALESCE(c.slug, '') as category_slug
 		FROM intel_articles a
 		LEFT JOIN intel_categories c ON c.id = a.category_id
 		WHERE %s
@@ -104,7 +104,7 @@ func (s *ArticleService) List(opts ListOptions) (*ListResult, error) {
 func (s *ArticleService) GetBySlug(slugStr string) (*models.ArticleWithTags, error) {
 	var article models.Article
 	err := s.db.Get(&article, `
-		SELECT a.*, c.name as category_name, c.slug as category_slug
+		SELECT a.*, COALESCE(c.name, '') as category_name, COALESCE(c.slug, '') as category_slug
 		FROM intel_articles a
 		LEFT JOIN intel_categories c ON c.id = a.category_id
 		WHERE a.slug = $1
@@ -120,7 +120,7 @@ func (s *ArticleService) GetBySlug(slugStr string) (*models.ArticleWithTags, err
 func (s *ArticleService) GetByID(id string) (*models.ArticleWithTags, error) {
 	var article models.Article
 	err := s.db.Get(&article, `
-		SELECT a.*, c.name as category_name, c.slug as category_slug
+		SELECT a.*, COALESCE(c.name, '') as category_name, COALESCE(c.slug, '') as category_slug
 		FROM intel_articles a
 		LEFT JOIN intel_categories c ON c.id = a.category_id
 		WHERE a.id = $1
@@ -225,7 +225,7 @@ func (s *ArticleService) Delete(id string) error {
 func (s *ArticleService) GetLatest(limit int) ([]models.Article, error) {
 	var articles []models.Article
 	err := s.db.Select(&articles, `
-		SELECT a.*, c.name as category_name, c.slug as category_slug
+		SELECT a.*, COALESCE(c.name, '') as category_name, COALESCE(c.slug, '') as category_slug
 		FROM intel_articles a
 		LEFT JOIN intel_categories c ON c.id = a.category_id
 		WHERE a.status = 'published'
@@ -238,7 +238,7 @@ func (s *ArticleService) GetLatest(limit int) ([]models.Article, error) {
 func (s *ArticleService) GetRelated(articleID, categoryID string, limit int) ([]models.Article, error) {
 	var articles []models.Article
 	err := s.db.Select(&articles, `
-		SELECT a.*, c.name as category_name, c.slug as category_slug
+		SELECT a.*, COALESCE(c.name, '') as category_name, COALESCE(c.slug, '') as category_slug
 		FROM intel_articles a
 		LEFT JOIN intel_categories c ON c.id = a.category_id
 		WHERE a.status = 'published' AND a.id != $1 AND a.category_id = $2
