@@ -278,17 +278,18 @@ func (h *NameSiloHandler) GenerateSSL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Start SSL generation in background (takes ~10-12 minutes)
+	// Start SSL generation in background
+	// Uses slow method (300s DNS propagation wait) as fallback
 	go func() {
 		bgCtx := context.Background()
-		if err := h.namesiloService.GenerateWildcardSSL(bgCtx, userID, domain); err != nil {
+		if err := h.namesiloService.GenerateWildcardSSLSlow(bgCtx, userID, domain); err != nil {
 			// Log error - we can't return it since this is async
 			println("[NameSilo] SSL generation failed for", domain, ":", err.Error())
 		}
 	}()
 
 	h.jsonSuccess(w, map[string]interface{}{
-		"message": "Wildcard SSL generation started. This takes ~10-12 minutes due to DNS propagation.",
+		"message": "Wildcard SSL generation started. This may take up to 10 minutes due to DNS propagation.",
 		"domain":  domain,
 	})
 }

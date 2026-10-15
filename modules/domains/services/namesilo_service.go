@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/botginx/botginx/modules/domains/models"
+	"github.com/botginx/botginx/pkg/acmedns"
 	"github.com/botginx/botginx/pkg/providers/namesilo"
 	"github.com/botginx/botginx/pkg/sshexec"
 	"github.com/jmoiron/sqlx"
@@ -265,18 +266,48 @@ func (s *NameSiloService) ImportDomain(ctx context.Context, userID string, input
 					UPDATE domains SET dns_auto_configured = true WHERE id = $1
 				`, domainID)
 
-				// Generate wildcard SSL in background (takes ~7 minutes due to DNS propagation)
-				go func(uid, domain, domID string) {
-					log.Printf("[NameSilo] Starting background wildcard SSL generation for %s", domain)
+				// Setup acme-dns for instant wildcard SSL (no DNS propagation delay)
+				go func(uid, domain, domID string, nsClient *namesilo.Client) {
+					log.Printf("[NameSilo] Setting up acme-dns for %s", domain)
 					bgCtx := context.Background()
-					if err := s.GenerateWildcardSSL(bgCtx, uid, domain); err != nil {
-						log.Printf("[NameSilo] Wildcard SSL failed for %s: %v", domain, err)
+
+					// Step 1: Register with acme-dns on Deploy VPS
+					acmeReg, err := s.registerWithAcmeDNS(domID)
+					if err != nil {
+						log.Printf("[NameSilo] acme-dns registration failed for %s: %v, falling back to slow method", domain, err)
+						// Fallback to slow method
+						if err := s.GenerateWildcardSSLSlow(bgCtx, uid, domain); err != nil {
+							log.Printf("[NameSilo] Slow SSL also failed for %s: %v", domain, err)
+							s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+						} else {
+							s.db.Exec(`UPDATE domains SET ssl_enabled = true, ssl_error = NULL WHERE id = $1`, domID)
+						}
+						return
+					}
+
+					// Step 2: Add CNAME via NameSilo API
+					_, cnameErr := nsClient.AddAcmeDNSCname(bgCtx, domain, acmeReg.Fulldomain)
+					if cnameErr != nil {
+						log.Printf("[NameSilo] CNAME setup failed for %s: %v", domain, cnameErr)
+						s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`,
+							"acme-dns CNAME failed: "+cnameErr.Error(), domID)
+						return
+					}
+
+					// Step 3: Wait for CNAME propagation (shorter than TXT - usually 60-120s)
+					log.Printf("[NameSilo] Waiting 90s for CNAME propagation for %s", domain)
+					time.Sleep(90 * time.Second)
+
+					// Step 4: Generate SSL using acme-dns (instant TXT updates)
+					log.Printf("[NameSilo] Generating wildcard SSL via acme-dns for %s", domain)
+					if err := s.GenerateWildcardSSLWithAcmeDNS(domain, acmeReg.Subdomain, acmeReg.Username, acmeReg.Password); err != nil {
+						log.Printf("[NameSilo] acme-dns SSL failed for %s: %v", domain, err)
 						s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
 					} else {
 						log.Printf("[NameSilo] Wildcard SSL completed for %s", domain)
-						s.db.Exec(`UPDATE domains SET ssl_enabled = true, ssl_error = NULL WHERE id = $1`, domID)
+						s.db.Exec(`UPDATE domains SET ssl_enabled = true, ssl_error = NULL, acme_cname_verified = true WHERE id = $1`, domID)
 					}
-				}(userID, input.Domain, domainID)
+				}(userID, input.Domain, domainID, client)
 			}
 		}
 	}
@@ -608,9 +639,214 @@ func generateID(length int) string {
 	return string(b)
 }
 
-// GenerateWildcardSSL generates a wildcard SSL certificate using NameSilo DNS for DNS-01 challenge
-// This runs certbot with hooks that call NameSilo API directly via curl on the deploy server
-func (s *NameSiloService) GenerateWildcardSSL(ctx context.Context, userID, domainName string) error {
+// registerWithAcmeDNS registers a domain with acme-dns on the Deploy VPS
+// Returns the registration info to store in the domain record
+func (s *NameSiloService) registerWithAcmeDNS(domainID string) (*acmedns.Registration, error) {
+	// Get Deploy VPS credentials
+	var server struct {
+		IP       string `db:"ip"`
+		Port     int    `db:"port"`
+		User     string `db:"ssh_user"`
+		Password string `db:"ssh_password"`
+	}
+	err := s.db.Get(&server, `
+		SELECT ip, COALESCE(port, 22) as port, ssh_user, ssh_password
+		FROM servers WHERE name = 'deploy' OR name LIKE '%deploy%' LIMIT 1
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("no deploy server found: %w", err)
+	}
+
+	// Connect to acme-dns on Deploy VPS
+	client, err := acmedns.NewClient(server.IP, server.Port, server.User, server.Password)
+	if err != nil {
+		return nil, fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer client.Close()
+
+	// Check if acme-dns is installed
+	if !client.IsInstalled() {
+		acmeDomain := os.Getenv("ACME_DNS_DOMAIN")
+		if acmeDomain == "" {
+			return nil, fmt.Errorf("ACME_DNS_DOMAIN not set and acme-dns not installed")
+		}
+		if err := client.Setup(acmeDomain); err != nil {
+			return nil, fmt.Errorf("acme-dns setup failed: %w", err)
+		}
+	}
+
+	// Register new subdomain
+	reg, err := client.Register()
+	if err != nil {
+		return nil, fmt.Errorf("acme-dns registration failed: %w", err)
+	}
+
+	// Store registration in database
+	_, err = s.db.Exec(`
+		UPDATE domains SET
+			acme_subdomain = $1,
+			acme_username = $2,
+			acme_password = $3,
+			acme_fulldomain = $4,
+			updated_at = NOW()
+		WHERE id = $5
+	`, reg.Subdomain, reg.Username, reg.Password, reg.Fulldomain, domainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store acme-dns credentials: %w", err)
+	}
+
+	return reg, nil
+}
+
+// GenerateWildcardSSLWithAcmeDNS generates wildcard SSL using acme-dns CNAME delegation
+// This is instant - no waiting for DNS propagation since we control the TXT record
+func (s *NameSiloService) GenerateWildcardSSLWithAcmeDNS(domain, acmeSubdomain, acmeUsername, acmePassword string) error {
+	// Get Deploy VPS credentials
+	var server struct {
+		IP       string `db:"ip"`
+		Port     int    `db:"port"`
+		User     string `db:"ssh_user"`
+		Password string `db:"ssh_password"`
+	}
+	err := s.db.Get(&server, `
+		SELECT ip, COALESCE(port, 22) as port, ssh_user, ssh_password
+		FROM servers WHERE name = 'deploy' OR name LIKE '%deploy%' LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("no deploy server found: %w", err)
+	}
+
+	baseDomain := domain
+	if strings.HasPrefix(domain, "*.") {
+		baseDomain = strings.TrimPrefix(domain, "*.")
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	if server.Port == 0 {
+		port = "22"
+	}
+
+	sshClient, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer sshClient.Close()
+
+	// Check if cert already exists
+	checkExisting := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "EXISTS"`, baseDomain)
+	if out, _ := sshClient.Run(checkExisting); strings.Contains(out, "EXISTS") {
+		// Check if it's a wildcard cert
+		checkWildcard := fmt.Sprintf(`openssl x509 -in /etc/letsencrypt/live/%s/cert.pem -noout -text 2>/dev/null | grep -q "DNS:\*\\.%s" && echo "WILDCARD"`, baseDomain, baseDomain)
+		if out, _ := sshClient.Run(checkWildcard); strings.Contains(out, "WILDCARD") {
+			return nil // Already have wildcard cert
+		}
+		// Has cert but not wildcard - will renew with wildcard
+	}
+
+	// Verify acme-dns is running
+	acmeCheck, _ := sshClient.Run("curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8053/health 2>/dev/null || echo '000'")
+	if strings.TrimSpace(acmeCheck) == "000" {
+		return fmt.Errorf("acme-dns service not running")
+	}
+
+	// Create auth hook that updates acme-dns TXT record (instant)
+	authHookScript := fmt.Sprintf(`cat > /tmp/acmedns-auth-hook.sh << 'HOOKEOF'
+#!/bin/bash
+RESPONSE=$(curl -s -w "\n%%{http_code}" -X POST http://127.0.0.1:8053/update \
+    -H "X-Api-User: %s" \
+    -H "X-Api-Key: %s" \
+    -H "Content-Type: application/json" \
+    -d "{\"subdomain\":\"%s\",\"txt\":\"$CERTBOT_VALIDATION\"}")
+
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+if [ "$HTTP_CODE" != "200" ]; then
+    echo "acme-dns update failed: HTTP $HTTP_CODE" >&2
+    exit 1
+fi
+sleep 5
+HOOKEOF
+chmod +x /tmp/acmedns-auth-hook.sh`, acmeUsername, acmePassword, acmeSubdomain)
+	sshClient.Run(authHookScript)
+
+	// Run certbot with DNS-01 challenge
+	certbotCmd := fmt.Sprintf(`
+certbot certonly --manual --preferred-challenges dns \
+  -d "*.%s" -d "%s" \
+  --agree-tos --email admin@%s \
+  --manual-auth-hook /tmp/acmedns-auth-hook.sh \
+  --manual-cleanup-hook "echo cleanup" \
+  --non-interactive --force-renewal 2>&1
+`, baseDomain, baseDomain, baseDomain)
+
+	output, err := sshClient.Run(certbotCmd)
+	if err != nil {
+		if strings.Contains(output, "Certificate not yet due for renewal") {
+			return nil
+		}
+		return fmt.Errorf("SSL generation failed: %s", output)
+	}
+
+	// Check certificate was created
+	checkCmd := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "SUCCESS"`, baseDomain)
+	if out, _ := sshClient.Run(checkCmd); !strings.Contains(out, "SUCCESS") {
+		return fmt.Errorf("certificate not created")
+	}
+
+	// Setup nginx config for the domain
+	if err := s.setupNginxConfig(sshClient, baseDomain); err != nil {
+		log.Printf("[NameSilo] nginx setup warning for %s: %v", baseDomain, err)
+	}
+
+	return nil
+}
+
+// setupNginxConfig creates nginx config for a wildcard domain
+func (s *NameSiloService) setupNginxConfig(sshClient *sshexec.Client, baseDomain string) error {
+	nginxConf := fmt.Sprintf(`server {
+    listen 80;
+    server_name %s *.%s;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name %s *.%s;
+
+    ssl_certificate /etc/letsencrypt/live/%s/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/%s/privkey.pem;
+
+    location / {
+        return 200 'Domain ready';
+        add_header Content-Type text/plain;
+    }
+}`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+
+	configPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", baseDomain)
+	writeCmd := fmt.Sprintf("cat > %s << 'NGINXEOF'\n%s\nNGINXEOF", configPath, nginxConf)
+	if _, err := sshClient.Run(writeCmd); err != nil {
+		return fmt.Errorf("failed to write nginx config: %w", err)
+	}
+
+	// Enable site
+	linkCmd := fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/", configPath)
+	sshClient.Run(linkCmd)
+
+	// Test and reload nginx
+	testOut, err := sshClient.Run("nginx -t 2>&1")
+	if err != nil || strings.Contains(testOut, "failed") {
+		// Disable broken config
+		sshClient.Run(fmt.Sprintf("rm -f /etc/nginx/sites-enabled/%s.conf", baseDomain))
+		return fmt.Errorf("nginx config invalid: %s", testOut)
+	}
+
+	sshClient.Run("systemctl reload nginx")
+	return nil
+}
+
+// GenerateWildcardSSLSlow generates a wildcard SSL certificate using NameSilo DNS for DNS-01 challenge
+// This is the slow fallback method that waits 300s for DNS propagation
+// Prefer GenerateWildcardSSLWithAcmeDNS which is instant
+func (s *NameSiloService) GenerateWildcardSSLSlow(ctx context.Context, userID, domainName string) error {
 	// Get the user's NameSilo API key
 	var encryptedKey string
 	err := s.db.QueryRow(`SELECT namesilo_api_key_encrypted FROM users WHERE id = $1`, userID).Scan(&encryptedKey)

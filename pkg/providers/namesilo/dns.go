@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 )
 
 // DNSRecord represents a DNS record
@@ -288,4 +289,33 @@ func (c *Client) RemoveVerificationTXT(ctx context.Context, domain string) error
 	}
 
 	return nil // Not found, nothing to delete
+}
+
+// AddAcmeDNSCname adds a CNAME record for acme-dns delegation
+// Creates: _acme-challenge.domain.com → fulldomain (e.g., xyz.acme.pamach.xyz)
+// This enables instant wildcard SSL generation via acme-dns
+func (c *Client) AddAcmeDNSCname(ctx context.Context, domain, fulldomain string) (string, error) {
+	// First check if it already exists and delete it
+	records, err := c.ListDNSRecords(ctx, domain)
+	if err == nil {
+		for _, r := range records {
+			if r.Host == "_acme-challenge" {
+				c.DeleteDNSRecord(ctx, domain, r.RecordID)
+			}
+		}
+	}
+
+	// Add CNAME record pointing to acme-dns subdomain
+	// Note: NameSilo requires CNAME value without trailing dot
+	target := fulldomain
+	if strings.HasSuffix(target, ".") {
+		target = strings.TrimSuffix(target, ".")
+	}
+
+	return c.AddDNSRecord(ctx, domain, DNSRecordInput{
+		Type:  "CNAME",
+		Host:  "_acme-challenge",
+		Value: target,
+		TTL:   3600,
+	})
 }
