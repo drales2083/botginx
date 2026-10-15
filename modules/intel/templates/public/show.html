@@ -45,129 +45,101 @@
 {{end}}
 
 {{define "content"}}
-<article class="intel-article">
-    <div class="container py-5">
-        <div class="row">
-            <!-- Main content -->
-            <div class="col-lg-8">
-                <!-- Breadcrumb -->
-                <nav aria-label="breadcrumb" class="mb-4">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="/">Home</a></li>
-                        <li class="breadcrumb-item"><a href="/intel">Intel</a></li>
-                        {{if .Category}}
-                        <li class="breadcrumb-item"><a href="/intel/category/{{.Category.Slug}}">{{.Category.Name}}</a></li>
-                        {{end}}
-                        <li class="breadcrumb-item active" aria-current="page">{{.Article.Title}}</li>
-                    </ol>
-                </nav>
+<article class="intel-article" style="padding:2rem 0;">
 
-                <!-- Article header -->
-                <header class="mb-4">
-                    {{if .Category}}
-                    <span class="badge bg-primary mb-2">{{.Category.Name}}</span>
-                    {{end}}
-                    <h1 class="display-6 fw-bold mb-3">{{.Article.Title}}</h1>
-                    <div class="d-flex align-items-center text-muted mb-4">
-                        <span class="me-3">
-                            <i class="bi bi-person me-1"></i>{{.Article.AuthorName}}
-                        </span>
-                        {{if .PublishedAt}}
-                        <span class="me-3">
-                            <i class="bi bi-calendar me-1"></i>{{.PublishedAt.Format "Jan 2, 2006"}}
-                        </span>
-                        {{end}}
-                        <span>
-                            <i class="bi bi-clock me-1"></i>{{.Article.ReadingTime}} min read
-                        </span>
-                    </div>
-                </header>
-
-                <!-- Cover image -->
-                {{if .CoverImage}}
-                <figure class="mb-4">
-                    <img src="{{.CoverImage}}" class="img-fluid rounded" alt="{{.Article.Title}}">
-                </figure>
-                {{end}}
-
-                <!-- Article content -->
-                <div class="article-content">
-                    {{.Content}}
-                </div>
-
-                <!-- Tags -->
-                {{if .Article.Tags}}
-                <div class="mt-4 pt-4 border-top">
-                    <i class="bi bi-tags me-2"></i>
-                    {{range .Article.Tags}}
-                    <a href="/intel/tag/{{.Slug}}" class="badge bg-secondary text-decoration-none me-1">{{.Name}}</a>
-                    {{end}}
-                </div>
-                {{end}}
-
-                <!-- Social share -->
-                <div class="mt-4 pt-4 border-top">
-                    <span class="text-muted me-2">Share:</span>
-                    <a href="https://twitter.com/intent/tweet?url={{.BaseURL}}/intel/{{.Article.Slug}}&text={{.Article.Title}}" 
-                       target="_blank" class="btn btn-sm btn-outline-primary me-1">
-                        <i class="bi bi-twitter-x"></i>
-                    </a>
-                    <a href="https://www.linkedin.com/shareArticle?mini=true&url={{.BaseURL}}/intel/{{.Article.Slug}}&title={{.Article.Title}}" 
-                       target="_blank" class="btn btn-sm btn-outline-primary me-1">
-                        <i class="bi bi-linkedin"></i>
-                    </a>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="copyLink()">
-                        <i class="bi bi-link-45deg"></i>
-                    </button>
-                </div>
-
-                <!-- Related articles -->
-                {{if .Related}}
-                <div class="mt-5 pt-4 border-top">
-                    <h4 class="mb-4">Related Articles</h4>
-                    <div class="row g-3">
-                        {{range .Related}}
-                        <div class="col-md-4">
-                            <div class="card h-100">
-                                {{if .CoverImage}}
-                                <img src="{{.CoverImage}}" class="card-img-top" alt="{{.Title}}" style="height: 120px; object-fit: cover;">
-                                {{end}}
-                                <div class="card-body">
-                                    <h6 class="card-title">
-                                        <a href="/intel/{{.Slug}}" class="text-decoration-none text-body">{{.Title}}</a>
-                                    </h6>
-                                    <small class="text-muted">{{.ReadingTime}} min read</small>
-                                </div>
-                            </div>
-                        </div>
-                        {{end}}
-                    </div>
-                </div>
-                {{end}}
-            </div>
-
-            <!-- Sidebar with TOC -->
-            <div class="col-lg-4">
-                {{if .TOC}}
-                <div class="sticky-top" style="top: 80px;">
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Contents</h6>
-                        </div>
-                        <div class="card-body">
-                            <nav class="toc">
-                                {{range .TOC}}
-                                <a href="#{{.ID}}" class="d-block text-decoration-none text-muted mb-2 {{if eq .Level 3}}ps-3{{end}}">
-                                    {{.Text}}
-                                </a>
-                                {{end}}
-                            </nav>
-                        </div>
-                    </div>
-                </div>
-                {{end}}
-            </div>
+    <!-- Article header -->
+    <div class="article-header">
+        {{if .Category}}
+        <span class="eyebrow">{{.Category.Name}}</span>
+        {{end}}
+        <h1>{{.Article.Title}}</h1>
+        <div class="meta">
+            <span>{{.Article.AuthorName}}</span>
+            {{if .PublishedAt}}
+            <span style="margin:0 0.5rem;">·</span>
+            <span>{{.PublishedAt.Format "Jan 2, 2006"}}</span>
+            {{end}}
+            <span style="margin:0 0.5rem;">·</span>
+            <span>{{.Article.ReadingTime}} min read</span>
         </div>
+    </div>
+
+    <!-- Cover image -->
+    {{if .CoverImage}}
+    <div class="article-cover">
+        <img src="{{.CoverImage}}" alt="{{.Article.Title}}">
+    </div>
+    {{end}}
+
+    <!-- Two column layout -->
+    <div style="display:grid;grid-template-columns:1fr 280px;gap:3rem;max-width:1100px;margin:0 auto;">
+        <!-- Main content -->
+        <div>
+            <div class="article-content">
+                {{.Content}}
+            </div>
+
+            <!-- Tags -->
+            {{if .Article.Tags}}
+            <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.1);">
+                {{range .Article.Tags}}
+                <a href="/intel/tag/{{.Slug}}" class="tag-badge">{{.Name}}</a>
+                {{end}}
+            </div>
+            {{end}}
+
+            <!-- Social share -->
+            <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:0.75rem;align-items:center;">
+                <span style="color:rgba(255,255,255,0.5);font-size:0.9rem;">Share:</span>
+                <a href="https://twitter.com/intent/tweet?url={{.BaseURL}}/intel/{{.Article.Slug}}&text={{.Article.Title}}"
+                   target="_blank" class="tag-badge" style="display:inline-flex;align-items:center;gap:0.25rem;">
+                    <i class="bi bi-twitter-x"></i>
+                </a>
+                <a href="https://www.linkedin.com/shareArticle?mini=true&url={{.BaseURL}}/intel/{{.Article.Slug}}&title={{.Article.Title}}"
+                   target="_blank" class="tag-badge" style="display:inline-flex;align-items:center;gap:0.25rem;">
+                    <i class="bi bi-linkedin"></i>
+                </a>
+                <button type="button" class="tag-badge" onclick="copyLink()" style="cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.1);">
+                    <i class="bi bi-link-45deg"></i>
+                </button>
+            </div>
+
+            <!-- Related articles -->
+            {{if .Related}}
+            <div style="margin-top:3rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,0.1);">
+                <h4 style="margin-bottom:1.5rem;">Related Articles</h4>
+                <div class="intel-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));">
+                    {{range .Related}}
+                    <a href="/intel/{{.Slug}}" class="intel-card">
+                        {{if .CoverImage}}
+                        <img src="{{.CoverImage}}" alt="{{.Title}}" style="height:120px;">
+                        {{end}}
+                        <div class="intel-card-body">
+                            <h3 style="font-size:0.95rem;">{{.Title}}</h3>
+                            <span class="meta">{{.ReadingTime}} min</span>
+                        </div>
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Sidebar with TOC -->
+        <aside>
+            {{if .TOC}}
+            <div class="toc" style="position:sticky;top:2rem;">
+                <h4>Contents</h4>
+                <ul>
+                    {{range .TOC}}
+                    <li style="{{if eq .Level 3}}padding-left:1rem;{{end}}">
+                        <a href="#{{.ID}}">{{.Text}}</a>
+                    </li>
+                    {{end}}
+                </ul>
+            </div>
+            {{end}}
+        </aside>
     </div>
 </article>
 
@@ -177,7 +149,17 @@ hljs.highlightAll();
 
 function copyLink() {
     navigator.clipboard.writeText(window.location.href);
-    
 }
 </script>
+
+<style>
+@media (max-width: 900px) {
+    .intel-article > div:last-of-type {
+        grid-template-columns: 1fr !important;
+    }
+    .intel-article aside {
+        display: none;
+    }
+}
+</style>
 {{end}}

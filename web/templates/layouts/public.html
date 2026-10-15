@@ -1,6 +1,6 @@
 {{define "public"}}
 <!doctype html>
-<html lang="{{currentLang}}" data-bs-theme="dark" data-lte-primary="danger">
+<html lang="{{currentLang}}" data-bs-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,43 +10,67 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-icon-180x180.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
   <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" crossorigin="anonymous" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
-  <link rel="stylesheet" href="/static/css/adminlte.css" />
-  <link rel="stylesheet" href="/static/css/adminlte-colors.css" />
-  <link rel="stylesheet" href="/static/css/kumo-foundation.css?v={{appBuild}}" />
+  <link rel="stylesheet" href="/static/css/kumo-homepage.css?v={{appBuild}}" />
   <link rel="stylesheet" href="/static/css/intel.css?v={{appBuild}}" />
 </head>
 <body>
-  <nav class="navbar navbar-expand border-bottom border-secondary">
-    <div class="container">
-      <a href="/" class="navbar-brand"><img src="/static/img/logo.svg" alt="{{appName}}" height="28"></a>
-      <ul class="navbar-nav ms-auto align-items-center">
-        <li class="nav-item"><a class="nav-link" href="/intel">Intel</a></li>
-        <li class="nav-item">
-          {{if .User}}<a class="btn btn-sm btn-danger" href="/user/dashboard">Dashboard</a>
-          {{else}}<a class="btn btn-sm btn-danger" href="/auth/signup">Get Started</a>{{end}}
-        </li>
-      </ul>
-    </div>
-  </nav>
 
-  <main>
-    {{template "content" .}}
-  </main>
+  <!-- Rails wrapper - same as homepage -->
+  <div class="rails">
+    <div class="rails-inner">
 
-  <footer class="border-top border-secondary py-4 mt-5">
-    <div class="container d-flex flex-wrap justify-content-between gap-2 small text-muted">
-      <span>&copy; {{currentYear}} {{appName}}</span>
-      <span class="d-flex gap-3">
-        <a href="/intel" class="text-muted">Intel</a>
-        <a href="/privacy" class="text-muted">Privacy Policy</a>
-        <a href="/terms" class="text-muted">Terms of Use</a>
-        <a href="/cookies" class="text-muted">Cookies</a>
-      </span>
+      <!-- Header - identical to homepage -->
+      <header class="section section-header">
+        <div class="section-inner header-content">
+          <a href="/" class="logo">
+            <img src="/static/img/logo.svg" alt="{{appName}}" height="28">
+          </a>
+          <nav style="display:flex;align-items:center;gap:1.25rem;">
+            <a href="/intel" class="nav-link-intel" style="color:inherit;text-decoration:none;">Intel</a>
+            {{if .User}}
+            <a href="/user/dashboard" class="btn-pill">Dashboard</a>
+            {{else}}
+            <a href="/auth/signup" class="btn-pill">Get Started</a>
+            {{end}}
+          </nav>
+        </div>
+      </header>
+
     </div>
-  </footer>
+  </div>
+  <div class="line-full"></div>
+
+  <div class="rails">
+    <div class="rails-inner">
+      <main class="section">
+        <div class="section-inner">
+          {{template "content" .}}
+        </div>
+      </main>
+
+      <div class="line"></div>
+
+      <!-- Footer - identical to homepage -->
+      <footer class="section section-footer">
+        <div class="section-inner footer-content">
+          <span class="copyright">&copy; {{currentYear}} {{appName}}</span>
+          <div class="footer-links">
+            <a href="https://docs.guardbot.sbs" target="_blank">Documentation</a>
+            <a href="/intel">Intel</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Use</a>
+            <a href="/cookies" class="privacy-choices"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 14" aria-hidden="true" class="privacy-icon"><path fill-rule="evenodd" clip-rule="evenodd" fill="#fff" d="M7.4 12.8h6.8l3.1-11.6H7.4C4.2 1.2 1.6 3.8 1.6 7s2.6 5.8 5.8 5.8z"></path><path fill-rule="evenodd" clip-rule="evenodd" fill="#06f" d="M22.6 0H7.4C3.5 0 .4 3.1.4 7s3.1 7 7 7h15.2c3.9 0 7-3.1 7-7s-3.1-7-7-7zM1.6 7c0-3.2 2.6-5.8 5.8-5.8h9.9l-3.1 11.6H7.4C4.2 12.8 1.6 10.2 1.6 7z"></path><path fill="#fff" d="M24.6 4c.2.2.2.6 0 .8L22.5 7l2.2 2.2c.2.2.2.6 0 .8-.2.2-.6.2-.8 0l-2.2-2.2L19.5 10c-.2.2-.6.2-.8 0-.2-.2-.2-.6 0-.8L20.8 7l-2.2-2.2c-.2-.2-.2-.6 0-.8.2-.2.6-.2.8 0l2.2 2.2L23.8 4c.2-.2.6-.2.8 0z"></path><path fill="#06f" d="M12.7 4.1c.2.2.3.6.1.8L8.6 9.8c-.1.1-.2.2-.3.2-.2.1-.5.1-.7-.1L5.4 7.7c-.2-.2-.2-.6 0-.8.2-.2.6-.2.8 0L8 8.6l3.8-4.5c.2-.2.6-.2.9 0z"></path></svg> Your privacy choices</a>
+            <a href="/user/support">Support</a>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
 </body>
 </html>
 {{end}}
