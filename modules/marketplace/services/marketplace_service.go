@@ -152,7 +152,7 @@ func (s *MarketplaceService) UpdateListing(domainID string, input models.UpdateL
 		argNum++
 	}
 	if input.DomainType != nil {
-		if *input.DomainType != models.TypeBrandNew && *input.DomainType != models.TypeCpanel && *input.DomainType != models.TypeHacked {
+		if *input.DomainType != models.TypeBrandNew && *input.DomainType != models.TypeCpanel && *input.DomainType != models.TypeHacked && *input.DomainType != models.TypeOld {
 			return errors.New("invalid domain type")
 		}
 		updates = append(updates, fmt.Sprintf("marketplace_type = $%d", argNum))
