@@ -114,6 +114,8 @@
   </script>
 </head>
 <body class="layout-fixed sidebar-mini sidebar-without-hover bg-body-tertiary">
+  <!-- Mobile sidebar backdrop -->
+  <div class="sidebar-backdrop" onclick="closeSidebar()"></div>
   <div class="app-wrapper">
     <!-- Header -->
     <nav class="app-header navbar navbar-expand bg-dark" data-bs-theme="dark">
@@ -385,14 +387,29 @@
   <script src="/static/js/adminlte.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/umd/simple-datatables.min.js"></script>
   <script>
-    // Sidebar state persistence
+    // Sidebar state persistence and mobile handling
     (function() {
       const STORAGE_KEY = 'sidebar-collapsed';
+      const MOBILE_BREAKPOINT = 992;
 
-      // Apply saved state from head script marker
-      if (document.documentElement.dataset.sidebarCollapsed === 'true') {
+      function isMobile() {
+        return window.innerWidth < MOBILE_BREAKPOINT;
+      }
+
+      // Apply saved state from head script marker (desktop only)
+      if (!isMobile() && document.documentElement.dataset.sidebarCollapsed === 'true') {
         document.body.classList.add('sidebar-collapse');
       }
+
+      // On mobile, always start collapsed
+      if (isMobile()) {
+        document.body.classList.add('sidebar-collapse');
+      }
+
+      // Close sidebar function for backdrop clicks
+      window.closeSidebar = function() {
+        document.body.classList.add('sidebar-collapse');
+      };
 
       // Override sidebar toggle behavior
       document.addEventListener('DOMContentLoaded', function() {
@@ -408,9 +425,35 @@
         toggleBtn.addEventListener('click', function(e) {
           e.preventDefault();
           const isCollapsed = document.body.classList.toggle('sidebar-collapse');
-          try {
-            localStorage.setItem(STORAGE_KEY, isCollapsed ? 'true' : 'false');
-          } catch (e) {}
+
+          // Only persist state on desktop
+          if (!isMobile()) {
+            try {
+              localStorage.setItem(STORAGE_KEY, isCollapsed ? 'true' : 'false');
+            } catch (e) {}
+          }
+        });
+
+        // Handle resize: ensure mobile starts collapsed, desktop uses saved state
+        let lastWidth = window.innerWidth;
+        window.addEventListener('resize', function() {
+          const nowMobile = isMobile();
+          const wasMobile = lastWidth < MOBILE_BREAKPOINT;
+
+          if (nowMobile && !wasMobile) {
+            // Switched to mobile: collapse
+            document.body.classList.add('sidebar-collapse');
+          } else if (!nowMobile && wasMobile) {
+            // Switched to desktop: restore saved state
+            try {
+              if (localStorage.getItem(STORAGE_KEY) === 'true') {
+                document.body.classList.add('sidebar-collapse');
+              } else {
+                document.body.classList.remove('sidebar-collapse');
+              }
+            } catch (e) {}
+          }
+          lastWidth = window.innerWidth;
         });
       });
     })();

@@ -13,6 +13,74 @@
   border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
+/* ==========================================================================
+   MOBILE SIDEBAR - Full overlay, no mini version
+   ========================================================================== */
+
+@media (max-width: 991.98px) {
+  /* Sidebar as full overlay on mobile */
+  .app-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    height: 100vh !important;
+    z-index: 1040;
+    transform: translateX(0);
+    transition: transform 0.3s ease-in-out !important;
+  }
+
+  /* When collapsed, slide completely off screen */
+  .sidebar-collapse .app-sidebar {
+    transform: translateX(-100%) !important;
+  }
+
+  /* Remove mini sidebar behavior on mobile */
+  .sidebar-collapse .app-sidebar .logo-xl,
+  .sidebar-collapse .app-sidebar .nav-link p,
+  .sidebar-collapse .app-sidebar .brand-text,
+  .sidebar-collapse .app-sidebar .nav-header {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: auto !important;
+  }
+
+  .sidebar-collapse .app-sidebar .logo-xs {
+    display: none !important;
+  }
+
+  /* Main content fills screen on mobile */
+  .app-main {
+    margin-left: 0 !important;
+    transition: none !important;
+  }
+
+  /* Backdrop when sidebar is open */
+  .sidebar-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1039;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+
+  body:not(.sidebar-collapse) .sidebar-backdrop {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Ensure sidebar is full width on mobile */
+  .app-sidebar {
+    width: var(--lte-sidebar-width, 280px) !important;
+    min-width: var(--lte-sidebar-width, 280px) !important;
+  }
+}
+
 [data-bs-theme="dark"] .sidebar-brand {
   padding: 1.25rem 1rem;
   border-bottom: 1px solid var(--kumo-glass-border) !important;
