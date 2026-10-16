@@ -17,6 +17,7 @@ import (
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/domainstats"
 	"github.com/botginx/botginx/pkg/protection"
+	"github.com/botginx/botginx/pkg/status"
 	"github.com/botginx/botginx/pkg/subscription"
 )
 
@@ -162,6 +163,19 @@ func defaultFuncs() template.FuncMap {
 				return strings.TrimSuffix(fmt.Sprintf("%.1fK", k), ".0K")
 			}
 			return fmt.Sprintf("%d", int64(v))
+		},
+		// Status display helpers
+		"statusColor": func(s string) string {
+			return status.SetupStep(s).Color()
+		},
+		"statusLabel": func(s string) string {
+			return status.SetupStep(s).Label()
+		},
+		"statusIcon": func(s string) string {
+			return status.SetupStep(s).Icon()
+		},
+		"setupTypeLabel": func(s string) string {
+			return status.SetupType(s).Label()
 		},
 	}
 }
