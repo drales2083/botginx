@@ -1,20 +1,23 @@
 package models
 
-import "time"
+import (
+	"time"
 
-// SetupType indicates how the domain DNS is managed
-const (
-	SetupTypeDirect   = "direct"   // A record points to our server
-	SetupTypeExternal = "external" // cPanel/Cloudflare/other external DNS
+	"github.com/botginx/botginx/pkg/status"
 )
 
-// SetupStep tracks the external domain setup wizard progress
+// Re-export status constants for backwards compatibility
 const (
-	SetupStepPending       = "pending"        // Just created, detecting type
-	SetupStepDNSWaiting    = "dns_waiting"    // Waiting for user to add DNS records
-	SetupStepSSLWaiting    = "ssl_waiting"    // Waiting for user to add ACME TXT record
-	SetupStepSSLGenerating = "ssl_generating" // DNS verified, generating SSL
-	SetupStepComplete      = "complete"       // Fully set up
+	SetupTypeDirect   = string(status.SetupTypeDirect)
+	SetupTypeExternal = string(status.SetupTypeExternal)
+)
+
+const (
+	SetupStepPending       = string(status.SetupStepPending)
+	SetupStepDNSWaiting    = string(status.SetupStepDNSWaiting)
+	SetupStepSSLWaiting    = string(status.SetupStepSSLWaiting)
+	SetupStepSSLGenerating = string(status.SetupStepSSLGenerating)
+	SetupStepComplete      = string(status.SetupStepComplete)
 )
 
 type Domain struct {
