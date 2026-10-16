@@ -256,7 +256,6 @@ func (h *Handler) APIReply(w http.ResponseWriter, r *http.Request) {
 	// Update ticket status to open (user replied)
 	h.db.Exec(`UPDATE support_tickets SET status = 'open', updated_at = NOW() WHERE id = $1`, ticketID)
 
-	// TODO: Send Telegram notification to admin
 	h.notifyAdminReply(ticketID, userID, input.Message)
 
 	h.jsonOK(w, map[string]interface{}{"success": true})
