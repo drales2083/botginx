@@ -72,9 +72,9 @@
     {{end}}
 
     <!-- Two column layout -->
-    <div style="display:grid;grid-template-columns:1fr 280px;gap:3rem;max-width:1100px;margin:0 auto;">
+    <div class="article-layout">
         <!-- Main content -->
-        <div>
+        <div class="article-main">
             <div class="article-content">
                 {{.Content}}
             </div>
@@ -126,9 +126,9 @@
         </div>
 
         <!-- Sidebar with TOC -->
-        <aside>
+        <aside class="article-sidebar">
             {{if .TOC}}
-            <div class="toc" style="position:sticky;top:2rem;">
+            <div class="toc">
                 <h4>Contents</h4>
                 <ul>
                     {{range .TOC}}
@@ -152,14 +152,4 @@ function copyLink() {
 }
 </script>
 
-<style>
-@media (max-width: 900px) {
-    .intel-article > div:last-of-type {
-        grid-template-columns: 1fr !important;
-    }
-    .intel-article aside {
-        display: none;
-    }
-}
-</style>
 {{end}}

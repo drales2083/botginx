@@ -135,16 +135,33 @@
           <a href="/" class="logo">
             <img src="/static/img/logo.svg" alt="{{appName}}" height="28">
           </a>
-          <nav style="display:flex;align-items:center;gap:1.25rem;">
-            <a href="/intel" class="nav-link-intel" style="color:inherit;text-decoration:none;">Intel</a>
+          <nav class="header-nav">
+            <a href="/intel" class="nav-link">Intel</a>
+            <a href="https://docs.guardbot.sbs" class="nav-link" target="_blank">Docs</a>
             {{if .User}}
             <a href="/user/dashboard" class="btn-pill">Dashboard</a>
             {{else}}
             <a href="/auth/signup" class="btn-pill">Get Started</a>
             {{end}}
           </nav>
+          <button class="hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
         </div>
       </header>
+
+      <!-- Mobile menu -->
+      <div class="mobile-menu" id="mobileMenu">
+        <a href="/intel">Intel</a>
+        <a href="https://docs.guardbot.sbs" target="_blank">Documentation</a>
+        {{if .User}}
+        <a href="/user/dashboard" class="btn-pill">Dashboard</a>
+        {{else}}
+        <a href="/auth/signup" class="btn-pill">Get Started</a>
+        {{end}}
+      </div>
 
     </div>
   </div>
@@ -664,6 +681,16 @@
     </div>
   </div>
   <script>
+    // Mobile menu toggle
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const hamburger = document.querySelector('.hamburger');
+      menu.classList.toggle('active');
+      hamburger.classList.toggle('active');
+      document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
+    }
+
+    // Cookie consent
     (function() {
       const banner = document.getElementById('cookieBanner');
       if (!localStorage.getItem('cookieConsent')) {
