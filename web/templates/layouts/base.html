@@ -114,6 +114,18 @@
   </script>
 </head>
 <body class="layout-fixed sidebar-mini sidebar-without-hover bg-body-tertiary">
+  <script>
+    // Apply sidebar-collapse class immediately to prevent flash
+    // This runs synchronously before any rendering
+    (function() {
+      var isMobile = window.innerWidth < 992;
+      if (isMobile) {
+        document.body.classList.add('sidebar-collapse');
+      } else if (document.documentElement.dataset.sidebarCollapsed === 'true') {
+        document.body.classList.add('sidebar-collapse');
+      }
+    })();
+  </script>
   <!-- Mobile sidebar backdrop -->
   <div class="sidebar-backdrop" onclick="closeSidebar()"></div>
   <div class="app-wrapper">
@@ -394,16 +406,6 @@
 
       function isMobile() {
         return window.innerWidth < MOBILE_BREAKPOINT;
-      }
-
-      // Apply saved state from head script marker (desktop only)
-      if (!isMobile() && document.documentElement.dataset.sidebarCollapsed === 'true') {
-        document.body.classList.add('sidebar-collapse');
-      }
-
-      // On mobile, always start collapsed
-      if (isMobile()) {
-        document.body.classList.add('sidebar-collapse');
       }
 
       // Close sidebar function for backdrop clicks
