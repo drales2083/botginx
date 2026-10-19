@@ -1,0 +1,231 @@
+{{define "content"}}
+<div class="row mb-4">
+    <div class="col">
+        <h4><i class="bi bi-ticket-perforated me-2"></i>{{.Title}}</h4>
+    </div>
+    <div class="col-auto">
+        <a href="/admin/promocodes" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle me-2"></i>{{.Error}}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{{end}}
+
+<form method="POST" action="{{if .IsNew}}/admin/promocodes{{else}}/admin/promocodes/{{.Promo.ID}}{{end}}">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Basic Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="code" class="form-label">Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control text-uppercase" id="code" name="code"
+                                   value="{{if .Promo}}{{.Promo.Code}}{{else}}{{if .Input}}{{.Input.Code}}{{end}}{{end}}"
+                                   placeholder="WELCOME20" {{if not .IsNew}}readonly{{end}} required>
+                            <div class="form-text">{{if .IsNew}}Letters and numbers only, auto-uppercased{{else}}Code cannot be changed{{end}}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name"
+                                   value="{{if .Promo}}{{.Promo.Name}}{{else}}{{if .Input}}{{.Input.Name}}{{end}}{{end}}"
+                                   placeholder="Welcome Discount" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="Optional description for internal reference">{{if .Promo}}{{.Promo.Description}}{{else}}{{if .Input}}{{.Input.Description}}{{end}}{{end}}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Discount Settings -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Discount</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Discount Type <span class="text-danger">*</span></label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="discount_type" id="type_percentage"
+                                           value="percentage" {{if or (not .Promo) (eq .Promo.DiscountType "percentage")}}checked{{end}}>
+                                    <label class="form-check-label" for="type_percentage">Percentage</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="discount_type" id="type_fixed"
+                                           value="fixed" {{if and .Promo (eq .Promo.DiscountType "fixed")}}checked{{end}}>
+                                    <label class="form-check-label" for="type_fixed">Fixed Amount</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="discount_value" class="form-label">Value <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text" id="discount-prefix">%</span>
+                                <input type="number" class="form-control" id="discount_value" name="discount_value"
+                                       value="{{if .Promo}}{{printf "%.0f" .Promo.DiscountValue}}{{else}}{{if .Input}}{{.Input.DiscountValue}}{{end}}{{end}}"
+                                       min="0" step="0.01" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Eligibility -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Eligibility</h5>
+                </div>
+                <div class="card-body">
+                    <label for="eligibility" class="form-label">Who can use this code?</label>
+                    <select class="form-select" id="eligibility" name="eligibility">
+                        {{range .EligibilityOptions}}
+                        <option value="{{.Value}}" {{if and $.Promo (eq $.Promo.Eligibility .Value)}}selected{{end}}>{{.Label}}</option>
+                        {{end}}
+                    </select>
+                    <div class="form-text">
+                        <strong>Note:</strong> Reseller clients never see the promo code option.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Limits -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Usage Limits</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="max_uses" class="form-label">Total Uses</label>
+                            <input type="number" class="form-control" id="max_uses" name="max_uses"
+                                   value="{{if and .Promo .Promo.MaxUses}}{{.Promo.MaxUses}}{{end}}"
+                                   min="1" placeholder="Unlimited">
+                            <div class="form-text">Leave empty for unlimited uses</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="max_uses_per_user" class="form-label">Uses Per User</label>
+                            <input type="number" class="form-control" id="max_uses_per_user" name="max_uses_per_user"
+                                   value="{{if and .Promo .Promo.MaxUsesPerUser}}{{.Promo.MaxUsesPerUser}}{{else}}1{{end}}"
+                                   min="1" placeholder="1">
+                            <div class="form-text">How many times one user can use this code</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validity Period -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Validity Period</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="valid_from" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="valid_from" name="valid_from"
+                                   value="{{if and .Promo .Promo.ValidFrom}}{{.Promo.ValidFrom.Format "2006-01-02"}}{{end}}">
+                            <div class="form-text">Leave empty to start immediately</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="valid_until" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="valid_until" name="valid_until"
+                                   value="{{if and .Promo .Promo.ValidUntil}}{{.Promo.ValidUntil.Format "2006-01-02"}}{{end}}">
+                            <div class="form-text">Leave empty for no expiration</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Status & Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active"
+                               {{if or .IsNew (and .Promo .Promo.IsActive)}}checked{{end}}>
+                        <label class="form-check-label" for="is_active">Active</label>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        {{if .IsNew}}
+                        New codes are active by default.
+                        {{else}}
+                        Disable to prevent further use without deleting.
+                        {{end}}
+                    </p>
+                </div>
+            </div>
+
+            {{if and .Promo (not .IsNew)}}
+            <!-- Stats -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Stats</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total Uses</span>
+                        <strong>{{.Promo.CurrentUses}}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Created</span>
+                        <span>{{.Promo.CreatedAt.Format "Jan 2, 2006"}}</span>
+                    </div>
+                    <a href="/admin/promocodes/{{.Promo.ID}}/usage" class="btn btn-outline-primary btn-sm w-100 mt-2">
+                        <i class="bi bi-bar-chart me-1"></i>View Usage History
+                    </a>
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Submit -->
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-check-lg me-1"></i>{{if .IsNew}}Create Promo Code{{else}}Save Changes{{end}}
+                </button>
+                <a href="/admin/promocodes" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const typeRadios = document.querySelectorAll('input[name="discount_type"]');
+    const prefix = document.getElementById('discount-prefix');
+
+    function updatePrefix() {
+        const type = document.querySelector('input[name="discount_type"]:checked').value;
+        prefix.textContent = type === 'percentage' ? '%' : '$';
+    }
+
+    typeRadios.forEach(radio => radio.addEventListener('change', updatePrefix));
+    updatePrefix();
+
+    // Auto-uppercase code input
+    const codeInput = document.getElementById('code');
+    if (codeInput && !codeInput.readOnly) {
+        codeInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+    }
+});
+</script>
+{{end}}

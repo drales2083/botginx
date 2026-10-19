@@ -1,0 +1,140 @@
+{{define "content"}}
+<div class="row mb-4">
+    <div class="col">
+        <h4><i class="bi bi-ticket-perforated me-2"></i>Promo Codes</h4>
+        <p class="text-secondary mb-0">Manage discount codes for subscriptions</p>
+    </div>
+    <div class="col-auto">
+        <a href="/admin/promocodes/new" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Create Code
+        </a>
+    </div>
+</div>
+
+{{if .Promos}}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" data-datatable>
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Discount</th>
+                        <th>Eligibility</th>
+                        <th>Uses</th>
+                        <th>Expires</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Promos}}
+                    <tr>
+                        <td><code class="fs-6">{{.Code}}</code></td>
+                        <td>{{.Name}}</td>
+                        <td>
+                            {{if eq .DiscountType "percentage"}}
+                            <span class="badge bg-info">{{printf "%.0f" .DiscountValue}}% off</span>
+                            {{else}}
+                            <span class="badge bg-success">${{printf "%.2f" .DiscountValue}} off</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            {{if eq .Eligibility "any"}}
+                            <span class="text-muted">Any user</span>
+                            {{else if eq .Eligibility "new_users"}}
+                            <span class="badge bg-primary">New users</span>
+                            {{else if eq .Eligibility "expired_users"}}
+                            <span class="badge bg-warning text-dark">Returning</span>
+                            {{else}}
+                            <span class="badge bg-secondary">No active sub</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            {{if .MaxUses}}
+                            {{.CurrentUses}}/{{.MaxUses}}
+                            {{else}}
+                            {{.CurrentUses}}/∞
+                            {{end}}
+                        </td>
+                        <td>
+                            {{if .ValidUntil}}
+                            {{.ValidUntil.Format "Jan 2, 2006"}}
+                            {{else}}
+                            <span class="text-muted">Never</span>
+                            {{end}}
+                        </td>
+                        <td>
+                            {{if .IsActive}}
+                            <span class="badge bg-success">Active</span>
+                            {{else}}
+                            <span class="badge bg-secondary">Disabled</span>
+                            {{end}}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="/admin/promocodes/{{.ID}}/usage" class="btn btn-outline-primary" title="View Usage">
+                                    <i class="bi bi-bar-chart"></i>
+                                </a>
+                                <a href="/admin/promocodes/{{.ID}}" class="btn btn-outline-primary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-{{if .IsActive}}warning{{else}}success{{end}}"
+                                        onclick="togglePromo('{{.ID}}', {{.IsActive}})" title="{{if .IsActive}}Disable{{else}}Enable{{end}}">
+                                    <i class="bi bi-{{if .IsActive}}pause{{else}}play{{end}}"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger" onclick="deletePromo('{{.ID}}', '{{.Code}}')" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{{else}}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-ticket-perforated display-1 text-muted mb-3"></i>
+        <h5>No Promo Codes</h5>
+        <p class="text-muted mb-3">Create your first promo code to offer discounts on subscriptions.</p>
+        <a href="/admin/promocodes/new" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Create Promo Code
+        </a>
+    </div>
+</div>
+{{end}}
+
+<script>
+async function togglePromo(id, currentStatus) {
+    const action = currentStatus ? 'disable' : 'enable';
+    if (!confirm(`Are you sure you want to ${action} this promo code?`)) return;
+
+    const res = await fetch(`/admin/promocodes/${id}/toggle`, { method: 'POST' });
+    if (res.ok) {
+        showToast(`Promo code ${action}d`, 'success');
+        setTimeout(() => location.reload(), 500);
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || `Failed to ${action}`, 'danger');
+    }
+}
+
+async function deletePromo(id, code) {
+    if (!confirm(`Delete promo code "${code}"? This cannot be undone.`)) return;
+
+    const res = await fetch(`/admin/promocodes/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+        showToast('Promo code deleted', 'success');
+        setTimeout(() => location.reload(), 500);
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to delete', 'danger');
+    }
+}
+</script>
+{{end}}

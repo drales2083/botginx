@@ -1,0 +1,150 @@
+{{define "content"}}
+<div class="row mb-4">
+    <div class="col">
+        <h4><i class="bi bi-bar-chart me-2"></i>{{.Title}}</h4>
+        <p class="text-secondary mb-0">
+            <code class="fs-6 me-2">{{.Promo.Code}}</code>
+            {{if eq .Promo.DiscountType "percentage"}}
+            <span class="badge bg-info">{{printf "%.0f" .Promo.DiscountValue}}% off</span>
+            {{else}}
+            <span class="badge bg-success">${{printf "%.2f" .Promo.DiscountValue}} off</span>
+            {{end}}
+            {{if .Promo.IsActive}}
+            <span class="badge bg-success ms-1">Active</span>
+            {{else}}
+            <span class="badge bg-secondary ms-1">Disabled</span>
+            {{end}}
+        </p>
+    </div>
+    <div class="col-auto">
+        <a href="/admin/promocodes/{{.Promo.ID}}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-pencil me-1"></i>Edit
+        </a>
+        <a href="/admin/promocodes" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0">{{.Stats.TotalUses}}</h3>
+                <small class="text-muted">Total Uses</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0">{{.Stats.UniqueUsers}}</h3>
+                <small class="text-muted">Unique Users</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-success">${{printf "%.2f" .Stats.TotalSaved}}</h3>
+                <small class="text-muted">Total Discounts</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0">${{printf "%.2f" .Stats.AvgDiscount}}</h3>
+                <small class="text-muted">Avg Discount</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Usage Limits -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-4">
+                <strong>Usage</strong>
+                <div class="mt-1">
+                    {{if .Promo.MaxUses}}
+                    {{.Promo.CurrentUses}} / {{.Promo.MaxUses}}
+                    <div class="progress mt-2" style="height: 6px;">
+                        <div class="progress-bar" style="width: {{if .Promo.MaxUses}}{{printf "%.0f" (divf (float64 .Promo.CurrentUses) (float64 .Promo.MaxUses) 100)}}{{else}}0{{end}}%"></div>
+                    </div>
+                    {{else}}
+                    {{.Promo.CurrentUses}} / ∞
+                    {{end}}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <strong>Per User Limit</strong>
+                <div class="mt-1">
+                    {{if .Promo.MaxUsesPerUser}}
+                    {{.Promo.MaxUsesPerUser}} use{{if gt (deref .Promo.MaxUsesPerUser) 1}}s{{end}} per user
+                    {{else}}
+                    Unlimited
+                    {{end}}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <strong>Expires</strong>
+                <div class="mt-1">
+                    {{if .Promo.ValidUntil}}
+                    {{.Promo.ValidUntil.Format "Jan 2, 2006"}}
+                    {{else}}
+                    Never
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Redemption History -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Redemption History</h5>
+    </div>
+    <div class="card-body p-0">
+        {{if .Redemptions}}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" data-datatable>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Original</th>
+                        <th>Discount</th>
+                        <th>Final</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Redemptions}}
+                    <tr>
+                        <td>
+                            <a href="/admin/users/{{.UserID}}" class="text-decoration-none">
+                                {{.UserEmail}}
+                            </a>
+                        </td>
+                        <td>${{printf "%.2f" .OriginalAmount}}</td>
+                        <td class="text-success">-${{printf "%.2f" .DiscountAmount}}</td>
+                        <td><strong>${{printf "%.2f" .FinalAmount}}</strong></td>
+                        <td>{{.RedeemedAt.Format "Jan 2, 2006 15:04"}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="text-center py-5">
+            <i class="bi bi-inbox display-4 text-muted mb-3"></i>
+            <h5>No Redemptions Yet</h5>
+            <p class="text-muted mb-0">This promo code hasn't been used yet.</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}
