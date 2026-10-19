@@ -123,6 +123,12 @@ go test ./...
 | `tracking_pixel_ip_salt` | HMAC salt for hashing client IPs. Required in production; without it, a random salt is generated at startup and IP hashes differ across restarts. |
 | `tracking_pixel_retention_days` | Days to retain open logs before purging (default: 90). |
 
+### Signed URL Verification
+
+| Variable | Description |
+|----------|-------------|
+| `SIGNED_URL_PRIVATE_KEY` | Ed25519 private key (base64) for signing destination URLs. The public key is derived and shown in Bot Settings → Verification. **Never change once deployed** — all existing signed URLs would become invalid. Without it, a random key is generated at startup. |
+
 ### Domain Health
 
 | Variable | Description |

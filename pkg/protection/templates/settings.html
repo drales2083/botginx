@@ -232,6 +232,11 @@
                 <i class="bi bi-diagram-3 me-1"></i>{{t "protection.advanced"}}
             </a>
         </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" data-bs-toggle="tab" href="#prot-tab-verification" role="tab">
+                <i class="bi bi-patch-check me-1"></i>Verification
+            </a>
+        </li>
     </ul>
 
     <div class="tab-content">
@@ -545,9 +550,77 @@
                 <small class="text-muted">{{t "protection.blocked_redirect_desc"}}</small>
             </div>
         </div>
+
+        <!-- Verification Tab -->
+        <div class="tab-pane prot-section" id="prot-tab-verification" role="tabpanel">
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="prot-card">
+                        <div class="prot-card-title">
+                            <h6><i class="bi bi-patch-check text-success me-1"></i>Signed URL Verification</h6>
+                        </div>
+                        <p class="text-muted small mb-3">
+                            When enabled on a redirect link, verified visitors receive a cryptographically signed destination URL.
+                            Your server can verify this signature to confirm the visitor passed bot detection.
+                        </p>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small text-uppercase mb-2">Public Key (Ed25519)</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control font-monospace" id="prot-public-key" readonly value="Loading...">
+                                <button class="btn btn-outline-primary" type="button" onclick="copyPublicKey()">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">This key is the same for all users. Use it to verify signatures in your backend.</small>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-3">
+                            <a href="https://docs.guardbot.sbs/integrations/signed-url-verification" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-book me-1"></i>Documentation
+                            </a>
+                            <a href="https://docs.guardbot.sbs/integrations/verify-signed-urls" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-code-slash me-1"></i>Code Examples
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
+<script>
+// Load public key for verification tab
+fetch('/api/public-key')
+    .then(r => r.json())
+    .then(data => {
+        const el = document.getElementById('prot-public-key');
+        if (el && data.publicKey) el.value = data.publicKey;
+    })
+    .catch(() => {});
+
+function copyPublicKey() {
+    const el = document.getElementById('prot-public-key');
+    if (el) {
+        navigator.clipboard.writeText(el.value);
+        showToast('Public key copied', 'success');
+    }
+}
+
+// Handle URL tab parameter
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab) {
+        const tabEl = document.querySelector(`a[href="#prot-tab-${tab}"]`);
+        if (tabEl) {
+            const bsTab = new bootstrap.Tab(tabEl);
+            bsTab.show();
+        }
+    }
+})();
+</script>
 <script>
 const PROT_TRANSLATIONS = {
     scoreDisabled: '{{t "protection.score_disabled"}}',

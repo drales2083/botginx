@@ -77,6 +77,30 @@
                                 <small class="text-muted">e.g. ?ref=123 or #user@email.com → forwarded to destination</small>
                             </td>
                         </tr>
+                        <tr>
+                            <th>Verification Signature</th>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="appendSignature" {{if .Link.AppendSignature}}checked{{end}}>
+                                    <label class="form-check-label" for="appendSignature">
+                                        Append cryptographic signature to destination URL
+                                    </label>
+                                </div>
+                                <small class="text-muted">
+                                    Verified visitors get a signed URL your server can validate.
+                                    <a href="https://docs.guardbot.sbs/integrations/signed-url-verification" target="_blank">Learn how to verify</a>
+                                </small>
+                                {{if .Link.AppendSignature}}
+                                <div class="mt-2">
+                                    <label class="form-label small text-muted mb-1">Signature expires after</label>
+                                    <div class="input-group input-group-sm" style="max-width: 200px">
+                                        <input type="number" class="form-control" id="signatureExpiry" value="{{.Link.SignatureExpirySeconds}}" min="60" max="86400">
+                                        <span class="input-group-text">seconds</span>
+                                    </div>
+                                </div>
+                                {{end}}
+                            </td>
+                        </tr>
                         {{if eq .Link.Type "REDIRECT"}}
                         <tr>
                             <th>{{t "destinations"}}</th>
@@ -252,6 +276,40 @@ document.getElementById('passParams')?.addEventListener('change', async (e) => {
     } else {
         e.target.checked = !e.target.checked; // revert
         showToast('Failed to update setting', 'danger');
+    }
+});
+
+// Signature toggle
+document.getElementById('appendSignature')?.addEventListener('change', async (e) => {
+    const res = await fetch(`/user/redirectlinks/api/{{.Link.ID}}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appendSignature: e.target.checked })
+    });
+    if (res.ok) {
+        reloadWithToast('Signature setting updated', 'success');
+    } else {
+        e.target.checked = !e.target.checked; // revert
+        showToast('Failed to update setting', 'danger');
+    }
+});
+
+// Signature expiry
+document.getElementById('signatureExpiry')?.addEventListener('change', async (e) => {
+    const val = parseInt(e.target.value) || 300;
+    if (val < 60 || val > 86400) {
+        showToast('Expiry must be between 60 and 86400 seconds', 'warning');
+        return;
+    }
+    const res = await fetch(`/user/redirectlinks/api/{{.Link.ID}}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signatureExpirySeconds: val })
+    });
+    if (res.ok) {
+        showToast('Expiry updated', 'success');
+    } else {
+        showToast('Failed to update expiry', 'danger');
     }
 });
 

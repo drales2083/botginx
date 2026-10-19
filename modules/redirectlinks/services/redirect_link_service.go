@@ -120,22 +120,30 @@ func (s *RedirectLinkService) Create(userID string, input models.CreateRedirectL
 		linkType = models.LinkTypeHTML
 	}
 
+	// Default signature expiry to 300 seconds (5 minutes) if not set
+	sigExpiry := input.SignatureExpirySeconds
+	if sigExpiry <= 0 {
+		sigExpiry = 300
+	}
+
 	link := &models.RedirectLink{
-		ID:                id,
-		UserID:            userID,
-		DomainID:          input.DomainID,
-		Subdomain:         input.Subdomain,
-		Path:              input.Path,
-		Type:              linkType,
-		DestinationURLs:   input.DestinationURLs,
-		AnimationDuration: 1,
-		TurnstileEnabled:  input.TurnstileEnabled,
-		BotProtection:     input.BotProtection,
-		PassParams:        input.PassParams,
-		DeployStatus:      models.DeployStatusPending,
-		IsActive:          true,
-		CreatedAt:         time.Now(),
-		UpdatedAt:         time.Now(),
+		ID:                     id,
+		UserID:                 userID,
+		DomainID:               input.DomainID,
+		Subdomain:              input.Subdomain,
+		Path:                   input.Path,
+		Type:                   linkType,
+		DestinationURLs:        input.DestinationURLs,
+		AnimationDuration:      1,
+		TurnstileEnabled:       input.TurnstileEnabled,
+		BotProtection:          input.BotProtection,
+		PassParams:             input.PassParams,
+		AppendSignature:        input.AppendSignature,
+		SignatureExpirySeconds: sigExpiry,
+		DeployStatus:           models.DeployStatusPending,
+		IsActive:               true,
+		CreatedAt:              time.Now(),
+		UpdatedAt:              time.Now(),
 	}
 
 	if input.HTMLContent != "" {
@@ -146,10 +154,12 @@ func (s *RedirectLinkService) Create(userID string, input models.CreateRedirectL
 		INSERT INTO redirect_links (
 			id, user_id, domain_id, subdomain, path, type, destination_urls, html_content,
 			animation_duration, turnstile_enabled, bot_protection, pass_params,
+			append_signature, signature_expiry_seconds,
 			deploy_status, is_active, created_at, updated_at
 		) VALUES (
 			:id, :user_id, :domain_id, :subdomain, :path, :type, :destination_urls, :html_content,
 			:animation_duration, :turnstile_enabled, :bot_protection, :pass_params,
+			:append_signature, :signature_expiry_seconds,
 			:deploy_status, :is_active, :created_at, :updated_at
 		)
 	`, link)
@@ -185,6 +195,16 @@ func (s *RedirectLinkService) Update(id string, input models.UpdateRedirectLinkI
 	if input.PassParams != nil {
 		updates = append(updates, fmt.Sprintf("pass_params = $%d", argNum))
 		args = append(args, *input.PassParams)
+		argNum++
+	}
+	if input.AppendSignature != nil {
+		updates = append(updates, fmt.Sprintf("append_signature = $%d", argNum))
+		args = append(args, *input.AppendSignature)
+		argNum++
+	}
+	if input.SignatureExpirySeconds != nil {
+		updates = append(updates, fmt.Sprintf("signature_expiry_seconds = $%d", argNum))
+		args = append(args, *input.SignatureExpirySeconds)
 		argNum++
 	}
 

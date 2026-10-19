@@ -39,6 +39,7 @@ import (
 	"github.com/botginx/botginx/modules/marketplace"
 	modulesmgmt "github.com/botginx/botginx/modules/modules"
 	"github.com/botginx/botginx/modules/payments"
+	"github.com/botginx/botginx/modules/promocodes"
 	"github.com/botginx/botginx/modules/qrcodes"
 	qrcodeshandlers "github.com/botginx/botginx/modules/qrcodes/handlers"
 	"github.com/botginx/botginx/modules/redirectlinks"
@@ -298,6 +299,7 @@ func main() {
 	shortenerModule := shortener.New(domainsModule, serversModule)
 	marketplaceModule := marketplace.New()
 	paymentsModule := payments.New()
+	promocodesModule := promocodes.New(nil, nil) // Initialized via Init()
 
 	registry.Register(authModule)
 	registry.Register(dashboard.New())
@@ -327,6 +329,7 @@ func main() {
 	registry.Register(hostingModule)     // Bullet Proof Hosting module
 	registry.Register(marketplaceModule) // Domain marketplace
 	registry.Register(paymentsModule)    // Crypto payments
+	registry.Register(promocodesModule)  // Promo codes for subscriptions
 	registry.Register(help.New())        // Help/FAQ module
 	supportModule := support.New()
 	registry.Register(supportModule) // Support tickets
@@ -484,6 +487,10 @@ func main() {
 	// Called by redirect pages to record visits
 	r.Mount("/api/track", analyticsModule.TrackingRoutes())
 
+	// Public key for signed URL verification (no auth)
+	// GET /api/public-key - returns Ed25519 public key for verifying signed URLs
+	r.Mount("/api/public-key", analyticsModule.PublicKeyRoutes())
+
 	// Payments webhook (no auth, signature verified in handler)
 	// POST /api/payments/webhook/bitgo - BitGo transaction callback
 	r.Mount("/api/payments", paymentsModule.PublicRoutes())
@@ -540,6 +547,9 @@ func main() {
 		// Payments routes: users must be able to deposit even without subscription.
 		// They need money to buy a subscription in the first place.
 		r.Mount("/payments", paymentsModule.Routes())
+
+		// Promo codes: validate codes during subscription purchase
+		r.Mount("/promo", promocodesModule.APIRoutes())
 
 		// Impersonation exit: must be accessible by impersonated user (not admin-only)
 		r.Post("/impersonate/exit", usersModule.Handler().APIExitImpersonation)

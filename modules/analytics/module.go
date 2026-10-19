@@ -136,6 +136,13 @@ func (m *Module) TrackingRoutes() chi.Router {
 	return r
 }
 
+// PublicKeyRoutes returns public routes for signed URL verification
+func (m *Module) PublicKeyRoutes() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/", m.handler.GetPublicKey)
+	return r
+}
+
 func (m *Module) Templates() fs.FS {
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	return tmplFS

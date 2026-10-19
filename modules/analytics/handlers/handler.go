@@ -19,6 +19,7 @@ import (
 	"github.com/botginx/botginx/pkg/geoip"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/settingspush"
+	"github.com/botginx/botginx/pkg/signedurl"
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 )
@@ -686,7 +687,7 @@ func (h *Handler) handleShortLinkCallback(w http.ResponseWriter, r *http.Request
 		// No settings - allow with redirect to first destination
 		h.json(w, http.StatusOK, map[string]interface{}{
 			"block":    false,
-			"redirect": destinations[0],
+			"redirect": h.maybeSignURL(linkID, destinations[0]),
 		})
 		return
 	}
@@ -717,7 +718,8 @@ func (h *Handler) handleShortLinkCallback(w http.ResponseWriter, r *http.Request
 			// Simple random selection
 			dest = destinations[int(time.Now().UnixNano())%len(destinations)]
 		}
-		resp["redirect"] = dest
+		// Sign URL if enabled for this link
+		resp["redirect"] = h.maybeSignURL(linkID, dest)
 	}
 
 	h.json(w, http.StatusOK, resp)
@@ -1555,6 +1557,70 @@ func (h *Handler) APIGetRealtime(w http.ResponseWriter, r *http.Request) {
 }
 
 // Helpers
+
+// signatureSettings holds the signing config for a redirect link
+type signatureSettings struct {
+	AppendSignature        bool `db:"append_signature"`
+	SignatureExpirySeconds int  `db:"signature_expiry_seconds"`
+}
+
+// GetPublicKey returns the Ed25519 public key for signed URL verification
+func (h *Handler) GetPublicKey(w http.ResponseWriter, r *http.Request) {
+	pubKey := signedurl.GetPublicKey()
+	if pubKey == "" {
+		h.jsonError(w, "Signing not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Support multiple formats via query param
+	format := r.URL.Query().Get("format")
+	switch format {
+	case "raw", "base64":
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(pubKey))
+	case "pem":
+		// Ed25519 public key in PEM format
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte("-----BEGIN PUBLIC KEY-----\n"))
+		w.Write([]byte(pubKey))
+		w.Write([]byte("\n-----END PUBLIC KEY-----\n"))
+	default:
+		// JSON (default)
+		h.json(w, http.StatusOK, map[string]interface{}{
+			"publicKey": pubKey,
+			"algorithm": "Ed25519",
+			"encoding":  "base64",
+			"docs":      "https://docs.guardbot.sbs/integrations/signed-url-verification",
+		})
+	}
+}
+
+// maybeSignURL checks if the link has signing enabled and returns a signed URL if so.
+// If signing is disabled or fails, returns the original URL unchanged.
+func (h *Handler) maybeSignURL(linkID, destURL string) string {
+	if h.db == nil || linkID == "" || destURL == "" {
+		return destURL
+	}
+
+	var settings signatureSettings
+	err := h.db.Get(&settings, `
+		SELECT COALESCE(append_signature, false) as append_signature,
+		       COALESCE(signature_expiry_seconds, 300) as signature_expiry_seconds
+		FROM redirect_links WHERE id = $1
+	`, linkID)
+	if err != nil || !settings.AppendSignature {
+		return destURL
+	}
+
+	// Sign the URL
+	signed, err := signedurl.SignURL(destURL, linkID, settings.SignatureExpirySeconds)
+	if err != nil {
+		log.Printf("[signedurl] failed to sign URL for link %s: %v", linkID, err)
+		return destURL
+	}
+
+	return signed
+}
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")

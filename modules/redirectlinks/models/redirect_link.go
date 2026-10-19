@@ -64,8 +64,10 @@ type RedirectLink struct {
 	TurnstileSiteKey   *string      `db:"turnstile_site_key" json:"turnstileSiteKey,omitempty"`
 	TurnstileSecretKey *string      `db:"turnstile_secret_key" json:"-"`
 	BotProtection      bool         `db:"bot_protection" json:"botProtection"`
-	PassParams         bool         `db:"pass_params" json:"passParams"`
-	DeployStatus       DeployStatus `db:"deploy_status" json:"deployStatus"`
+	PassParams             bool         `db:"pass_params" json:"passParams"`
+	AppendSignature        bool         `db:"append_signature" json:"appendSignature"`
+	SignatureExpirySeconds int          `db:"signature_expiry_seconds" json:"signatureExpirySeconds"`
+	DeployStatus           DeployStatus `db:"deploy_status" json:"deployStatus"`
 	DeployError        *string      `db:"deploy_error" json:"deployError,omitempty"`
 	DeployedURL        *string      `db:"deployed_url" json:"deployedUrl,omitempty"`
 	IsActive           bool         `db:"is_active" json:"isActive"`
@@ -97,23 +99,27 @@ func (r *RedirectLink) FullURL() string {
 }
 
 type CreateRedirectLinkInput struct {
-	DomainID         string   `json:"domainId" validate:"required"`
-	Subdomain        string   `json:"subdomain" validate:"required"`
-	Path             string   `json:"path" validate:"required"`
-	Type             string   `json:"type" validate:"required"`
-	DestinationURLs  []string `json:"destinationUrls"`
-	HTMLContent      string   `json:"htmlContent"`
-	TurnstileEnabled bool     `json:"turnstileEnabled"`
-	BotProtection    bool     `json:"botProtection"`
-	PassParams       bool     `json:"passParams"`
+	DomainID               string   `json:"domainId" validate:"required"`
+	Subdomain              string   `json:"subdomain" validate:"required"`
+	Path                   string   `json:"path" validate:"required"`
+	Type                   string   `json:"type" validate:"required"`
+	DestinationURLs        []string `json:"destinationUrls"`
+	HTMLContent            string   `json:"htmlContent"`
+	TurnstileEnabled       bool     `json:"turnstileEnabled"`
+	BotProtection          bool     `json:"botProtection"`
+	PassParams             bool     `json:"passParams"`
+	AppendSignature        bool     `json:"appendSignature"`
+	SignatureExpirySeconds int      `json:"signatureExpirySeconds"`
 }
 
 type UpdateRedirectLinkInput struct {
-	DestinationURLs  []string `json:"destinationUrls"`
-	HTMLContent      string   `json:"htmlContent"`
-	TurnstileEnabled *bool    `json:"turnstileEnabled"`
-	BotProtection    *bool    `json:"botProtection"`
-	PassParams       *bool    `json:"passParams"`
+	DestinationURLs        []string `json:"destinationUrls"`
+	HTMLContent            string   `json:"htmlContent"`
+	TurnstileEnabled       *bool    `json:"turnstileEnabled"`
+	BotProtection          *bool    `json:"botProtection"`
+	PassParams             *bool    `json:"passParams"`
+	AppendSignature        *bool    `json:"appendSignature"`
+	SignatureExpirySeconds *int     `json:"signatureExpirySeconds"`
 }
 
 // Note: Customization types are now in pkg/customizer
