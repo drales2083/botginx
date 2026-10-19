@@ -608,8 +608,8 @@ function copyPublicKey() {
     }
 }
 
-// Handle URL tab parameter
-(function() {
+// Handle URL tab parameter (must wait for DOM and Bootstrap)
+document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
     if (tab) {
@@ -619,7 +619,7 @@ function copyPublicKey() {
             bsTab.show();
         }
     }
-})();
+});
 </script>
 <script>
 const PROT_TRANSLATIONS = {
