@@ -841,8 +841,12 @@ func (h *Handler) APICheckSSL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update SSL status in database - use helper for consistent completion
+	// Update SSL status in database - setup nginx config first, then mark complete
 	if status.Exists && status.IsWildcard {
+		if err := h.verification.SetupDomainNginx(domain.Name); err != nil {
+			log.Printf("[domains] nginx setup failed for %s: %v", domain.Name, err)
+			// Don't fail the request - still return SSL status
+		}
 		h.completeSSLSetup(id)
 	}
 

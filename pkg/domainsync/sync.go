@@ -69,15 +69,21 @@ type SSLGenerator interface {
 	GenerateWildcardSSL(domain Domain, server Server) error
 }
 
+// NginxConfigurer handles nginx config creation
+type NginxConfigurer interface {
+	SetupDomainNginx(domain Domain, server Server) error
+}
+
 // Service handles automatic domain synchronization
 type Service struct {
-	db             *sqlx.DB
-	interval       time.Duration
-	linkRedeployer LinkRedeployer
-	sslGenerator   SSLGenerator
-	mu             sync.Mutex
-	running        bool
-	stopCh         chan struct{}
+	db              *sqlx.DB
+	interval        time.Duration
+	linkRedeployer  LinkRedeployer
+	sslGenerator    SSLGenerator
+	nginxConfigurer NginxConfigurer
+	mu              sync.Mutex
+	running         bool
+	stopCh          chan struct{}
 }
 
 // NewService creates a new domain sync service
@@ -97,6 +103,11 @@ func (s *Service) SetLinkRedeployer(r LinkRedeployer) {
 // SetSSLGenerator sets the SSL generator
 func (s *Service) SetSSLGenerator(g SSLGenerator) {
 	s.sslGenerator = g
+}
+
+// SetNginxConfigurer sets the nginx configurer
+func (s *Service) SetNginxConfigurer(c NginxConfigurer) {
+	s.nginxConfigurer = c
 }
 
 // Start begins the periodic sync loop
@@ -251,6 +262,20 @@ func (s *Service) syncDomain(domain Domain) error {
 
 		// Mark SSL enabled
 		s.db.Exec(`UPDATE domains SET ssl_enabled = TRUE, updated_at = NOW() WHERE id = $1`, domain.ID)
+	}
+
+	// Step 4: Setup nginx config (must happen after SSL exists)
+	if s.nginxConfigurer != nil {
+		if err := s.nginxConfigurer.SetupDomainNginx(domain, *server); err != nil {
+			log.Printf("[DomainSync] nginx setup failed for %s: %v", domain.Name, err)
+			return fmt.Errorf("failed to setup nginx: %w", err)
+		}
+		log.Printf("[DomainSync] nginx config created for %s", domain.Name)
+	} else {
+		// Fallback: create basic nginx config via SSH
+		if err := s.setupNginxConfig(domain, *server); err != nil {
+			log.Printf("[DomainSync] fallback nginx setup failed for %s: %v", domain.Name, err)
+		}
 	}
 
 	// All good - mark active
@@ -798,6 +823,75 @@ func (s *Service) updateSyncStatus(domainID, status, errorMsg string) {
 			WHERE id = $3
 		`, status, errPtr, domainID)
 	}
+}
+
+// setupNginxConfig creates a basic nginx config for the domain via SSH
+func (s *Service) setupNginxConfig(domain Domain, server Server) error {
+	client := ssh.NewClient(ssh.Config{
+		Host:         server.IP,
+		Port:         server.Port,
+		User:         server.SSHUser,
+		Password:     server.Password,
+		TrustOnFirst: true,
+	})
+	defer client.Close()
+
+	if err := client.Connect(); err != nil {
+		return fmt.Errorf("SSH connect failed: %w", err)
+	}
+
+	baseDomain := domain.Name
+	if strings.HasPrefix(baseDomain, "*.") {
+		baseDomain = baseDomain[2:]
+	}
+
+	// Check if config already exists
+	checkCmd := fmt.Sprintf(`test -f /etc/nginx/sites-enabled/%s.conf && echo "exists"`, baseDomain)
+	if result, _ := client.Exec(checkCmd); result != nil && strings.Contains(result.Output, "exists") {
+		return nil // Config already exists
+	}
+
+	// Create nginx config with SSL
+	nginxConfig := fmt.Sprintf(`server {
+    listen 80;
+    listen 443 ssl;
+    server_name %s *.%s;
+
+    ssl_certificate /etc/letsencrypt/live/%s/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/%s/privkey.pem;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/sites/%s;
+        allow all;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+
+	// Create directories
+	mkdirCmd := fmt.Sprintf("mkdir -p /var/www/sites/%s/_root /var/www/sites/%s/_errors", baseDomain, baseDomain)
+	client.Exec(mkdirCmd)
+
+	// Write config
+	configPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", baseDomain)
+	writeCmd := fmt.Sprintf("cat > %s << 'NGINXEOF'\n%s\nNGINXEOF", configPath, nginxConfig)
+	if _, err := client.Exec(writeCmd); err != nil {
+		return fmt.Errorf("failed to write nginx config: %w", err)
+	}
+
+	// Enable and reload
+	enableCmd := fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx", configPath)
+	if _, err := client.Exec(enableCmd); err != nil {
+		return fmt.Errorf("failed to enable nginx config: %w", err)
+	}
+
+	return nil
 }
 
 // containsIP checks if an IP is in a list
