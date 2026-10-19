@@ -22,31 +22,11 @@ https://example.com/landing?ref=abc&_bl=a1b2c3d4e5f6&_bt=1729345678&_bs=MEUCIQDK
 
 ## Public Key
 
-The Ed25519 public key for verifying signatures is available at:
+Copy the Ed25519 public key from [Bot Settings → Verification tab](https://guardbot.sbs/user/antibotcontrol?tab=verification).
 
+The key is the same for all users:
 ```
-GET https://guardbot.sbs/api/public-key
-```
-
-Response formats:
-
-**JSON (default):**
-```json
-{
-  "publicKey": "VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE=",
-  "algorithm": "Ed25519",
-  "encoding": "base64"
-}
-```
-
-**Raw base64:**
-```
-GET https://guardbot.sbs/api/public-key?format=raw
-```
-
-**PEM:**
-```
-GET https://guardbot.sbs/api/public-key?format=pem
+VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE=
 ```
 
 ## Signature Algorithm

@@ -10,18 +10,11 @@ This guide shows you how to verify that incoming traffic passed GuardBot's bot d
 
 ## Get the Public Key
 
-You can find the public key in [Bot Settings → Verification tab](https://guardbot.sbs/user/antibotcontrol?tab=verification), or fetch it via API:
+Copy the public key from [Bot Settings → Verification tab](https://guardbot.sbs/user/antibotcontrol?tab=verification).
 
-```bash
-curl https://guardbot.sbs/api/public-key
+The key is the same for all users:
 ```
-
-```json
-{
-  "publicKey": "Q6ung4zA9qeaPpZUXu6RbKbdm9F03iVIvvnbYcRWwRQ=",
-  "algorithm": "Ed25519",
-  "encoding": "base64"
-}
+VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE=
 ```
 
 ## Verification Code
