@@ -34,7 +34,11 @@
                     {{range .Transactions}}
                     <tr>
                         <td><small class="text-muted">{{.ID}}</small></td>
-                        <td><small>{{.UserID}}</small></td>
+                        <td>
+                            <a href="/admin/users/{{.UserID}}" class="text-decoration-none">
+                                {{if .UserEmail}}{{.UserEmail}}{{else}}<small class="text-muted">{{.UserID}}</small>{{end}}
+                            </a>
+                        </td>
                         <td>
                             {{if eq .Type "deposit"}}
                             <span class="badge bg-success">Deposit</span>

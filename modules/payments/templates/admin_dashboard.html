@@ -143,7 +143,11 @@
                 <tbody>
                     {{range .Transactions}}
                     <tr>
-                        <td><small class="text-muted">{{.UserID}}</small></td>
+                        <td>
+                            <a href="/admin/users/{{.UserID}}" class="text-decoration-none">
+                                {{if .UserEmail}}{{.UserEmail}}{{else}}<small class="text-muted">{{.UserID}}</small>{{end}}
+                            </a>
+                        </td>
                         <td><code>{{printf "%.8f" .Amount}}</code></td>
                         <td><strong class="text-success">${{printf "%.2f" .AmountUSD}}</strong></td>
                         <td>

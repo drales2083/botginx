@@ -27,6 +27,9 @@ type CryptoTransaction struct {
 	Type          string    `db:"type" json:"type"`     // deposit, withdrawal
 	CreatedAt     time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt     time.Time `db:"updated_at" json:"updatedAt"`
+
+	// Joined fields (from users table)
+	UserEmail string `db:"user_email" json:"userEmail,omitempty"`
 }
 
 const (

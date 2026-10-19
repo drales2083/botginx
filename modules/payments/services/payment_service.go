@@ -248,8 +248,10 @@ func (s *PaymentService) GetUserTransactions(userID string, limit int) ([]models
 func (s *PaymentService) GetAllTransactions(limit int) ([]models.CryptoTransaction, error) {
 	var txs []models.CryptoTransaction
 	err := s.db.Select(&txs, `
-		SELECT * FROM crypto_transactions
-		ORDER BY created_at DESC
+		SELECT ct.*, u.email as user_email
+		FROM crypto_transactions ct
+		LEFT JOIN users u ON ct.user_id = u.id
+		ORDER BY ct.created_at DESC
 		LIMIT $1
 	`, limit)
 	return txs, err
