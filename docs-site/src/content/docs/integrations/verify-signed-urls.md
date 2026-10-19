@@ -182,6 +182,61 @@ app.get('/landing', (req, res) => {
 });
 ```
 
+### Browser JavaScript
+
+```javascript
+// Using the Web Crypto API (works in modern browsers)
+async function verifyGuardBotSignature(fullUrl, maxAge = 300) {
+    // GuardBot public key
+    const publicKeyB64 = 'VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE=';
+    
+    // Import public key
+    const publicKeyBytes = Uint8Array.from(atob(publicKeyB64), c => c.charCodeAt(0));
+    const publicKey = await crypto.subtle.importKey(
+        'raw',
+        publicKeyBytes,
+        { name: 'Ed25519' },
+        false,
+        ['verify']
+    );
+    
+    // Parse URL
+    const parsed = new URL(fullUrl);
+    const params = parsed.searchParams;
+    
+    // Extract signature (base64url, no padding)
+    const sigB64 = params.get('_bs');
+    if (!sigB64) return false;
+    
+    // Convert base64url to standard base64 and decode
+    const sigB64Std = sigB64.replace(/-/g, '+').replace(/_/g, '/');
+    const signature = Uint8Array.from(atob(sigB64Std), c => c.charCodeAt(0));
+    
+    // Check expiry
+    const timestamp = parseInt(params.get('_bt') || '0', 10);
+    if (Date.now() / 1000 - timestamp > maxAge) return false;
+    
+    // Rebuild URL without signature
+    params.delete('_bs');
+    params.sort();
+    const urlWithoutSig = `${parsed.origin}${parsed.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+    
+    // Verify
+    const data = new TextEncoder().encode(urlWithoutSig);
+    return await crypto.subtle.verify('Ed25519', publicKey, signature, data);
+}
+
+// Usage
+const url = window.location.href;
+verifyGuardBotSignature(url).then(valid => {
+    if (valid) {
+        // Visitor passed bot detection
+    } else {
+        // Invalid or expired signature
+    }
+});
+```
+
 ### Go
 
 ```go

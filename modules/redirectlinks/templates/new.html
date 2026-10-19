@@ -159,6 +159,16 @@
                         <small class="text-muted">{{t "form.pass_params_desc"}}</small>
                     </div>
 
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="appendSignature" name="appendSignature">
+                            <label class="form-check-label" for="appendSignature">
+                                Verification Signature
+                            </label>
+                        </div>
+                        <small class="text-muted">Append cryptographic signature to destination URL for backend verification. <a href="https://docs.guardbot.sbs/integrations/signed-url-verification" target="_blank">Learn more</a></small>
+                    </div>
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-lg me-1"></i> {{t "create"}}
@@ -357,7 +367,8 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
         // save() is called, so read the editor directly.
         htmlContent: htmlEditor ? htmlEditor.getValue() : form.htmlContent.value,
         botProtection: true, // All pages are always protected
-        passParams: form.passParams.checked
+        passParams: form.passParams.checked,
+        appendSignature: form.appendSignature.checked
     };
 
     if (data.type === 'HTML' && !data.htmlContent.trim()) {
