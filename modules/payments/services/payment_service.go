@@ -191,17 +191,36 @@ func (s *PaymentService) ProcessDeposit(address, txid string, amountCrypto float
 	// Check if ready to credit
 	threshold := s.getConfirmationThreshold()
 	if tx.Status == models.TxStatusPending && confirmations >= threshold {
+		// Atomic update: only confirm if still pending (prevents double-credit race condition)
+		result, err := s.db.Exec(`
+			UPDATE crypto_transactions
+			SET status = $1, updated_at = $2
+			WHERE id = $3 AND status = 'pending'
+		`, models.TxStatusConfirmed, time.Now(), tx.ID)
+
+		if err != nil {
+			log.Printf("[payments] Failed to update transaction status: %v", err)
+			return &tx, err
+		}
+
+		rows, _ := result.RowsAffected()
+		if rows == 0 {
+			// Already confirmed by another webhook - skip credit
+			log.Printf("[payments] Transaction %s already confirmed, skipping duplicate credit", txid)
+			tx.Status = models.TxStatusConfirmed
+			return &tx, nil
+		}
+
 		// Use tx.AmountUSD (stored value) not amountUSD (recalculated) to ensure
 		// user is credited the amount from when deposit was first recorded
 		if err := s.creditUser(wallet.UserID, tx.AmountUSD); err != nil {
 			log.Printf("[payments] Failed to credit user %s: %v", wallet.UserID, err)
+			// Rollback status on credit failure
+			s.db.Exec(`UPDATE crypto_transactions SET status = 'pending' WHERE id = $1`, tx.ID)
 			return &tx, err
 		}
 
 		tx.Status = models.TxStatusConfirmed
-		s.db.Exec(`UPDATE crypto_transactions SET status = $1, updated_at = $2 WHERE id = $3`,
-			models.TxStatusConfirmed, time.Now(), tx.ID)
-
 		log.Printf("[payments] Deposit confirmed: txid=%s user=%s credited=$%.2f", txid, wallet.UserID, tx.AmountUSD)
 	}
 
