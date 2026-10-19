@@ -55,6 +55,13 @@ export default defineConfig({
 						{ label: 'Connect NameSilo', slug: 'integrations/namesilo' },
 						{ label: 'Connect Telegram', slug: 'integrations/telegram' },
 						{ label: 'Add Funds', slug: 'integrations/payments' },
+						{ label: 'Verify Signed URLs', slug: 'integrations/verify-signed-urls' },
+					],
+				},
+				{
+					label: 'Reference',
+					items: [
+						{ label: 'Signed URL Verification', slug: 'integrations/signed-url-verification' },
 					],
 				},
 				{
