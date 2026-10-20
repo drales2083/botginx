@@ -50,13 +50,13 @@ VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE=
 3. Sort remaining query parameters alphabetically by key
 4. Reconstruct the URL: `scheme://host/path?sorted_params`
 5. Compute Ed25519 signature verification using the public key
-6. Check that `_bt` timestamp is within the expiry window
+6. Check that `_bt` timestamp is within the expiry window (default: 300 seconds)
 
 ## Expiry
 
-Signatures are generated when the link is deployed and expire after a configurable period (default: 24 hours). The `_bt` timestamp reflects when the link was last deployed, not when the visitor arrived.
+Signatures expire after a configurable period (default: 300 seconds / 5 minutes). The expiry is checked by comparing the current server time against the `_bt` timestamp.
 
-Configure expiry per-link in the link settings (60 to 86400 seconds). Links should be redeployed before signatures expire to ensure visitors always receive valid signatures.
+Configure expiry per-link in the link settings (60 to 86400 seconds).
 
 ## Error Cases
 
