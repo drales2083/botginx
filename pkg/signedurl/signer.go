@@ -78,6 +78,16 @@ func IsConfigured() bool {
 	return privateKey != nil && keyError == nil
 }
 
+// GetPrivateKeyBase64 returns the private key as base64 for embedding in PHP.
+// Returns empty string if signing is not configured.
+func GetPrivateKeyBase64() string {
+	loadKeys()
+	if privateKey == nil {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(privateKey)
+}
+
 // SignURL appends verification signature to a destination URL
 // Parameters:
 //   - destURL: the destination URL to sign

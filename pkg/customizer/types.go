@@ -66,4 +66,9 @@ type GenerateOptions struct {
 	Mode            string
 	RandomizeSource bool // generate PHP with per-request randomization
 	PassParams      bool // append query params and hash to destination URL
+	// Signing options for verification signatures
+	SigningEnabled bool   // enable Ed25519 signing at redirect time
+	SigningKey     string // base64 encoded Ed25519 private key (64 bytes)
+	LinkID         string // link ID to include in signature
+	SigningExpiry  int    // signature expiry in seconds (default 300)
 }

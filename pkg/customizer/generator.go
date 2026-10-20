@@ -490,6 +490,46 @@ $r = new SourceRandomizer();
 $encoder = new URLEncoder($r);
 `)
 
+	// Add URL signer class if signing is enabled
+	if opts.SigningEnabled && opts.SigningKey != "" {
+		expiry := opts.SigningExpiry
+		if expiry <= 0 {
+			expiry = 300
+		}
+		b.WriteString(fmt.Sprintf(`
+class URLSigner {
+    private $privateKey;
+    private $linkId;
+    private $expiry;
+
+    public function __construct($keyB64, $linkId, $expiry) {
+        $this->privateKey = base64_decode($keyB64);
+        $this->linkId = $linkId;
+        $this->expiry = $expiry;
+    }
+
+    public function sign($url) {
+        $parsed = parse_url($url);
+        $query = [];
+        if (isset($parsed['query'])) {
+            parse_str($parsed['query'], $query);
+        }
+        $query['_bl'] = $this->linkId;
+        $query['_bt'] = (string)time();
+        ksort($query);
+        $newQuery = http_build_query($query);
+        $baseUrl = $parsed['scheme'] . '://' . $parsed['host'];
+        if (isset($parsed['path'])) $baseUrl .= $parsed['path'];
+        $urlToSign = $baseUrl . ($newQuery ? '?' . $newQuery : '');
+        $signature = sodium_crypto_sign_detached($urlToSign, $this->privateKey);
+        $sigB64 = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
+        return $urlToSign . ($newQuery ? '&' : '?') . '_bs=' . $sigB64;
+    }
+}
+$signer = new URLSigner(%q, %q, %d);
+`, opts.SigningKey, opts.LinkID, expiry))
+	}
+
 	// URLs array - ensure at least one URL
 	if len(urls) == 0 {
 		urls = []string{"#"}
@@ -503,6 +543,12 @@ $encoder = new URLEncoder($r);
 	}
 	b.WriteString("];\n")
 	b.WriteString("$destUrl = $urls[array_rand($urls)];\n")
+
+	// Sign URL if signing is enabled
+	if opts.SigningEnabled && opts.SigningKey != "" {
+		b.WriteString("$destUrl = $signer->sign($destUrl);\n")
+	}
+
 	b.WriteString("$encodedScript = $encoder->encode($destUrl);\n")
 	b.WriteString("$urlVar = $r->varName('url');\n")
 	b.WriteString("?>\n")

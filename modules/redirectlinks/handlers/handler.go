@@ -614,26 +614,6 @@ func generateRedirectPHP(link *models.RedirectLink) string {
 		urls = []string{"https://example.com"}
 	}
 
-	// Sign URLs at deploy time if signature is enabled
-	if link.AppendSignature {
-		// Use configured expiry or default to 24 hours for pre-signed URLs
-		expiry := link.SignatureExpirySeconds
-		if expiry <= 0 {
-			expiry = 86400 // 24 hours default for pre-signed
-		}
-		signedURLs := make([]string, len(urls))
-		for i, u := range urls {
-			signed, err := signedurl.SignURL(u, link.ID, expiry)
-			if err != nil {
-				log.Printf("[signedurl] failed to pre-sign URL for link %s: %v", link.ID, err)
-				signedURLs[i] = u // fallback to unsigned
-			} else {
-				signedURLs[i] = signed
-			}
-		}
-		urls = signedURLs
-	}
-
 	// Animation duration in seconds (default 1s)
 	duration := link.AnimationDuration
 	if duration <= 0 {
@@ -643,14 +623,31 @@ func generateRedirectPHP(link *models.RedirectLink) string {
 	// Convert JSONMap to customizer.Customization
 	c := jsonMapToCustomization(link.Customization)
 
-	// Generate PHP with randomization using the customizer package
-	return customizer.GeneratePHP(customizer.GenerateOptions{
+	// Build generate options
+	opts := customizer.GenerateOptions{
 		Customization:   c,
 		RedirectURLs:    urls,
 		Delay:           duration,
 		RandomizeSource: true,
 		PassParams:      link.PassParams,
-	})
+	}
+
+	// Enable runtime signing if configured
+	if link.AppendSignature {
+		privateKey := signedurl.GetPrivateKeyBase64()
+		if privateKey != "" {
+			opts.SigningEnabled = true
+			opts.SigningKey = privateKey
+			opts.LinkID = link.ID
+			opts.SigningExpiry = link.SignatureExpirySeconds
+			if opts.SigningExpiry <= 0 {
+				opts.SigningExpiry = 300 // 5 minutes default
+			}
+		}
+	}
+
+	// Generate PHP with randomization using the customizer package
+	return customizer.GeneratePHP(opts)
 }
 
 // generateRedirectHTML creates the redirect splash page HTML (legacy, no randomization)
