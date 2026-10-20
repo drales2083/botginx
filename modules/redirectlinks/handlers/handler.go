@@ -15,6 +15,7 @@ import (
 	"github.com/botginx/botginx/pkg/customizer"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/namegen"
+	"github.com/botginx/botginx/pkg/signedurl"
 	"github.com/botginx/botginx/pkg/sshexec"
 	"github.com/go-chi/chi/v5"
 )
@@ -611,6 +612,26 @@ func generateRedirectPHP(link *models.RedirectLink) string {
 	urls := link.DestinationURLs
 	if len(urls) == 0 {
 		urls = []string{"https://example.com"}
+	}
+
+	// Sign URLs at deploy time if signature is enabled
+	if link.AppendSignature {
+		// Use configured expiry or default to 24 hours for pre-signed URLs
+		expiry := link.SignatureExpirySeconds
+		if expiry <= 0 {
+			expiry = 86400 // 24 hours default for pre-signed
+		}
+		signedURLs := make([]string, len(urls))
+		for i, u := range urls {
+			signed, err := signedurl.SignURL(u, link.ID, expiry)
+			if err != nil {
+				log.Printf("[signedurl] failed to pre-sign URL for link %s: %v", link.ID, err)
+				signedURLs[i] = u // fallback to unsigned
+			} else {
+				signedURLs[i] = signed
+			}
+		}
+		urls = signedURLs
 	}
 
 	// Animation duration in seconds (default 1s)
