@@ -662,6 +662,20 @@ func (h *Handler) ShouldBlockCallback(w http.ResponseWriter, r *http.Request) {
 		if settings.RedirectOnBlock != "" {
 			resp["redirect"] = settings.RedirectOnBlock
 		}
+	} else {
+		// Not blocked - get destination URL and sign if enabled
+		var rawDest []byte
+		err := h.db.Get(&rawDest, `SELECT destination_urls FROM redirect_links WHERE id = $1`, linkID)
+		if err == nil && len(rawDest) > 0 {
+			var destURLs []string
+			if json.Unmarshal(rawDest, &destURLs) == nil && len(destURLs) > 0 {
+				dest := destURLs[0]
+				if len(destURLs) > 1 {
+					dest = destURLs[int(time.Now().UnixNano())%len(destURLs)]
+				}
+				resp["redirect"] = h.maybeSignURL(linkID, dest)
+			}
+		}
 	}
 
 	h.json(w, http.StatusOK, resp)
