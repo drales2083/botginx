@@ -31,7 +31,7 @@ Copy the verification function for your language. Each function:
 
 ```php
 <?php
-function verifyGuardBotSignature(string $url, int $maxAge = 300): bool
+function verifyGuardBotSignature(string $url, int $maxAge = 86400): bool
 {
     // GuardBot public key (base64)
     $publicKeyB64 = 'VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE=';
@@ -85,7 +85,7 @@ from urllib.parse import urlparse, parse_qs, urlencode
 from nacl.signing import VerifyKey
 from nacl.exceptions import BadSignature
 
-def verify_guardbot_signature(url: str, max_age: int = 300) -> bool:
+def verify_guardbot_signature(url: str, max_age: int = 86400) -> bool:
     # GuardBot public key
     public_key_b64 = 'VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE='
     public_key = VerifyKey(base64.b64decode(public_key_b64))
@@ -138,7 +138,7 @@ def landing():
 const nacl = require('tweetnacl');
 const { URL } = require('url');
 
-function verifyGuardBotSignature(fullUrl, maxAge = 300) {
+function verifyGuardBotSignature(fullUrl, maxAge = 86400) {
     // GuardBot public key
     const publicKeyB64 = 'VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE=';
     const publicKey = Buffer.from(publicKeyB64, 'base64');
@@ -186,7 +186,7 @@ app.get('/landing', (req, res) => {
 
 ```javascript
 // Using the Web Crypto API (works in modern browsers)
-async function verifyGuardBotSignature(fullUrl, maxAge = 300) {
+async function verifyGuardBotSignature(fullUrl, maxAge = 86400) {
     // GuardBot public key
     const publicKeyB64 = 'VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE=';
     
@@ -314,7 +314,7 @@ require 'base64'
 require 'uri'
 require 'cgi'
 
-def verify_guardbot_signature(url, max_age: 300)
+def verify_guardbot_signature(url, max_age: 86400)
   # GuardBot public key
   public_key_b64 = 'VqWUlwO+LG4LoUOGeDcmZ0lmlJdeZOmaBdcEabtohiE='
   public_key = Ed25519::VerifyKey.new(Base64.decode64(public_key_b64))
@@ -358,11 +358,13 @@ end
 - Verify the URL scheme matches (http vs https)
 
 **Signatures always expired:**
+- Signatures are generated at deploy time — redeploy the link to refresh
+- Increase the expiry time in your link settings (default: 24 hours)
 - Check your server's clock is synchronized (use NTP)
-- Increase the expiry time in your link settings if needed
 
 **Missing parameters:**
 - Ensure "Verification Signature" is enabled in your link settings
+- Redeploy the link after enabling the setting
 - Check that the visitor was redirected (not a direct visit)
 
 ## Related
