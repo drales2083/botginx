@@ -7,6 +7,7 @@ import (
 
 	"github.com/botginx/botginx/modules/auth/handlers"
 	"github.com/botginx/botginx/modules/auth/services"
+	promoservices "github.com/botginx/botginx/modules/promocodes/services"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/subscription"
 	"github.com/go-chi/chi/v5"
@@ -53,6 +54,11 @@ func (m *Module) Init(deps *module.Dependencies) error {
 // SetSubscriptionService wires up the subscription service for self-service subscription purchase
 func (m *Module) SetSubscriptionService(s *subscription.Service) {
 	m.Handler.SetSubscriptionService(s)
+}
+
+// SetPromoService wires up the promo code service for subscription discounts
+func (m *Module) SetPromoService(s *promoservices.PromoService) {
+	m.Handler.SetPromoService(s)
 }
 
 // AuthService returns the auth service for use by other modules (e.g., impersonation)

@@ -380,6 +380,7 @@ func main() {
 
 	hostingModule.SetPaymentProcessor(referralsModule)         // Referral commissions on hosting payments
 	authModule.SetSubscriptionService(subscriptions)           // Self-service subscription purchase
+	authModule.SetPromoService(promocodesModule.Service())     // Promo codes for subscriptions
 	usersModule.SetAuthService(authModule.AuthService())       // Admin impersonation
 	supportModule.SetNotifier(telegramModule.Handler)          // Telegram notifications for tickets
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls

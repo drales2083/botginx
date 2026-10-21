@@ -10,6 +10,7 @@ import (
 
 	"github.com/botginx/botginx/modules/auth/models"
 	"github.com/botginx/botginx/modules/auth/services"
+	promoservices "github.com/botginx/botginx/modules/promocodes/services"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/subscription"
@@ -23,6 +24,7 @@ type Handler struct {
 	globalWhitelist  *services.GlobalWhitelistService
 	db               *sqlx.DB
 	subscriptions    *subscription.Service
+	promos           *promoservices.PromoService
 }
 
 func NewHandler(service *services.AuthService, templates *module.TemplateEngine) *Handler {
@@ -42,6 +44,10 @@ func (h *Handler) SetDB(db *sqlx.DB) {
 
 func (h *Handler) SetSubscriptionService(s *subscription.Service) {
 	h.subscriptions = s
+}
+
+func (h *Handler) SetPromoService(s *promoservices.PromoService) {
+	h.promos = s
 }
 
 // Pages
@@ -591,14 +597,37 @@ func (h *Handler) APISubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	price := subscription.GetMonthlyPrice()
+	// Parse request body for promo code
+	var req struct {
+		PromoCode string `json:"promoCode"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	originalPrice := subscription.GetMonthlyPrice()
 	days := subscription.GetRenewalDays()
 
-	// Check balance
+	// Validate promo code if provided
+	var promoResult interface{ Valid() bool }
+	var finalPrice = originalPrice
+	var discountAmount float64
+	var promoID string
+
+	if req.PromoCode != "" && h.promos != nil {
+		result := h.promos.ValidateCode(req.PromoCode, userID, originalPrice)
+		if !result.Valid {
+			h.jsonError(w, result.Error, http.StatusBadRequest)
+			return
+		}
+		finalPrice = result.FinalPrice
+		discountAmount = result.DiscountAmount
+		promoID = result.PromoID
+	}
+
+	// Check balance against final price (after discount)
 	var balance float64
 	h.db.Get(&balance, `SELECT COALESCE(balance, 0) FROM users WHERE id = $1`, userID)
 
-	if balance < price {
+	if balance < finalPrice {
 		h.jsonError(w, "Insufficient balance. Please deposit funds first.", http.StatusPaymentRequired)
 		return
 	}
@@ -607,7 +636,7 @@ func (h *Handler) APISubscribe(w http.ResponseWriter, r *http.Request) {
 	result, err := h.db.Exec(`
 		UPDATE users SET balance = balance - $1, updated_at = NOW()
 		WHERE id = $2 AND balance >= $1
-	`, price, userID)
+	`, finalPrice, userID)
 	if err != nil {
 		h.jsonError(w, "Failed to process payment", http.StatusInternalServerError)
 		return
@@ -621,24 +650,43 @@ func (h *Handler) APISubscribe(w http.ResponseWriter, r *http.Request) {
 	// Record balance transaction
 	txID := make([]byte, 12)
 	rand.Read(txID)
+	description := "Subscription purchase"
+	if promoID != "" {
+		description = "Subscription purchase (promo: " + req.PromoCode + ")"
+	}
 	h.db.Exec(`
 		INSERT INTO balance_transactions (id, user_id, amount, type, description, created_at)
-		VALUES ($1, $2, $3, 'deduct', 'Subscription purchase', $4)
-	`, hex.EncodeToString(txID), userID, -price, time.Now())
+		VALUES ($1, $2, $3, 'deduct', $4, $5)
+	`, hex.EncodeToString(txID), userID, -finalPrice, description, time.Now())
 
 	// Extend subscription
 	if err := h.subscriptions.Extend(userID, days, "self"); err != nil {
 		// Refund on failure
-		h.db.Exec(`UPDATE users SET balance = balance + $1 WHERE id = $2`, price, userID)
+		h.db.Exec(`UPDATE users SET balance = balance + $1 WHERE id = $2`, finalPrice, userID)
 		h.jsonError(w, "Failed to activate subscription", http.StatusInternalServerError)
 		return
 	}
 
+	// Get the new subscription ID for promo redemption
+	var subscriptionID string
+	h.db.Get(&subscriptionID, `
+		SELECT id FROM subscriptions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1
+	`, userID)
+
+	// Record promo usage ONLY after successful purchase
+	if promoID != "" && h.promos != nil && subscriptionID != "" {
+		h.promos.RedeemCode(promoID, userID, subscriptionID, originalPrice, discountAmount, finalPrice)
+	}
+
 	h.json(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"message": "Subscription activated",
-		"days":    days,
+		"success":        true,
+		"message":        "Subscription activated",
+		"days":           days,
+		"originalPrice":  originalPrice,
+		"finalPrice":     finalPrice,
+		"discountAmount": discountAmount,
 	})
+	_ = promoResult // silence unused warning
 }
 
 // JSON helpers
