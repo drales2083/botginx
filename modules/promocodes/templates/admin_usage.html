@@ -83,7 +83,7 @@
                 <strong>Per User Limit</strong>
                 <div class="mt-1">
                     {{if .Promo.MaxUsesPerUser}}
-                    {{.Promo.MaxUsesPerUser}} use{{if gt (deref .Promo.MaxUsesPerUser) 1}}s{{end}} per user
+                    {{.Promo.MaxUsesPerUser}} use{{if gt (deref .Promo.MaxUsesPerUser) 1.0}}s{{end}} per user
                     {{else}}
                     Unlimited
                     {{end}}
