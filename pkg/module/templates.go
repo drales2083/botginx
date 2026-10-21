@@ -96,12 +96,30 @@ func defaultFuncs() template.FuncMap {
 			bf := toFloat(b)
 			return af * bf
 		},
-		// Pointer dereference helpers
-		"deref": func(p *float64) float64 {
+		// Pointer dereference helpers - handles *int, *int64, *float64
+		"deref": func(p any) float64 {
 			if p == nil {
 				return 0
 			}
-			return *p
+			switch v := p.(type) {
+			case *int:
+				if v == nil {
+					return 0
+				}
+				return float64(*v)
+			case *int64:
+				if v == nil {
+					return 0
+				}
+				return float64(*v)
+			case *float64:
+				if v == nil {
+					return 0
+				}
+				return *v
+			default:
+				return 0
+			}
 		},
 		// Slice a string (for initials, etc)
 		"slice": func(s string, start, end int) string {
