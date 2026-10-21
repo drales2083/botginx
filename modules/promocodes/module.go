@@ -108,9 +108,9 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Title:   "Promo Codes",
 			Icon:    "bi-ticket-perforated",
 			Path:    "/admin/promocodes",
-			Order:   55,
+			Order:   35,
 			Section: module.MenuSectionAdmin,
-			Group:   "Settings",
+			Group:   "Revenue",
 		},
 	}
 }
