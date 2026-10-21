@@ -33,7 +33,7 @@
                     <span class="cpanel-info-icon text-bg-warning"><svg class="ui-icon" aria-hidden="true"><use href="/static/icons/ui/sprite.svg#calendar-check"/></svg></span>
                     <div class="flex-grow-1">
                         <div class="cpanel-info-label">{{t "stats.days_left"}}</div>
-                        <div class="cpanel-info-value">{{.KPI.subDaysLeft}}</div>
+                        <div class="cpanel-info-value">{{if .User.IsAdmin}}∞{{else}}{{.Subscription.DaysLeft}}{{end}}</div>
                     </div>
                 </div>
                 <div class="list-group-item d-flex align-items-center gap-3">
