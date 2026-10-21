@@ -55,6 +55,21 @@ func toFloat(v any) float64 {
 		return n
 	case float32:
 		return float64(n)
+	case *int:
+		if n == nil {
+			return 0
+		}
+		return float64(*n)
+	case *int64:
+		if n == nil {
+			return 0
+		}
+		return float64(*n)
+	case *float64:
+		if n == nil {
+			return 0
+		}
+		return *n
 	default:
 		return 0
 	}

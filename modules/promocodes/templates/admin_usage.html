@@ -72,7 +72,7 @@
                     {{if .Promo.MaxUses}}
                     {{.Promo.CurrentUses}} / {{.Promo.MaxUses}}
                     <div class="progress mt-2" style="height: 6px;">
-                        <div class="progress-bar" style="width: {{if .Promo.MaxUses}}{{printf "%.0f" (divf (float64 .Promo.CurrentUses) (float64 .Promo.MaxUses) 100)}}{{else}}0{{end}}%"></div>
+                        <div class="progress-bar" style="width: {{if .Promo.MaxUses}}{{printf "%.0f" (mulf (divf .Promo.CurrentUses (deref .Promo.MaxUses)) 100)}}{{else}}0{{end}}%"></div>
                     </div>
                     {{else}}
                     {{.Promo.CurrentUses}} / ∞
