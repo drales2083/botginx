@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -70,15 +71,21 @@ func (h *CpanelHandler) CreateConnection(w http.ResponseWriter, r *http.Request)
 
 	conn, err := h.cpanelService.Create(userID, input)
 	if err != nil {
-		errMsg := err.Error()
+		errMsg := strings.ToLower(err.Error())
 		if strings.Contains(errMsg, "duplicate key") || strings.Contains(errMsg, "unique constraint") {
 			h.jsonError(w, "This cPanel account is already connected", http.StatusConflict)
-		} else if strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "timeout") {
+		} else if strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "timeout") || strings.Contains(errMsg, "no such host") || strings.Contains(errMsg, "dial tcp") {
 			h.jsonError(w, "Unable to connect to cPanel server", http.StatusBadGateway)
-		} else if strings.Contains(errMsg, "unauthorized") || strings.Contains(errMsg, "forbidden") || strings.Contains(errMsg, "invalid credentials") {
+		} else if strings.Contains(errMsg, "unauthorized") || strings.Contains(errMsg, "forbidden") || strings.Contains(errMsg, "invalid credentials") || strings.Contains(errMsg, "401") {
 			h.jsonError(w, "Invalid cPanel credentials", http.StatusUnauthorized)
+		} else if strings.Contains(errMsg, "certificate") || strings.Contains(errMsg, "tls") || strings.Contains(errMsg, "x509") {
+			h.jsonError(w, "SSL certificate error - the cPanel server may have an invalid certificate", http.StatusBadGateway)
+		} else if strings.Contains(errMsg, "cannot connect") {
+			h.jsonError(w, "Cannot connect to cPanel server - check host and port", http.StatusBadGateway)
 		} else {
-			h.jsonError(w, "Failed to connect cPanel account", http.StatusBadRequest)
+			// Log the actual error for debugging
+			log.Printf("cPanel connection failed for host %s: %v", input.Host, err)
+			h.jsonError(w, "Failed to connect cPanel account: "+err.Error(), http.StatusBadRequest)
 		}
 		return
 	}
