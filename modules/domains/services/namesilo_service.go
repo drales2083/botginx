@@ -1041,17 +1041,23 @@ certbot certonly --manual --preferred-challenges dns \
 		return fmt.Errorf("certificate not created")
 	}
 
-	// Check if nginx config already exists - if so, just reload to pick up new cert
-	// Don't overwrite existing config (it may have custom proxy settings)
-	configExists := fmt.Sprintf(`test -f /etc/nginx/sites-enabled/%s.conf && echo "EXISTS"`, baseDomain)
+	// Check if nginx config already exists
+	confPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", baseDomain)
+	configExists := fmt.Sprintf(`test -f %s && echo "EXISTS"`, confPath)
 	if out, _ := sshClient.Run(configExists); strings.Contains(out, "EXISTS") {
-		// Config exists - just reload nginx to pick up new cert
-		sshClient.Run("nginx -t && systemctl reload nginx")
-		return nil
+		// Check if it's a placeholder config (contains "Domain ready")
+		checkPlaceholder := fmt.Sprintf(`grep -q "Domain ready" %s && echo "PLACEHOLDER"`, confPath)
+		if placeholderOut, _ := sshClient.Run(checkPlaceholder); !strings.Contains(placeholderOut, "PLACEHOLDER") {
+			// Proper config exists, just reload to pick up new cert
+			sshClient.Run("nginx -t && systemctl reload nginx")
+			return nil
+		}
+		// Placeholder config found - need to upgrade it
+		log.Printf("[NameSilo] Upgrading placeholder nginx config for %s", baseDomain)
 	}
 
-	// No config exists - create one
-	if err := s.setupNginxConfig(sshClient, baseDomain); err != nil {
+	// Create or upgrade nginx config with proper proxy settings
+	if err := s.setupProxyNginxConfig(sshClient, baseDomain); err != nil {
 		log.Printf("[NameSilo] nginx setup warning for %s: %v", baseDomain, err)
 	}
 
@@ -1098,6 +1104,57 @@ server {
 	}
 
 	sshClient.Run("systemctl reload nginx")
+	return nil
+}
+
+// setupProxyNginxConfig creates nginx config with proper proxy to botection
+func (s *NameSiloService) setupProxyNginxConfig(sshClient *sshexec.Client, baseDomain string) error {
+	nginxConf := fmt.Sprintf(`server {
+    listen 80;
+    server_name %s *.%s;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name %s *.%s;
+
+    ssl_certificate /etc/letsencrypt/live/%s/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/%s/privkey.pem;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/sites/%s;
+        allow all;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+
+	configPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", baseDomain)
+	writeCmd := fmt.Sprintf("cat > %s << 'NGINXEOF'\n%s\nNGINXEOF", configPath, nginxConf)
+	if _, err := sshClient.Run(writeCmd); err != nil {
+		return fmt.Errorf("failed to write nginx config: %w", err)
+	}
+
+	// Enable site
+	linkCmd := fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/", configPath)
+	sshClient.Run(linkCmd)
+
+	// Test and reload nginx
+	testOut, err := sshClient.Run("nginx -t 2>&1")
+	if err != nil || strings.Contains(testOut, "failed") {
+		sshClient.Run(fmt.Sprintf("rm -f /etc/nginx/sites-enabled/%s.conf", baseDomain))
+		return fmt.Errorf("nginx config invalid: %s", testOut)
+	}
+
+	sshClient.Run("systemctl reload nginx")
+	log.Printf("[NameSilo] Created proxy nginx config for %s", baseDomain)
 	return nil
 }
 
@@ -1226,52 +1283,26 @@ done
 		return fmt.Errorf("certbot did not succeed: %s", output)
 	}
 
-	// Check if nginx config already exists - if so, just reload to pick up new cert
-	configExists := fmt.Sprintf(`test -f /etc/nginx/sites-enabled/%s.conf && echo "EXISTS"`, domainName)
-	if out, _ := sshClient.Run(configExists); strings.Contains(out, "EXISTS") {
-		sshClient.Run("nginx -t && systemctl reload nginx")
-		log.Printf("[NameSilo] Wildcard SSL generated for *.%s (existing nginx config reloaded)", domainName)
-		return nil
-	}
-
-	// Create nginx config for wildcard domain
-	nginxConf := fmt.Sprintf(`server {
-    listen 80;
-    server_name %s *.%s;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name %s *.%s;
-
-    ssl_certificate /etc/letsencrypt/live/%s/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/%s/privkey.pem;
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/sites/%s;
-        allow all;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}`, domainName, domainName, domainName, domainName, domainName, domainName, domainName)
-
+	// Check if nginx config already exists
 	confPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", domainName)
-	sshClient.Run(fmt.Sprintf("cat > %s << 'NGINXEOF'\n%sNGINXEOF", confPath, nginxConf))
-	sshClient.Run(fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/", confPath))
-
-	// Test and reload nginx
-	testOut, err := sshClient.Run("nginx -t 2>&1")
-	if err != nil || strings.Contains(testOut, "failed") {
-		return fmt.Errorf("nginx config invalid: %s", testOut)
+	configExists := fmt.Sprintf(`test -f %s && echo "EXISTS"`, confPath)
+	if out, _ := sshClient.Run(configExists); strings.Contains(out, "EXISTS") {
+		// Check if it's a placeholder config (contains "Domain ready")
+		checkPlaceholder := fmt.Sprintf(`grep -q "Domain ready" %s && echo "PLACEHOLDER"`, confPath)
+		if placeholderOut, _ := sshClient.Run(checkPlaceholder); !strings.Contains(placeholderOut, "PLACEHOLDER") {
+			// Proper config exists, just reload to pick up new cert
+			sshClient.Run("nginx -t && systemctl reload nginx")
+			log.Printf("[NameSilo] Wildcard SSL generated for *.%s (existing nginx config reloaded)", domainName)
+			return nil
+		}
+		// Placeholder config found - continue to upgrade it
+		log.Printf("[NameSilo] Upgrading placeholder nginx config for %s", domainName)
 	}
-	sshClient.Run("systemctl reload nginx")
+
+	// Create or upgrade nginx config with proper proxy settings
+	if err := s.setupProxyNginxConfig(sshClient, domainName); err != nil {
+		return fmt.Errorf("nginx config setup failed: %w", err)
+	}
 
 	log.Printf("[NameSilo] Wildcard SSL generated successfully for *.%s", domainName)
 	return nil
