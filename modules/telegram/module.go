@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/botginx/botginx/modules/telegram/handlers"
 	"github.com/botginx/botginx/modules/telegram/service"
@@ -49,6 +50,10 @@ func (m *Module) Init(deps *module.Dependencies) error {
 func (m *Module) PostInit() error {
 	// Migrate existing env vars to database on first run
 	m.migrateEnvVars()
+
+	// Ensure webhooks are set up for all bots on startup
+	go m.EnsureWebhooks()
+
 	return nil
 }
 
@@ -108,4 +113,42 @@ func (m *Module) migrateEnvVars() {
 			log.Info().Msg("Migrated TG_DEPLOY_BOT to database")
 		}
 	}
+
+	// Auto-setup webhooks for all bots after migration
+	m.setupAllWebhooks()
+}
+
+// setupAllWebhooks sets up webhooks for all enabled bots
+func (m *Module) setupAllWebhooks() {
+	baseURL := os.Getenv("PANEL_URL")
+	if baseURL == "" {
+		baseURL = "guardbot.sbs"
+	}
+	if !strings.HasPrefix(baseURL, "http") {
+		baseURL = "https://" + baseURL
+	}
+
+	bots, err := m.Service.ListBots()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to list bots for webhook setup")
+		return
+	}
+
+	for _, bot := range bots {
+		if !bot.Enabled || bot.WebhookSecret == nil {
+			continue
+		}
+
+		webhookURL := baseURL + "/telegram/webhook/" + bot.ID + "/" + *bot.WebhookSecret
+		if err := m.Service.SetWebhook(bot.BotToken, webhookURL); err != nil {
+			log.Error().Err(err).Str("bot", bot.Name).Msg("Failed to setup webhook")
+		} else {
+			log.Info().Str("bot", bot.Name).Msg("Webhook setup successful")
+		}
+	}
+}
+
+// EnsureWebhooks checks and sets up webhooks for all enabled bots (called on startup)
+func (m *Module) EnsureWebhooks() {
+	m.setupAllWebhooks()
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/botginx/botginx/modules/telegram/service"
@@ -102,6 +103,25 @@ func (h *Handler) APICreateBot(w http.ResponseWriter, r *http.Request) {
 		"bot_username": user.Username,
 	})
 	bot.BotUsername = &user.Username
+
+	// Auto-setup webhook using request host or PANEL_URL
+	go func() {
+		baseURL := os.Getenv("PANEL_URL")
+		if baseURL == "" {
+			baseURL = r.Host
+		}
+		if !strings.HasPrefix(baseURL, "http") {
+			baseURL = "https://" + baseURL
+		}
+		if bot.WebhookSecret != nil {
+			webhookURL := baseURL + "/telegram/webhook/" + bot.ID + "/" + *bot.WebhookSecret
+			if err := h.service.SetWebhook(input.BotToken, webhookURL); err != nil {
+				log.Error().Err(err).Str("bot", bot.Name).Msg("Auto webhook setup failed")
+			} else {
+				log.Info().Str("bot", bot.Name).Msg("Auto webhook setup successful")
+			}
+		}
+	}()
 
 	h.jsonOK(w, map[string]interface{}{
 		"success": true,
