@@ -46,7 +46,7 @@ func (s *Service) EnsureTable() error {
 			enabled BOOLEAN DEFAULT false,
 			username VARCHAR(100),
 			password VARCHAR(100),
-			host VARCHAR(255) DEFAULT 'global.rotgb.711proxy.com',
+			host VARCHAR(255) DEFAULT 'global.rotgb.trustsource.live',
 			port INTEGER DEFAULT 10000,
 			zone VARCHAR(50) DEFAULT 'custom',
 			session_minutes INTEGER DEFAULT 10,
