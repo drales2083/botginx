@@ -559,3 +559,51 @@ func (s *CpanelService) AddAcmeCNAME(connectionID, domain, target string) error 
 
 	return nil
 }
+
+// ReconfigureAllDomains updates wildcard A records for all cPanel domains
+// This is called when the deploy server IP changes
+func (s *CpanelService) ReconfigureAllDomains(newIP string) ([]ReconfigureResult, error) {
+	// Find all domains with cpanel_connection_id set
+	type domainInfo struct {
+		ID                 string `db:"id"`
+		Name               string `db:"name"`
+		CpanelConnectionID string `db:"cpanel_connection_id"`
+	}
+
+	var domains []domainInfo
+	err := s.db.Select(&domains, `
+		SELECT id, name, cpanel_connection_id
+		FROM domains
+		WHERE cpanel_connection_id IS NOT NULL AND cpanel_connection_id != ''
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("querying cPanel domains: %w", err)
+	}
+
+	if len(domains) == 0 {
+		return []ReconfigureResult{}, nil
+	}
+
+	var results []ReconfigureResult
+
+	// Process each domain
+	for _, d := range domains {
+		err := s.AddWildcardARecord(d.CpanelConnectionID, d.Name, newIP)
+		if err != nil {
+			results = append(results, ReconfigureResult{
+				Domain:  d.Name,
+				Success: false,
+				Error:   err.Error(),
+			})
+			log.Printf("[cpanel] ReconfigureAll: failed to update %s: %v", d.Name, err)
+		} else {
+			results = append(results, ReconfigureResult{
+				Domain:  d.Name,
+				Success: true,
+			})
+			log.Printf("[cpanel] ReconfigureAll: updated *.%s → %s", d.Name, newIP)
+		}
+	}
+
+	return results, nil
+}

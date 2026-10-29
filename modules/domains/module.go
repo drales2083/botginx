@@ -1,9 +1,12 @@
 package domains
 
 import (
+	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"sort"
 
 	"github.com/botginx/botginx/modules/domains/handlers"
@@ -201,6 +204,9 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 
 		// NameSilo admin operations
 		r.Post("/namesilo/reconfigure-all", m.namesiloHandler.AdminReconfigureAll)
+
+		// Unified reconfigure - updates both NameSilo and cPanel domains
+		r.Post("/reconfigure-all", m.AdminReconfigureAllDomains)
 	})
 
 	return r
@@ -263,6 +269,93 @@ func (m *Module) SetProxyService(ps *proxy.Service) {
 // built the service.
 func (m *Module) ListAvailable(userID string) ([]models.Domain, error) {
 	return m.service.ListAvailable(userID)
+}
+
+// AdminReconfigureAllDomains updates DNS for ALL domains (both NameSilo and cPanel)
+// Called when deploy server IP changes
+func (m *Module) AdminReconfigureAllDomains(w http.ResponseWriter, r *http.Request) {
+	// Get the new IP from request body, or auto-detect from servers table
+	var input struct {
+		IP string `json:"ip"`
+	}
+	json.NewDecoder(r.Body).Decode(&input)
+
+	var serverIP string
+	if input.IP != "" {
+		serverIP = input.IP
+	} else {
+		// Get from servers table
+		var err error
+		serverIP, _, _, _, err = m.service.GetDeployServer()
+		if err != nil || serverIP == "" {
+			http.Error(w, "No deploy server configured", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Results structure
+	type sourceResults struct {
+		Total   int                         `json:"total"`
+		Success int                         `json:"success"`
+		Fail    int                         `json:"fail"`
+		Results interface{}                 `json:"results"`
+	}
+
+	response := map[string]interface{}{
+		"serverIP": serverIP,
+	}
+
+	// Reconfigure NameSilo domains
+	namesiloResults, err := m.namesiloService.ReconfigureAllDomains(context.Background(), serverIP)
+	if err != nil {
+		response["namesilo"] = map[string]interface{}{
+			"error": err.Error(),
+		}
+	} else {
+		nsSuccess, nsFail := 0, 0
+		for _, r := range namesiloResults {
+			if r.Success {
+				nsSuccess++
+			} else {
+				nsFail++
+			}
+		}
+		response["namesilo"] = sourceResults{
+			Total:   len(namesiloResults),
+			Success: nsSuccess,
+			Fail:    nsFail,
+			Results: namesiloResults,
+		}
+	}
+
+	// Reconfigure cPanel domains
+	cpanelResults, err := m.cpanelService.ReconfigureAllDomains(serverIP)
+	if err != nil {
+		response["cpanel"] = map[string]interface{}{
+			"error": err.Error(),
+		}
+	} else {
+		cpSuccess, cpFail := 0, 0
+		for _, r := range cpanelResults {
+			if r.Success {
+				cpSuccess++
+			} else {
+				cpFail++
+			}
+		}
+		response["cpanel"] = sourceResults{
+			Total:   len(cpanelResults),
+			Success: cpSuccess,
+			Fail:    cpFail,
+			Results: cpanelResults,
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    response,
+	})
 }
 
 func (m *Module) Widgets() []module.Widget {

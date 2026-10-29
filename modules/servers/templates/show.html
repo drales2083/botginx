@@ -78,6 +78,9 @@
                 <a href="/admin/servers/{{.Server.ID}}/terminal" class="btn btn-outline-secondary">
                     <i class="bi bi-terminal me-2"></i> {{t "servers.terminal"}}
                 </a>
+                <button class="btn btn-outline-warning" id="btn-reconfigure-dns">
+                    <i class="bi bi-arrow-repeat me-2"></i> Update All Domain DNS
+                </button>
                 <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                     <i class="bi bi-trash me-2"></i> {{t "delete"}}
                 </button>
@@ -116,6 +119,50 @@ document.querySelector('.btn-test')?.addEventListener('click', async function() 
 
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-plug me-1"></i> {{t "servers.test_connection"}}';
+});
+
+// Update All Domain DNS - reconfigures both NameSilo and cPanel domains
+document.getElementById('btn-reconfigure-dns')?.addEventListener('click', async function() {
+    const btn = this;
+    const serverIP = '{{.Server.IP}}';
+
+    if (!confirm(`Update DNS for ALL domains to point to ${serverIP}?\n\nThis will update wildcard A records for all NameSilo and cPanel domains.`)) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating...';
+
+    try {
+        const res = await fetch('/admin/domains/reconfigure-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip: serverIP })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            const ns = data.data.namesilo || {};
+            const cp = data.data.cpanel || {};
+            const nsTotal = ns.total || 0;
+            const cpTotal = cp.total || 0;
+            const nsSuccess = ns.success || 0;
+            const cpSuccess = cp.success || 0;
+
+            if (nsTotal === 0 && cpTotal === 0) {
+                flashToast('No domains to update', 'info');
+            } else {
+                flashToast(`Updated ${nsSuccess + cpSuccess} domains (NameSilo: ${nsSuccess}/${nsTotal}, cPanel: ${cpSuccess}/${cpTotal})`, 'success');
+            }
+        } else {
+            flashToast(data.error || 'Failed to update domains', 'danger');
+        }
+    } catch (err) {
+        flashToast('Error: ' + err.message, 'danger');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i> Update All Domain DNS';
 });
 
 document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
