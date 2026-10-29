@@ -639,6 +639,10 @@ func main() {
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(authModule.Handler.AuthMiddleware)
 		r.Use(authModule.Handler.AdminMiddleware)
+		// Redirect /admin/ to admin dashboard
+		r.Get("/", func(w http.ResponseWriter, req *http.Request) {
+			http.Redirect(w, req, "/admin/admindash", http.StatusFound)
+		})
 		registry.MountRoutesBySection(r, module.MenuSectionAdmin, "auth")
 		r.NotFound(notFound)
 	})
