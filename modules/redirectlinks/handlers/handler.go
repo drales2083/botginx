@@ -252,7 +252,7 @@ func (h *Handler) cleanupVPS(link *models.RedirectLink) {
 	defer client.Close()
 
 	baseDomain := link.BaseDomain()
-	subdomain := link.Subdomain
+	subdomain := strings.ToLower(link.Subdomain)
 
 	// Delete botection settings file
 	settingsPath := fmt.Sprintf("/etc/botection/links/%s.json", link.ID)
@@ -465,7 +465,8 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 	// Create site directory: /var/www/sites/{domain}/{subdomain}/
 	// Path is NOT included in directory - nginx rewrites all paths to index.php
 	// This allows tracking-style paths (/ss/c/u001.../4tq/.../h1/...) without nested dirs
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
+	// Subdomain must be lowercase - DNS is case-insensitive but Linux filesystem is not
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), strings.ToLower(link.Subdomain))
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", siteDir)
 	client.Run(mkdirCmd)
 
@@ -531,7 +532,8 @@ func (h *Handler) autoDeploy(linkID string) {
 	defer client.Close()
 
 	// Path is NOT included in directory - nginx rewrites all paths to index.php
-	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), link.Subdomain)
+	// Subdomain must be lowercase - DNS is case-insensitive but Linux filesystem is not
+	siteDir := fmt.Sprintf("/var/www/sites/%s/%s", link.BaseDomain(), strings.ToLower(link.Subdomain))
 	client.Run(fmt.Sprintf("mkdir -p %s", siteDir))
 
 	// Get content and file type based on link type
