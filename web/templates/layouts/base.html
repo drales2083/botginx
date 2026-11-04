@@ -385,8 +385,17 @@
     </main>
 
     <!-- Footer -->
-    <footer class="app-footer bg-dark" data-bs-theme="dark">
-      Build <span class="text-danger">{{appBuild}}</span> <span class="text-muted mx-1">|</span> {{appVersion}}
+    <footer class="app-footer bg-dark d-flex flex-wrap align-items-center justify-content-center gap-2" data-bs-theme="dark" style="font-size: 0.75rem;">
+      <span class="opacity-60">{{appVersion}}</span>
+      <span class="border-start border-secondary opacity-30" style="height: 1rem;"></span>
+      <span class="d-flex align-items-center gap-1">
+        <img src="/static/img/flags/eu.svg" alt="EU" style="width: 1rem; height: 0.75rem;">
+        <span class="opacity-60">Hosted in EU</span>
+      </span>
+      <span class="border-start border-secondary opacity-30" style="height: 1rem;"></span>
+      <a href="/terms" class="text-reset text-decoration-none opacity-60">Terms of Service</a>
+      <span class="border-start border-secondary opacity-30" style="height: 1rem;"></span>
+      <a href="/privacy" class="text-reset text-decoration-none opacity-60">Privacy Policy</a>
     </footer>
   </div>
 

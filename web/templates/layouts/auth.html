@@ -68,6 +68,36 @@
       font-weight: 600;
       color: #DC3545;
     }
+    /* Auth footer */
+    .auth-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+      font-size: 0.75rem;
+      opacity: 0.6;
+    }
+    .auth-footer-sep {
+      width: 1px;
+      height: 1rem;
+      background: currentColor;
+      opacity: 0.3;
+    }
+    .auth-footer-flag {
+      width: 1rem;
+      height: 0.75rem;
+      vertical-align: middle;
+      margin-right: 0.25rem;
+    }
+    .auth-footer-link {
+      color: inherit;
+      text-decoration: none;
+    }
+    .auth-footer-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body class="{{if eq .Title "Sign Up"}}register-page{{else}}login-page{{end}}">
@@ -81,6 +111,18 @@
       <div class="card-body {{if eq .Title "Sign Up"}}register-card-body{{else}}login-card-body{{end}}">
         {{template "auth-content" .}}
       </div>
+    </div>
+
+    <div class="auth-footer">
+      <span>{{appVersion}}</span>
+      <span class="auth-footer-sep"></span>
+      <span>
+        <img src="/static/img/flags/eu.svg" alt="EU" class="auth-footer-flag">Hosted in EU
+      </span>
+      <span class="auth-footer-sep"></span>
+      <a href="/terms" class="auth-footer-link">Terms of Service</a>
+      <span class="auth-footer-sep"></span>
+      <a href="/privacy" class="auth-footer-link">Privacy Policy</a>
     </div>
   </div>
 
