@@ -51,6 +51,7 @@ export default defineConfig({
 				{
 					label: 'How-to Guides',
 					items: [
+						{ label: 'Forward URL Parameters', slug: 'guides/pass-url-parameters' },
 						{ label: 'Connect cPanel', slug: 'integrations/cpanel' },
 						{ label: 'Connect NameSilo', slug: 'integrations/namesilo' },
 						{ label: 'Connect Telegram', slug: 'integrations/telegram' },
