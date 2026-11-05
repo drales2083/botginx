@@ -43,17 +43,81 @@
                 <div class="card-header">
                     <h6 class="card-title mb-0"><i class="bi bi-chat-dots me-2"></i>{{t "support.conversation"}}</h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body conversation-area">
                     {{range .Messages}}
-                    <div class="mb-3">
-                        <div class="text-muted small mb-1">
-                            {{if .IsAdmin}}{{t "support.admin"}}{{else}}{{$.Ticket.UserEmail}}{{end}} &bull; {{.CreatedAt.Format "Jan 2, 3:04 PM"}}
+                    {{if .IsAdmin}}
+                    <!-- Admin/Support Message - Right aligned -->
+                    <div class="d-flex justify-content-end mb-4">
+                        <div class="message-bubble message-support">
+                            <div class="message-header">
+                                <span class="badge bg-danger me-2">Agent</span>
+                                <span class="message-sender">Support</span>
+                            </div>
+                            <div class="message-content">{{.Message}}</div>
+                            <div class="message-time">{{.CreatedAt.Format "Jan 2, 3:04 PM"}}</div>
                         </div>
-                        <div style="white-space: pre-wrap;">{{.Message}}</div>
                     </div>
+                    {{else}}
+                    <!-- User Message - Left aligned -->
+                    <div class="d-flex justify-content-start mb-4">
+                        <div class="message-bubble message-user">
+                            <div class="message-header">
+                                <span class="message-sender">{{$.Ticket.UserEmail}}</span>
+                            </div>
+                            <div class="message-content">{{.Message}}</div>
+                            <div class="message-time">{{.CreatedAt.Format "Jan 2, 3:04 PM"}}</div>
+                        </div>
+                    </div>
+                    {{end}}
                     {{end}}
                 </div>
             </div>
+
+            <style>
+            .conversation-area {
+                max-height: 600px;
+                overflow-y: auto;
+            }
+            .message-bubble {
+                max-width: 75%;
+                padding: 1rem;
+                border-radius: 1rem;
+                position: relative;
+            }
+            .message-user {
+                background: var(--bs-secondary-bg);
+                border: 1px solid var(--bs-border-color);
+                border-bottom-left-radius: 0.25rem;
+            }
+            .message-support {
+                background: rgba(var(--bs-danger-rgb), 0.1);
+                border: 1px solid rgba(var(--bs-danger-rgb), 0.3);
+                border-bottom-right-radius: 0.25rem;
+            }
+            .message-header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 0.5rem;
+            }
+            .message-sender {
+                font-weight: 600;
+                font-size: 0.875rem;
+            }
+            .message-content {
+                white-space: pre-wrap;
+                word-break: break-word;
+                line-height: 1.5;
+            }
+            .message-time {
+                font-size: 0.75rem;
+                color: var(--bs-secondary-color);
+                margin-top: 0.5rem;
+                text-align: right;
+            }
+            .message-user .message-time {
+                text-align: left;
+            }
+            </style>
 
             <!-- Reply Form -->
             <div class="card">
