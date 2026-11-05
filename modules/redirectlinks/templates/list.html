@@ -52,7 +52,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="0,7">
+            <table class="table align-middle mb-0" data-datatable data-per-page="15" data-no-sort="0,6">
                 <thead>
                     <tr>
                         {{if $canWrite}}<th style="width:40px"><input type="checkbox" class="form-check-input" id="select-all" title="{{t "select_all"}}"></th>{{end}}
@@ -60,7 +60,6 @@
                         <th>{{t "type"}}</th>
                         <th>{{t "redirectlinks.views"}}</th>
                         <th>{{t "status"}}</th>
-                        <th class="text-center">{{t "redirectlinks.bot_settings"}}</th>
                         <th>{{t "created"}}</th>
                         <th class="text-end">{{t "actions"}}</th>
                     </tr>
@@ -69,14 +68,16 @@
                     {{range .Links}}
                     <tr data-status="{{.DeployStatus}}" data-id="{{.ID}}">
                         {{if $canWrite}}<td><input type="checkbox" class="form-check-input row-select" data-id="{{.ID}}"></td>{{end}}
-                        <td>
-                            {{if .DeployedURL}}
-                            <a href="{{.FullURL}}" target="_blank" class="fw-semibold text-decoration-none">
-                                {{.Subdomain}}.{{.BaseDomain}}/{{.Path}}
-                            </a>
-                            {{else}}
-                            <span class="fw-semibold text-muted">{{.Subdomain}}.{{.BaseDomain}}/{{.Path}}</span>
-                            {{end}}
+                        <td class="link-cell">
+                            <div class="link-url">
+                                {{if .DeployedURL}}
+                                <a href="{{.FullURL}}" target="_blank" class="fw-semibold text-decoration-none">
+                                    {{.Subdomain}}.{{.BaseDomain}}/{{.Path}}
+                                </a>
+                                {{else}}
+                                <span class="fw-semibold text-muted">{{.Subdomain}}.{{.BaseDomain}}/{{.Path}}</span>
+                                {{end}}
+                            </div>
                             <div class="small text-secondary">
                                 {{if .DestinationURLs}}
                                 {{len .DestinationURLs}} {{t "destinations"}}
@@ -105,11 +106,6 @@
                             {{else}}
                             <span class="badge text-bg-danger" title="{{.DeployError}}">{{t "failed"}}</span>
                             {{end}}
-                        </td>
-                        <td class="text-center">
-                            <a href="/user/analytics/link/{{.ID}}/settings" class="btn btn-sm btn-outline-secondary" title="{{t "redirectlinks.bot_settings"}}">
-                                <i class="bi bi-gear"></i>
-                            </a>
                         </td>
                         <td class="text-nowrap">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
                         <td class="text-end">
@@ -358,4 +354,15 @@ confirmBulkDeleteBtn.addEventListener('click', async () => {
     }
 });
 </script>
+
+<style>
+.link-cell {
+    max-width: 350px;
+}
+.link-url {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+</style>
 {{end}}
