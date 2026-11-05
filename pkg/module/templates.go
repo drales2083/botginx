@@ -19,6 +19,7 @@ import (
 	"github.com/botginx/botginx/pkg/protection"
 	"github.com/botginx/botginx/pkg/status"
 	"github.com/botginx/botginx/pkg/subscription"
+	"github.com/botginx/botginx/pkg/supportbadge"
 )
 
 // RequestFuncs produces template functions scoped to a single request, such as
@@ -433,6 +434,11 @@ func (te *TemplateEngine) renderWithLayout(w io.Writer, r *http.Request, name, l
 	// who have not added any domains yet.
 	if _, set := data["DomainStats"]; !set && r != nil {
 		data["DomainStats"] = domainstats.FromRequest(r)
+	}
+
+	// Support badge, so the layout can show unread ticket count.
+	if _, set := data["SupportBadge"]; !set && r != nil {
+		data["SupportBadge"] = supportbadge.FromRequest(r)
 	}
 
 	// Build info for footer

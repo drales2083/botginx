@@ -61,6 +61,7 @@ import (
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/database"
 	"github.com/botginx/botginx/pkg/domainstats"
+	"github.com/botginx/botginx/pkg/supportbadge"
 	"github.com/botginx/botginx/pkg/domainsync"
 	"github.com/botginx/botginx/pkg/i18n"
 	"github.com/botginx/botginx/pkg/lifecycle"
@@ -538,6 +539,8 @@ func main() {
 		r.Use(subscriptions.Attach)
 		// Domain stats for promotional banners
 		r.Use(domainstats.Middleware(db.DB))
+		// Support badge for unread ticket count
+		r.Use(supportbadge.Middleware(db.DB))
 
 		// Account settings and subscription pages live in the auth module.
 		// Deliberately outside EnforceAll: users must be able to view their

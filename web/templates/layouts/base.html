@@ -238,7 +238,7 @@
             <li class="nav-item">
               <a href="/user/support" class="nav-link {{if hasPrefix .Title "Support"}}active{{end}}">
                 <i class="nav-icon bi bi-life-preserver"></i>
-                <p>{{t "support"}}</p>
+                <p>{{t "support"}}{{if .SupportBadge.HasUnread}}<span class="badge bg-danger ms-auto">{{.SupportBadge.Count}}</span>{{end}}</p>
               </a>
             </li>
           </ul>
