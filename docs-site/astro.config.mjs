@@ -54,6 +54,7 @@ export default defineConfig({
 						{ label: 'Forward URL Parameters', slug: 'guides/pass-url-parameters' },
 						{ label: 'Connect cPanel', slug: 'integrations/cpanel' },
 						{ label: 'Connect NameSilo', slug: 'integrations/namesilo' },
+						{ label: 'Connect Cloudflare', slug: 'integrations/cloudflare' },
 						{ label: 'Connect Telegram', slug: 'integrations/telegram' },
 						{ label: 'Connect Claude Desktop', slug: 'integrations/mcp-server' },
 						{ label: 'Add Funds', slug: 'integrations/payments' },
