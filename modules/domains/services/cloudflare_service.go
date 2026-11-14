@@ -395,19 +395,20 @@ func (s *CloudflareService) setupDNSInternal(ctx context.Context, userID, zoneID
 		}
 	}
 
+	// ALWAYS delete any existing _acme-challenge records (TXT or CNAME) to ensure clean state
+	// This must happen regardless of whether acme-dns is configured
+	if records, err := client.ListDNSRecords(ctx, zoneID); err == nil {
+		for _, r := range records {
+			if r.Name == "_acme-challenge."+domain {
+				log.Printf("[Cloudflare] Deleting existing %s record for _acme-challenge.%s", r.Type, domain)
+				client.DeleteDNSRecord(ctx, zoneID, r.ID)
+			}
+		}
+	}
+
 	// Setup acme-dns CNAME if configured
 	acmeDomain := os.Getenv("ACME_DNS_DOMAIN")
 	if acmeDomain != "" {
-		// First, delete any existing _acme-challenge records (TXT or CNAME) to ensure clean state
-		if records, err := client.ListDNSRecords(ctx, zoneID); err == nil {
-			for _, r := range records {
-				if r.Name == "_acme-challenge."+domain {
-					log.Printf("[Cloudflare] Deleting existing %s record for _acme-challenge.%s", r.Type, domain)
-					client.DeleteDNSRecord(ctx, zoneID, r.ID)
-				}
-			}
-		}
-
 		// Check if domain already has acme-dns credentials
 		var existingFulldomain string
 		s.db.QueryRow(`SELECT acme_fulldomain FROM domains WHERE name = $1 AND user_id = $2 AND acme_fulldomain IS NOT NULL`,
