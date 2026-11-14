@@ -54,17 +54,20 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.service = services.NewDomainService(deps.DB)
 	m.cpanelService = services.NewCpanelService(deps.DB)
 	m.namesiloService = services.NewNameSiloService(deps.DB)
+
+	// Create verification service early so other services can use it
+	verifyService := services.NewVerificationService()
+
 	m.handler = handlers.NewHandler(m.service, m.cpanelService, deps.Templates, adminlog.NewLogger(deps.DB))
 	m.cpanelHandler = handlers.NewCpanelHandler(m.cpanelService)
 	m.namesiloHandler = handlers.NewNameSiloHandler(m.namesiloService, deps.Templates)
-	m.cloudflareService = services.NewCloudflareService(deps.DB, m.service)
+	m.cloudflareService = services.NewCloudflareService(deps.DB, m.service, verifyService)
 	m.cloudflareHandler = handlers.NewCloudflareHandler(m.cloudflareService, deps.Templates)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
 
 	// Start background verifier for auto DNS/SSL checks
-	verifyService := services.NewVerificationService()
 	m.background = services.NewBackgroundVerifier(m.service, verifyService)
 	m.background.Start()
 

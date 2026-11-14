@@ -12,9 +12,7 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/botginx/botginx/modules/domains/models"
@@ -25,13 +23,14 @@ import (
 
 // CloudflareService handles Cloudflare integration
 type CloudflareService struct {
-	db            *sqlx.DB
-	encryptionKey []byte
-	domainService *DomainService
+	db                  *sqlx.DB
+	encryptionKey       []byte
+	domainService       *DomainService
+	verificationService *VerificationService
 }
 
 // NewCloudflareService creates a new Cloudflare service
-func NewCloudflareService(db *sqlx.DB, domainService *DomainService) *CloudflareService {
+func NewCloudflareService(db *sqlx.DB, domainService *DomainService, verificationService *VerificationService) *CloudflareService {
 	key := os.Getenv("CLOUDFLARE_ENCRYPTION_KEY")
 	if key == "" {
 		key = os.Getenv("SESSION_SECRET")
@@ -47,9 +46,10 @@ func NewCloudflareService(db *sqlx.DB, domainService *DomainService) *Cloudflare
 	}
 
 	return &CloudflareService{
-		db:            db,
-		encryptionKey: keyBytes,
-		domainService: domainService,
+		db:                  db,
+		encryptionKey:       keyBytes,
+		domainService:       domainService,
+		verificationService: verificationService,
 	}
 }
 
@@ -313,19 +313,49 @@ func (s *CloudflareService) Import(ctx context.Context, userID string, input mod
 		return nil, fmt.Errorf("creating domain: %w", err)
 	}
 
-	// Auto-configure DNS if requested
+	// Auto-configure DNS and SSL if requested
 	if input.ConfigureDNS {
-		go func() {
-			setupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		go func(domID, uid, zoneID, domainName string) {
+			setupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 
-			if err := s.setupDNSInternal(setupCtx, userID, input.ZoneID, zone.Name); err != nil {
-				log.Printf("Cloudflare DNS setup failed for %s: %v", zone.Name, err)
-				s.db.Exec(`UPDATE domains SET dns_config_error = $1 WHERE id = $2`, err.Error(), domain.ID)
-			} else {
-				s.db.Exec(`UPDATE domains SET dns_verified = true WHERE id = $1`, domain.ID)
+			// Step 1: Set up A records and acme-dns CNAME
+			if err := s.setupDNSInternal(setupCtx, uid, zoneID, domainName); err != nil {
+				log.Printf("[Cloudflare] DNS setup failed for %s: %v", domainName, err)
+				s.db.Exec(`UPDATE domains SET dns_config_error = $1 WHERE id = $2`, err.Error(), domID)
+				return
 			}
-		}()
+
+			s.db.Exec(`UPDATE domains SET dns_auto_configured = true, dns_verified = true WHERE id = $1`, domID)
+
+			// Step 2: Get acme-dns credentials for SSL generation
+			var acmeSubdomain, acmeUsername, acmePassword string
+			err := s.db.QueryRow(`
+				SELECT COALESCE(acme_subdomain, ''), COALESCE(acme_username, ''), COALESCE(acme_password, '')
+				FROM domains WHERE id = $1
+			`, domID).Scan(&acmeSubdomain, &acmeUsername, &acmePassword)
+			if err != nil || acmeSubdomain == "" {
+				log.Printf("[Cloudflare] No acme-dns credentials for %s, skipping SSL", domainName)
+				return
+			}
+
+			// Step 3: Wait for CNAME propagation (usually 60-120s)
+			log.Printf("[Cloudflare] Waiting 90s for CNAME propagation for %s", domainName)
+			time.Sleep(90 * time.Second)
+
+			// Step 4: Generate wildcard SSL using acme-dns
+			log.Printf("[Cloudflare] Generating wildcard SSL for %s", domainName)
+			if err := s.verificationService.GenerateWildcardSSLWithAcmeDNS(domainName, acmeSubdomain, acmeUsername, acmePassword); err != nil {
+				log.Printf("[Cloudflare] SSL generation failed for %s: %v", domainName, err)
+				s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+				return
+			}
+
+			// Step 5: Complete setup
+			log.Printf("[Cloudflare] Wildcard SSL completed for %s", domainName)
+			s.domainService.CompleteSSLSetup(domID)
+			s.db.Exec(`UPDATE domains SET acme_cname_verified = true WHERE id = $1`, domID)
+		}(domain.ID, userID, input.ZoneID, zone.Name)
 	}
 
 	return domain, nil
@@ -342,20 +372,10 @@ func (s *CloudflareService) setupDNSInternal(ctx context.Context, userID, zoneID
 		return err
 	}
 
-	// Get server IP
-	serverIP := os.Getenv("GUARDBOT_SERVER_IP")
-	if serverIP == "" {
-		// Try to get external IP
-		resp, err := http.Get("https://api.ipify.org")
-		if err == nil {
-			defer resp.Body.Close()
-			ipBytes, _ := io.ReadAll(resp.Body)
-			serverIP = strings.TrimSpace(string(ipBytes))
-		}
-	}
-
-	if serverIP == "" || net.ParseIP(serverIP) == nil {
-		return errors.New("could not determine server IP")
+	// Get deploy server IP (where SSL and traffic are handled)
+	serverIP := s.domainService.GetDeployIP()
+	if serverIP == "" || serverIP == "No server available" || net.ParseIP(serverIP) == nil {
+		return errors.New("no deploy server available - add one in Admin > Servers")
 	}
 
 	// Setup A records
