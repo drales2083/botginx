@@ -70,6 +70,8 @@ Now let's add protection.
 
 This catches scrapers and crawlers by their signatures. Save the changes—protection is now active.
 
+![Block Known Bots enabled: protection active](/static/uploads/intel/2026/11/create-first-redirect-link-protection-active.png)
+
 ## Watch It Work
 
 Visit your link again from your browser. You'll still get through because you're a real human.
