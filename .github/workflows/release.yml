@@ -117,9 +117,25 @@ jobs:
             -ldflags="-s -w -X ${PKG}.version=${VERSION}" \
             -o release/botginx-linux-arm64 ./cmd/server
 
+          # Build MCP Server for Claude Desktop
+          echo "Building MCP Server (macOS arm64)..."
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build \
+            -ldflags="-s -w" \
+            -o release/guardbot-mcp-darwin-arm64 ./cmd/mcp-server
+
+          echo "Building MCP Server (macOS amd64)..."
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build \
+            -ldflags="-s -w" \
+            -o release/guardbot-mcp-darwin-amd64 ./cmd/mcp-server
+
+          echo "Building MCP Server (Windows amd64)..."
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build \
+            -ldflags="-s -w" \
+            -o release/guardbot-mcp-windows-amd64.exe ./cmd/mcp-server
+
           # Checksums
           cd release
-          sha256sum botginx-* > SHA256SUMS
+          sha256sum botginx-* guardbot-mcp-* > SHA256SUMS
           echo "📦 Build complete:"
           ls -la
           cat SHA256SUMS
@@ -130,5 +146,8 @@ jobs:
           files: |
             release/botginx-linux-amd64
             release/botginx-linux-arm64
+            release/guardbot-mcp-darwin-arm64
+            release/guardbot-mcp-darwin-amd64
+            release/guardbot-mcp-windows-amd64.exe
             release/SHA256SUMS
           generate_release_notes: true
