@@ -58,16 +58,12 @@ The domain is ready immediately. DNS changes typically propagate within minutes.
 
 ## Reconfigure DNS
 
-If the GuardBot server IP changes, update DNS records:
+If you need to update DNS records for a domain (e.g., after server changes):
 
-**For a single domain:**
-1. Click **Reconfigure** next to the domain
+1. Find the domain in your list
+2. Click **Reconfigure** next to it
 
-**For all domains at once:**
-1. Go to the deploy server page
-2. Click **Update All Domain DNS**
-
-This updates NameSilo, cPanel, and Cloudflare domains together.
+This updates the A records to point to the current GuardBot server.
 
 ## Refresh Domain List
 
