@@ -76,7 +76,22 @@
                     "name": "{{.Article.Title}}"
                 }{{end}}
             ]
-        }
+        }{{if and .TOC (or (and .Category (eq .Category.Slug "tutorials")) (hasPrefix .Article.Title "How to"))}},
+        {
+            "@type": "HowTo",
+            "name": "{{.Article.Title}}",
+            "description": "{{.Article.Excerpt}}",
+            {{if .CoverImage}}"image": "{{.BaseURL}}{{.CoverImage}}",{{end}}
+            "totalTime": "PT{{.Article.ReadingTime}}M",
+            "step": [{{$first := true}}{{range $i, $item := .TOC}}{{if eq $item.Level 2}}{{if not $first}},{{end}}{{$first = false}}
+                {
+                    "@type": "HowToStep",
+                    "position": {{add $i 1}},
+                    "name": "{{$item.Text}}",
+                    "url": "{{$.BaseURL}}/intel/{{$.Article.Slug}}#{{$item.ID}}"
+                }{{end}}{{end}}
+            ]
+        }{{end}}
     ]
 }
 </script>
