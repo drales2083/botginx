@@ -20,9 +20,9 @@ The GuardBot MCP Server exposes your redirect links, domains, and analytics to C
 
 | Platform | Architecture | Download |
 |----------|-------------|----------|
-| macOS | Apple Silicon (M1/M2/M3) | [guardbot-mcp-darwin-arm64](https://github.com/drales2083/botginx/releases/latest/download/guardbot-mcp-darwin-arm64) |
-| macOS | Intel | [guardbot-mcp-darwin-amd64](https://github.com/drales2083/botginx/releases/latest/download/guardbot-mcp-darwin-amd64) |
-| Windows | 64-bit | [guardbot-mcp-windows-amd64.exe](https://github.com/drales2083/botginx/releases/latest/download/guardbot-mcp-windows-amd64.exe) |
+| macOS | Apple Silicon (M1/M2/M3) | [guardbot-mcp-darwin-arm64](https://guardbot.sbs/downloads/guardbot-mcp-darwin-arm64) |
+| macOS | Intel | [guardbot-mcp-darwin-amd64](https://guardbot.sbs/downloads/guardbot-mcp-darwin-amd64) |
+| Windows | 64-bit | [guardbot-mcp-windows-amd64.exe](https://guardbot.sbs/downloads/guardbot-mcp-windows-amd64.exe) |
 
 ## Installation
 
@@ -31,10 +31,10 @@ The GuardBot MCP Server exposes your redirect links, domains, and analytics to C
 1. Download the binary for your Mac:
    ```bash
    # Apple Silicon (M1/M2/M3)
-   curl -L -o guardbot-mcp https://github.com/drales2083/botginx/releases/latest/download/guardbot-mcp-darwin-arm64
+   curl -L -o guardbot-mcp https://guardbot.sbs/downloads/guardbot-mcp-darwin-arm64
    
    # Intel Mac
-   curl -L -o guardbot-mcp https://github.com/drales2083/botginx/releases/latest/download/guardbot-mcp-darwin-amd64
+   curl -L -o guardbot-mcp https://guardbot.sbs/downloads/guardbot-mcp-darwin-amd64
    ```
 
 2. Make it executable:

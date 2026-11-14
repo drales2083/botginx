@@ -27,3 +27,4 @@ docs-site/.astro/
 # Intel uploads
 static/uploads/intel/
 web/static/uploads/intel/
+mcp-server

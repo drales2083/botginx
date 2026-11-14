@@ -55,6 +55,7 @@ export default defineConfig({
 						{ label: 'Connect cPanel', slug: 'integrations/cpanel' },
 						{ label: 'Connect NameSilo', slug: 'integrations/namesilo' },
 						{ label: 'Connect Telegram', slug: 'integrations/telegram' },
+						{ label: 'Connect Claude Desktop', slug: 'integrations/mcp-server' },
 						{ label: 'Add Funds', slug: 'integrations/payments' },
 						{ label: 'Verify Signed URLs', slug: 'integrations/verify-signed-urls' },
 					],
