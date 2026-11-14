@@ -785,11 +785,7 @@ func main() {
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		fmt.Fprintf(w, `User-agent: *
 Allow: /
-Allow: /intel
-Allow: /auth/signup
-Disallow: /auth/login
-Disallow: /auth/forgot-password
-Disallow: /auth/reset-password
+
 Disallow: /user/
 Disallow: /admin/
 Disallow: /api/
