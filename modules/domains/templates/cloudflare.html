@@ -88,7 +88,7 @@
                                 <td class="text-end">
                                     {{if .IsImported}}
                                     <div class="btn-group btn-group-sm">
-                                        <button type="button" class="btn btn-outline-primary" onclick="reconfigureDomain('{{.ZoneID}}', '{{.Domain}}')">
+                                        <button type="button" class="btn btn-outline-primary" onclick="reconfigureDomain('{{.LocalID}}', '{{.Domain}}')">
                                             <i class="bi bi-arrow-repeat me-1"></i>Reconfigure
                                         </button>
                                         <a href="/user/domains/{{.LocalID}}" class="btn btn-outline-secondary">
@@ -254,22 +254,20 @@ document.getElementById('confirm-disconnect-btn')?.addEventListener('click', asy
     btn.innerHTML = '<i class="bi bi-x-lg me-1"></i>Disconnect';
 });
 
-async function reconfigureDomain(zoneID, domainName) {
+async function reconfigureDomain(domainID, domainName) {
     const btn = event.target.closest('button');
     const originalHTML = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
     try {
-        const res = await fetch('/user/domains/cloudflare/api/dns/setup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ zoneId: zoneID, domain: domainName })
+        const res = await fetch(`/user/domains/cloudflare/api/reconfigure/${domainID}`, {
+            method: 'POST'
         });
         const data = await res.json();
 
         if (data.success) {
-            showToast(`${domainName} reconfigured successfully`, 'success');
+            showToast(`${domainName} reconfigured — SSL will generate in ~2 minutes`, 'success');
         } else {
             showToast(`${domainName}: ${data.error}`, 'danger');
         }

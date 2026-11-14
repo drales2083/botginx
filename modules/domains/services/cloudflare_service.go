@@ -384,20 +384,31 @@ func (s *CloudflareService) setupDNSInternal(ctx context.Context, userID, zoneID
 		return fmt.Errorf("setting up A records: %w", err)
 	}
 
+	// Get domain verify token for TXT record
+	var verifyToken string
+	s.db.QueryRow(`SELECT verify_token FROM domains WHERE name = $1 AND user_id = $2`, domain, userID).Scan(&verifyToken)
+
+	// Add verification TXT record (_guardbot-verify.domain)
+	if verifyToken != "" {
+		if _, err := client.AddVerificationTXT(ctx, zoneID, domain, verifyToken); err != nil {
+			log.Printf("[Cloudflare] Warning: failed to add verification TXT for %s: %v", domain, err)
+		}
+	}
+
 	// Setup acme-dns CNAME if configured
 	acmeDomain := os.Getenv("ACME_DNS_DOMAIN")
 	if acmeDomain != "" {
 		reg, err := s.registerWithAcmeDNS(userID, domain)
 		if err != nil {
-			log.Printf("Warning: acme-dns registration failed for %s: %v", domain, err)
+			log.Printf("[Cloudflare] Warning: acme-dns registration failed for %s: %v", domain, err)
 		} else if _, err = client.AddAcmeDNSCname(ctx, zoneID, domain, reg.Fulldomain); err != nil {
-			log.Printf("Warning: failed to add ACME DNS CNAME for %s: %v", domain, err)
+			log.Printf("[Cloudflare] Warning: failed to add ACME DNS CNAME for %s: %v", domain, err)
 		}
 	}
 
 	// Update domain status
 	s.db.Exec(`
-		UPDATE domains 
+		UPDATE domains
 		SET dns_auto_configured = true, dns_config_error = NULL, dns_verified = true
 		WHERE name = $1 AND user_id = $2
 	`, domain, userID)
@@ -405,18 +416,57 @@ func (s *CloudflareService) setupDNSInternal(ctx context.Context, userID, zoneID
 	return nil
 }
 
-// ReconfigureDomain updates DNS for a single domain
+// ReconfigureDomain updates DNS for a single domain and triggers SSL if needed
 func (s *CloudflareService) ReconfigureDomain(ctx context.Context, userID, domainID string) error {
-	var zoneID, domainName string
-	err := s.db.QueryRow(`
-		SELECT provider_domain_id, name FROM domains 
+	// Get domain with acme-dns credentials
+	type domainInfo struct {
+		ID                string  `db:"id"`
+		Name              string  `db:"name"`
+		ZoneID            string  `db:"provider_domain_id"`
+		AcmeFulldomain    *string `db:"acme_fulldomain"`
+		AcmeSubdomain     *string `db:"acme_subdomain"`
+		AcmeUsername      *string `db:"acme_username"`
+		AcmePassword      *string `db:"acme_password"`
+		AcmeCnameVerified bool    `db:"acme_cname_verified"`
+		SSLEnabled        bool    `db:"ssl_enabled"`
+	}
+
+	var d domainInfo
+	err := s.db.Get(&d, `
+		SELECT id, name, provider_domain_id, acme_fulldomain, acme_subdomain,
+		       acme_username, acme_password, COALESCE(acme_cname_verified, false) as acme_cname_verified,
+		       COALESCE(ssl_enabled, false) as ssl_enabled
+		FROM domains
 		WHERE id = $1 AND user_id = $2 AND source = 'cloudflare'
-	`, domainID, userID).Scan(&zoneID, &domainName)
+	`, domainID, userID)
 	if err != nil {
 		return fmt.Errorf("domain not found: %w", err)
 	}
 
-	return s.setupDNSInternal(ctx, userID, zoneID, domainName)
+	// Setup DNS (A records, verification TXT, acme-dns CNAME)
+	if err := s.setupDNSInternal(ctx, userID, d.ZoneID, d.Name); err != nil {
+		s.db.Exec(`UPDATE domains SET dns_config_error = $1, updated_at = NOW() WHERE id = $2`, err.Error(), d.ID)
+		return err
+	}
+
+	// Trigger SSL generation if CNAME added but SSL not yet generated
+	if !d.SSLEnabled && d.AcmeSubdomain != nil && d.AcmeUsername != nil && d.AcmePassword != nil {
+		go func(domID, domainName, subdomain, username, password string) {
+			log.Printf("[Cloudflare] ReconfigureDomain: generating SSL for %s", domainName)
+			time.Sleep(60 * time.Second) // Wait for CNAME propagation
+
+			if err := s.verificationService.GenerateWildcardSSLWithAcmeDNS(domainName, subdomain, username, password); err != nil {
+				log.Printf("[Cloudflare] ReconfigureDomain: SSL failed for %s: %v", domainName, err)
+				s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+			} else {
+				log.Printf("[Cloudflare] ReconfigureDomain: SSL completed for %s", domainName)
+				s.domainService.CompleteSSLSetup(domID)
+				s.db.Exec(`UPDATE domains SET acme_cname_verified = true WHERE id = $1`, domID)
+			}
+		}(d.ID, d.Name, *d.AcmeSubdomain, *d.AcmeUsername, *d.AcmePassword)
+	}
+
+	return nil
 }
 
 // ReconfigureAllDomains updates DNS for all Cloudflare domains
