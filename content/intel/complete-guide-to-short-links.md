@@ -10,7 +10,7 @@ tags:
   - marketing
 excerpt: "Learn how short links and redirect links work, why bots are destroying your campaign data, and how to protect your marketing ROI with intelligent bot filtering."
 featured: true
-cover_image: /static/uploads/intel/2026/10/3745904b-c95f-4ecc-97b8-7e26ce0245b4.png
+cover_image: /static/uploads/intel/2026/10/complete-guide-short-links-banner.png
 ---
 
 According to Imperva's 2025 Bad Bot Report, **51% of all internet traffic now comes from bots**. Automated traffic exceeded human traffic for the first time ever. Bad bots alone account for 37%. For marketers relying on short links to track campaigns, this means a significant portion of your "clicks" might be worthless. Or worse, costing you money.
@@ -70,6 +70,8 @@ Here's what most marketers don't realize: **bots click your links too**. And the
 
 Lunio's 2026 Global Invalid Traffic Report analyzed over **2.7 billion paid clicks** and found **8.51% were invalid**. That costs advertisers an estimated **$63 billion annually**. Other vendors report rates ranging from 6% to over 20%, with some industries seeing bot rates above 50%.
 
+![51% of web traffic is bots](/static/uploads/intel/2026/10/complete-guide-short-links-bots.png)
+
 ## How Bot Protection Works with Redirect Links
 
 Modern bot protection for redirect links uses multiple signals to distinguish humans from automated traffic:
@@ -98,6 +100,8 @@ The key is **invisible protection**. You want to filter bots without:
 - Creating accessibility issues
 
 The best solutions challenge only suspicious traffic, letting genuine humans through without friction.
+
+![Smart bot protection for redirect links](/static/uploads/intel/2026/10/complete-guide-short-links-protection.png)
 
 ## 5 Best Practices for Bot-Protected Short Links
 
