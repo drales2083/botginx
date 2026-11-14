@@ -237,11 +237,8 @@ func (h *Handler) ARDJson(w http.ResponseWriter, r *http.Request) {
 	if host == "" {
 		host = "guardbot.sbs"
 	}
-	scheme := "https"
-	if r.TLS == nil && !strings.HasPrefix(r.Header.Get("X-Forwarded-Proto"), "https") {
-		scheme = "http"
-	}
-	baseURL := scheme + "://" + host
+	// Always use HTTPS for production (TLS terminates at nginx/cloudflare)
+	baseURL := "https://" + host
 
 	manifest := map[string]interface{}{
 		"schema_version": "1.0",
@@ -323,6 +320,16 @@ func (h *Handler) ARDJson(w http.ResponseWriter, r *http.Request) {
 					"inputSchema": map[string]interface{}{
 						"type":       "object",
 						"properties": map[string]interface{}{},
+					},
+				},
+				{
+					"name":        "getLinks",
+					"description": "List your most recent redirect links",
+					"inputSchema": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"limit": map[string]interface{}{"type": "number", "description": "Max results (1-100)", "default": 25},
+						},
 					},
 				},
 				{
