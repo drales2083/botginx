@@ -8,7 +8,7 @@ tags:
   - getting-started
   - redirect-links
   - bot-protection
-excerpt: Step-by-step guide to creating a protected redirect link with bot detection and analytics. Takes about 5 minutes.
+excerpt: Step-by-step guide to creating a protected redirect link with bot detection and analytics. Takes about 1 minute.
 featured: true
 cover_image: /static/uploads/intel/2026/11/create-first-redirect-link-banner.png
 ---
