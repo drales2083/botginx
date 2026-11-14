@@ -47,9 +47,9 @@ Now? Connect once, import forever. Every domain in your Cloudflare account shows
 
 ## The Technical Bit (For Those Who Care)
 
-We're using acme-dns for SSL generation. Your `_acme-challenge` record points to our acme-dns server via CNAME, which means certificate renewals happen instantly without touching your DNS again. Renewals won't fail because propagation was slow.
+SSL certificates renew automatically. You set it up once, and renewals happen in the background without touching your DNS again.
 
-If acme-dns isn't available for some reason, we fall back to adding TXT records directly through the Cloudflare API. Slower, but it works. You'll get your wildcard cert either way.
+Either way, you get a wildcard certificate that covers every subdomain.
 
 ## Already Using NameSilo?
 
