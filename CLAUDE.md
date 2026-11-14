@@ -123,6 +123,12 @@ go test ./...
 | `tracking_pixel_ip_salt` | HMAC salt for hashing client IPs. Required in production; without it, a random salt is generated at startup and IP hashes differ across restarts. |
 | `tracking_pixel_retention_days` | Days to retain open logs before purging (default: 90). |
 
+### WebMCP (AI Agent Tools)
+
+| Variable | Description |
+|----------|-------------|
+| `WEBMCP_ORIGIN_TRIAL_TOKEN` | Chrome origin trial token for WebMCP. Register at https://developer.chrome.com/origintrials/#/register_trial/4163014905550602241 to get a token. Enables AI agents to use GuardBot tools via `document.modelContext` API. |
+
 ### Signed URL Verification
 
 | Variable | Description |

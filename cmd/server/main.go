@@ -238,6 +238,7 @@ func main() {
 		"appName":     getAppName,
 		"siteURL":     getSiteURL,
 		"currentYear": func() int { return time.Now().Year() },
+		"webmcpToken": func() string { return os.Getenv("WEBMCP_ORIGIN_TRIAL_TOKEN") },
 		"hasPrefix":   strings.HasPrefix,
 		"formatBytes": func(b int64) string {
 			const unit = 1024
