@@ -53,12 +53,12 @@ If acme-dns isn't available for some reason, we fall back to adding TXT records 
 
 ## Already Using NameSilo?
 
-This works exactly like our NameSilo integration. Same flow, same automation. If you've imported domains from NameSilo before, Cloudflare will feel familiar.
+Works the same as our NameSilo integration. If you've imported domains from NameSilo before, Cloudflare will feel familiar.
 
 ## Get Started
 
 Head to **Domains > Connect Cloudflare** in your dashboard. You'll need your Cloudflare email and Global API Key (grab it from your Cloudflare profile under API Tokens).
 
-That's the whole setup. Connect, import, protected.
+That's it. Connect, import, and you're protected.
 
-We're already working on more DNS providers. Got one you want to see? Let us know.
+More DNS providers are coming. Got one you want? Tell us.
