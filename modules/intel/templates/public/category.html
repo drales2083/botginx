@@ -61,7 +61,7 @@
     <div class="intel-tabs">
         <a href="/intel">All</a>
         {{range .Categories}}
-        <a href="/intel/category/{{.Slug}}" {{if eq $.Category.ID .ID}}class="active"{{end}}>{{.Name}}</a>
+        <a href="/intel/category/{{.Slug}}" {{if eq $.Category.Slug .Slug}}class="active"{{end}}>{{.Name}}</a>
         {{end}}
     </div>
     {{end}}
