@@ -315,9 +315,9 @@ document.getElementById('confirm-import-btn')?.addEventListener('click', async f
             importModal.hide();
             flashToast('Domain imported successfully!', 'success');
 
-            // Redirect to the domain page
+            // Redirect to the setup wizard to show progress
             if (data.data && data.data.id) {
-                window.location.href = '/user/domains/' + data.data.id;
+                window.location.href = '/user/domains/' + data.data.id + '/setup';
             } else {
                 window.location.reload();
             }

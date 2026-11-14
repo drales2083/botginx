@@ -62,6 +62,14 @@
                                 <td><code id="txtval">{{.Domain.VerifyToken}}</code></td>
                                 <td><button class="btn btn-sm btn-outline-secondary" onclick="copyText('txtval')"><i class="bi bi-clipboard"></i></button></td>
                             </tr>
+                            {{if .Domain.AcmeFulldomain}}
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">CNAME</span></td>
+                                <td><code>_acme-challenge</code></td>
+                                <td><code id="cnameval">{{.Domain.AcmeFulldomain}}</code></td>
+                                <td><button class="btn btn-sm btn-outline-secondary" onclick="copyText('cnameval')"><i class="bi bi-clipboard"></i></button></td>
+                            </tr>
+                            {{end}}
                         </tbody>
                     </table>
                 </div>

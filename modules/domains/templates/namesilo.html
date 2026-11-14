@@ -346,9 +346,9 @@ document.getElementById('confirm-import-btn').addEventListener('click', async fu
             importModal.hide();
             flashToast('Domain imported successfully!', 'success');
 
-            // Redirect to the domain page
+            // Redirect to the setup wizard to show progress
             if (data.data && data.data.domainId) {
-                window.location.href = '/user/domains/' + data.data.domainId;
+                window.location.href = '/user/domains/' + data.data.domainId + '/setup';
             } else {
                 loadDomains();
             }
