@@ -1,0 +1,307 @@
+{{define "title"}}Cloudflare{{end}}
+
+{{define "content"}}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header pb-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="bi bi-cloud me-2"></i>Cloudflare Integration
+                            </h5>
+                            <p class="text-sm text-muted mb-0">Connect your Cloudflare account to import domains and auto-configure DNS</p>
+                        </div>
+                        {{if .Connection.IsConnected}}
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle me-1"></i>Connected
+                        </span>
+                        {{end}}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {{if not .Connection.IsConnected}}
+                    <!-- Connection Form -->
+                    <div class="row justify-content-center">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>How to get your API Key</h6>
+                                <ol class="mb-0 small">
+                                    <li>Go to <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare Dashboard → My Profile → API Tokens</a></li>
+                                    <li>Scroll to "API Keys" section</li>
+                                    <li>Click "View" next to "Global API Key"</li>
+                                    <li>Enter your password and copy the key</li>
+                                </ol>
+                            </div>
+                            <form id="connectForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Cloudflare Email</label>
+                                    <input type="email" class="form-control" id="email" placeholder="your@email.com" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Global API Key</label>
+                                    <input type="password" class="form-control" id="apiKey" placeholder="Enter your Global API Key" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-plug me-2"></i>Connect Cloudflare
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {{else}}
+                    <!-- Connected State -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <span class="text-muted">Connected as:</span>
+                            <strong>{{.Connection.Email}}</strong>
+                            {{if .Connection.ConnectedAt}}
+                            <small class="text-muted ms-2">since {{.Connection.ConnectedAt.Format "Jan 2, 2006"}}</small>
+                            {{end}}
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm" onclick="disconnect()">
+                            <i class="bi bi-x-circle me-1"></i>Disconnect
+                        </button>
+                    </div>
+
+                    <!-- Zones List -->
+                    <h6 class="mb-3">Your Domains ({{len .Zones}})</h6>
+                    {{if .Zones}}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Domain</th>
+                                    <th>Status</th>
+                                    <th>Name Servers</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .Zones}}
+                                <tr>
+                                    <td>
+                                        <strong>{{.Domain}}</strong>
+                                        {{if .IsImported}}
+                                        <span class="badge bg-success ms-2">Imported</span>
+                                        {{end}}
+                                    </td>
+                                    <td>
+                                        {{if eq .Status "active"}}
+                                        <span class="badge bg-success">Active</span>
+                                        {{else}}
+                                        <span class="badge bg-warning">{{.Status}}</span>
+                                        {{end}}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{range $i, $ns := .NameServers}}{{if $i}}, {{end}}{{$ns}}{{end}}
+                                        </small>
+                                    </td>
+                                    <td class="text-end">
+                                        {{if .IsImported}}
+                                        <a href="/user/domains/{{.LocalID}}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="setupDNS('{{.ZoneID}}', '{{.Domain}}')">
+                                            <i class="bi bi-arrow-repeat me-1"></i>Reconfigure DNS
+                                        </button>
+                                        {{else}}
+                                        <button class="btn btn-sm btn-primary" onclick="importDomain('{{.ZoneID}}', '{{.Domain}}')">
+                                            <i class="bi bi-download me-1"></i>Import
+                                        </button>
+                                        {{end}}
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="viewDNS('{{.ZoneID}}', '{{.Domain}}')">
+                                            <i class="bi bi-list me-1"></i>DNS
+                                        </button>
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                    {{else}}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox display-4"></i>
+                        <p class="mt-2">No domains found in your Cloudflare account</p>
+                    </div>
+                    {{end}}
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DNS Records Modal -->
+<div class="modal fade" id="dnsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">DNS Records: <span id="dnsModalDomain"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dnsRecords"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Import <strong id="importDomain"></strong> to GuardBot?</p>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="configureDns" checked>
+                    <label class="form-check-label" for="configureDns">
+                        Auto-configure DNS (recommended)
+                        <small class="d-block text-muted">Creates A records pointing to GuardBot server</small>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmImport">
+                    <i class="bi bi-download me-1"></i>Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+let currentZoneID = '';
+let currentDomain = '';
+
+document.getElementById('connectForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Connecting...';
+
+    try {
+        const resp = await fetch('/user/domains/cloudflare/api/connect', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                email: document.getElementById('email').value,
+                apiKey: document.getElementById('apiKey').value
+            })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            showToast('Connected to Cloudflare', 'success');
+            location.reload();
+        } else {
+            showToast(data.error || 'Connection failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Connection failed', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plug me-2"></i>Connect Cloudflare';
+    }
+});
+
+async function disconnect() {
+    if (!confirm('Disconnect from Cloudflare? Your imported domains will remain.')) return;
+
+    const resp = await fetch('/user/domains/cloudflare/api/disconnect', {method: 'POST'});
+    const data = await resp.json();
+    if (data.success) {
+        showToast('Disconnected', 'success');
+        location.reload();
+    } else {
+        showToast(data.error, 'danger');
+    }
+}
+
+function importDomain(zoneID, domain) {
+    currentZoneID = zoneID;
+    currentDomain = domain;
+    document.getElementById('importDomain').textContent = domain;
+    new bootstrap.Modal(document.getElementById('importModal')).show();
+}
+
+document.getElementById('confirmImport')?.addEventListener('click', async () => {
+    const btn = document.getElementById('confirmImport');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing...';
+
+    try {
+        const resp = await fetch('/user/domains/cloudflare/api/import', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                zoneId: currentZoneID,
+                domain: currentDomain,
+                configureDns: document.getElementById('configureDns').checked
+            })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            showToast('Domain imported successfully', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+            location.reload();
+        } else {
+            showToast(data.error, 'danger');
+        }
+    } catch (err) {
+        showToast('Import failed', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-download me-1"></i>Import';
+    }
+});
+
+async function viewDNS(zoneID, domain) {
+    document.getElementById('dnsModalDomain').textContent = domain;
+    document.getElementById('dnsRecords').innerHTML = '<div class="text-center py-4"><span class="spinner-border"></span></div>';
+    new bootstrap.Modal(document.getElementById('dnsModal')).show();
+
+    const resp = await fetch(`/user/domains/cloudflare/api/dns/${zoneID}`);
+    const data = await resp.json();
+
+    if (data.success) {
+        let html = '<table class="table table-sm"><thead><tr><th>Type</th><th>Name</th><th>Content</th><th>TTL</th><th>Proxied</th></tr></thead><tbody>';
+        for (const r of data.data) {
+            html += `<tr>
+                <td><span class="badge bg-secondary">${r.type}</span></td>
+                <td><code>${r.name}</code></td>
+                <td><code>${r.content}</code></td>
+                <td>${r.ttl === 1 ? 'Auto' : r.ttl}</td>
+                <td>${r.proxied ? '<i class="bi bi-cloud-fill text-warning"></i>' : '<i class="bi bi-cloud text-muted"></i>'}</td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('dnsRecords').innerHTML = html;
+    } else {
+        document.getElementById('dnsRecords').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    }
+}
+
+async function setupDNS(zoneID, domain) {
+    if (!confirm(`Reconfigure DNS for ${domain}? This will update A records to point to GuardBot.`)) return;
+
+    showToast('Configuring DNS...', 'info');
+    const resp = await fetch('/user/domains/cloudflare/api/dns/setup', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({zoneId: zoneID, domain: domain})
+    });
+    const data = await resp.json();
+    if (data.success) {
+        showToast('DNS configured successfully', 'success');
+    } else {
+        showToast(data.error, 'danger');
+    }
+}
+</script>
+{{end}}
+
