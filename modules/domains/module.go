@@ -29,6 +29,8 @@ type Module struct {
 	service         *services.DomainService
 	cpanelService   *services.CpanelService
 	namesiloService *services.NameSiloService
+	cloudflareService *services.CloudflareService
+	cloudflareHandler *handlers.CloudflareHandler
 	handler         *handlers.Handler
 	cpanelHandler   *handlers.CpanelHandler
 	namesiloHandler *handlers.NameSiloHandler
@@ -54,6 +56,8 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.handler = handlers.NewHandler(m.service, m.cpanelService, deps.Templates, adminlog.NewLogger(deps.DB))
 	m.cpanelHandler = handlers.NewCpanelHandler(m.cpanelService)
 	m.namesiloHandler = handlers.NewNameSiloHandler(m.namesiloService, deps.Templates)
+	m.cloudflareService = services.NewCloudflareService(deps.DB, m.service)
+	m.cloudflareHandler = handlers.NewCloudflareHandler(m.cloudflareService, deps.Templates)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -125,6 +129,19 @@ func (m *Module) Routes() chi.Router {
 		r.Post("/api/reconfigure", m.namesiloHandler.Reconfigure)             // Update all domains with current IP
 		r.Post("/api/reconfigure/{id}", m.namesiloHandler.ReconfigureDomain) // Update single domain
 		r.Post("/api/ssl/{domain}", m.namesiloHandler.GenerateSSL)           // Generate wildcard SSL
+	})
+
+	// Cloudflare integration (pages and API)
+	r.Route("/cloudflare", func(r chi.Router) {
+		r.Get("/", m.cloudflareHandler.Page)
+
+		r.Post("/api/connect", m.cloudflareHandler.Connect)
+		r.Post("/api/disconnect", m.cloudflareHandler.Disconnect)
+		r.Get("/api/zones", m.cloudflareHandler.ListZones)
+		r.Post("/api/import", m.cloudflareHandler.Import)
+		r.Get("/api/dns/{zoneID}", m.cloudflareHandler.GetDNSRecords)
+		r.Post("/api/dns/setup", m.cloudflareHandler.SetupDNS)
+		r.Post("/api/reconfigure/{id}", m.cloudflareHandler.ReconfigureDomain)
 	})
 
 	r.Get("/{id}", m.handler.Show)
@@ -205,7 +222,10 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 		// NameSilo admin operations
 		r.Post("/namesilo/reconfigure-all", m.namesiloHandler.AdminReconfigureAll)
 
-		// Unified reconfigure - updates both NameSilo and cPanel domains
+		// Cloudflare admin operations
+		r.Post("/cloudflare/reconfigure-all", m.cloudflareHandler.AdminReconfigureAll)
+
+		// Unified reconfigure - updates NameSilo, cPanel and Cloudflare domains
 		r.Post("/reconfigure-all", m.AdminReconfigureAllDomains)
 	})
 
@@ -240,6 +260,14 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Icon:    "bi-box",
 			Path:    "/user/domains/namesilo",
 			Order:   37,
+			Section: module.MenuSectionUser,
+			Group:   "Infrastructure",
+		},
+		{
+			Title:   "Cloudflare",
+			Icon:    "bi-cloud",
+			Path:    "/user/domains/cloudflare",
+			Order:   38,
 			Section: module.MenuSectionUser,
 			Group:   "Infrastructure",
 		},
@@ -348,6 +376,29 @@ func (m *Module) AdminReconfigureAllDomains(w http.ResponseWriter, r *http.Reque
 			Success: cpSuccess,
 			Fail:    cpFail,
 			Results: cpanelResults,
+		}
+	}
+
+	// Reconfigure Cloudflare domains
+	cloudflareResults, err := m.cloudflareService.ReconfigureAllDomains(context.Background(), serverIP)
+	if err != nil {
+		response["cloudflare"] = map[string]interface{}{
+			"error": err.Error(),
+		}
+	} else {
+		cfSuccess, cfFail := 0, 0
+		for _, r := range cloudflareResults {
+			if r.Success {
+				cfSuccess++
+			} else {
+				cfFail++
+			}
+		}
+		response["cloudflare"] = sourceResults{
+			Total:   len(cloudflareResults),
+			Success: cfSuccess,
+			Fail:    cfFail,
+			Results: cloudflareResults,
 		}
 	}
 
