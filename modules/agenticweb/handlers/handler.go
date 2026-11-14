@@ -28,42 +28,27 @@ func (h *Handler) LLMsTxt(w http.ResponseWriter, r *http.Request) {
 		host = "guardbot.sbs"
 	}
 
-	content := fmt.Sprintf(`# GuardBot - Bot Protection & Link Management
+	content := fmt.Sprintf(`# GuardBot
 
-> GuardBot protects your links from bots and provides analytics.
+> Bot protection and link management platform
 
-## What is GuardBot?
+GuardBot helps you create redirect links with bot filtering, host domains with automatic SSL, and track visitor analytics.
 
-GuardBot is a link management platform with built-in bot protection. It helps you:
-- Create redirect links with bot filtering
-- Host domains with automatic SSL
-- Track visitor analytics (country, device, bot detection)
-- Generate QR codes for your links
+## Documentation
 
-## Main Features
+- [API Documentation](https://docs.guardbot.sbs/api/overview/)
+- [Full LLM Guide](https://%s/llms-full.txt)
+- [ARD Manifest](https://%s/.well-known/ard.json)
 
-- **Redirect Links**: Create links that redirect to your destination with optional bot protection
-- **Bot Protection**: Block known bots, datacenter IPs, and suspicious traffic
-- **Analytics**: View clicks, countries, devices, and bot vs human traffic
-- **Custom Domains**: Add your own domains with automatic SSL certificates
-- **QR Codes**: Generate QR codes for any link
+## API
 
-## API Access
+- [REST API](https://%s/api/v1/) - Authentication required
 
-GuardBot provides a REST API for automation. See: https://%s/api/v1/
-Documentation: https://docs.guardbot.sbs/api/overview/
+## Resources
 
-## WebMCP Tools
-
-This site exposes WebMCP tools for AI agents:
-- searchLinks: Search redirect links by keyword
-- getDomains: List your domains
-- getLinkStats: Get analytics for a specific link
-
-## Contact
-
-Support: https://%s/user/support
-`, host, host)
+- [Support](https://%s/user/support)
+- [Login](https://%s/login)
+`, host, host, host, host, host)
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
@@ -211,13 +196,38 @@ func (h *Handler) ARDJson(w http.ResponseWriter, r *http.Request) {
 		"description":    "Bot protection and link management platform",
 		"url":            baseURL,
 		"logo":           baseURL + "/img/logo.png",
+		"entries": []map[string]interface{}{
+			{
+				"type":        "llms_txt",
+				"url":         baseURL + "/llms.txt",
+				"description": "LLM-readable site description",
+			},
+			{
+				"type":        "llms_txt",
+				"url":         baseURL + "/llms-full.txt",
+				"description": "Complete guide for AI agents",
+			},
+			{
+				"type":        "api",
+				"url":         baseURL + "/api/v1",
+				"description": "REST API for link management",
+				"auth":        "bearer",
+			},
+			{
+				"type":        "webmcp",
+				"url":         baseURL + "/webmcp",
+				"description": "WebMCP tools for AI agents",
+				"auth":        "session",
+			},
+			{
+				"type":        "docs",
+				"url":         "https://docs.guardbot.sbs/",
+				"description": "User documentation",
+			},
+		},
 		"contact": map[string]string{
 			"support": baseURL + "/user/support",
 			"docs":    "https://docs.guardbot.sbs/",
-		},
-		"discovery": map[string]string{
-			"llms_txt":      baseURL + "/llms.txt",
-			"llms_full_txt": baseURL + "/llms-full.txt",
 		},
 		"authentication": map[string]interface{}{
 			"type":        "bearer",
