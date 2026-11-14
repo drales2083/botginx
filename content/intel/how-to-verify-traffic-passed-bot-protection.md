@@ -1,6 +1,6 @@
 ---
-title: Prove Your Traffic Is Clean
-slug: prove-your-traffic-is-clean
+title: How to Verify Traffic Passed Bot Protection
+slug: how-to-verify-traffic-passed-bot-protection
 date: 2026-11-14
 author: GuardBot Team
 category: security
@@ -9,7 +9,7 @@ tags:
   - verification
   - security
   - api
-excerpt: Your destination server can now cryptographically verify that traffic passed bot detection. No more guessing.
+excerpt: Your destination server can cryptographically verify that traffic passed bot detection. No more guessing.
 featured: true
 cover_image: /static/uploads/intel/2026/11/signed-urls-banner.png
 ---
