@@ -34,21 +34,40 @@ func (h *Handler) LLMsTxt(w http.ResponseWriter, r *http.Request) {
 
 GuardBot helps you create redirect links with bot filtering, host domains with automatic SSL, and track visitor analytics.
 
-## Documentation
+## Guides
 
-- [API Documentation](https://docs.guardbot.sbs/api/overview/)
-- [Full LLM Guide](https://%s/llms-full.txt)
-- [ARD Manifest](https://%s/.well-known/ard.json)
+- [Introduction](https://docs.guardbot.sbs/guides/introduction/)
+- [Quick Start](https://docs.guardbot.sbs/guides/quick-start/)
+- [Pass URL Parameters](https://docs.guardbot.sbs/guides/pass-url-parameters/)
 
-## API
+## Features
 
-- [REST API](https://%s/api/v1/) - Authentication required
+- [Redirect Links](https://docs.guardbot.sbs/features/redirect-links/)
+- [Bot Protection](https://docs.guardbot.sbs/features/bot-protection/)
+- [Analytics](https://docs.guardbot.sbs/features/analytics/)
+- [Custom Domains](https://docs.guardbot.sbs/features/hosting/)
+- [QR Codes](https://docs.guardbot.sbs/features/qr-codes/)
+
+## API Reference
+
+- [API Overview](https://docs.guardbot.sbs/api/overview/)
+- [Authentication](https://docs.guardbot.sbs/api/authentication/)
+- [Links API](https://docs.guardbot.sbs/api/links/)
+- [Domains API](https://docs.guardbot.sbs/api/domains/)
+- [Analytics API](https://docs.guardbot.sbs/api/analytics/)
+
+## Integrations
+
+- [cPanel Integration](https://docs.guardbot.sbs/integrations/cpanel/)
+- [Telegram Bot](https://docs.guardbot.sbs/integrations/telegram/)
+- [Signed URL Verification](https://docs.guardbot.sbs/integrations/signed-url-verification/)
 
 ## Resources
 
+- [Full LLM Guide](https://%s/llms-full.txt)
+- [ARD Manifest](https://%s/.well-known/ard.json)
 - [Support](https://%s/user/support)
-- [Login](https://%s/login)
-`, host, host, host, host, host)
+`, host, host, host)
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
@@ -155,9 +174,44 @@ AI agents can call these tools via:
 - window.WebMCP.tools
 - Document event: 'webmcp:ready'
 
+## Documentation
+
+### Guides
+- [Introduction](https://docs.guardbot.sbs/guides/introduction/)
+- [Quick Start](https://docs.guardbot.sbs/guides/quick-start/)
+- [Pass URL Parameters](https://docs.guardbot.sbs/guides/pass-url-parameters/)
+
+### Features
+- [Redirect Links](https://docs.guardbot.sbs/features/redirect-links/)
+- [Bot Protection](https://docs.guardbot.sbs/features/bot-protection/)
+- [Analytics](https://docs.guardbot.sbs/features/analytics/)
+- [Custom Domains](https://docs.guardbot.sbs/features/hosting/)
+- [QR Codes](https://docs.guardbot.sbs/features/qr-codes/)
+
+### API Reference
+- [API Overview](https://docs.guardbot.sbs/api/overview/)
+- [Authentication](https://docs.guardbot.sbs/api/authentication/)
+- [Links API](https://docs.guardbot.sbs/api/links/)
+- [Domains API](https://docs.guardbot.sbs/api/domains/)
+- [Analytics API](https://docs.guardbot.sbs/api/analytics/)
+- [IP Lists API](https://docs.guardbot.sbs/api/iplists/)
+- [QR Codes API](https://docs.guardbot.sbs/api/qrcodes/)
+- [Shortener API](https://docs.guardbot.sbs/api/shortener/)
+- [Webhooks](https://docs.guardbot.sbs/api/webhooks/)
+- [Rate Limiting](https://docs.guardbot.sbs/api/rate-limiting/)
+- [Errors](https://docs.guardbot.sbs/api/errors/)
+
+### Integrations
+- [cPanel Integration](https://docs.guardbot.sbs/integrations/cpanel/)
+- [Namesilo](https://docs.guardbot.sbs/integrations/namesilo/)
+- [Telegram Bot](https://docs.guardbot.sbs/integrations/telegram/)
+- [Signed URL Verification](https://docs.guardbot.sbs/integrations/signed-url-verification/)
+- [Verify Signed URLs](https://docs.guardbot.sbs/integrations/verify-signed-urls/)
+- [Payments](https://docs.guardbot.sbs/integrations/payments/)
+
 ## Discovery Files
 
-- /llms.txt - Brief site description (this file's summary)
+- /llms.txt - Brief site description
 - /llms-full.txt - This complete guide
 - /ard.json - Agentic Resource Discovery manifest
 - /.well-known/ard.json - Same as above
@@ -170,7 +224,6 @@ AI agents can call these tools via:
 ## Support
 
 Create a support ticket: https://%s/user/support
-Documentation: https://docs.guardbot.sbs/
 `, buildinfo.Version(), time.Now().Format("2006-01-02"), host, host)
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
