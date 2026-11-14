@@ -10,7 +10,7 @@ tags:
   - customer-success
 excerpt: "Learn why great documentation reduces support tickets by up to 50%, improves customer retention, and how to build docs that actually help users succeed."
 featured: true
-cover_image: /static/uploads/intel/2026/10/630f3f6a-1d2e-4c1e-98b1-03e2566d4d92.png
+cover_image: /static/uploads/intel/2026/10/saas-documentation-banner.png
 ---
 
 **91% of customers would use a self-service knowledge base** if it met their needs. Yet most SaaS companies treat documentation as an afterthought, a box to check after launch. The result? Frustrated users, overwhelmed support teams, and preventable churn.
@@ -35,6 +35,8 @@ The numbers are stark:
 | Customer satisfaction | **15-20 point NPS lift** |
 
 According to Zendesk, **67% of customers prefer self-service** over speaking to a company representative. When your documentation fails them, you're not creating support costs. You're actively frustrating people who *want* to help themselves.
+
+![Support tickets cost $5-25 each](/static/uploads/intel/2026/10/saas-documentation-costs.png)
 
 ## What Makes Documentation Actually Work
 
@@ -128,6 +130,8 @@ If users can't find the answer, your documentation doesn't exist to them. Invest
 - **"No results" pages** that suggest alternatives or offer support contact
 
 Track your search analytics. The most common searches with zero results tell you exactly what documentation to write next.
+
+![Documentation structure that works](/static/uploads/intel/2026/10/saas-documentation-structure.png)
 
 ## The 7 Documentation Mistakes Killing Your Product
 
