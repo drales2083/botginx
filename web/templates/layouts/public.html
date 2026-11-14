@@ -26,6 +26,11 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
   <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
 
+  <!-- AI Agent Discovery -->
+  <link rel="llms" href="/llms.txt" />
+  <link rel="ard" href="/ard.json" />
+  {{if webmcpToken}}<meta http-equiv="origin-trial" content="{{webmcpToken}}" />{{end}}
+
   <!-- Preconnect & Styles -->
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -135,6 +140,7 @@
       document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
     }
   </script>
+  <script src="/static/js/webmcp.js"></script>
 
 </body>
 </html>

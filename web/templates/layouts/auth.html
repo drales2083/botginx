@@ -24,6 +24,10 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
   <link rel="icon" type="image/x-icon" href="/static/favicon/favicon.ico">
   <link rel="manifest" href="/static/favicon/manifest.json">
+  <!-- AI Agent Discovery -->
+  <link rel="llms" href="/llms.txt" />
+  <link rel="ard" href="/ard.json" />
+  {{if webmcpToken}}<meta http-equiv="origin-trial" content="{{webmcpToken}}" />{{end}}
   <meta name="msapplication-TileColor" content="#dc3545">
   <meta name="msapplication-TileImage" content="/static/favicon/ms-icon-144x144.png">
   <meta name="theme-color" content="#dc3545">
@@ -127,6 +131,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+  <script src="/static/js/webmcp.js"></script>
 </body>
 </html>
 {{end}}
