@@ -14,11 +14,15 @@ In this tutorial, we'll create a redirect link with bot protection and watch the
 
 First, we need a domain to host your links on. If you're using a shared domain for testing, skip ahead to creating a link.
 
-Go to **Domains** in the sidebar and click **Add Domain**. Enter your domain name.
+The fastest way is to connect your DNS provider. GuardBot configures everything automatically:
 
-GuardBot shows you the DNS records to add. Point your domain's A record at the IP shown. If you want subdomains too, add a wildcard A record.
+- **[Connect Cloudflare](/integrations/cloudflare/)** — One-click import with automatic DNS, SSL, and nginx setup
+- **[Connect NameSilo](/integrations/namesilo/)** — Same one-click flow for NameSilo domains
+- **[Connect cPanel](/integrations/cpanel/)** — For domains on cPanel hosting
 
-DNS propagation takes anywhere from a few minutes to a few hours. GuardBot checks automatically. Once it sees the right records, your domain goes active and gets an SSL certificate.
+Or add a domain manually: go to **Domains > Add Domain**, enter your domain name, and GuardBot shows you the DNS records to add. Point your A record at the IP shown. Add a wildcard A record if you want subdomains.
+
+DNS propagation takes a few minutes to a few hours. GuardBot checks automatically and issues an SSL certificate once verified.
 
 You'll see a green "Verified" badge when your domain is ready.
 
