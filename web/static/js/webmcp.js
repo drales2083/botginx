@@ -1,273 +1,192 @@
 /**
- * GuardBot WebMCP Bridge
- * Exposes WebMCP tools to autonomous AI agents via browser APIs.
+ * GuardBot WebMCP Tools
+ * Exposes tools to AI agents via the WebMCP standard (Chrome 149+).
  *
- * AI agents can access these tools through:
- * - navigator.modelContext.tools (Chrome 130+)
- * - window.WebMCP.tools
- * - Document event: 'webmcp:ready'
+ * Uses document.modelContext.registerTool() per Chrome's WebMCP Imperative API.
+ * https://developer.chrome.com/docs/ai/webmcp/imperative-api
  */
 (function(window, document) {
     'use strict';
 
-    var WebMCP = {
-        version: '1.0.0',
-        ready: false,
-        tools: {},
+    var API_ENDPOINT = '/webmcp';
+    var RATE_LIMIT = 60; // requests per minute
+    var requestCount = 0;
+    var requestWindow = null;
 
-        config: {
-            apiEndpoint: '/webmcp',
-            rateLimit: 60, // requests per minute
-            enabled: true
-        },
-
-        // Rate limiting
-        _requestCount: 0,
-        _requestWindow: null,
-
-        init: function() {
-            if (!this.config.enabled) return;
-
-            this.registerTools();
-            this.exposeToNavigator();
-            this.emitReadyEvent();
-
-            this.ready = true;
-            console.log('[WebMCP] GuardBot tools registered');
-        },
-
-        checkRateLimit: function() {
-            var now = Date.now();
-            if (!this._requestWindow || now - this._requestWindow > 60000) {
-                this._requestWindow = now;
-                this._requestCount = 0;
-            }
-            if (this._requestCount >= this.config.rateLimit) {
-                throw new Error('Rate limit exceeded. Max ' + this.config.rateLimit + ' requests per minute.');
-            }
-            this._requestCount++;
-        },
-
-        apiCall: function(endpoint, params) {
-            var self = this;
-            this.checkRateLimit();
-
-            var url = this.config.apiEndpoint + endpoint;
-            if (params && Object.keys(params).length > 0) {
-                url += '?' + new URLSearchParams(params).toString();
-            }
-
-            return fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            })
-            .then(function(response) {
-                if (!response.ok) {
-                    return response.json().then(function(data) {
-                        throw new Error(data.error || 'Request failed');
-                    });
-                }
-                return response.json();
-            })
-            .then(function(data) {
-                if (data.success) {
-                    return data.data;
-                }
-                throw new Error(data.error || 'Unknown error');
-            });
-        },
-
-        registerTools: function() {
-            var self = this;
-
-            // searchLinks - Search redirect links by keyword
-            this.tools.searchLinks = {
-                name: 'searchLinks',
-                description: 'Search your redirect links by keyword. Returns matching links with their URLs and click counts.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        q: {
-                            type: 'string',
-                            description: 'Search query (searches subdomain, path, domain)'
-                        },
-                        limit: {
-                            type: 'number',
-                            description: 'Maximum results to return (1-25)',
-                            default: 10
-                        }
-                    },
-                    required: ['q']
-                },
-                execute: function(args) {
-                    if (!args.q) {
-                        return Promise.reject(new Error('Search query (q) is required'));
-                    }
-                    return self.apiCall('/search', {
-                        q: args.q,
-                        limit: args.limit || 10
-                    });
-                }
-            };
-
-            // getDomains - List user's domains
-            this.tools.getDomains = {
-                name: 'getDomains',
-                description: 'List all your verified domains with their DNS and SSL status.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {}
-                },
-                execute: function(args) {
-                    return self.apiCall('/domains', {});
-                }
-            };
-
-            // getLinks - List recent redirect links
-            this.tools.getLinks = {
-                name: 'getLinks',
-                description: 'List your most recent redirect links.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        limit: {
-                            type: 'number',
-                            description: 'Maximum links to return (1-100)',
-                            default: 25
-                        }
-                    }
-                },
-                execute: function(args) {
-                    return self.apiCall('/links', {
-                        limit: args.limit || 25
-                    });
-                }
-            };
-
-            // getLinkStats - Get analytics for a specific link
-            this.tools.getLinkStats = {
-                name: 'getLinkStats',
-                description: 'Get detailed analytics for a specific redirect link including click counts, top countries, and device breakdown.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        link_id: {
-                            type: 'string',
-                            description: 'The ID of the link to get stats for'
-                        }
-                    },
-                    required: ['link_id']
-                },
-                execute: function(args) {
-                    if (!args.link_id) {
-                        return Promise.reject(new Error('link_id is required'));
-                    }
-                    return self.apiCall('/link-stats', {
-                        link_id: args.link_id
-                    });
-                }
-            };
-        },
-
-        exposeToNavigator: function() {
-            var self = this;
-
-            // Expose via window.WebMCP
-            window.WebMCP = this;
-
-            // Chrome 130+ modelContext API
-            if (typeof navigator !== 'undefined') {
-                try {
-                    // Create tools array for modelContext
-                    var toolsArray = Object.values(this.tools).map(function(tool) {
-                        return {
-                            name: tool.name,
-                            description: tool.description,
-                            inputSchema: tool.inputSchema,
-                            execute: tool.execute
-                        };
-                    });
-
-                    // Register with navigator.modelContext if available
-                    if (navigator.modelContext) {
-                        if (typeof navigator.modelContext.registerTools === 'function') {
-                            navigator.modelContext.registerTools(toolsArray);
-                        } else {
-                            // Fallback: expose tools directly
-                            navigator.modelContext.tools = navigator.modelContext.tools || [];
-                            toolsArray.forEach(function(tool) {
-                                navigator.modelContext.tools.push(tool);
-                            });
-                        }
-                    } else {
-                        // Create modelContext if it doesn't exist
-                        Object.defineProperty(navigator, 'modelContext', {
-                            value: { tools: toolsArray },
-                            writable: false,
-                            configurable: true
-                        });
-                    }
-                } catch (e) {
-                    console.warn('[WebMCP] Could not register with navigator.modelContext:', e);
-                }
-            }
-        },
-
-        emitReadyEvent: function() {
-            var event;
-            try {
-                event = new CustomEvent('webmcp:ready', {
-                    detail: {
-                        tools: Object.keys(this.tools),
-                        version: this.version
-                    }
-                });
-            } catch (e) {
-                // IE fallback
-                event = document.createEvent('CustomEvent');
-                event.initCustomEvent('webmcp:ready', true, true, {
-                    tools: Object.keys(this.tools),
-                    version: this.version
-                });
-            }
-            document.dispatchEvent(event);
-        },
-
-        // Utility: Get tool by name
-        getTool: function(name) {
-            return this.tools[name] || null;
-        },
-
-        // Utility: Execute tool by name
-        executeTool: function(name, args) {
-            var tool = this.getTool(name);
-            if (!tool) {
-                return Promise.reject(new Error('Tool not found: ' + name));
-            }
-            return tool.execute(args || {});
-        },
-
-        // Utility: List available tools
-        listTools: function() {
-            return Object.values(this.tools).map(function(tool) {
-                return {
-                    name: tool.name,
-                    description: tool.description
-                };
-            });
+    function checkRateLimit() {
+        var now = Date.now();
+        if (!requestWindow || now - requestWindow > 60000) {
+            requestWindow = now;
+            requestCount = 0;
         }
-    };
+        if (requestCount >= RATE_LIMIT) {
+            throw new Error('Rate limit exceeded. Max ' + RATE_LIMIT + ' requests per minute.');
+        }
+        requestCount++;
+    }
+
+    function apiCall(endpoint, params, signal) {
+        checkRateLimit();
+
+        var url = API_ENDPOINT + endpoint;
+        if (params && Object.keys(params).length > 0) {
+            url += '?' + new URLSearchParams(params).toString();
+        }
+
+        return fetch(url, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            signal: signal
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                return response.json().then(function(data) {
+                    throw new Error(data.error || 'Request failed');
+                });
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                return data.data;
+            }
+            throw new Error(data.error || 'Unknown error');
+        });
+    }
+
+    // Tool definitions
+    var tools = [
+        {
+            name: 'guardbot_search_links',
+            description: 'Search your GuardBot redirect links by keyword. Returns matching links with URLs and click counts.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    q: {
+                        type: 'string',
+                        description: 'Search query (searches subdomain, path, domain)'
+                    },
+                    limit: {
+                        type: 'number',
+                        description: 'Maximum results to return (1-25)'
+                    }
+                },
+                required: ['q']
+            },
+            annotations: {
+                readOnlyHint: true,
+                consequentialHint: false
+            },
+            execute: function(args, options) {
+                if (!args.q) {
+                    return Promise.reject(new Error('Search query (q) is required'));
+                }
+                return apiCall('/search', {
+                    q: args.q,
+                    limit: args.limit || 10
+                }, options && options.signal);
+            }
+        },
+        {
+            name: 'guardbot_get_domains',
+            description: 'List all your verified GuardBot domains with DNS and SSL status.',
+            inputSchema: {
+                type: 'object',
+                properties: {}
+            },
+            annotations: {
+                readOnlyHint: true,
+                consequentialHint: false
+            },
+            execute: function(args, options) {
+                return apiCall('/domains', {}, options && options.signal);
+            }
+        },
+        {
+            name: 'guardbot_get_links',
+            description: 'List your most recent GuardBot redirect links.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    limit: {
+                        type: 'number',
+                        description: 'Maximum links to return (1-100)'
+                    }
+                }
+            },
+            annotations: {
+                readOnlyHint: true,
+                consequentialHint: false
+            },
+            execute: function(args, options) {
+                return apiCall('/links', {
+                    limit: args.limit || 25
+                }, options && options.signal);
+            }
+        },
+        {
+            name: 'guardbot_get_link_stats',
+            description: 'Get detailed analytics for a specific GuardBot redirect link including click counts, top countries, and device breakdown.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    link_id: {
+                        type: 'string',
+                        description: 'The ID of the link to get stats for'
+                    }
+                },
+                required: ['link_id']
+            },
+            annotations: {
+                readOnlyHint: true,
+                consequentialHint: false
+            },
+            execute: function(args, options) {
+                if (!args.link_id) {
+                    return Promise.reject(new Error('link_id is required'));
+                }
+                return apiCall('/link-stats', {
+                    link_id: args.link_id
+                }, options && options.signal);
+            }
+        }
+    ];
+
+    async function registerTools() {
+        // Check if WebMCP is supported (Chrome 149+)
+        if (!document.modelContext || typeof document.modelContext.registerTool !== 'function') {
+            console.log('[WebMCP] document.modelContext.registerTool not available');
+            // Fallback: expose tools via window for non-WebMCP agents
+            window.GuardBotTools = {
+                tools: tools,
+                execute: function(name, args) {
+                    var tool = tools.find(function(t) { return t.name === name; });
+                    if (!tool) return Promise.reject(new Error('Tool not found: ' + name));
+                    return tool.execute(args, {});
+                }
+            };
+            return;
+        }
+
+        // Register each tool with document.modelContext
+        for (var i = 0; i < tools.length; i++) {
+            try {
+                await document.modelContext.registerTool(tools[i]);
+                console.log('[WebMCP] Registered tool:', tools[i].name);
+            } catch (e) {
+                console.warn('[WebMCP] Failed to register tool:', tools[i].name, e);
+            }
+        }
+
+        console.log('[WebMCP] GuardBot tools registered');
+    }
 
     // Initialize on DOM ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            WebMCP.init();
-        });
+        document.addEventListener('DOMContentLoaded', registerTools);
     } else {
-        WebMCP.init();
+        registerTools();
     }
 
 })(window, document);
