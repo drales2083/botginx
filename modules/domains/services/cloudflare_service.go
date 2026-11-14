@@ -13,11 +13,13 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/pkg/acmedns"
 	"github.com/botginx/botginx/pkg/providers/cloudflare"
+	"github.com/botginx/botginx/pkg/sshexec"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -316,7 +318,7 @@ func (s *CloudflareService) Import(ctx context.Context, userID string, input mod
 	// Auto-configure DNS and SSL if requested
 	if input.ConfigureDNS {
 		go func(domID, uid, zoneID, domainName string) {
-			setupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			setupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
 
 			// Step 1: Set up A records and acme-dns CNAME
@@ -334,8 +336,17 @@ func (s *CloudflareService) Import(ctx context.Context, userID string, input mod
 				SELECT COALESCE(acme_subdomain, ''), COALESCE(acme_username, ''), COALESCE(acme_password, '')
 				FROM domains WHERE id = $1
 			`, domID).Scan(&acmeSubdomain, &acmeUsername, &acmePassword)
+
 			if err != nil || acmeSubdomain == "" {
-				log.Printf("[Cloudflare] No acme-dns credentials for %s, skipping SSL", domainName)
+				// Fallback to slow method using direct Cloudflare TXT records
+				log.Printf("[Cloudflare] No acme-dns credentials for %s, using slow TXT method", domainName)
+				if err := s.GenerateWildcardSSLSlow(setupCtx, uid, domainName, zoneID); err != nil {
+					log.Printf("[Cloudflare] Slow SSL also failed for %s: %v", domainName, err)
+					s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+				} else {
+					log.Printf("[Cloudflare] Wildcard SSL completed for %s (slow method)", domainName)
+					s.domainService.CompleteSSLSetup(domID)
+				}
 				return
 			}
 
@@ -346,8 +357,15 @@ func (s *CloudflareService) Import(ctx context.Context, userID string, input mod
 			// Step 4: Generate wildcard SSL using acme-dns
 			log.Printf("[Cloudflare] Generating wildcard SSL for %s", domainName)
 			if err := s.verificationService.GenerateWildcardSSLWithAcmeDNS(domainName, acmeSubdomain, acmeUsername, acmePassword); err != nil {
-				log.Printf("[Cloudflare] SSL generation failed for %s: %v", domainName, err)
-				s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+				log.Printf("[Cloudflare] acme-dns SSL failed for %s: %v, trying slow method", domainName, err)
+				// Fallback to slow method
+				if err := s.GenerateWildcardSSLSlow(setupCtx, uid, domainName, zoneID); err != nil {
+					log.Printf("[Cloudflare] Slow SSL also failed for %s: %v", domainName, err)
+					s.db.Exec(`UPDATE domains SET ssl_error = $1 WHERE id = $2`, err.Error(), domID)
+				} else {
+					log.Printf("[Cloudflare] Wildcard SSL completed for %s (slow fallback)", domainName)
+					s.domainService.CompleteSSLSetup(domID)
+				}
 				return
 			}
 
@@ -585,4 +603,146 @@ func (s *CloudflareService) registerWithAcmeDNS(userID, domainName string) (*acm
 		return nil, fmt.Errorf("failed to store acme-dns credentials: %w", err)
 	}
 	return reg, nil
+}
+
+// GenerateWildcardSSLSlow generates a wildcard SSL certificate using Cloudflare DNS for DNS-01 challenge
+// This is the slow fallback method that waits 120s for DNS propagation (Cloudflare is faster than NameSilo)
+// Prefer acme-dns CNAME method which is instant
+func (s *CloudflareService) GenerateWildcardSSLSlow(ctx context.Context, userID, domainName, zoneID string) error {
+	// Get the user's Cloudflare credentials
+	var encryptedKey, email string
+	err := s.db.QueryRow(`SELECT cloudflare_api_key_encrypted, cloudflare_email FROM users WHERE id = $1`, userID).Scan(&encryptedKey, &email)
+	if err != nil || encryptedKey == "" {
+		return fmt.Errorf("user not connected to Cloudflare")
+	}
+
+	apiKey, err := s.decrypt(encryptedKey)
+	if err != nil {
+		return fmt.Errorf("decrypting API key: %w", err)
+	}
+
+	// Get deploy server credentials
+	var server struct {
+		IP       string `db:"ip"`
+		Port     int    `db:"port"`
+		User     string `db:"ssh_user"`
+		Password string `db:"ssh_password"`
+	}
+	err = s.db.Get(&server, `
+		SELECT ip, COALESCE(port, 22) as port, ssh_user, ssh_password
+		FROM servers WHERE status = 'ready' ORDER BY created_at LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("no deploy server available: %w", err)
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	sshClient, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer sshClient.Close()
+
+	log.Printf("[Cloudflare] Generating wildcard SSL (slow method) for *.%s", domainName)
+
+	// Create auth hook that adds TXT record via Cloudflare API
+	authHook := fmt.Sprintf(`#!/bin/bash
+ZONE_ID="%s"
+API_KEY="%s"
+EMAIL="%s"
+
+# Delete existing _acme-challenge TXT records
+RECORDS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?type=TXT&name=_acme-challenge.%s" \
+    -H "X-Auth-Email: ${EMAIL}" \
+    -H "X-Auth-Key: ${API_KEY}" \
+    -H "Content-Type: application/json")
+
+OLD_IDS=$(echo "$RECORDS" | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    for r in d.get('result',[]):
+        if r.get('name','').startswith('_acme-challenge'):
+            print(r['id'])
+except: pass
+" 2>/dev/null)
+
+for id in $OLD_IDS; do
+    curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${id}" \
+        -H "X-Auth-Email: ${EMAIL}" \
+        -H "X-Auth-Key: ${API_KEY}" > /dev/null
+    sleep 2
+done
+
+# Add new TXT record
+curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
+    -H "X-Auth-Email: ${EMAIL}" \
+    -H "X-Auth-Key: ${API_KEY}" \
+    -H "Content-Type: application/json" \
+    --data "{\"type\":\"TXT\",\"name\":\"_acme-challenge\",\"content\":\"${CERTBOT_VALIDATION}\",\"ttl\":120}" > /dev/null
+
+# Wait for Cloudflare DNS propagation (usually fast, 60-120s to be safe)
+sleep 120
+`, zoneID, apiKey, email, domainName)
+
+	// Create cleanup hook
+	cleanupHook := fmt.Sprintf(`#!/bin/bash
+ZONE_ID="%s"
+API_KEY="%s"
+EMAIL="%s"
+
+RECORDS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?type=TXT&name=_acme-challenge.%s" \
+    -H "X-Auth-Email: ${EMAIL}" \
+    -H "X-Auth-Key: ${API_KEY}" \
+    -H "Content-Type: application/json")
+
+IDS=$(echo "$RECORDS" | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    for r in d.get('result',[]):
+        if r.get('name','').startswith('_acme-challenge'):
+            print(r['id'])
+except: pass
+" 2>/dev/null)
+
+for id in $IDS; do
+    curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${id}" \
+        -H "X-Auth-Email: ${EMAIL}" \
+        -H "X-Auth-Key: ${API_KEY}" > /dev/null
+done
+`, zoneID, apiKey, email, domainName)
+
+	// Write hooks to deploy server
+	authPath := fmt.Sprintf("/tmp/cloudflare_auth_%s.sh", domainName)
+	cleanupPath := fmt.Sprintf("/tmp/cloudflare_cleanup_%s.sh", domainName)
+
+	sshClient.Run(fmt.Sprintf("cat > %s << 'AUTHEOF'\n%sAUTHEOF\nchmod +x %s", authPath, authHook, authPath))
+	sshClient.Run(fmt.Sprintf("cat > %s << 'CLEANEOF'\n%sCLEANEOF\nchmod +x %s", cleanupPath, cleanupHook, cleanupPath))
+
+	// Run certbot for wildcard cert
+	certbotCmd := fmt.Sprintf(`certbot certonly --manual --preferred-challenges dns \
+		-d "*.%s" -d "%s" \
+		--manual-auth-hook %s \
+		--manual-cleanup-hook %s \
+		--agree-tos --email admin@%s \
+		--non-interactive --force-renewal 2>&1`,
+		domainName, domainName, authPath, cleanupPath, domainName)
+
+	output, err := sshClient.Run(certbotCmd)
+	log.Printf("[Cloudflare] Certbot output for %s: %s", domainName, output)
+
+	// Cleanup hook scripts
+	sshClient.Run(fmt.Sprintf("rm -f %s %s", authPath, cleanupPath))
+
+	if err != nil {
+		return fmt.Errorf("certbot failed: %w\nOutput: %s", err, output)
+	}
+
+	if !strings.Contains(output, "Successfully received certificate") && !strings.Contains(output, "Congratulations") {
+		return fmt.Errorf("SSL generation failed: %s", output)
+	}
+
+	log.Printf("[Cloudflare] Wildcard SSL generated for *.%s (slow method)", domainName)
+	return nil
 }
