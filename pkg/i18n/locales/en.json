@@ -28,6 +28,7 @@
   "menu.add_domain": "Add Domain",
   "menu.connect_cpanel": "Connect cPanel",
   "menu.connect_namesilo": "Connect NameSilo",
+  "menu.connect_cloudflare": "Connect Cloudflare",
   "menu.domain_store": "Domain Store",
   "menu.domain_health": "Domain Health",
   "menu.metrics": "Metrics",

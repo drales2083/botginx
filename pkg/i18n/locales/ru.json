@@ -28,6 +28,7 @@
   "menu.add_domain": "Добавить домен",
   "menu.connect_cpanel": "Подключить cPanel",
   "menu.connect_namesilo": "Подключить NameSilo",
+  "menu.connect_cloudflare": "Подключить Cloudflare",
   "menu.domain_store": "Магазин доменов",
   "menu.domain_health": "Состояние доменов",
   "menu.metrics": "Метрики",
