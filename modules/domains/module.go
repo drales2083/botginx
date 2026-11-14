@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"io/fs"
 	"net/http"
 	"sort"
@@ -321,6 +322,18 @@ func (m *Module) AdminReconfigureAllDomains(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
+	response := m.reconfigureAll(serverIP)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    response,
+	})
+}
+
+// reconfigureAll updates DNS for every provider (NameSilo, cPanel, Cloudflare)
+// and returns a per-provider result map.
+func (m *Module) reconfigureAll(serverIP string) map[string]interface{} {
 	// Results structure
 	type sourceResults struct {
 		Total   int                         `json:"total"`
@@ -402,11 +415,26 @@ func (m *Module) AdminReconfigureAllDomains(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"data":    response,
-	})
+	return response
+}
+
+// ReconfigureAllDomainsWithIP updates DNS for all providers to point at
+// serverIP. Used by other modules (e.g. servers) when the deploy IP changes.
+// Returns an error only if every provider failed outright.
+func (m *Module) ReconfigureAllDomainsWithIP(serverIP string) error {
+	response := m.reconfigureAll(serverIP)
+	var failed []string
+	for _, k := range []string{"namesilo", "cpanel", "cloudflare"} {
+		if e, ok := response[k].(map[string]interface{}); ok {
+			if msg, ok := e["error"].(string); ok {
+				failed = append(failed, k+": "+msg)
+			}
+		}
+	}
+	if len(failed) > 0 {
+		return fmt.Errorf("reconfigure errors: %s", strings.Join(failed, "; "))
+	}
+	return nil
 }
 
 func (m *Module) Widgets() []module.Widget {

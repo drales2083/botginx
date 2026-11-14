@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/botginx/botginx/modules/servers/models"
@@ -14,6 +15,14 @@ import (
 type Handler struct {
 	service   *services.ServerService
 	templates *module.TemplateEngine
+
+	// onServerIPChange is called (asynchronously) after a server's IP changes.
+	onServerIPChange func(newIP string) error
+}
+
+// SetOnServerIPChange registers the callback fired when a server IP changes.
+func (h *Handler) SetOnServerIPChange(fn func(string) error) {
+	h.onServerIPChange = fn
 }
 
 func NewHandler(service *services.ServerService, templates *module.TemplateEngine) *Handler {
@@ -143,6 +152,12 @@ func (h *Handler) APIGet(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APIUpdate(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
+	oldServer, err := h.service.Get(id)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
 	var input models.UpdateServerInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
@@ -153,6 +168,18 @@ func (h *Handler) APIUpdate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// IP changed: reconfigure DNS for all providers in the background
+	if input.IP != "" && input.IP != oldServer.IP && h.onServerIPChange != nil {
+		newIP := server.IP
+		go func() {
+			if err := h.onServerIPChange(newIP); err != nil {
+				log.Printf("[servers] Auto-reconfigure DNS failed: %v", err)
+			} else {
+				log.Printf("[servers] Auto-reconfigured DNS for new IP: %s", newIP)
+			}
+		}()
 	}
 
 	h.json(w, http.StatusOK, map[string]interface{}{"server": server})

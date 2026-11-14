@@ -389,6 +389,7 @@ func main() {
 	usersModule.SetAuthService(authModule.AuthService())       // Admin impersonation
 	supportModule.SetNotifier(telegramModule.Handler)          // Telegram notifications for tickets
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
+	serversModule.SetOnServerIPChange(domainsModule.ReconfigureAllDomainsWithIP) // Auto DNS reconfigure on deploy IP change
 
 	// QR codes needs redirect links list
 	qrcodesModule.SetLinkLister(func(userID string) ([]qrcodeshandlers.RedirectLink, error) {

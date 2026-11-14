@@ -22,6 +22,14 @@ type Module struct {
 	*module.BaseModule
 	service *services.ServerService
 	handler *handlers.Handler
+
+	onServerIPChange func(newIP string) error
+}
+
+// SetOnServerIPChange registers a callback fired when a server's IP changes.
+// Safe to call before or after Init.
+func (m *Module) SetOnServerIPChange(fn func(string) error) {
+	m.onServerIPChange = fn
 }
 
 func New() *Module {
@@ -42,6 +50,13 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 	// Initialize handler
 	m.handler = handlers.NewHandler(m.service, deps.Templates)
+
+	m.handler.SetOnServerIPChange(func(ip string) error {
+		if m.onServerIPChange == nil {
+			return nil
+		}
+		return m.onServerIPChange(ip)
+	})
 
 	// Register templates
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
