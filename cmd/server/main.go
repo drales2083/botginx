@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/botginx/botginx/modules/adminactivity"
+	"github.com/botginx/botginx/modules/agenticweb"
 	"github.com/botginx/botginx/modules/admindash"
 	"github.com/botginx/botginx/modules/analogstats"
 	"github.com/botginx/botginx/modules/analytics"
@@ -346,6 +347,8 @@ func main() {
 
 	registry.Register(admindash.New())     // Admin dashboard (stats)
 	registry.Register(adminactivity.New()) // Admin activity logs (audit)
+	agenticwebModule := agenticweb.New()
+	registry.Register(agenticwebModule) // WebMCP and AI discovery
 	registry.Register(announcements.New()) // News announcements (admin)
 	intelModule := intel.New()
 	registry.Register(intelModule)               // Intel blog (public /intel, admin /admin/intel)
@@ -489,6 +492,11 @@ func main() {
 	// Called by redirect pages to record visits
 	r.Mount("/api/track", analyticsModule.TrackingRoutes())
 
+	// Agentic Web discovery endpoints (no auth, for AI agents)
+	// GET /llms.txt, /llms-full.txt, /ard.json
+	r.Mount("/", agenticwebModule.PublicRoutes())
+	r.Mount("/.well-known", agenticwebModule.WellKnownRoutes())
+
 	// Public key for signed URL verification (no auth)
 	// GET /api/public-key - returns Ed25519 public key for verifying signed URLs
 	r.Mount("/api/public-key", analyticsModule.PublicKeyRoutes())
@@ -554,6 +562,9 @@ func main() {
 
 		// Promo codes: validate codes during subscription purchase
 		r.Mount("/promo", promocodesModule.APIRoutes())
+
+		// WebMCP API endpoints for AI agents (authenticated)
+		r.Mount("/webmcp", agenticwebModule.WebMCPRoutes())
 
 		// Impersonation exit: must be accessible by impersonated user (not admin-only)
 		r.Post("/impersonate/exit", usersModule.Handler().APIExitImpersonation)
