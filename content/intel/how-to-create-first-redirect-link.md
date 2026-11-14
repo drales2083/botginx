@@ -1,10 +1,13 @@
 ---
 title: How to Create Your First Redirect Link
 slug: how-to-create-first-redirect-link
-date: 2024-11-14
+date: 2026-11-14
 author: GuardBot Team
 category: tutorials
-tags: [getting-started, redirect-links, bot-protection]
+tags:
+  - getting-started
+  - redirect-links
+  - bot-protection
 excerpt: Step-by-step guide to creating a protected redirect link with bot detection and analytics. Takes about 5 minutes.
 featured: true
 ---
