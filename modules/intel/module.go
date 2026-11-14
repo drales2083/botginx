@@ -3,6 +3,9 @@ package intel
 import (
 	"embed"
 	"io/fs"
+	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/botginx/botginx/modules/intel/handlers"
 	"github.com/botginx/botginx/modules/intel/services"
@@ -13,16 +16,10 @@ import (
 //go:embed templates/*/*.html
 var templatesFS embed.FS
 
-//go:embed migrations/*.sql
-var migrationsFS embed.FS
-
 type Module struct {
 	*module.BaseModule
-	categoryService *services.CategoryService
-	tagService      *services.TagService
-	articleService  *services.ArticleService
+	contentService  *services.ContentService
 	markdownService *services.MarkdownService
-	adminHandler    *handlers.AdminHandler
 	publicHandler   *handlers.PublicHandler
 }
 
@@ -31,7 +28,7 @@ func New() *Module {
 		BaseModule: module.NewBaseModule(
 			"intel",
 			"Intel",
-			"Blog and content management",
+			"File-based blog and content",
 		),
 	}
 }
@@ -39,16 +36,21 @@ func New() *Module {
 func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 
-	m.categoryService = services.NewCategoryService(deps.DB)
-	m.tagService = services.NewTagService(deps.DB)
-	m.articleService = services.NewArticleService(deps.DB, m.tagService)
+	// Find content directory
+	contentDir := findContentDir()
+
+	var err error
+	m.contentService, err = services.NewContentService(contentDir)
+	if err != nil {
+		log.Printf("Intel: failed to load content from %s: %v", contentDir, err)
+		// Create empty service if content dir doesn't exist
+		m.contentService, _ = services.NewContentService("/dev/null")
+	}
+
 	m.markdownService = services.NewMarkdownService()
 
-	m.adminHandler = handlers.NewAdminHandler(
-		m.articleService, m.categoryService, m.tagService, m.markdownService, deps.Templates,
-	)
 	m.publicHandler = handlers.NewPublicHandler(
-		m.articleService, m.categoryService, m.tagService, m.markdownService, deps.Templates,
+		m.contentService, m.markdownService, deps.Templates,
 	)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
@@ -57,13 +59,35 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	return nil
 }
 
-func (m *Module) Migrate() error {
-	sql, err := fs.ReadFile(migrationsFS, "migrations/001_create_intel_tables.sql")
-	if err != nil {
-		return err
+func findContentDir() string {
+	// Try relative paths first
+	paths := []string{
+		"content/intel",
+		"./content/intel",
+		"../content/intel",
 	}
-	_, err = m.DB().Exec(string(sql))
-	return err
+
+	// Also try from executable location
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		paths = append(paths, filepath.Join(exeDir, "content/intel"))
+		paths = append(paths, filepath.Join(exeDir, "..", "content/intel"))
+	}
+
+	for _, p := range paths {
+		if info, err := os.Stat(p); err == nil && info.IsDir() {
+			abs, _ := filepath.Abs(p)
+			return abs
+		}
+	}
+
+	// Fallback - will be empty
+	return "content/intel"
+}
+
+func (m *Module) Migrate() error {
+	// No database migrations needed for file-based content
+	return nil
 }
 
 func (m *Module) Routes() chi.Router {
@@ -71,33 +95,32 @@ func (m *Module) Routes() chi.Router {
 }
 
 func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
-	if section == module.MenuSectionAdmin {
-		return m.adminHandler.Routes()
-	}
+	// No admin routes - content is managed via git
 	return nil
 }
 
 func (m *Module) MenuItems() []module.MenuItem {
-	return []module.MenuItem{
-		{
-			Title:   "Intel",
-			Icon:    "bi-journal-text",
-			Path:    "/admin/intel",
-			Order:   50,
-			Section: module.MenuSectionAdmin,
-			Group:   "Content",
-		},
-	}
+	// No admin menu items
+	return nil
 }
 
 func (m *Module) GetLatestArticles(limit int) ([]interface{}, error) {
-	articles, err := m.articleService.GetLatest(limit)
-	if err != nil {
-		return nil, err
-	}
+	articles := m.contentService.GetLatestArticles(limit)
 	result := make([]interface{}, len(articles))
 	for i, a := range articles {
-		result[i] = a
+		result[i] = map[string]interface{}{
+			"Title":        a.Title,
+			"Slug":         a.Slug,
+			"Excerpt":      a.Excerpt,
+			"CoverImage":   a.CoverImage,
+			"ReadingTime":  a.ReadingTime,
+			"CategoryName": a.CategoryName,
+		}
 	}
 	return result, nil
+}
+
+// Reload reloads content from disk (useful after git pull)
+func (m *Module) Reload() error {
+	return m.contentService.Reload()
 }

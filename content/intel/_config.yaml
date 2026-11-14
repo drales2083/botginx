@@ -1,0 +1,19 @@
+# Intel content configuration
+# Add .md files to this directory and push to publish
+
+categories:
+  - slug: tutorials
+    name: Tutorials
+    description: Step-by-step guides for using GuardBot
+
+  - slug: security
+    name: Security
+    description: Bot protection and security best practices
+
+  - slug: tips
+    name: Tips & Tricks
+    description: Quick tips to get more from GuardBot
+
+  - slug: updates
+    name: Updates
+    description: Product updates and new features
