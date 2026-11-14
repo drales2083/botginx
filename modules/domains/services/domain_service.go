@@ -30,15 +30,17 @@ func NewDomainService(db *sqlx.DB) *DomainService {
 // This is the SINGLE source of truth for SSL completion - use it everywhere.
 func (s *DomainService) CompleteSSLSetup(domainID string) error {
 	sslEnabled := true
+	dnsVerified := true
 	step := models.SetupStepComplete
 	emptyErr := ""
 	serverID := s.GetDeployServerID()
 
 	_, err := s.Update(domainID, models.UpdateDomainInput{
-		SSLEnabled: &sslEnabled,
-		SetupStep:  &step,
-		SSLError:   &emptyErr,
-		ServerID:   &serverID,
+		SSLEnabled:  &sslEnabled,
+		DNSVerified: &dnsVerified,
+		SetupStep:   &step,
+		SSLError:    &emptyErr,
+		ServerID:    &serverID,
 	})
 	return err
 }
