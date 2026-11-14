@@ -28,14 +28,11 @@ Connect your Cloudflare account, pick a domain, hit Import. Done.
 
 You don't copy DNS records. You don't sit there refreshing, waiting for propagation. You don't touch SSL or nginx. GuardBot handles it while you grab coffee.
 
-Here's what happens behind the scenes when you click that button:
+Here's what happens when you click Import:
 
-1. We point your A records to the right server
-2. Add the verification TXT record
-3. Set up the CNAME for automatic SSL renewals
-4. Generate a wildcard certificate (covers every subdomain)
-5. Configure nginx to proxy traffic through botection
-6. Mark your domain ready
+1. Your domain points to the right server
+2. SSL certificate gets generated (covers all subdomains)
+3. Bot protection goes live
 
 Takes about two minutes. You don't touch any of it.
 
@@ -45,19 +42,13 @@ Before today, setting up a Cloudflare domain meant bouncing between three dashbo
 
 Now? Connect once, import forever. Every domain in your Cloudflare account shows up in a list. Click import on any of them.
 
-## The Technical Bit (For Those Who Care)
-
-SSL certificates renew automatically. You set it up once, and renewals happen in the background without touching your DNS again.
-
-Either way, you get a wildcard certificate that covers every subdomain.
-
 ## Already Using NameSilo?
 
 Works the same as our NameSilo integration. If you've imported domains from NameSilo before, Cloudflare will feel familiar.
 
 ## Get Started
 
-Head to **Domains > Connect Cloudflare** in your dashboard. You'll need your Cloudflare email and Global API Key (grab it from your Cloudflare profile under API Tokens).
+Head to **Domains > Connect Cloudflare** in your dashboard. Enter your Cloudflare login details and you're set.
 
 That's it. Connect, import, and you're protected.
 
