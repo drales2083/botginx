@@ -398,11 +398,41 @@ func (s *CloudflareService) setupDNSInternal(ctx context.Context, userID, zoneID
 	// Setup acme-dns CNAME if configured
 	acmeDomain := os.Getenv("ACME_DNS_DOMAIN")
 	if acmeDomain != "" {
-		reg, err := s.registerWithAcmeDNS(userID, domain)
-		if err != nil {
-			log.Printf("[Cloudflare] Warning: acme-dns registration failed for %s: %v", domain, err)
-		} else if _, err = client.AddAcmeDNSCname(ctx, zoneID, domain, reg.Fulldomain); err != nil {
-			log.Printf("[Cloudflare] Warning: failed to add ACME DNS CNAME for %s: %v", domain, err)
+		// First, delete any existing _acme-challenge records (TXT or CNAME) to ensure clean state
+		if records, err := client.ListDNSRecords(ctx, zoneID); err == nil {
+			for _, r := range records {
+				if r.Name == "_acme-challenge."+domain {
+					log.Printf("[Cloudflare] Deleting existing %s record for _acme-challenge.%s", r.Type, domain)
+					client.DeleteDNSRecord(ctx, zoneID, r.ID)
+				}
+			}
+		}
+
+		// Check if domain already has acme-dns credentials
+		var existingFulldomain string
+		s.db.QueryRow(`SELECT acme_fulldomain FROM domains WHERE name = $1 AND user_id = $2 AND acme_fulldomain IS NOT NULL`,
+			domain, userID).Scan(&existingFulldomain)
+
+		var fulldomain string
+		if existingFulldomain != "" {
+			// Use existing credentials
+			fulldomain = existingFulldomain
+			log.Printf("[Cloudflare] Using existing acme-dns credentials for %s → %s", domain, fulldomain)
+		} else {
+			// Register new credentials
+			reg, err := s.registerWithAcmeDNS(userID, domain)
+			if err != nil {
+				log.Printf("[Cloudflare] Warning: acme-dns registration failed for %s: %v", domain, err)
+			} else {
+				fulldomain = reg.Fulldomain
+			}
+		}
+
+		// Add CNAME if we have a fulldomain
+		if fulldomain != "" {
+			if _, err := client.AddAcmeDNSCname(ctx, zoneID, domain, fulldomain); err != nil {
+				log.Printf("[Cloudflare] Warning: failed to add ACME DNS CNAME for %s: %v", domain, err)
+			}
 		}
 	}
 
