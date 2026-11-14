@@ -365,14 +365,23 @@ func (s *CloudflareService) Import(ctx context.Context, userID string, input mod
 				} else {
 					log.Printf("[Cloudflare] Wildcard SSL completed for %s (slow fallback)", domainName)
 					s.domainService.CompleteSSLSetup(domID)
+					// Setup nginx config
+					if err := s.setupProxyNginxConfig(domainName); err != nil {
+						log.Printf("[Cloudflare] Warning: nginx config failed for %s: %v", domainName, err)
+					}
 				}
 				return
 			}
 
-			// Step 5: Complete setup
+			// Step 5: Complete setup and create nginx config
 			log.Printf("[Cloudflare] Wildcard SSL completed for %s", domainName)
 			s.domainService.CompleteSSLSetup(domID)
 			s.db.Exec(`UPDATE domains SET acme_cname_verified = true WHERE id = $1`, domID)
+
+			// Step 6: Setup nginx config
+			if err := s.setupProxyNginxConfig(domainName); err != nil {
+				log.Printf("[Cloudflare] Warning: nginx config failed for %s: %v", domainName, err)
+			}
 		}(domain.ID, userID, input.ZoneID, zone.Name)
 	}
 
@@ -744,5 +753,80 @@ done
 	}
 
 	log.Printf("[Cloudflare] Wildcard SSL generated for *.%s (slow method)", domainName)
+	return nil
+}
+
+// setupProxyNginxConfig creates nginx config with proper proxy to botection
+func (s *CloudflareService) setupProxyNginxConfig(domainName string) error {
+	// Get deploy server credentials
+	var server struct {
+		IP       string `db:"ip"`
+		Port     int    `db:"port"`
+		User     string `db:"ssh_user"`
+		Password string `db:"ssh_password"`
+	}
+	err := s.db.Get(&server, `
+		SELECT ip, COALESCE(port, 22) as port, ssh_user, ssh_password
+		FROM servers WHERE status = 'ready' ORDER BY created_at LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("no deploy server available: %w", err)
+	}
+
+	port := fmt.Sprintf("%d", server.Port)
+	sshClient, err := sshexec.NewClient(server.IP, port, server.User, server.Password)
+	if err != nil {
+		return fmt.Errorf("SSH connection failed: %w", err)
+	}
+	defer sshClient.Close()
+
+	baseDomain := GetBaseDomain(domainName)
+
+	nginxConf := fmt.Sprintf(`server {
+    listen 80;
+    server_name %s *.%s;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name %s *.%s;
+
+    ssl_certificate /etc/letsencrypt/live/%s/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/%s/privkey.pem;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/sites/%s;
+        allow all;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+
+	configPath := fmt.Sprintf("/etc/nginx/sites-available/*.%s.conf", baseDomain)
+	writeCmd := fmt.Sprintf("cat > %s << 'NGINXEOF'\n%s\nNGINXEOF", configPath, nginxConf)
+	if _, err := sshClient.Run(writeCmd); err != nil {
+		return fmt.Errorf("failed to write nginx config: %w", err)
+	}
+
+	// Enable site
+	linkCmd := fmt.Sprintf("ln -sf %s /etc/nginx/sites-enabled/", configPath)
+	sshClient.Run(linkCmd)
+
+	// Test and reload nginx
+	testOut, err := sshClient.Run("nginx -t 2>&1")
+	if err != nil || strings.Contains(testOut, "failed") {
+		sshClient.Run(fmt.Sprintf("rm -f /etc/nginx/sites-enabled/*.%s.conf", baseDomain))
+		return fmt.Errorf("nginx config invalid: %s", testOut)
+	}
+
+	sshClient.Run("systemctl reload nginx")
+	log.Printf("[Cloudflare] Created proxy nginx config for %s", baseDomain)
 	return nil
 }
