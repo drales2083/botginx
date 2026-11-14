@@ -1,3 +1,52 @@
+{{define "head"}}
+<title>{{.Category.Name}} | Intel | {{appName}}</title>
+<meta name="description" content="{{if .Category.Description}}{{.Category.Description}}{{else}}Articles about {{.Category.Name}} - GuardBot Intel{{end}}">
+<link rel="canonical" href="{{.BaseURL}}/intel/category/{{.Category.Slug}}">
+{{end}}
+
+{{define "structured-data"}}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "name": "{{.Category.Name}} | Intel",
+      "description": "{{if .Category.Description}}{{.Category.Description}}{{else}}Articles about {{.Category.Name}}{{end}}",
+      "url": "{{.BaseURL}}/intel/category/{{.Category.Slug}}",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "GuardBot",
+        "url": "https://guardbot.sbs"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://guardbot.sbs"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Intel",
+          "item": "https://guardbot.sbs/intel"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "{{.Category.Name}}"
+        }
+      ]
+    }
+  ]
+}
+</script>
+{{end}}
+
 {{define "content"}}
 <div class="intel-page">
     <div style="text-align:center;margin-bottom:2.5rem;">

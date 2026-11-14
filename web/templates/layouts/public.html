@@ -43,40 +43,57 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebPage",
-    "name": "{{.Title}} | {{appName}}",
-    "isPartOf": {
-      "@type": "WebSite",
-      "name": "GuardBot",
-      "url": "https://guardbot.sbs"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "GuardBot",
-      "url": "https://guardbot.sbs"
-    }
-  }
-  </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "GuardBot",
-    "applicationCategory": "SecurityApplication",
-    "operatingSystem": "Web",
-    "description": "Bot protection and link management platform. Create redirect links with bot filtering, host domains with automatic SSL, and track visitor analytics.",
-    "url": "https://guardbot.sbs",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
-    "featureList": ["Bot Protection", "Redirect Links", "Custom Domains", "Analytics", "QR Codes", "API Access"],
-    "screenshot": "https://guardbot.sbs/img/screenshot.png",
-    "softwareHelp": {
-      "@type": "WebPage",
-      "url": "https://docs.guardbot.sbs/"
-    }
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "{{.Title}} | {{appName}}",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "GuardBot",
+          "url": "https://guardbot.sbs"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "GuardBot",
+          "url": "https://guardbot.sbs"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "GuardBot",
+        "applicationCategory": "SecurityApplication",
+        "operatingSystem": "Web",
+        "description": "Bot protection and link management platform. Create redirect links with bot filtering, host domains with automatic SSL, and track visitor analytics.",
+        "url": "https://guardbot.sbs",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": ["Bot Protection", "Redirect Links", "Custom Domains", "Analytics", "QR Codes", "API Access"],
+        "screenshot": "https://guardbot.sbs/img/screenshot.png",
+        "softwareHelp": {
+          "@type": "WebPage",
+          "url": "https://docs.guardbot.sbs/"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://guardbot.sbs"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "{{.Title}}"
+          }
+        ]
+      }
+    ]
   }
   </script>
   {{end}}
