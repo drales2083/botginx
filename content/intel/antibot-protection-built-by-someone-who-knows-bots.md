@@ -10,7 +10,7 @@ tags:
   - security
 excerpt: Most antibot solutions block IPs. Bots rotate IPs. GuardBot detects the bot itself, not just where it comes from.
 featured: true
-cover_image: /static/uploads/intel/2026/11/antibot-protection-banner.png
+cover_image: /static/uploads/intel/2026/11/antibot-protection-banner-alt.png
 ---
 
 I started by building bots. Scrapers, automation tools, the works. I know how bot developers think because I was one.
