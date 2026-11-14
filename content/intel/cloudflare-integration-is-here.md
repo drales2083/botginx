@@ -26,7 +26,7 @@ Today, soon is now.
 
 Connect your Cloudflare account, pick a domain, hit Import. Done.
 
-No copying DNS records. No waiting for propagation and refreshing anxiously. No manual SSL setup. No nginx configuration. GuardBot handles all of it while you grab coffee.
+You don't copy DNS records. You don't sit there refreshing, waiting for propagation. You don't touch SSL or nginx. GuardBot handles it while you grab coffee.
 
 Here's what happens behind the scenes when you click that button:
 
@@ -47,7 +47,7 @@ Now? Connect once, import forever. Every domain in your Cloudflare account shows
 
 ## The Technical Bit (For Those Who Care)
 
-We're using acme-dns for SSL generation. Your `_acme-challenge` record points to our acme-dns server via CNAME, which means certificate renewals happen instantly without touching your DNS again. No more renewal failures because DNS propagation was slow.
+We're using acme-dns for SSL generation. Your `_acme-challenge` record points to our acme-dns server via CNAME, which means certificate renewals happen instantly without touching your DNS again. Renewals won't fail because propagation was slow.
 
 If acme-dns isn't available for some reason, we fall back to adding TXT records directly through the Cloudflare API. Slower, but it works. You'll get your wildcard cert either way.
 
