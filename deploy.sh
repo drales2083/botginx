@@ -532,6 +532,8 @@ HOSTING_ENCRYPTION_KEY=${encryption_key}
 google_safe_browsing_api_key=AIzaSyDnRAEGuVysL3hinplk_5wH6Ak2lfJbwEE
 # Signed URL Verification: Ed25519 private key (NEVER change once deployed)
 SIGNED_URL_PRIVATE_KEY=${SIGNED_URL_PRIVATE_KEY:-TEvX+N6kVvCgDuJ7mm3CHDRpe8iaz3Q4viRkVhVVqbZWpZSXA74sbguhQ4Z4NyZnSWaUl15k6ZoF1wRpu2iGIQ==}
+# WebMCP: Chrome origin trial token for AI agent tools
+WEBMCP_ORIGIN_TRIAL_TOKEN=A33YwZcL9lJ0N+1e5B4O9NNMpHCAWEbfV/zPBDpeS7Y1rBQJRx9RQAHeTbKhqqsI2tnbDt9fwW3YPqKt3uA4JwUAAABzeyJvcmlnaW4iOiJodHRwczovL2d1YXJkYm90LnNiczo0NDMiLCJmZWF0dXJlIjoiV2ViTUNQIiwiZXhwaXJ5IjoxODA2MzY0ODAwLCJpc1N1YmRvbWFpbiI6dHJ1ZSwiaXNUaGlyZFBhcnR5Ijp0cnVlfQ==
 ENVEOF"
     remote_sudo "chown ${RUN_USER}:${RUN_USER} ${APP_DIR}/.env"
     remote_sudo "chmod 600 ${APP_DIR}/.env"
