@@ -796,7 +796,10 @@ Disallow: /api/
 Disallow: /webhooks/
 
 Sitemap: %s/sitemap.xml
-`, siteURL)
+
+# AI Agents
+LLMs-Txt: %s/llms.txt
+`, siteURL, siteURL)
 	}))
 
 	// Start server

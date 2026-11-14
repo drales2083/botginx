@@ -150,6 +150,112 @@
                     link_id: args.link_id
                 }, options && options.signal);
             }
+        },
+        {
+            name: 'guardbot_create_link',
+            description: 'Create a new GuardBot redirect link with bot protection.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    domain_id: {
+                        type: 'string',
+                        description: 'The ID of the domain to use (from getDomains)'
+                    },
+                    subdomain: {
+                        type: 'string',
+                        description: 'Subdomain for the link (optional, auto-generated if not provided)'
+                    },
+                    path: {
+                        type: 'string',
+                        description: 'URL path (optional)'
+                    },
+                    destination: {
+                        type: 'string',
+                        description: 'The destination URL to redirect to'
+                    }
+                },
+                required: ['domain_id', 'destination']
+            },
+            annotations: {
+                readOnlyHint: false,
+                consequentialHint: true
+            },
+            execute: function(args, options) {
+                if (!args.domain_id || !args.destination) {
+                    return Promise.reject(new Error('domain_id and destination are required'));
+                }
+                return fetch(API_ENDPOINT + '/links', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                    signal: options && options.signal,
+                    body: JSON.stringify(args)
+                }).then(function(r) { return r.json(); }).then(function(d) { return d.success ? d.data : Promise.reject(new Error(d.error)); });
+            }
+        },
+        {
+            name: 'guardbot_update_link',
+            description: 'Update an existing GuardBot redirect link destination.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    link_id: {
+                        type: 'string',
+                        description: 'The ID of the link to update'
+                    },
+                    destination: {
+                        type: 'string',
+                        description: 'The new destination URL'
+                    }
+                },
+                required: ['link_id']
+            },
+            annotations: {
+                readOnlyHint: false,
+                consequentialHint: true
+            },
+            execute: function(args, options) {
+                if (!args.link_id) {
+                    return Promise.reject(new Error('link_id is required'));
+                }
+                return fetch(API_ENDPOINT + '/links', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                    signal: options && options.signal,
+                    body: JSON.stringify(args)
+                }).then(function(r) { return r.json(); }).then(function(d) { return d.success ? d.data : Promise.reject(new Error(d.error)); });
+            }
+        },
+        {
+            name: 'guardbot_delete_link',
+            description: 'Delete a GuardBot redirect link permanently.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    link_id: {
+                        type: 'string',
+                        description: 'The ID of the link to delete'
+                    }
+                },
+                required: ['link_id']
+            },
+            annotations: {
+                readOnlyHint: false,
+                consequentialHint: true
+            },
+            execute: function(args, options) {
+                if (!args.link_id) {
+                    return Promise.reject(new Error('link_id is required'));
+                }
+                return fetch(API_ENDPOINT + '/links', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                    signal: options && options.signal,
+                    body: JSON.stringify(args)
+                }).then(function(r) { return r.json(); }).then(function(d) { return d.success ? d.data : Promise.reject(new Error(d.error)); });
+            }
         }
     ];
 

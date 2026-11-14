@@ -55,10 +55,16 @@ func (m *Module) WellKnownRoutes() chi.Router {
 func (m *Module) WebMCPRoutes() chi.Router {
 	r := chi.NewRouter()
 
+	// Read operations
 	r.Get("/domains", m.handler.WebMCPDomains)
 	r.Get("/links", m.handler.WebMCPLinks)
 	r.Get("/link-stats", m.handler.WebMCPLinkStats)
 	r.Get("/search", m.handler.WebMCPSearch)
+
+	// Write operations
+	r.Post("/links", m.handler.WebMCPCreateLink)
+	r.Put("/links", m.handler.WebMCPUpdateLink)
+	r.Delete("/links", m.handler.WebMCPDeleteLink)
 
 	return r
 }

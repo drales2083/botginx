@@ -3,15 +3,15 @@
 
 <div id="error-alert" class="alert alert-danger d-none"></div>
 
-<form id="login-form">
+<form id="login-form" toolname="guardbot_login" tooldescription="Sign in to your GuardBot account to manage redirect links and domains">
     <div class="input-group mb-3">
-        <input type="email" class="form-control" id="email" name="email" placeholder="{{t "email"}}" required autofocus>
+        <input type="email" class="form-control" id="email" name="email" placeholder="{{t "email"}}" required autofocus toolparamdescription="Your email address">
         <div class="input-group-text">
             <span class="bi bi-envelope"></span>
         </div>
     </div>
     <div class="input-group mb-3">
-        <input type="password" class="form-control" id="password" name="password" placeholder="{{t "password"}}" required>
+        <input type="password" class="form-control" id="password" name="password" placeholder="{{t "password"}}" required toolparamdescription="Your account password">
         <div class="input-group-text">
             <span class="bi bi-lock"></span>
         </div>

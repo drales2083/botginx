@@ -343,6 +343,42 @@ func (h *Handler) ARDJson(w http.ResponseWriter, r *http.Request) {
 						"required": []string{"link_id"},
 					},
 				},
+				{
+					"name":        "createLink",
+					"description": "Create a new redirect link",
+					"inputSchema": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"domain_id":   map[string]string{"type": "string", "description": "Domain ID"},
+							"subdomain":   map[string]string{"type": "string", "description": "Subdomain (optional)"},
+							"destination": map[string]string{"type": "string", "description": "Destination URL"},
+						},
+						"required": []string{"domain_id", "destination"},
+					},
+				},
+				{
+					"name":        "updateLink",
+					"description": "Update a redirect link destination",
+					"inputSchema": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"link_id":     map[string]string{"type": "string", "description": "Link ID"},
+							"destination": map[string]string{"type": "string", "description": "New destination URL"},
+						},
+						"required": []string{"link_id"},
+					},
+				},
+				{
+					"name":        "deleteLink",
+					"description": "Delete a redirect link",
+					"inputSchema": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"link_id": map[string]string{"type": "string", "description": "Link ID"},
+						},
+						"required": []string{"link_id"},
+					},
+				},
 			},
 		},
 		"api": map[string]interface{}{
@@ -548,4 +584,145 @@ func (h *Handler) WebMCPSearch(w http.ResponseWriter, r *http.Request) {
 	`, userID, searchPattern, limit)
 
 	h.jsonResponse(w, links)
+}
+
+// WebMCPCreateLink creates a new redirect link
+func (h *Handler) WebMCPCreateLink(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		DomainID    string `json:"domain_id"`
+		Subdomain   string `json:"subdomain"`
+		Path        string `json:"path"`
+		Destination string `json:"destination"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.jsonError(w, "Invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if req.DomainID == "" || req.Destination == "" {
+		h.jsonError(w, "domain_id and destination are required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify domain belongs to user
+	var domainName string
+	err := h.db.Get(&domainName, `SELECT name FROM domains WHERE id = $1 AND user_id = $2`, req.DomainID, userID)
+	if err != nil {
+		h.jsonError(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// Generate ID and create link
+	linkID := fmt.Sprintf("%d", time.Now().UnixNano())
+	subdomain := req.Subdomain
+	if subdomain == "" {
+		subdomain = fmt.Sprintf("link-%d", time.Now().Unix()%10000)
+	}
+
+	_, err = h.db.Exec(`
+		INSERT INTO redirect_links (id, user_id, subdomain, base_domain, path, destination, type, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, 'redirect', NOW())
+	`, linkID, userID, subdomain, domainName, req.Path, req.Destination)
+
+	if err != nil {
+		h.jsonError(w, "Failed to create link", http.StatusInternalServerError)
+		return
+	}
+
+	h.jsonResponse(w, map[string]interface{}{
+		"id":        linkID,
+		"subdomain": subdomain,
+		"domain":    domainName,
+		"url":       fmt.Sprintf("https://%s.%s%s", subdomain, domainName, req.Path),
+	})
+}
+
+// WebMCPUpdateLink updates an existing redirect link
+func (h *Handler) WebMCPUpdateLink(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		LinkID      string `json:"link_id"`
+		Destination string `json:"destination"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.jsonError(w, "Invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if req.LinkID == "" {
+		h.jsonError(w, "link_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify link belongs to user
+	var count int
+	h.db.Get(&count, `SELECT COUNT(*) FROM redirect_links WHERE id = $1 AND user_id = $2`, req.LinkID, userID)
+	if count == 0 {
+		h.jsonError(w, "Link not found", http.StatusNotFound)
+		return
+	}
+
+	// Update link
+	if req.Destination != "" {
+		_, err := h.db.Exec(`UPDATE redirect_links SET destination = $1, updated_at = NOW() WHERE id = $2`, req.Destination, req.LinkID)
+		if err != nil {
+			h.jsonError(w, "Failed to update link", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	h.jsonResponse(w, map[string]string{"status": "updated", "link_id": req.LinkID})
+}
+
+// WebMCPDeleteLink deletes a redirect link
+func (h *Handler) WebMCPDeleteLink(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		LinkID string `json:"link_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.jsonError(w, "Invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if req.LinkID == "" {
+		h.jsonError(w, "link_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify link belongs to user
+	var count int
+	h.db.Get(&count, `SELECT COUNT(*) FROM redirect_links WHERE id = $1 AND user_id = $2`, req.LinkID, userID)
+	if count == 0 {
+		h.jsonError(w, "Link not found", http.StatusNotFound)
+		return
+	}
+
+	// Delete link
+	_, err := h.db.Exec(`DELETE FROM redirect_links WHERE id = $1`, req.LinkID)
+	if err != nil {
+		h.jsonError(w, "Failed to delete link", http.StatusInternalServerError)
+		return
+	}
+
+	h.jsonResponse(w, map[string]string{"status": "deleted", "link_id": req.LinkID})
 }
