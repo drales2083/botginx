@@ -214,6 +214,8 @@ var menuTitleMap = map[string]string{
 	"My Domains":         "menu.my_domains",
 	"Add Domain":         "menu.add_domain",
 	"Connect cPanel":     "menu.connect_cpanel",
+	"Connect NameSilo":   "menu.connect_namesilo",
+	"Connect Cloudflare": "menu.connect_cloudflare",
 	"Domain Store":       "menu.domain_store",
 	"Domain Health":      "menu.domain_health",
 	"Metrics":            "menu.metrics",
