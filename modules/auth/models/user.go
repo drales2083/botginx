@@ -29,6 +29,11 @@ type User struct {
 	// NameSilo integration
 	NameSiloAPIKeyEncrypted *string    `db:"namesilo_api_key_encrypted" json:"-"`
 	NameSiloConnectedAt     *time.Time `db:"namesilo_connected_at" json:"namesiloConnectedAt,omitempty"`
+
+	// Cloudflare integration
+	CloudflareEmail            *string    `db:"cloudflare_email" json:"-"`
+	CloudflareAPIKeyEncrypted  *string    `db:"cloudflare_api_key_encrypted" json:"-"`
+	CloudflareConnectedAt      *time.Time `db:"cloudflare_connected_at" json:"cloudflareConnectedAt,omitempty"`
 }
 
 type SignupInput struct {
