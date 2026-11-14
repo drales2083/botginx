@@ -9,7 +9,7 @@ tags:
   - verification
   - security
   - api
-excerpt: Your destination server can cryptographically verify that traffic passed bot detection. No more guessing.
+excerpt: Your destination server can cryptographically verify that visitors passed bot detection. Here's how.
 featured: true
 cover_image: /static/uploads/intel/2026/11/signed-urls-banner.png
 ---
