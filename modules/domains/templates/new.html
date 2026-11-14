@@ -34,12 +34,35 @@
 
                 <hr class="my-4">
 
-                <div class="text-center">
-                    <p class="text-muted small mb-2">Have a cPanel hosting account?</p>
-                    <a href="/user/domains/cpanel/" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-link-45deg me-1"></i> Connect cPanel for Auto-DNS
-                    </a>
+                <div class="text-center mb-3">
+                    <p class="text-muted small mb-0">Or import domains with auto-DNS from:</p>
                 </div>
+
+                <div class="row g-2">
+                    <div class="col-4">
+                        <a href="/user/domains/cpanel/" class="card card-body text-center text-decoration-none h-100 border-0 bg-body-tertiary hover-lift">
+                            <i class="bi bi-server text-primary fs-4 mb-1"></i>
+                            <span class="small fw-medium">cPanel</span>
+                        </a>
+                    </div>
+                    <div class="col-4">
+                        <a href="/user/domains/namesilo" class="card card-body text-center text-decoration-none h-100 border-0 bg-body-tertiary hover-lift">
+                            <i class="bi bi-database text-primary fs-4 mb-1"></i>
+                            <span class="small fw-medium">NameSilo</span>
+                        </a>
+                    </div>
+                    <div class="col-4">
+                        <a href="/user/domains/cloudflare" class="card card-body text-center text-decoration-none h-100 border-0 bg-body-tertiary hover-lift">
+                            <i class="bi bi-cloud text-primary fs-4 mb-1"></i>
+                            <span class="small fw-medium">Cloudflare</span>
+                        </a>
+                    </div>
+                </div>
+
+                <style>
+                .hover-lift { transition: transform 0.15s, box-shadow 0.15s; }
+                .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                </style>
             </div>
         </div>
     </div>
