@@ -38,6 +38,8 @@ Build stricter funnels. Payment pages, signup forms, gated content. Accept only 
 
 ## How It Works
 
+![How signed URL verification works](/static/uploads/intel/2026/11/signed-urls-inpost.png)
+
 GuardBot signs the destination URL with Ed25519 (the same crypto used in SSH keys and secure messaging). The signature includes a timestamp, so old links expire. Your server verifies the signature using our public key.
 
 The signed URL looks like this:
