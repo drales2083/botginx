@@ -508,7 +508,8 @@
   "help.search_desc": "Search our knowledge base, or browse the topics below.",
   "help.search_placeholder": "Search the FAQ...",
   "help.no_results": "No FAQs match your search. Try different keywords.",
-  "help.still_need_help": "Still need help? Contact admin on Telegram.",
+  "help.still_need_help": "Still need help?",
+  "help.open_ticket": "Open a support ticket",
 
   "referrals": "Referrals",
   "referrals.your_link": "Your Referral Link",

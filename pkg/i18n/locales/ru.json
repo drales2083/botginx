@@ -508,7 +508,8 @@
   "help.search_desc": "Поиск по базе знаний или просмотр тем ниже.",
   "help.search_placeholder": "Поиск по FAQ...",
   "help.no_results": "Ничего не найдено. Попробуйте другие ключевые слова.",
-  "help.still_need_help": "Нужна помощь? Свяжитесь с администратором в Telegram.",
+  "help.still_need_help": "Нужна помощь?",
+  "help.open_ticket": "Создать тикет",
 
   "referrals": "Рефералы",
   "referrals.your_link": "Ваша реферальная ссылка",
