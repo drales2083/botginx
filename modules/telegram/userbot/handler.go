@@ -32,6 +32,7 @@ const (
 	ScreenBalance    = "balance"
 	ScreenHelp       = "help"
 	ScreenProtection = "protection"
+	ScreenSupport    = "support"
 
 	linksPerPage = 5
 	maxTextLen   = 4000
@@ -79,13 +80,22 @@ type Config struct {
 	RenderTicket       func(userID, ticketID string) (string, InlineKeyboardMarkup, bool)
 	RenderReplyPrompt  func(ticketID string) (string, InlineKeyboardMarkup)
 	AddTicketReply     func(userID, ticketID, message string) (string, error)
+	RenderSupportMenu  func(userID string) (string, InlineKeyboardMarkup)
+	RenderTicketList   func(userID string) (string, InlineKeyboardMarkup)
+	RenderNewTicketSubject func() (string, InlineKeyboardMarkup)
+	RenderNewTicketMessage func(subject string) (string, InlineKeyboardMarkup)
+	CreateTicket       func(userID, subject, message string) (string, error)
+	NotifyAdminNewTicket func(ticketID, userID, subject, message string)
+	NotifyAdminTicketReply func(ticketID, userID, message string)
 	DashboardURL       string // e.g. https://guardbot.sbs
 	DocsURL            string // default https://docs.guardbot.sbs
 }
 
 type UserBotHandler struct {
-	cfg          Config
-	replyState   map[string]string // userID -> ticketID (waiting for reply)
+	cfg               Config
+	replyState        map[string]string // userID -> ticketID (waiting for reply)
+	ticketSubject     map[string]string // userID -> subject (waiting for message)
+	ticketSubjectWait map[string]bool   // userID -> true (waiting for subject)
 }
 
 func NewUserBotHandler(cfg Config) *UserBotHandler {
@@ -94,8 +104,10 @@ func NewUserBotHandler(cfg Config) *UserBotHandler {
 		cfg.DocsURL = "https://docs.guardbot.sbs"
 	}
 	return &UserBotHandler{
-		cfg:        cfg,
-		replyState: make(map[string]string),
+		cfg:               cfg,
+		replyState:        make(map[string]string),
+		ticketSubject:     make(map[string]string),
+		ticketSubjectWait: make(map[string]bool),
 	}
 }
 
@@ -189,6 +201,10 @@ func (h *UserBotHandler) handleMessage(user *models.User, m *tgMessage) {
 				h.showWithNotice(user, ScreenMain, "⚠️ "+err.Error())
 				return
 			}
+			// Notify admin about the reply
+			if h.cfg.NotifyAdminTicketReply != nil {
+				h.cfg.NotifyAdminTicketReply(ticketID, user.ID, text)
+			}
 			// Show ticket again with success message
 			if h.cfg.RenderTicket != nil {
 				txt, kb, _ := h.cfg.RenderTicket(user.ID, ticketID)
@@ -197,6 +213,50 @@ func (h *UserBotHandler) handleMessage(user *models.User, m *tgMessage) {
 			}
 		}
 		h.showWithNotice(user, ScreenMain, "✅ Reply sent")
+		return
+	}
+
+	// Check if user is waiting to enter ticket subject
+	if h.ticketSubjectWait[user.ID] && cmd == "" {
+		delete(h.ticketSubjectWait, user.ID)
+		if len(text) < 5 || len(text) > 100 {
+			h.send(user, "⚠️ Subject must be 5-100 characters. Try again.",
+				InlineKeyboardMarkup{[][]InlineButton{{{Text: "← Cancel", CallbackData: ScreenSupport}}}})
+			h.ticketSubjectWait[user.ID] = true
+			return
+		}
+		h.ticketSubject[user.ID] = text
+		if h.cfg.RenderNewTicketMessage != nil {
+			txt, kb := h.cfg.RenderNewTicketMessage(text)
+			h.send(user, txt, kb)
+		} else {
+			h.send(user, "Now send your message.",
+				InlineKeyboardMarkup{[][]InlineButton{{{Text: "← Cancel", CallbackData: ScreenSupport}}}})
+		}
+		return
+	}
+
+	// Check if user is waiting to enter ticket message
+	if subject, ok := h.ticketSubject[user.ID]; ok && cmd == "" {
+		delete(h.ticketSubject, user.ID)
+		if h.cfg.CreateTicket != nil {
+			ticketID, err := h.cfg.CreateTicket(user.ID, subject, text)
+			if err != nil {
+				h.showWithNotice(user, ScreenSupport, "⚠️ "+err.Error())
+				return
+			}
+			// Notify admin
+			if h.cfg.NotifyAdminNewTicket != nil {
+				h.cfg.NotifyAdminNewTicket(ticketID, user.ID, subject, text)
+			}
+			// Show the created ticket
+			if h.cfg.RenderTicket != nil {
+				txt, kb, _ := h.cfg.RenderTicket(user.ID, ticketID)
+				h.send(user, "✅ Ticket created!\n\n"+txt, kb)
+				return
+			}
+		}
+		h.showWithNotice(user, ScreenSupport, "✅ Ticket created")
 		return
 	}
 
@@ -215,6 +275,8 @@ func (h *UserBotHandler) handleMessage(user *models.User, m *tgMessage) {
 		h.show(user, ScreenSettings, "")
 	case cmd == "/protection":
 		h.show(user, ScreenProtection, "")
+	case cmd == "/support":
+		h.show(user, ScreenSupport, "")
 	case cmd == "/newlink":
 		if arg == "" {
 			h.show(user, ScreenNewLink, "")
@@ -297,6 +359,8 @@ func (h *UserBotHandler) handleCallback(user *models.User, cq *tgCallbackQuery) 
 		h.show(user, ScreenSettings, "")
 	case data == "nav:"+ScreenProtection:
 		h.show(user, ScreenProtection, "")
+	case data == "nav:"+ScreenSupport:
+		h.show(user, ScreenSupport, "")
 	case strings.HasPrefix(data, "lp:"):
 		page, _ := strconv.Atoi(strings.TrimPrefix(data, "lp:"))
 		h.showLinks(user, page)
@@ -384,6 +448,12 @@ func (h *UserBotHandler) renderScreen(user *models.User, screen string, data int
 		}
 		return "🛡️ <b>Protection</b>\n\nProtection settings are not available yet.",
 			InlineKeyboardMarkup{[][]InlineButton{backRow()}}
+	case ScreenSupport:
+		if h.cfg.RenderSupportMenu != nil {
+			return h.cfg.RenderSupportMenu(user.ID)
+		}
+		return "🎫 <b>Support</b>\n\nSupport is not available yet.",
+			InlineKeyboardMarkup{[][]InlineButton{backRow()}}
 	default:
 		return h.renderMain()
 	}
@@ -410,6 +480,7 @@ func (h *UserBotHandler) renderMain() (string, InlineKeyboardMarkup) {
 			{Text: "💰 Balance", CallbackData: "nav:" + ScreenBalance},
 		},
 		{
+			{Text: "🎫 Support", CallbackData: "nav:" + ScreenSupport},
 			{Text: "❓ Help", CallbackData: "nav:" + ScreenHelp},
 		},
 	}}
@@ -455,6 +526,7 @@ func (h *UserBotHandler) renderHelp() (string, InlineKeyboardMarkup) {
 		"/links — your links\n" +
 		"/newlink [url] — create a protected link\n" +
 		"/protection — bot protection defaults\n" +
+		"/support — create or view tickets\n" +
 		"/balance — account balance\n" +
 		"/settings — notifications\n" +
 		"/help — this screen\n\n" +
@@ -701,7 +773,31 @@ func (h *UserBotHandler) createLink(user *models.User, destURL string) {
 
 // handleSupportCallback handles support ticket viewing and replies.
 func (h *UserBotHandler) handleSupportCallback(user *models.User, data string) {
+	// Clear any pending ticket creation states when navigating
+	if data != "new" {
+		delete(h.ticketSubjectWait, user.ID)
+		delete(h.ticketSubject, user.ID)
+	}
+
 	switch {
+	case data == "new":
+		// Start new ticket creation
+		h.ticketSubjectWait[user.ID] = true
+		if h.cfg.RenderNewTicketSubject != nil {
+			text, kb := h.cfg.RenderNewTicketSubject()
+			h.send(user, text, kb)
+		} else {
+			h.send(user, "➕ <b>New Ticket</b>\n\nSend a short subject for your ticket.",
+				InlineKeyboardMarkup{[][]InlineButton{{{Text: "← Cancel", CallbackData: ScreenSupport}}}})
+		}
+	case data == "list":
+		// Show ticket list
+		if h.cfg.RenderTicketList != nil {
+			text, kb := h.cfg.RenderTicketList(user.ID)
+			h.send(user, text, kb)
+		} else {
+			h.showWithNotice(user, ScreenSupport, "⚠️ Ticket list not available")
+		}
 	case strings.HasPrefix(data, "reply:"):
 		// User wants to reply to a ticket - set reply state
 		ticketID := strings.TrimPrefix(data, "reply:")

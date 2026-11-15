@@ -397,21 +397,37 @@ func main() {
 	userBotProtection := userbot.NewProtectionHandler(db.DB)
 	userBotSupport := userbot.NewSupportHandler(db.DB)
 	userBotHandler := userbot.NewUserBotHandler(userbot.Config{
-		Bot:                userBotSvc,
-		Links:              redirectLinksModule.Service(),
-		Analytics:          analyticsModule.Service(),
-		Domains:            domainsModule.Service(),
-		Subscription:       subscriptions,
-		Deploy:             redirectLinksModule.Deploy,
-		Cleanup:            redirectLinksModule.Cleanup,
-		RenderSettings:     userBotSettings.Render,
-		SettingsCallback:   userBotSettings.Callback,
-		RenderProtection:   userBotProtection.Render,
-		ProtectionCallback: userBotProtection.Callback,
-		RenderTicket:       userBotSupport.RenderTicket,
-		RenderReplyPrompt:  userBotSupport.RenderReplyPrompt,
-		AddTicketReply:     userBotSupport.AddReply,
-		DashboardURL:       getSiteURL(),
+		Bot:                    userBotSvc,
+		Links:                  redirectLinksModule.Service(),
+		Analytics:              analyticsModule.Service(),
+		Domains:                domainsModule.Service(),
+		Subscription:           subscriptions,
+		Deploy:                 redirectLinksModule.Deploy,
+		Cleanup:                redirectLinksModule.Cleanup,
+		RenderSettings:         userBotSettings.Render,
+		SettingsCallback:       userBotSettings.Callback,
+		RenderProtection:       userBotProtection.Render,
+		ProtectionCallback:     userBotProtection.Callback,
+		RenderTicket:           userBotSupport.RenderTicket,
+		RenderReplyPrompt:      userBotSupport.RenderReplyPrompt,
+		AddTicketReply:         userBotSupport.AddReply,
+		RenderSupportMenu:      userBotSupport.RenderSupportMenu,
+		RenderTicketList:       userBotSupport.RenderTicketList,
+		RenderNewTicketSubject: userBotSupport.RenderNewTicketSubject,
+		RenderNewTicketMessage: userBotSupport.RenderNewTicketMessage,
+		CreateTicket:           userBotSupport.CreateTicket,
+		NotifyAdminNewTicket: func(ticketID, userID, subject, message string) {
+			var email string
+			db.DB.Get(&email, `SELECT email FROM users WHERE id = $1`, userID)
+			telegramModule.Handler.NotifyNewTicket(ticketID, email, "general", subject, message)
+		},
+		NotifyAdminTicketReply: func(ticketID, userID, message string) {
+			var email, subject string
+			db.DB.Get(&email, `SELECT email FROM users WHERE id = $1`, userID)
+			db.DB.Get(&subject, `SELECT subject FROM support_tickets WHERE id = $1`, ticketID)
+			telegramModule.Handler.NotifyTicketReply(ticketID, email, subject, message)
+		},
+		DashboardURL: getSiteURL(),
 	})
 	authModule.SetTelegramConnector(telegramConnector{userBotSvc}) // Telegram user bot (settings page)
 	authModule.SetDomainLister(domainListerAdapter{domainsModule.Service()})  // Default domain selection

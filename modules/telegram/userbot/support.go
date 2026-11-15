@@ -143,3 +143,109 @@ func formatStatus(status string) string {
 		return status
 	}
 }
+
+// RenderSupportMenu shows the support main menu.
+func (s *SupportHandler) RenderSupportMenu(userID string) (string, InlineKeyboardMarkup) {
+	// Count open tickets
+	var openCount int
+	s.db.Get(&openCount, `SELECT COUNT(*) FROM support_tickets WHERE user_id = $1 AND status != 'closed'`, userID)
+
+	text := "🎫 <b>Support</b>\n\nNeed help? Create a ticket or check your existing ones."
+	if openCount > 0 {
+		text += fmt.Sprintf("\n\n📬 You have <b>%d</b> open ticket(s).", openCount)
+	}
+
+	return text, InlineKeyboardMarkup{[][]InlineButton{
+		{{Text: "➕ New Ticket", CallbackData: "support:new"}},
+		{{Text: "📋 My Tickets", CallbackData: "support:list"}},
+		backRow(),
+	}}
+}
+
+// RenderTicketList shows the user's tickets.
+func (s *SupportHandler) RenderTicketList(userID string) (string, InlineKeyboardMarkup) {
+	var tickets []ticketRow
+	s.db.Select(&tickets, `
+		SELECT id, subject, status, created_at
+		FROM support_tickets
+		WHERE user_id = $1
+		ORDER BY updated_at DESC
+		LIMIT 10
+	`, userID)
+
+	if len(tickets) == 0 {
+		return "📋 <b>My Tickets</b>\n\n<i>No tickets yet.</i>", InlineKeyboardMarkup{[][]InlineButton{
+			{{Text: "➕ Create Ticket", CallbackData: "support:new"}},
+			{{Text: "← Back", CallbackData: ScreenSupport}},
+		}}
+	}
+
+	var sb strings.Builder
+	sb.WriteString("📋 <b>My Tickets</b>\n\n")
+
+	var rows [][]InlineButton
+	for _, t := range tickets {
+		sb.WriteString(fmt.Sprintf("%s <b>%s</b>\n<i>%s</i>\n\n",
+			formatStatus(t.Status),
+			html.EscapeString(truncate(t.Subject, 40)),
+			t.CreatedAt.Format("Jan 2, 2006")))
+		rows = append(rows, []InlineButton{
+			{Text: truncate(t.Subject, 30), CallbackData: "support:" + t.ID},
+		})
+	}
+
+	rows = append(rows, []InlineButton{{Text: "← Back", CallbackData: ScreenSupport}})
+	return sb.String(), InlineKeyboardMarkup{rows}
+}
+
+// RenderNewTicketSubject prompts for ticket subject.
+func (s *SupportHandler) RenderNewTicketSubject() (string, InlineKeyboardMarkup) {
+	text := "➕ <b>New Ticket</b>\n\nWhat's the issue about?\n\n<i>Send a short subject (5-100 characters).</i>"
+	return text, InlineKeyboardMarkup{[][]InlineButton{
+		{{Text: "← Cancel", CallbackData: ScreenSupport}},
+	}}
+}
+
+// RenderNewTicketMessage prompts for ticket message.
+func (s *SupportHandler) RenderNewTicketMessage(subject string) (string, InlineKeyboardMarkup) {
+	text := fmt.Sprintf("➕ <b>New Ticket</b>\n\nSubject: <b>%s</b>\n\nNow describe your issue in detail.\n\n<i>Send your message (10-2000 characters).</i>",
+		html.EscapeString(subject))
+	return text, InlineKeyboardMarkup{[][]InlineButton{
+		{{Text: "← Cancel", CallbackData: ScreenSupport}},
+	}}
+}
+
+// CreateTicket creates a new support ticket.
+func (s *SupportHandler) CreateTicket(userID, subject, message string) (string, error) {
+	// Validate
+	if len(subject) < 5 || len(subject) > 100 {
+		return "", fmt.Errorf("subject must be 5-100 characters")
+	}
+	if len(message) < 10 || len(message) > 2000 {
+		return "", fmt.Errorf("message must be 10-2000 characters")
+	}
+
+	// Create ticket
+	var ticketID string
+	err := s.db.Get(&ticketID, `
+		INSERT INTO support_tickets (id, user_id, category, subject, status, created_at, updated_at)
+		VALUES (gen_random_uuid(), $1, 'general', $2, 'open', NOW(), NOW())
+		RETURNING id
+	`, userID, subject)
+	if err != nil {
+		log.Printf("[userbot] create ticket: %v", err)
+		return "", fmt.Errorf("could not create ticket")
+	}
+
+	// Create first message
+	_, err = s.db.Exec(`
+		INSERT INTO ticket_messages (id, ticket_id, user_id, is_admin, message, created_at)
+		VALUES (gen_random_uuid(), $1, $2, FALSE, $3, NOW())
+	`, ticketID, userID, message)
+	if err != nil {
+		log.Printf("[userbot] create ticket message: %v", err)
+		return "", fmt.Errorf("could not save message")
+	}
+
+	return ticketID, nil
+}
