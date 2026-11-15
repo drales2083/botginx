@@ -982,6 +982,7 @@
   "telegram.notify_ssl": "SSL expiring",
   "telegram.notify_balance": "Low balance",
   "telegram.traffic_threshold": "Traffic threshold (visits)",
+  "telegram.default_domain": "Default domain",
   "telegram.open_bot": "Open bot in Telegram",
   "telegram.connect_success": "Telegram bot connected",
   "telegram.disconnect_confirm": "Disconnect your Telegram bot?",

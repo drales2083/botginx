@@ -982,6 +982,7 @@
   "telegram.notify_ssl": "Истекает SSL",
   "telegram.notify_balance": "Низкий баланс",
   "telegram.traffic_threshold": "Порог трафика (визиты)",
+  "telegram.default_domain": "Домен по умолчанию",
   "telegram.open_bot": "Открыть бота в Telegram",
   "telegram.connect_success": "Telegram-бот подключен",
   "telegram.disconnect_confirm": "Отключить Telegram-бота?",
