@@ -33,6 +33,7 @@ const (
 	ScreenHelp       = "help"
 	ScreenProtection = "protection"
 	ScreenSupport    = "support"
+	ScreenReferral   = "referral"
 
 	linksPerPage = 5
 	maxTextLen   = 4000
@@ -87,6 +88,7 @@ type Config struct {
 	CreateTicket       func(userID, subject, message string) (string, error)
 	NotifyAdminNewTicket func(ticketID, userID, subject, message string)
 	NotifyAdminTicketReply func(ticketID, userID, message string)
+	ReferralStats      func(userID string) (code string, level1, level2, level3 int, earnings float64)
 	DashboardURL       string // e.g. https://guardbot.sbs
 	DocsURL            string // default https://docs.guardbot.sbs
 }
@@ -277,6 +279,8 @@ func (h *UserBotHandler) handleMessage(user *models.User, m *tgMessage) {
 		h.show(user, ScreenProtection, "")
 	case cmd == "/support":
 		h.show(user, ScreenSupport, "")
+	case cmd == "/referral":
+		h.show(user, ScreenReferral, "")
 	case cmd == "/newlink":
 		if arg == "" {
 			h.show(user, ScreenNewLink, "")
@@ -365,6 +369,8 @@ func (h *UserBotHandler) handleCallback(user *models.User, cq *tgCallbackQuery) 
 		h.show(user, ScreenProtection, "")
 	case data == "nav:"+ScreenSupport:
 		h.show(user, ScreenSupport, "")
+	case data == "nav:"+ScreenReferral:
+		h.show(user, ScreenReferral, "")
 	case strings.HasPrefix(data, "lp:"):
 		page, _ := strconv.Atoi(strings.TrimPrefix(data, "lp:"))
 		h.showLinks(user, page)
@@ -458,6 +464,8 @@ func (h *UserBotHandler) renderScreen(user *models.User, screen string, data int
 		}
 		return "🎫 <b>Support</b>\n\nSupport is not available yet.",
 			InlineKeyboardMarkup{[][]InlineButton{backRow()}}
+	case ScreenReferral:
+		return h.renderReferral(user)
 	default:
 		return h.renderMain(user)
 	}
@@ -505,9 +513,37 @@ func (h *UserBotHandler) renderMain(user *models.User) (string, InlineKeyboardMa
 			{Text: "💰 Balance", CallbackData: "nav:" + ScreenBalance},
 		},
 		{
+			{Text: "🎁 Referral", CallbackData: "nav:" + ScreenReferral},
 			{Text: "🎫 Support", CallbackData: "nav:" + ScreenSupport},
 			{Text: "❓ Help", CallbackData: "nav:" + ScreenHelp},
 		},
+	}}
+}
+
+func (h *UserBotHandler) renderReferral(user *models.User) (string, InlineKeyboardMarkup) {
+	if h.cfg.ReferralStats == nil {
+		return "🎁 <b>Referral Program</b>\n\nReferral program is not available.",
+			InlineKeyboardMarkup{[][]InlineButton{backRow()}}
+	}
+
+	code, level1, level2, level3, earnings := h.cfg.ReferralStats(user.ID)
+	totalReferrals := level1 + level2 + level3
+
+	// Build referral link
+	refLink := h.cfg.DashboardURL + "/signup?ref=" + code
+
+	text := fmt.Sprintf("🎁 <b>Referral Program</b>\n\n"+
+		"Share your link and earn commissions when your referrals pay!\n\n"+
+		"<b>Your code:</b> <code>%s</code>\n"+
+		"<b>Your link:</b>\n<code>%s</code>\n\n"+
+		"📊 <b>Stats</b>\n"+
+		"• Referrals: %d\n"+
+		"• Earnings: $%.2f",
+		code, refLink, totalReferrals, earnings)
+
+	return text, InlineKeyboardMarkup{[][]InlineButton{
+		{{Text: "📋 Copy Link", CopyText: &CopyTextSpec{Text: refLink}, Style: "primary"}},
+		backRow(),
 	}}
 }
 
@@ -551,6 +587,7 @@ func (h *UserBotHandler) renderHelp() (string, InlineKeyboardMarkup) {
 		"/links — your links\n" +
 		"/newlink [url] — create a protected link\n" +
 		"/protection — bot protection defaults\n" +
+		"/referral — your referral link and stats\n" +
 		"/support — create or view tickets\n" +
 		"/balance — account balance\n" +
 		"/settings — notifications\n" +

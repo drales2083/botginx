@@ -427,6 +427,13 @@ func main() {
 			db.DB.Get(&subject, `SELECT subject FROM support_tickets WHERE id = $1`, ticketID)
 			telegramModule.Handler.NotifyTicketReply(ticketID, email, subject, message)
 		},
+		ReferralStats: func(userID string) (string, int, int, int, float64) {
+			stats, err := referralsModule.GetUserStats(userID)
+			if err != nil || stats == nil {
+				return "", 0, 0, 0, 0
+			}
+			return stats.ReferralCode, stats.Level1Count, stats.Level2Count, stats.Level3Count, stats.TotalEarnings
+		},
 		DashboardURL: getSiteURL(),
 	})
 	authModule.SetTelegramConnector(telegramConnector{userBotSvc}) // Telegram user bot (settings page)
