@@ -3,7 +3,7 @@ title: How to Connect GoDaddy
 description: Import domains from your GoDaddy account and auto-configure DNS for bot protection.
 ---
 
-This guide shows you how to connect your GoDaddy account to GuardBot. Once connected, you can import domains and let GuardBot configure DNS, SSL, and nginx automatically.
+Connect your GoDaddy account to import domains directly into GuardBot. Once imported, DNS and SSL are configured automatically.
 
 ## Get Your API Credentials
 
@@ -19,12 +19,12 @@ The secret is shown only once. Save it somewhere secure before closing the page.
 
 ## Connect to GuardBot
 
-1. In your GuardBot dashboard, go to **Domains** → **GoDaddy**
+1. In your GuardBot dashboard, go to **Domains** → **Connect GoDaddy**
 2. Paste your API Key
 3. Paste your API Secret
 4. Click **Connect**
 
-GuardBot tests the connection by fetching your domain list. If it works, your domains appear in a table.
+If successful, your domains appear in a table.
 
 ### If connection fails
 
@@ -34,46 +34,25 @@ GuardBot tests the connection by fetching your domain list. If it works, your do
 
 ## Import a Domain
 
-1. Your GoDaddy domains appear with their status (Active, Cancelled, etc.)
-2. Click **Import** next to the domain you want
+1. Find the domain you want in the list
+2. Click **Import**
 
 A dialog appears with one checkbox:
 
-**Auto-configure DNS and SSL**: When enabled, GuardBot:
-
-- Creates `A @` and `A *` records pointing to the deploy server
-- Adds a verification TXT record
-- Sets up ACME-DNS delegation for SSL
-- Generates a wildcard SSL certificate
-- Creates nginx config on the deploy server
-
-This replaces existing A records for root and wildcard. Other records stay untouched.
+**Auto-configure DNS and SSL**: When enabled, GuardBot sets up everything for you. DNS records are created, SSL certificates are generated, and your domain is ready for bot protection within a few minutes.
 
 3. Click **Import** to start
 
-The import runs in the background. DNS setup takes a few seconds. SSL generation takes 2-3 minutes because it waits for DNS propagation.
-
-## What Happens During Import
-
-GuardBot runs these steps in order:
-
-1. **DNS records** — A records for `@` and `*` point to your deploy VPS
-2. **Verification TXT** — `_guardbot-verify` proves domain ownership
-3. **ACME-DNS CNAME** — `_acme-challenge` delegates to acme-dns for instant SSL renewals
-4. **Wait 90 seconds** — DNS needs time to propagate
-5. **SSL certificate** — Wildcard cert for `*.yourdomain.com` via Let's Encrypt
-6. **nginx config** — HTTPS proxy config on the deploy server
-
-If acme-dns isn't available, GuardBot falls back to a slower method that adds TXT records directly through GoDaddy's API. This takes longer (3-5 minutes) but still works.
+The setup runs in the background. You can close the page and come back later.
 
 ## Reconfigure DNS
 
-If your deploy server IP changes:
+If you need to update DNS settings for an imported domain:
 
 1. Find the domain in the GoDaddy page
 2. Click **Reconfigure**
 
-This updates the A records to point to the new IP. You can also trigger this for all GoDaddy domains at once from Admin → Servers.
+This refreshes the DNS configuration. Useful after changing server settings in Admin → Servers.
 
 ## Refresh Domain List
 
@@ -88,53 +67,33 @@ Click **Refresh** to fetch the latest domains from GoDaddy. Do this after:
 1. Click **Disconnect** in the card header
 2. Confirm in the dialog
 
-Your imported domains stay in GuardBot. Only the API connection is removed. You won't be able to reconfigure DNS until you reconnect.
+Your imported domains stay in GuardBot. Only the API connection is removed.
 
 ## Manual DNS Setup
 
-If you disabled auto-configure, or if automatic setup failed, configure DNS manually:
+If you disabled auto-configure, you can set up DNS manually in your GoDaddy account:
 
 1. Log into [GoDaddy DNS Management](https://dcc.godaddy.com/manage/dns)
 2. Select your domain
-3. Delete existing A records for `@` and `*`
-4. Add new A records:
-   - Name: `@` → Value: your server IP → TTL: 600
-   - Name: `*` → Value: your server IP → TTL: 600
+3. Add A records for `@` and `*` pointing to your GuardBot server IP
 
-:::note
-GoDaddy's minimum TTL is 600 seconds (10 minutes). Lower values get rounded up.
-:::
-
-## Rate Limits
-
-GoDaddy limits API requests to 60 per minute. GuardBot handles this automatically. If you're importing many domains, they'll process one per second.
+You can find the server IP in Admin → Servers.
 
 ## Troubleshooting
 
 **"Invalid credentials"**: Double-check both key and secret. Make sure you're using Production keys, not OTE.
 
-**Domains not appearing**: Only domains registered in your account appear. Domains you manage for others (via delegation) won't show.
+**Domains not appearing**: Only domains registered in your account appear. Domains you manage for others won't show.
 
-**DNS not updating**: GoDaddy DNS can take 10-30 minutes to propagate. Check with `dig yourdomain.com A` to see current records.
+**DNS not updating**: DNS changes can take 10-30 minutes to propagate globally.
 
-**SSL failed**: Check the domain's status in your GuardBot domains list. If it shows an SSL error, the log will say why. Common causes: DNS not propagated yet, rate limited by Let's Encrypt, or firewall blocking port 80.
+**SSL not working**: If SSL setup fails, try clicking **Reconfigure** after a few minutes. DNS propagation delays are the most common cause.
 
-**nginx config failed**: The deploy server needs to be reachable via SSH. Check Admin → Servers to verify the server status is "ready".
-
-## Security Notes
-
-- API credentials are encrypted at rest with AES-256-GCM
-- Credentials are stored per-user, not shared
-- GoDaddy API keys can be revoked anytime from the Developer Portal
-- Only connect accounts you control
-
-## GoDaddy vs Cloudflare vs NameSilo
+## Comparison
 
 | Feature | GoDaddy | Cloudflare | NameSilo |
 |---------|---------|------------|----------|
 | **What it connects** | Registrar + DNS | DNS provider | Registrar |
 | **Domains shown** | Your registered domains | Zones you've added | Your registered domains |
-| **DNS control** | Full zone management | Full zone management | Registrar-level |
-| **SSL setup** | Auto via acme-dns or TXT | Auto via acme-dns | Auto via acme-dns |
 
-You can use all of them. Connect each for the domains it manages.
+You can connect all of them. Each provider shows only the domains it manages.

@@ -3,7 +3,7 @@ title: How to Connect NameSilo
 description: Import domains from your NameSilo registrar account and auto-configure DNS.
 ---
 
-This guide shows you how to connect your NameSilo account to GuardBot. Once connected, you can import registered domains directly and let GuardBot configure DNS automatically.
+Connect your NameSilo account to import registered domains directly into GuardBot. Once imported, DNS is configured automatically.
 
 ## Get Your API Key
 
@@ -18,7 +18,7 @@ This guide shows you how to connect your NameSilo account to GuardBot. Once conn
 2. Paste your NameSilo API key
 3. Click **Connect**
 
-GuardBot tests the connection by fetching your domain list.
+If successful, your domains appear in a table.
 
 ### If connection fails
 
@@ -28,25 +28,18 @@ GuardBot tests the connection by fetching your domain list.
 
 ## Import a Domain
 
-1. Your NameSilo domains appear in a table showing domain name, expiration date, status, and whether it's already imported
-2. Click **Import** next to the domain you want
+1. Find the domain you want in the list
+2. Click **Import**
 
-A dialog appears with DNS options:
+A dialog appears with one checkbox:
 
-**Auto-configure DNS records**: When enabled, GuardBot creates:
-
-- `A @ → [server-ip]` — Root domain points to deploy server
-- `A * → [server-ip]` — Wildcard for all subdomains
-
-This replaces any existing A records for root and wildcard. Other records (MX, TXT, CNAME) remain unchanged.
+**Auto-configure DNS records**: When enabled, GuardBot sets up DNS records automatically. Your domain is ready for bot protection within minutes.
 
 3. Click **Import** to complete
 
-The domain is ready immediately. DNS changes may take up to 15 minutes to propagate globally.
-
 ## Refresh Domain List
 
-Click **Refresh** to fetch the latest list from NameSilo. Useful after:
+Click **Refresh** to fetch the latest list from NameSilo. Do this after:
 
 - Registering new domains
 - Renewing domains
@@ -57,17 +50,17 @@ Click **Refresh** to fetch the latest list from NameSilo. Useful after:
 1. Click **Disconnect**
 2. Confirm in the dialog
 
-Your imported domains remain in GuardBot. Only the API connection is removed.
+Your imported domains stay in GuardBot. Only the API connection is removed.
 
 ## Manual DNS Setup
 
-If you disabled auto-configure, set up DNS manually:
+If you disabled auto-configure, set up DNS manually in NameSilo:
 
 1. Log into NameSilo
 2. Go to **Domain Manager** → select your domain → **DNS Records**
-3. Add or update A records:
-   - Host: (leave blank for root) → Value: your server IP
-   - Host: `*` → Value: your server IP
+3. Add A records for root and `*` pointing to your GuardBot server IP
+
+You can find the server IP in Admin → Servers.
 
 ## Troubleshooting
 
@@ -75,22 +68,13 @@ If you disabled auto-configure, set up DNS manually:
 
 **Domains not appearing**: New or transferred domains may take a few minutes to appear. Click Refresh.
 
-**DNS not working**: DNS can take 15-60 minutes to propagate globally. NameSilo's DNS typically updates within seconds, but ISPs may cache longer.
+**DNS not working**: DNS can take 15-60 minutes to propagate globally.
 
-**Import errors**: "Domain already imported" means it's already in your GuardBot account. "DNS configuration failed" means the domain was imported but auto-configure failed—try configuring DNS manually.
-
-## Security Notes
-
-- Your API key is stored encrypted
-- API keys have full account access—only connect accounts you control
-- You can regenerate your API key in NameSilo anytime (you'll need to reconnect in GuardBot)
-
-## NameSilo vs cPanel
+## Comparison
 
 | Feature | NameSilo | cPanel |
 |---------|----------|--------|
 | **What it connects** | Domain registrar | Hosting account |
 | **Domains shown** | All registered domains | Domains hosted on that cPanel |
-| **DNS control** | Full (registrar-level) | Zone files only |
 
-You can use both. Connect NameSilo for domains you register there, and cPanel for domains hosted elsewhere.
+You can connect both. Each provider shows only the domains it manages.

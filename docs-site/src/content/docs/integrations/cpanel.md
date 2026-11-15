@@ -3,7 +3,7 @@ title: How to Connect cPanel
 description: Import domains from your cPanel hosting account and auto-configure DNS.
 ---
 
-This guide shows you how to connect your cPanel hosting account to GuardBot. Once connected, you can import domains directly and let GuardBot configure DNS automatically.
+Connect your cPanel hosting account to import domains directly into GuardBot. Once imported, DNS is configured automatically.
 
 ## Get Your API Token
 
@@ -42,17 +42,13 @@ If you don't see the API Tokens option, your hosting provider may have disabled 
 2. You'll see all domains in your cPanel account (main, addon, subdomains, parked)
 3. Click **Import** next to the domain you want
 
-When importing, GuardBot offers to configure DNS automatically:
+A dialog appears with one checkbox:
 
-- **Verification TXT record** proves you own the domain
-- **Wildcard A record** points `*.yourdomain.com` to the deploy server
-- **ACME CNAME** enables automatic SSL certificate generation
+**Auto-configure DNS**: When enabled, GuardBot sets up DNS records and SSL certificates automatically. Your domain is ready for bot protection within minutes.
 
 Leave auto-configure enabled unless you manage DNS elsewhere (like Cloudflare).
 
 4. Click **Import** to complete
-
-GuardBot adds the domain, creates DNS records, verifies the domain, and starts SSL certificate generation. The domain is ready within minutes.
 
 ## Update API Token
 
@@ -69,30 +65,21 @@ If you regenerate your API token in cPanel:
 2. Click **Disconnect**
 3. Confirm
 
-Your imported domains remain in GuardBot. Only the cPanel link is removed. DNS records stay in place unless you delete them manually.
-
-## DNS Records Created
-
-When you import with auto-configure enabled:
-
-```
-_guardbot-verify.yourdomain.com → [verification-token]  (TXT)
-*.yourdomain.com → [deploy-server-ip]  (A)
-_acme-challenge.yourdomain.com → [acme-dns-target]  (CNAME)
-```
+Your imported domains stay in GuardBot. Only the cPanel link is removed.
 
 ## Troubleshooting
 
-**DNS not updating**: Changes can take 5-15 minutes to propagate. Wait and check again.
-
-**Wrong IP address**: Verify your deploy server is configured in GuardBot admin settings.
+**DNS not updating**: Changes can take 5-15 minutes to propagate globally.
 
 **Permission denied**: The cPanel user must have DNS zone access for the domain. Check addon domain permissions.
 
 **Domains not showing**: Only domains with DNS zones in cPanel appear. Domains using external DNS (like Cloudflare) won't show even if hosted on cPanel.
 
-## Security Notes
+## Comparison
 
-- API tokens have full account access. Only connect cPanel accounts you control.
-- You can revoke a token anytime in cPanel without affecting other connections.
-- GuardBot stores tokens encrypted.
+| Feature | cPanel | NameSilo |
+|---------|--------|----------|
+| **What it connects** | Hosting account | Domain registrar |
+| **Domains shown** | Domains hosted on that cPanel | All registered domains |
+
+You can connect both. Each provider shows only the domains it manages.
