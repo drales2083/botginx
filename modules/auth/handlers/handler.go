@@ -822,3 +822,10 @@ func (h *Handler) APITelegramNotifications(w http.ResponseWriter, r *http.Reques
 	}
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }
+
+// APITelegramDismissAlert marks the Telegram connect alert as dismissed.
+func (h *Handler) APITelegramDismissAlert(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	h.db.Exec(`UPDATE users SET telegram_alert_dismissed = TRUE WHERE id = $1`, userID)
+	w.WriteHeader(http.StatusNoContent)
+}

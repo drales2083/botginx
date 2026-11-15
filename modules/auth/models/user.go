@@ -52,6 +52,7 @@ type User struct {
 	TelegramNotifySSLExpiring       bool       `db:"telegram_notify_ssl_expiring" json:"telegramNotifySSLExpiring"`
 	TelegramNotifyBalanceLow        bool       `db:"telegram_notify_balance_low" json:"telegramNotifyBalanceLow"`
 	TelegramTrafficThreshold        int        `db:"telegram_traffic_threshold" json:"telegramTrafficThreshold"`
+	TelegramAlertDismissed          bool       `db:"telegram_alert_dismissed" json:"-"`
 }
 
 type SignupInput struct {

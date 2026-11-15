@@ -110,6 +110,7 @@ func (m *Module) SettingsRoutes() chi.Router {
 	r.Post("/api/telegram/connect", m.Handler.APITelegramConnect)
 	r.Post("/api/telegram/disconnect", m.Handler.APITelegramDisconnect)
 	r.Put("/api/telegram/notifications", m.Handler.APITelegramNotifications)
+	r.Post("/telegram/dismiss-alert", m.Handler.APITelegramDismissAlert)
 
 	// Global whitelist API
 	r.Get("/api/global-whitelist", m.Handler.APIGetGlobalWhitelist)
