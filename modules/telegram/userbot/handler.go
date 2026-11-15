@@ -336,8 +336,12 @@ func (h *UserBotHandler) handleCallback(user *models.User, cq *tgCallbackQuery) 
 		_ = h.cfg.Bot.AnswerCallback(token, cq.ID, toast, alert)
 	}()
 
-	// Edit the message the button lives on, and remember it as the "app screen".
+	// If user clicked on a different message than our tracked one, clean up the old one
 	if cq.Message.MessageID != 0 {
+		if oldID := h.cfg.Bot.GetLastMessageID(user.ID); oldID != 0 && oldID != cq.Message.MessageID {
+			// Delete the orphaned message (best effort)
+			_ = h.cfg.Bot.DeleteMessage(user.ID, oldID)
+		}
 		_ = h.cfg.Bot.SaveLastMessageID(user.ID, cq.Message.MessageID)
 	}
 

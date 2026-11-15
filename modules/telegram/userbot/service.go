@@ -143,7 +143,8 @@ func (s *UserBotService) target(userID string) (token, chatID string, lastMsg *i
 }
 
 // SendOrEditMessage edits the last bot message if one exists, else sends a new one.
-// If the edit fails (e.g. message deleted), it falls back to sending a new message.
+// If the edit fails (e.g. message deleted), it falls back to sending a new message
+// and tries to delete the old one to avoid duplicate messages.
 func (s *UserBotService) SendOrEditMessage(userID, text string, replyMarkup interface{}) (int64, error) {
 	token, chatID, last, err := s.target(userID)
 	if err != nil {
@@ -155,6 +156,8 @@ func (s *UserBotService) SendOrEditMessage(userID, text string, replyMarkup inte
 		} else if strings.Contains(err.Error(), "message is not modified") {
 			return *last, nil
 		}
+		// Edit failed - try to delete the old message before sending new one
+		_ = s.tgSvc.DeleteMessage(token, chatID, *last)
 	}
 	msg, err := s.tgSvc.SendMessage(token, chatID, text, replyMarkup)
 	if err != nil {
@@ -210,6 +213,16 @@ func (s *UserBotService) DeleteMessages(userID string, messageIDs []int64) error
 func (s *UserBotService) SaveLastMessageID(userID string, messageID int64) error {
 	_, err := s.db.Exec(`UPDATE users SET telegram_last_message_id = $1 WHERE id = $2`, messageID, userID)
 	return err
+}
+
+// GetLastMessageID returns the stored last message ID (0 if not set).
+func (s *UserBotService) GetLastMessageID(userID string) int64 {
+	var id *int64
+	s.db.Get(&id, `SELECT telegram_last_message_id FROM users WHERE id = $1`, userID)
+	if id == nil {
+		return 0
+	}
+	return *id
 }
 
 // AnswerCallback answers a callback query with optional alert popup.
