@@ -87,6 +87,7 @@ func (m *Module) Migrate() error {
 		"migrations/002_global_whitelist.sql",
 		"migrations/003_pending_2fa_sessions.sql",
 		"migrations/004_telegram_user_bot.sql",
+		"migrations/005_telegram_defaults.sql",
 	}
 
 	for _, mig := range migrations {
