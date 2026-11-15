@@ -459,19 +459,40 @@ func (h *UserBotHandler) renderScreen(user *models.User, screen string, data int
 		return "🎫 <b>Support</b>\n\nSupport is not available yet.",
 			InlineKeyboardMarkup{[][]InlineButton{backRow()}}
 	default:
-		return h.renderMain()
+		return h.renderMain(user)
 	}
 }
 
-func (h *UserBotHandler) renderMain() (string, InlineKeyboardMarkup) {
+func (h *UserBotHandler) renderMain(user *models.User) (string, InlineKeyboardMarkup) {
 	appName := os.Getenv("UI_APP_NAME")
 	if appName == "" {
 		appName = "GuardBot"
 	}
+
+	// Get subscription status
+	subLine := ""
+	if h.cfg.Subscription != nil {
+		state := h.cfg.Subscription.StateFor(user.ID)
+		switch state.Status {
+		case "active":
+			subLine = fmt.Sprintf("\n\n✅ Subscription: %s", state.ExpiresAt.Format("Jan 2, 2006"))
+		case "expiring":
+			if state.DaysLeft == 1 {
+				subLine = "\n\n⚠️ Expires tomorrow — renew now"
+			} else {
+				subLine = fmt.Sprintf("\n\n⚠️ Expires in %d days — renew now", state.DaysLeft)
+			}
+		case "expired":
+			subLine = "\n\n❌ Subscription expired — contact admin"
+		default:
+			subLine = "\n\n🔒 No subscription — contact admin"
+		}
+	}
+
 	text := fmt.Sprintf("🛡 <b>Welcome to %s</b>\n\n"+
 		"The most advanced bot protection on the market. "+
-		"Block bots, verify humans, protect your links — all in real-time.\n\n"+
-		"📲 Send me any URL to create a protected link instantly.", appName)
+		"Block bots, verify humans, protect your links — all in real-time.%s\n\n"+
+		"📲 Send me any URL to create a protected link instantly.", appName, subLine)
 	return text, InlineKeyboardMarkup{[][]InlineButton{
 		{
 			{Text: "📊 Stats", CallbackData: "nav:" + ScreenStats, Style: "primary"},
