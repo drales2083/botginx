@@ -1,0 +1,254 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0"><i class="bi bi-globe2 me-2"></i>GoDaddy</h3>
+                {{if .Connection.IsConnected}}
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="disconnect()">
+                    <i class="bi bi-x-lg me-1"></i>Disconnect
+                </button>
+                {{end}}
+            </div>
+            <div class="card-body">
+                {{if not .Connection.IsConnected}}
+                <!-- Not Connected State -->
+                <div class="text-center py-5" id="connect-form">
+                    <div class="mb-4">
+                        <i class="bi bi-globe2 text-primary" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4 class="mb-3">Connect your GoDaddy account</h4>
+                    <p class="text-muted mb-4">Import domains and auto-configure DNS with one click</p>
+
+                    <div class="row justify-content-center">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="mb-3">
+                                <input type="text" class="form-control" id="apiKey" placeholder="API Key">
+                            </div>
+                            <div class="input-group mb-3">
+                                <input type="password" class="form-control" id="apiSecret" placeholder="API Secret">
+                                <button class="btn btn-primary" type="button" onclick="connect()">
+                                    <i class="bi bi-plug me-1"></i>Connect
+                                </button>
+                            </div>
+                            <p class="text-muted small">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Get your API credentials from <a href="https://developer.godaddy.com/keys" target="_blank">GoDaddy Developer Portal</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {{else}}
+                <!-- Connected State -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-success me-2"><i class="bi bi-check-circle me-1"></i>Connected</span>
+                        <span class="text-muted small">
+                            Since {{.Connection.ConnectedAt.Format "Jan 02, 2006"}}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Domains List -->
+                {{if .Domains}}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Your GoDaddy domains</h5>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Domain</th>
+                                <th>Status</th>
+                                <th>Imported</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Domains}}
+                            <tr>
+                                <td><code class="fs-6">{{.Domain}}</code></td>
+                                <td>
+                                    {{if eq .Status "ACTIVE"}}
+                                    <span class="badge bg-success">Active</span>
+                                    {{else}}
+                                    <span class="badge bg-secondary">{{.Status}}</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    {{if .IsImported}}
+                                    <span class="badge bg-primary"><i class="bi bi-check me-1"></i>Imported</span>
+                                    {{else}}
+                                    <span class="text-muted">—</span>
+                                    {{end}}
+                                </td>
+                                <td class="text-end">
+                                    {{if .IsImported}}
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary" onclick="reconfigureDomain('{{.LocalID}}', '{{.Domain}}')">
+                                            <i class="bi bi-arrow-repeat me-1"></i>Reconfigure
+                                        </button>
+                                        <a href="/user/domains/{{.LocalID}}" class="btn btn-outline-secondary">
+                                            <i class="bi bi-gear me-1"></i>Manage
+                                        </a>
+                                    </div>
+                                    {{else}}
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="showImportModal('{{.Domain}}')">
+                                        <i class="bi bi-download me-1"></i>Import
+                                    </button>
+                                    {{end}}
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                    No domains found in your GoDaddy account
+                </div>
+                {{end}}
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Import <strong id="importDomainName"></strong> to GuardBot?</p>
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="configureDns" checked>
+                    <label class="form-check-label" for="configureDns">
+                        Auto-configure DNS and SSL
+                    </label>
+                    <div class="form-text">
+                        Sets up A records, SSL certificate, and bot protection automatically
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="importDomain()">
+                    <i class="bi bi-download me-1"></i>Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let importModal;
+let currentDomain = '';
+
+document.addEventListener('DOMContentLoaded', () => {
+    importModal = new bootstrap.Modal(document.getElementById('importModal'));
+});
+
+async function connect() {
+    const apiKey = document.getElementById('apiKey').value;
+    const apiSecret = document.getElementById('apiSecret').value;
+
+    if (!apiKey || !apiSecret) {
+        showToast('Please enter both API Key and Secret', 'warning');
+        return;
+    }
+
+    try {
+        const resp = await fetch('/user/domains/godaddy/api/connect', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({apiKey, apiSecret})
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            showToast('Connected to GoDaddy', 'success');
+            location.reload();
+        } else {
+            showToast(data.error || 'Connection failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Connection failed', 'danger');
+    }
+}
+
+async function disconnect() {
+    if (!confirm('Disconnect from GoDaddy?')) return;
+
+    try {
+        const resp = await fetch('/user/domains/godaddy/api/disconnect', {method: 'POST'});
+        const data = await resp.json();
+
+        if (data.success) {
+            showToast('Disconnected', 'success');
+            location.reload();
+        } else {
+            showToast(data.error || 'Failed to disconnect', 'danger');
+        }
+    } catch (err) {
+        showToast('Failed to disconnect', 'danger');
+    }
+}
+
+function showImportModal(domain) {
+    currentDomain = domain;
+    document.getElementById('importDomainName').textContent = domain;
+    importModal.show();
+}
+
+async function importDomain() {
+    const configureDns = document.getElementById('configureDns').checked;
+
+    try {
+        const resp = await fetch('/user/domains/godaddy/api/import', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                domain: currentDomain,
+                configureDns: configureDns
+            })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            importModal.hide();
+            showToast('Domain imported! DNS and SSL setup started.', 'success');
+            location.reload();
+        } else {
+            showToast(data.error || 'Import failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Import failed', 'danger');
+    }
+}
+
+async function reconfigureDomain(domainId, domainName) {
+    if (!confirm(`Reconfigure DNS for ${domainName}?`)) return;
+
+    try {
+        const resp = await fetch(`/user/domains/godaddy/api/reconfigure/${domainId}`, {method: 'POST'});
+        const data = await resp.json();
+
+        if (data.success) {
+            showToast('DNS reconfigured', 'success');
+        } else {
+            showToast(data.error || 'Reconfiguration failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Reconfiguration failed', 'danger');
+    }
+}
+</script>
+{{end}}
