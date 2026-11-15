@@ -254,7 +254,7 @@
                                 <a class="btn btn-outline-primary btn-sm" href="https://t.me/{{.Account.TelegramBotUsername}}" target="_blank" rel="noopener">
                                     <i class="bi bi-box-arrow-up-right me-1"></i> {{t "telegram.open_bot"}}
                                 </a>
-                                <button type="button" class="btn btn-outline-danger btn-sm" id="tg-disconnect-btn">
+                                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#tgDisconnectModal">
                                     <i class="bi bi-x-circle me-1"></i> {{t "telegram.disconnect"}}
                                 </button>
                             </div>
@@ -315,6 +315,27 @@
                 {{end}}
             </div>
             {{end}}
+        </div>
+    </div>
+</div>
+
+<!-- Telegram Disconnect Confirmation Modal -->
+<div class="modal fade" id="tgDisconnectModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-telegram me-2"></i>{{t "telegram.disconnect"}}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">{{t "telegram.disconnect_confirm"}}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{t "cancel"}}</button>
+                <button type="button" class="btn btn-danger btn-sm" id="tg-disconnect-confirm-btn">
+                    <i class="bi bi-x-circle me-1"></i>{{t "telegram.disconnect"}}
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -500,11 +521,10 @@ if (tgConnectForm) {
     });
 }
 
-const tgDisconnectBtn = document.getElementById('tg-disconnect-btn');
-if (tgDisconnectBtn) {
-    tgDisconnectBtn.addEventListener('click', async () => {
-        if (!confirm('{{t "telegram.disconnect_confirm"}}')) return;
-        tgDisconnectBtn.disabled = true;
+const tgDisconnectConfirmBtn = document.getElementById('tg-disconnect-confirm-btn');
+if (tgDisconnectConfirmBtn) {
+    tgDisconnectConfirmBtn.addEventListener('click', async () => {
+        tgDisconnectConfirmBtn.disabled = true;
         try {
             const res = await fetch('/user/settings/api/telegram/disconnect', { method: 'POST' });
             if (res.ok) {
@@ -516,7 +536,8 @@ if (tgDisconnectBtn) {
         } catch (err) {
             showToast('Network error', 'danger');
         }
-        tgDisconnectBtn.disabled = false;
+        tgDisconnectConfirmBtn.disabled = false;
+        bootstrap.Modal.getInstance(document.getElementById('tgDisconnectModal'))?.hide();
     });
 }
 
