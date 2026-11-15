@@ -866,9 +866,14 @@ func (h *Handler) APITelegramDefaultDomain(w http.ResponseWriter, r *http.Reques
 		h.jsonError(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
-	_, err := h.db.Exec(`UPDATE users SET telegram_default_domain_id = $1 WHERE id = $2`, input.DomainID, userID)
+	// Handle empty string as NULL
+	var domainID *string
+	if input.DomainID != nil && *input.DomainID != "" {
+		domainID = input.DomainID
+	}
+	_, err := h.db.Exec(`UPDATE users SET telegram_default_domain_id = $1 WHERE id = $2`, domainID, userID)
 	if err != nil {
-		h.jsonError(w, "Failed to update", http.StatusInternalServerError)
+		h.jsonError(w, "Failed to update: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
