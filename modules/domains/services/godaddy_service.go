@@ -324,6 +324,9 @@ func (s *GoDaddyService) Import(ctx context.Context, userID string, input models
 				} else {
 					log.Printf("[GoDaddy] Wildcard SSL completed for %s (slow method)", domainName)
 					s.domainService.CompleteSSLSetup(domID)
+					if err := s.setupProxyNginxConfig(domainName); err != nil {
+						log.Printf("[GoDaddy] Warning: nginx config failed for %s: %v", domainName, err)
+					}
 				}
 				return
 			}
