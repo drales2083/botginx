@@ -77,9 +77,9 @@ func (s *SettingsHandler) Render(user *models.User) (string, InlineKeyboardMarku
 
 	// Get current default domain name
 	defaultDomainName := "Auto"
-	if user.TelegramDefaultDomainID != nil && *user.TelegramDefaultDomainID != "" {
+	if user.TelegramDefaultDomainID != "" {
 		var name string
-		if err := s.db.Get(&name, `SELECT name FROM domains WHERE id = $1`, *user.TelegramDefaultDomainID); err == nil {
+		if err := s.db.Get(&name, `SELECT name FROM domains WHERE id = $1`, user.TelegramDefaultDomainID); err == nil {
 			defaultDomainName = name
 		}
 	}
@@ -150,7 +150,7 @@ func (s *SettingsHandler) renderDomainList(user *models.User) (string, InlineKey
 	var rows [][]InlineButton
 
 	// Auto option
-	isAuto := user.TelegramDefaultDomainID == nil || *user.TelegramDefaultDomainID == ""
+	isAuto := user.TelegramDefaultDomainID == ""
 	autoBtn := InlineButton{CallbackData: "set:" + setDomain + "auto"}
 	if isAuto {
 		autoBtn.Text = "✅ Auto (first available)"
@@ -165,7 +165,7 @@ func (s *SettingsHandler) renderDomainList(user *models.User) (string, InlineKey
 		if domains, err := s.domainLister.ListAvailableForSelect(user.ID); err == nil {
 			for _, d := range domains {
 				btn := InlineButton{CallbackData: "set:" + setDomain + d.ID}
-				isSelected := user.TelegramDefaultDomainID != nil && *user.TelegramDefaultDomainID == d.ID
+				isSelected := user.TelegramDefaultDomainID == d.ID
 				if isSelected {
 					btn.Text = "✅ " + d.Name
 					btn.Style = "success"
@@ -184,16 +184,21 @@ func (s *SettingsHandler) renderDomainList(user *models.User) (string, InlineKey
 }
 
 func (s *SettingsHandler) setDefaultDomain(user *models.User, domainID string) string {
-	var id *string
-	if domainID != "auto" && domainID != "" {
-		id = &domainID
+	id := ""
+	if domainID != "auto" {
+		id = domainID
 	}
-	if _, err := s.db.Exec(`UPDATE users SET telegram_default_domain_id = $1 WHERE id = $2`, id, user.ID); err != nil {
+	// Use NULL for empty string in DB
+	var dbVal interface{} = id
+	if id == "" {
+		dbVal = nil
+	}
+	if _, err := s.db.Exec(`UPDATE users SET telegram_default_domain_id = $1 WHERE id = $2`, dbVal, user.ID); err != nil {
 		log.Printf("[userbot] set default domain for user %s: %v", user.ID, err)
 		return "⚠️ Could not update"
 	}
 	user.TelegramDefaultDomainID = id
-	if id == nil {
+	if id == "" {
 		return "Default domain set to Auto"
 	}
 	return "✅ Default domain updated"

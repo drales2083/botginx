@@ -53,7 +53,7 @@ type User struct {
 	TelegramNotifyBalanceLow        bool       `db:"telegram_notify_balance_low" json:"telegramNotifyBalanceLow"`
 	TelegramTrafficThreshold        int        `db:"telegram_traffic_threshold" json:"telegramTrafficThreshold"`
 	TelegramAlertDismissed          bool       `db:"telegram_alert_dismissed" json:"-"`
-	TelegramDefaultDomainID         *string    `db:"telegram_default_domain_id" json:"telegramDefaultDomainId,omitempty"`
+	TelegramDefaultDomainID         string     `db:"telegram_default_domain_id" json:"telegramDefaultDomainId,omitempty"`
 }
 
 type SignupInput struct {
