@@ -39,6 +39,19 @@ type User struct {
 	GoDaddyAPIKeyEncrypted    *string    `db:"godaddy_api_key_encrypted" json:"-"`
 	GoDaddyAPISecretEncrypted *string    `db:"godaddy_api_secret_encrypted" json:"-"`
 	GoDaddyConnectedAt        *time.Time `db:"godaddy_connected_at" json:"godaddyConnectedAt,omitempty"`
+
+	// Telegram user bot integration
+	TelegramBotTokenEncrypted       *string    `db:"telegram_bot_token_encrypted" json:"-"`
+	TelegramBotUsername             *string    `db:"telegram_bot_username" json:"telegramBotUsername,omitempty"`
+	TelegramChatID                  *int64     `db:"telegram_chat_id" json:"-"`
+	TelegramWebhookSecret           *string    `db:"telegram_webhook_secret" json:"-"`
+	TelegramConnectedAt             *time.Time `db:"telegram_connected_at" json:"telegramConnectedAt,omitempty"`
+	TelegramLastMessageID           *int64     `db:"telegram_last_message_id" json:"-"`
+	TelegramNotifyBotAttacks        bool       `db:"telegram_notify_bot_attacks" json:"telegramNotifyBotAttacks"`
+	TelegramNotifyTrafficMilestones bool       `db:"telegram_notify_traffic_milestones" json:"telegramNotifyTrafficMilestones"`
+	TelegramNotifySSLExpiring       bool       `db:"telegram_notify_ssl_expiring" json:"telegramNotifySSLExpiring"`
+	TelegramNotifyBalanceLow        bool       `db:"telegram_notify_balance_low" json:"telegramNotifyBalanceLow"`
+	TelegramTrafficThreshold        int        `db:"telegram_traffic_threshold" json:"telegramTrafficThreshold"`
 }
 
 type SignupInput struct {
