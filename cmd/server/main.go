@@ -515,10 +515,12 @@ func main() {
 		r.Post("/notifications", func(w http.ResponseWriter, req *http.Request) {
 			sslChecked, sslNotified, sslErr := notificationSvc.CheckAllSSL()
 			balChecked, balNotified, balErr := notificationSvc.CheckAllBalances()
+			subChecked, subNotified, subErr := notificationSvc.CheckAllSubscriptions()
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"ssl":     map[string]interface{}{"checked": sslChecked, "notified": sslNotified, "error": errStr(sslErr)},
-				"balance": map[string]interface{}{"checked": balChecked, "notified": balNotified, "error": errStr(balErr)},
+				"ssl":          map[string]interface{}{"checked": sslChecked, "notified": sslNotified, "error": errStr(sslErr)},
+				"balance":      map[string]interface{}{"checked": balChecked, "notified": balNotified, "error": errStr(balErr)},
+				"subscription": map[string]interface{}{"checked": subChecked, "notified": subNotified, "error": errStr(subErr)},
 			})
 		})
 	})

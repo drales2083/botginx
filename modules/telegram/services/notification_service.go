@@ -274,3 +274,57 @@ func (s *NotificationService) NotifySupportReply(userID, ticketID, subject, mess
 		html.EscapeString(subject), html.EscapeString(preview))
 	return s.send(userID, text, []userbot.InlineButton{btn("View Ticket", "support:"+ticketID)})
 }
+
+// NotifySubscriptionExpiring warns the user about subscription expiration.
+// daysLeft: 7, 3, 1 = expiring soon; 0 = expired today; -1 = expired yesterday (reminder)
+func (s *NotificationService) NotifySubscriptionExpiring(userID string, daysLeft int) error {
+	p, err := s.prefs(userID)
+	if err != nil || !p.Connected {
+		return err
+	}
+
+	var text string
+	switch {
+	case daysLeft == 7:
+		text = "⏰ <b>Subscription Expiring</b>\n\nYour subscription expires in 7 days.\n\nContact admin to renew."
+	case daysLeft == 3:
+		text = "⚠️ <b>Subscription Expiring Soon</b>\n\nYour subscription expires in 3 days.\n\nContact admin to renew."
+	case daysLeft == 1:
+		text = "🚨 <b>Subscription Expires Tomorrow</b>\n\nYour subscription expires tomorrow.\n\nContact admin to renew now."
+	case daysLeft == 0:
+		text = "❌ <b>Subscription Expired</b>\n\nYour subscription has expired today.\n\nContact admin to renew."
+	case daysLeft == -1:
+		text = "📢 <b>Subscription Reminder</b>\n\nYour subscription expired yesterday.\n\nContact admin to renew and restore access."
+	default:
+		return nil
+	}
+
+	return s.send(userID, text)
+}
+
+// CheckAllSubscriptions checks all users for expiring/expired subscriptions and notifies them.
+// Intended to be called daily via cron.
+func (s *NotificationService) CheckAllSubscriptions() (checked, notified int, err error) {
+	type row struct {
+		UserID   string `db:"id"`
+		DaysLeft int    `db:"days_left"`
+	}
+	var rows []row
+	// Find users with subscriptions expiring in 7, 3, 1 days, today, or expired yesterday
+	if err = s.db.Select(&rows, `
+		SELECT id,
+			EXTRACT(DAY FROM (subscription_expires - NOW()))::int AS days_left
+		FROM users
+		WHERE subscription_expires IS NOT NULL
+			AND EXTRACT(DAY FROM (subscription_expires - NOW()))::int IN (7, 3, 1, 0, -1)
+	`); err != nil {
+		return
+	}
+	checked = len(rows)
+	for _, r := range rows {
+		if e := s.NotifySubscriptionExpiring(r.UserID, r.DaysLeft); e == nil {
+			notified++
+		}
+	}
+	return
+}
