@@ -51,6 +51,7 @@ import (
 	"github.com/botginx/botginx/modules/shortener"
 	"github.com/botginx/botginx/modules/support"
 	"github.com/botginx/botginx/modules/telegram"
+	"github.com/botginx/botginx/modules/telegram/services"
 	"github.com/botginx/botginx/modules/telegram/userbot"
 	"github.com/botginx/botginx/modules/threatlog"
 	"github.com/botginx/botginx/modules/trackingpixel"
@@ -401,7 +402,9 @@ func main() {
 		DashboardURL:     getSiteURL(),
 	})
 	authModule.SetTelegramConnector(telegramConnector{userBotSvc}) // Telegram user bot (settings page)
-	usersModule.SetAuthService(authModule.AuthService())       // Admin impersonation
+	notificationSvc := services.NewNotificationService(db.DB, userBotSvc)
+	analyticsModule.Service().SetBotAttackChecker(notificationSvc.CheckBotAttack) // Bot attack notifications
+	usersModule.SetAuthService(authModule.AuthService())                          // Admin impersonation
 	supportModule.SetNotifier(telegramModule.Handler)          // Telegram notifications for tickets
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
 	serversModule.SetOnServerIPChange(domainsModule.ReconfigureAllDomainsWithIP) // Auto DNS reconfigure on deploy IP change
