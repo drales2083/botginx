@@ -35,7 +35,9 @@ type Module struct {
 	handler         *handlers.Handler
 	cpanelHandler   *handlers.CpanelHandler
 	namesiloHandler *handlers.NameSiloHandler
-	background      *services.BackgroundVerifier
+	godaddyService  *services.GoDaddyService
+	godaddyHandler  *handlers.GoDaddyHandler
+	background     *services.BackgroundVerifier
 }
 
 func New() *Module {
@@ -63,6 +65,8 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.namesiloHandler = handlers.NewNameSiloHandler(m.namesiloService, deps.Templates)
 	m.cloudflareService = services.NewCloudflareService(deps.DB, m.service, verifyService)
 	m.cloudflareHandler = handlers.NewCloudflareHandler(m.cloudflareService, deps.Templates)
+	m.godaddyService = services.NewGoDaddyService(deps.DB, m.service, verifyService)
+	m.godaddyHandler = handlers.NewGoDaddyHandler(m.godaddyService, deps.Templates)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -148,6 +152,16 @@ func (m *Module) Routes() chi.Router {
 		r.Post("/api/reconfigure/{id}", m.cloudflareHandler.ReconfigureDomain)
 	})
 
+	// GoDaddy
+	r.Get("/godaddy", m.godaddyHandler.Page)
+	r.Route("/godaddy/api", func(r chi.Router) {
+		r.Post("/connect", m.godaddyHandler.Connect)
+		r.Post("/disconnect", m.godaddyHandler.Disconnect)
+		r.Get("/domains", m.godaddyHandler.ListDomains)
+		r.Post("/import", m.godaddyHandler.Import)
+		r.Post("/reconfigure/{id}", m.godaddyHandler.ReconfigureDomain)
+	})
+
 	r.Get("/{id}", m.handler.Show)
 	r.Get("/{id}/settings", m.handler.Settings)   // Domain settings (Turnstile, etc.)
 	r.Get("/{id}/setup", m.handler.ExternalSetup) // External domain setup wizard
@@ -229,6 +243,9 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 		// Cloudflare admin operations
 		r.Post("/cloudflare/reconfigure-all", m.cloudflareHandler.AdminReconfigureAll)
 
+		// GoDaddy admin operations
+		r.Post("/godaddy/reconfigure-all", m.godaddyHandler.AdminReconfigureAll)
+
 		// Unified reconfigure - updates NameSilo, cPanel and Cloudflare domains
 		r.Post("/reconfigure-all", m.AdminReconfigureAllDomains)
 	})
@@ -272,6 +289,14 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Icon:    "bi-cloud",
 			Path:    "/user/domains/cloudflare",
 			Order:   38,
+			Section: module.MenuSectionUser,
+			Group:   "Infrastructure",
+		},
+		{
+			Title:   "GoDaddy",
+			Icon:    "bi-globe2",
+			Path:    "/user/domains/godaddy",
+			Order:   39,
 			Section: module.MenuSectionUser,
 			Group:   "Infrastructure",
 		},
@@ -418,6 +443,29 @@ func (m *Module) reconfigureAll(serverIP string) map[string]interface{} {
 		}
 	}
 
+	// Reconfigure GoDaddy domains
+	godaddyResults, err := m.godaddyService.ReconfigureAllDomains(context.Background(), serverIP)
+	if err != nil {
+		response["godaddy"] = map[string]interface{}{
+			"error": err.Error(),
+		}
+	} else {
+		gdSuccess, gdFail := 0, 0
+		for _, r := range godaddyResults {
+			if r.Success {
+				gdSuccess++
+			} else {
+				gdFail++
+			}
+		}
+		response["godaddy"] = sourceResults{
+			Total:   len(godaddyResults),
+			Success: gdSuccess,
+			Fail:    gdFail,
+			Results: godaddyResults,
+		}
+	}
+
 	return response
 }
 
@@ -427,7 +475,7 @@ func (m *Module) reconfigureAll(serverIP string) map[string]interface{} {
 func (m *Module) ReconfigureAllDomainsWithIP(serverIP string) error {
 	response := m.reconfigureAll(serverIP)
 	var failed []string
-	for _, k := range []string{"namesilo", "cpanel", "cloudflare"} {
+	for _, k := range []string{"namesilo", "cpanel", "cloudflare", "godaddy"} {
 		if e, ok := response[k].(map[string]interface{}); ok {
 			if msg, ok := e["error"].(string); ok {
 				failed = append(failed, k+": "+msg)
