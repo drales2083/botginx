@@ -55,6 +55,7 @@ export default defineConfig({
 						{ label: 'Connect cPanel', slug: 'integrations/cpanel' },
 						{ label: 'Connect NameSilo', slug: 'integrations/namesilo' },
 						{ label: 'Connect Cloudflare', slug: 'integrations/cloudflare' },
+						{ label: 'Connect GoDaddy', slug: 'integrations/godaddy' },
 						{ label: 'Connect Telegram', slug: 'integrations/telegram' },
 						{ label: 'Connect Claude Desktop', slug: 'integrations/mcp-server' },
 						{ label: 'Add Funds', slug: 'integrations/payments' },
