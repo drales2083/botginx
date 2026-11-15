@@ -469,9 +469,9 @@ func (h *UserBotHandler) renderMain(user *models.User) (string, InlineKeyboardMa
 		appName = "GuardBot"
 	}
 
-	// Get subscription status
+	// Get subscription status (admins don't need subscriptions)
 	subLine := ""
-	if h.cfg.Subscription != nil {
+	if h.cfg.Subscription != nil && user.Role != "admin" {
 		state := h.cfg.Subscription.StateFor(user.ID)
 		switch state.Status {
 		case "active":
