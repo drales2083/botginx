@@ -307,6 +307,61 @@ func (s *Service) EditMessageReplyMarkup(token, chatID string, messageID int64, 
 	return nil
 }
 
+func (s *Service) EditMessageText(token string, chatID string, messageID int64, text string, replyMarkup interface{}) (*TelegramMessage, error) {
+	payload := map[string]interface{}{
+		"chat_id":    chatID,
+		"message_id": messageID,
+		"text":       text,
+		"parse_mode": "HTML",
+	}
+	if replyMarkup != nil {
+		payload["reply_markup"] = replyMarkup
+	}
+
+	resp, err := s.apiCall(token, "editMessageText", payload)
+	if err != nil {
+		return nil, err
+	}
+	if !resp.OK {
+		return nil, fmt.Errorf("telegram API error: %s", resp.Description)
+	}
+
+	var msg TelegramMessage
+	if err := json.Unmarshal(resp.Result, &msg); err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
+
+func (s *Service) DeleteMessage(token string, chatID string, messageID int64) error {
+	resp, err := s.apiCall(token, "deleteMessage", map[string]interface{}{
+		"chat_id":    chatID,
+		"message_id": messageID,
+	})
+	if err != nil {
+		return err
+	}
+	if !resp.OK {
+		return fmt.Errorf("telegram API error: %s", resp.Description)
+	}
+	return nil
+}
+
+// DeleteMessages deletes up to 100 messages in one call (Telegram Bot API limit).
+func (s *Service) DeleteMessages(token string, chatID string, messageIDs []int64) error {
+	resp, err := s.apiCall(token, "deleteMessages", map[string]interface{}{
+		"chat_id":     chatID,
+		"message_ids": messageIDs,
+	})
+	if err != nil {
+		return err
+	}
+	if !resp.OK {
+		return fmt.Errorf("telegram API error: %s", resp.Description)
+	}
+	return nil
+}
+
 func (s *Service) AnswerCallbackQuery(token, callbackID, text string) error {
 	resp, err := s.apiCall(token, "answerCallbackQuery", map[string]interface{}{
 		"callback_query_id": callbackID,
