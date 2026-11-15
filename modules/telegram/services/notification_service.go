@@ -89,7 +89,7 @@ func (s *NotificationService) NotifyBotAttack(userID, linkID string, count int) 
 	s.lastSent[key] = time.Now()
 	s.mu.Unlock()
 
-	text := fmt.Sprintf("🚨 <b>Bot Attack Detected</b>\n\nLink: %s\nBlocked: %d bots in last hour",
+	text := fmt.Sprintf("🚨 <b>Bot Attack Detected</b>\n\nLink: %s\nDetected: %d bots in last hour",
 		html.EscapeString(s.linkLabel(linkID)), count)
 	if err := s.send(userID, text, []userbot.InlineButton{
 		btn("View Details", userbot.ScreenStats), btn("Dismiss", "dismiss"),
