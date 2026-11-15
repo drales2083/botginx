@@ -6,6 +6,7 @@ import (
 
 	domainmodels "github.com/botginx/botginx/modules/domains/models"
 	"github.com/botginx/botginx/modules/redirectlinks/handlers"
+	"github.com/botginx/botginx/modules/redirectlinks/models"
 	"github.com/botginx/botginx/modules/redirectlinks/services"
 	servermodels "github.com/botginx/botginx/modules/servers/models"
 	"github.com/botginx/botginx/pkg/module"
@@ -160,6 +161,12 @@ func (m *Module) GetLinkHost(linkID string) (host, path, domainID string, err er
 func (m *Module) SetServerProvider(sp handlers.ServerProvider) {
 	m.handler.SetServerProvider(sp)
 }
+
+// Deploy deploys a link to the Deploy VPS (used by the Telegram user bot).
+func (m *Module) Deploy(linkID string) { m.handler.AutoDeploy(linkID) }
+
+// Cleanup removes a link's deployed files from the VPS before deletion.
+func (m *Module) Cleanup(link *models.RedirectLink) { m.handler.CleanupVPS(link) }
 
 // LinkBasic is a minimal link representation for other modules
 type LinkBasic struct {

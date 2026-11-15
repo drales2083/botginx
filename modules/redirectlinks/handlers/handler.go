@@ -501,6 +501,12 @@ func (h *Handler) APIDeploy(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// AutoDeploy deploys a link (exported for other modules, e.g. the Telegram user bot).
+func (h *Handler) AutoDeploy(linkID string) { h.autoDeploy(linkID) }
+
+// CleanupVPS removes a link's deployed files (exported for other modules).
+func (h *Handler) CleanupVPS(link *models.RedirectLink) { h.cleanupVPS(link) }
+
 // autoDeploy deploys a link in the background (called after create)
 func (h *Handler) autoDeploy(linkID string) {
 	link, err := h.service.Get(linkID)

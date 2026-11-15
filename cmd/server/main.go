@@ -387,7 +387,20 @@ func main() {
 	hostingModule.SetPaymentProcessor(referralsModule)         // Referral commissions on hosting payments
 	authModule.SetSubscriptionService(subscriptions)           // Self-service subscription purchase
 	authModule.SetPromoService(promocodesModule.Service())     // Promo codes for subscriptions
-	authModule.SetTelegramConnector(telegramConnector{userbot.NewUserBotService(db.DB, telegramModule.Service, getSiteURL())}) // Telegram user bot (settings page)
+	userBotSvc := userbot.NewUserBotService(db.DB, telegramModule.Service, getSiteURL()) // single shared instance
+	userBotSettings := userbot.NewSettingsHandler(db.DB)
+	userBotHandler := userbot.NewUserBotHandler(userbot.Config{
+		Bot:              userBotSvc,
+		Links:            redirectLinksModule.Service(),
+		Analytics:        analyticsModule.Service(),
+		Domains:          domainsModule.Service(),
+		Deploy:           redirectLinksModule.Deploy,
+		Cleanup:          redirectLinksModule.Cleanup,
+		RenderSettings:   userBotSettings.Render,
+		SettingsCallback: userBotSettings.Callback,
+		DashboardURL:     getSiteURL(),
+	})
+	authModule.SetTelegramConnector(telegramConnector{userBotSvc}) // Telegram user bot (settings page)
 	usersModule.SetAuthService(authModule.AuthService())       // Admin impersonation
 	supportModule.SetNotifier(telegramModule.Handler)          // Telegram notifications for tickets
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
@@ -541,6 +554,8 @@ func main() {
 	// Telegram webhook (no auth, secret verified in handler)
 	// POST /telegram/webhook/{botID}/{secret} - Telegram bot callback
 	r.Mount("/telegram", telegramModule.Routes())
+	// POST /telegram/user-webhook/{secret} - per-user Telegram bot callback
+	r.Post("/telegram/user-webhook/{secret}", userBotHandler.HandleWebhook)
 
 	// User routes (/user/*) - require auth and active subscription for all
 	// product features. Unsubscribed users are redirected to settings.
