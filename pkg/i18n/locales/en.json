@@ -30,6 +30,7 @@
   "menu.connect_namesilo": "Connect NameSilo",
   "menu.connect_cloudflare": "Connect Cloudflare",
   "menu.connect_godaddy": "Connect GoDaddy",
+  "menu.connect_telegram": "Connect Telegram",
   "menu.domain_store": "Domain Store",
   "menu.domain_health": "Domain Health",
   "menu.metrics": "Metrics",
