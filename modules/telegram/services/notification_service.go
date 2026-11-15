@@ -266,13 +266,17 @@ func (s *NotificationService) NotifySupportReply(userID, ticketID, subject, mess
 	if err != nil || !p.Connected {
 		return err
 	}
-	preview := message
-	if len(preview) > 200 {
-		preview = preview[:200] + "..."
+	// Show full message so user can reply directly
+	content := message
+	if len(content) > 3500 {
+		content = content[:3500] + "..."
 	}
 	text := fmt.Sprintf("💬 <b>Support Reply</b>\n\n<b>%s</b>\n\n%s",
-		html.EscapeString(subject), html.EscapeString(preview))
-	return s.send(userID, text, []userbot.InlineButton{btn("View Ticket", "support:"+ticketID)})
+		html.EscapeString(subject), html.EscapeString(content))
+	return s.send(userID, text, []userbot.InlineButton{
+		btn("💬 Reply", "support:reply:"+ticketID),
+		btn("View Ticket", "support:"+ticketID),
+	})
 }
 
 // NotifySubscriptionExpiring warns the user about subscription expiration.

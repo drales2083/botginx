@@ -394,16 +394,24 @@ func main() {
 	userBotSvc := userbot.NewUserBotService(db.DB, telegramModule.Service, getSiteURL()) // single shared instance
 	userBotSettings := userbot.NewSettingsHandler(db.DB)
 	userBotSettings.SetDomainLister(settingsDomainLister{domainsModule.Service()})
+	userBotProtection := userbot.NewProtectionHandler(db.DB)
+	userBotSupport := userbot.NewSupportHandler(db.DB)
 	userBotHandler := userbot.NewUserBotHandler(userbot.Config{
-		Bot:              userBotSvc,
-		Links:            redirectLinksModule.Service(),
-		Analytics:        analyticsModule.Service(),
-		Domains:          domainsModule.Service(),
-		Deploy:           redirectLinksModule.Deploy,
-		Cleanup:          redirectLinksModule.Cleanup,
-		RenderSettings:   userBotSettings.Render,
-		SettingsCallback: userBotSettings.Callback,
-		DashboardURL:     getSiteURL(),
+		Bot:                userBotSvc,
+		Links:              redirectLinksModule.Service(),
+		Analytics:          analyticsModule.Service(),
+		Domains:            domainsModule.Service(),
+		Subscription:       subscriptions,
+		Deploy:             redirectLinksModule.Deploy,
+		Cleanup:            redirectLinksModule.Cleanup,
+		RenderSettings:     userBotSettings.Render,
+		SettingsCallback:   userBotSettings.Callback,
+		RenderProtection:   userBotProtection.Render,
+		ProtectionCallback: userBotProtection.Callback,
+		RenderTicket:       userBotSupport.RenderTicket,
+		RenderReplyPrompt:  userBotSupport.RenderReplyPrompt,
+		AddTicketReply:     userBotSupport.AddReply,
+		DashboardURL:       getSiteURL(),
 	})
 	authModule.SetTelegramConnector(telegramConnector{userBotSvc}) // Telegram user bot (settings page)
 	authModule.SetDomainLister(domainListerAdapter{domainsModule.Service()})  // Default domain selection

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -18,17 +19,19 @@ import (
 	rlmodels "github.com/botginx/botginx/modules/redirectlinks/models"
 	rlsvc "github.com/botginx/botginx/modules/redirectlinks/services"
 	"github.com/botginx/botginx/pkg/namegen"
+	"github.com/botginx/botginx/pkg/subscription"
 )
 
 // Screen identifiers (also used as callback_data for navigation).
 const (
-	ScreenMain     = "main"
-	ScreenStats    = "stats"
-	ScreenLinks    = "links"
-	ScreenNewLink  = "newlink"
-	ScreenSettings = "settings"
-	ScreenBalance  = "balance"
-	ScreenHelp     = "help"
+	ScreenMain       = "main"
+	ScreenStats      = "stats"
+	ScreenLinks      = "links"
+	ScreenNewLink    = "newlink"
+	ScreenSettings   = "settings"
+	ScreenBalance    = "balance"
+	ScreenHelp       = "help"
+	ScreenProtection = "protection"
 
 	linksPerPage = 5
 	maxTextLen   = 4000
@@ -60,22 +63,29 @@ type SettingsCallback func(user *models.User, data string) (string, InlineKeyboa
 
 // Config wires the handler's dependencies.
 type Config struct {
-	Bot       *UserBotService
-	Links     *rlsvc.RedirectLinkService
-	Analytics *analyticssvc.AnalyticsService
-	Domains   *domainsvc.DomainService
+	Bot          *UserBotService
+	Links        *rlsvc.RedirectLinkService
+	Analytics    *analyticssvc.AnalyticsService
+	Domains      *domainsvc.DomainService
+	Subscription *subscription.Service
 
 	// Optional hooks.
-	Deploy           func(linkID string)               // deploy a freshly created link
-	Cleanup          func(link *rlmodels.RedirectLink) // remote cleanup before delete
-	RenderSettings   SettingsRenderer                  // settings screen (Task 5)
-	SettingsCallback SettingsCallback                  // "set:*" callbacks (Task 5)
-	DashboardURL     string                            // e.g. https://guardbot.sbs
-	DocsURL          string                            // default https://docs.guardbot.sbs
+	Deploy             func(linkID string)               // deploy a freshly created link
+	Cleanup            func(link *rlmodels.RedirectLink) // remote cleanup before delete
+	RenderSettings     SettingsRenderer                  // settings screen (Task 5)
+	SettingsCallback   SettingsCallback                  // "set:*" callbacks (Task 5)
+	RenderProtection   func(userID string) (string, InlineKeyboardMarkup)
+	ProtectionCallback func(userID, data string) (string, InlineKeyboardMarkup, string)
+	RenderTicket       func(userID, ticketID string) (string, InlineKeyboardMarkup, bool)
+	RenderReplyPrompt  func(ticketID string) (string, InlineKeyboardMarkup)
+	AddTicketReply     func(userID, ticketID, message string) (string, error)
+	DashboardURL       string // e.g. https://guardbot.sbs
+	DocsURL            string // default https://docs.guardbot.sbs
 }
 
 type UserBotHandler struct {
-	cfg Config
+	cfg          Config
+	replyState   map[string]string // userID -> ticketID (waiting for reply)
 }
 
 func NewUserBotHandler(cfg Config) *UserBotHandler {
@@ -83,7 +93,10 @@ func NewUserBotHandler(cfg Config) *UserBotHandler {
 	if cfg.DocsURL == "" {
 		cfg.DocsURL = "https://docs.guardbot.sbs"
 	}
-	return &UserBotHandler{cfg: cfg}
+	return &UserBotHandler{
+		cfg:        cfg,
+		replyState: make(map[string]string),
+	}
 }
 
 // Telegram update payloads (only the fields we use).
@@ -167,6 +180,26 @@ func (h *UserBotHandler) handleMessage(user *models.User, m *tgMessage) {
 		log.Printf("[userbot] delete user message: %v", err)
 	}
 
+	// Check if user is in reply state (waiting for ticket reply)
+	if ticketID, ok := h.replyState[user.ID]; ok && cmd == "" {
+		delete(h.replyState, user.ID)
+		if h.cfg.AddTicketReply != nil {
+			_, err := h.cfg.AddTicketReply(user.ID, ticketID, text)
+			if err != nil {
+				h.showWithNotice(user, ScreenMain, "⚠️ "+err.Error())
+				return
+			}
+			// Show ticket again with success message
+			if h.cfg.RenderTicket != nil {
+				txt, kb, _ := h.cfg.RenderTicket(user.ID, ticketID)
+				h.send(user, "✅ Reply sent!\n\n"+txt, kb)
+				return
+			}
+		}
+		h.showWithNotice(user, ScreenMain, "✅ Reply sent")
+		return
+	}
+
 	switch {
 	case cmd == "/start":
 		h.show(user, ScreenMain, "")
@@ -180,6 +213,8 @@ func (h *UserBotHandler) handleMessage(user *models.User, m *tgMessage) {
 		h.show(user, ScreenBalance, "")
 	case cmd == "/settings":
 		h.show(user, ScreenSettings, "")
+	case cmd == "/protection":
+		h.show(user, ScreenProtection, "")
 	case cmd == "/newlink":
 		if arg == "" {
 			h.show(user, ScreenNewLink, "")
@@ -260,6 +295,8 @@ func (h *UserBotHandler) handleCallback(user *models.User, cq *tgCallbackQuery) 
 		h.show(user, ScreenHelp, "")
 	case data == "nav:"+ScreenSettings:
 		h.show(user, ScreenSettings, "")
+	case data == "nav:"+ScreenProtection:
+		h.show(user, ScreenProtection, "")
 	case strings.HasPrefix(data, "lp:"):
 		page, _ := strconv.Atoi(strings.TrimPrefix(data, "lp:"))
 		h.showLinks(user, page)
@@ -279,6 +316,16 @@ func (h *UserBotHandler) handleCallback(user *models.User, cq *tgCallbackQuery) 
 		text, kb, t := h.cfg.SettingsCallback(user, strings.TrimPrefix(data, "set:"))
 		toast = t
 		h.send(user, text, kb)
+	case strings.HasPrefix(data, "prot:"):
+		if h.cfg.ProtectionCallback == nil {
+			toast = "Protection settings are not available"
+			return
+		}
+		text, kb, t := h.cfg.ProtectionCallback(user.ID, strings.TrimPrefix(data, "prot:"))
+		toast = t
+		h.send(user, text, kb)
+	case strings.HasPrefix(data, "support:"):
+		h.handleSupportCallback(user, strings.TrimPrefix(data, "support:"))
 	case data == "noop":
 	default:
 		toast = "Unknown action"
@@ -331,14 +378,26 @@ func (h *UserBotHandler) renderScreen(user *models.User, screen string, data int
 		}
 		return "⚙️ <b>Settings</b>\n\nNotification settings are not available yet.",
 			InlineKeyboardMarkup{[][]InlineButton{backRow()}}
+	case ScreenProtection:
+		if h.cfg.RenderProtection != nil {
+			return h.cfg.RenderProtection(user.ID)
+		}
+		return "🛡️ <b>Protection</b>\n\nProtection settings are not available yet.",
+			InlineKeyboardMarkup{[][]InlineButton{backRow()}}
 	default:
 		return h.renderMain()
 	}
 }
 
 func (h *UserBotHandler) renderMain() (string, InlineKeyboardMarkup) {
-	text := "🛡 <b>Welcome to your control panel</b>\n\nManage links, check stats and balance right here. " +
-		"Send me any URL to create a protected link."
+	appName := os.Getenv("UI_APP_NAME")
+	if appName == "" {
+		appName = "GuardBot"
+	}
+	text := fmt.Sprintf("🛡 <b>Welcome to %s</b>\n\n"+
+		"The most advanced bot protection on the market. "+
+		"Block bots, verify humans, protect your links — all in real-time.\n\n"+
+		"📲 Send me any URL to create a protected link instantly.", appName)
 	return text, InlineKeyboardMarkup{[][]InlineButton{
 		{
 			{Text: "📊 Stats", CallbackData: "nav:" + ScreenStats, Style: "primary"},
@@ -346,8 +405,11 @@ func (h *UserBotHandler) renderMain() (string, InlineKeyboardMarkup) {
 			{Text: "➕ New Link", CallbackData: "nav:" + ScreenNewLink},
 		},
 		{
+			{Text: "🤖 Antibot Control", CallbackData: "nav:" + ScreenProtection},
 			{Text: "⚙️ Settings", CallbackData: "nav:" + ScreenSettings},
 			{Text: "💰 Balance", CallbackData: "nav:" + ScreenBalance},
+		},
+		{
 			{Text: "❓ Help", CallbackData: "nav:" + ScreenHelp},
 		},
 	}}
@@ -392,6 +454,7 @@ func (h *UserBotHandler) renderHelp() (string, InlineKeyboardMarkup) {
 		"/stats — traffic overview\n" +
 		"/links — your links\n" +
 		"/newlink [url] — create a protected link\n" +
+		"/protection — bot protection defaults\n" +
 		"/balance — account balance\n" +
 		"/settings — notifications\n" +
 		"/help — this screen\n\n" +
@@ -563,6 +626,16 @@ func (h *UserBotHandler) deleteLink(user *models.User, id string) string {
 // createLink creates a protected link for destURL using the user's default domain or first available.
 func (h *UserBotHandler) createLink(user *models.User, destURL string) {
 	back := InlineKeyboardMarkup{[][]InlineButton{backRow()}}
+
+	// Check subscription
+	if h.cfg.Subscription != nil {
+		state := h.cfg.Subscription.StateFor(user.ID)
+		if !state.Active {
+			h.send(user, "➕ <b>New protected link</b>\n\n⚠️ Your subscription is not active.\n\nContact admin to renew your subscription.", back)
+			return
+		}
+	}
+
 	if !isURL(destURL) {
 		h.send(user, "➕ <b>New protected link</b>\n\n⚠️ That doesn't look like a valid http(s) URL. Send me a URL to protect.", back)
 		return
@@ -624,4 +697,30 @@ func (h *UserBotHandler) createLink(user *models.User, destURL string) {
 			{{Text: "📋 Copy", CopyText: &CopyTextSpec{Text: full}, Style: "primary"}, {Text: "🔗 Details", CallbackData: "ld:" + link.ID}},
 			backRow(),
 		}})
+}
+
+// handleSupportCallback handles support ticket viewing and replies.
+func (h *UserBotHandler) handleSupportCallback(user *models.User, data string) {
+	switch {
+	case strings.HasPrefix(data, "reply:"):
+		// User wants to reply to a ticket - set reply state
+		ticketID := strings.TrimPrefix(data, "reply:")
+		h.replyState[user.ID] = ticketID
+		if h.cfg.RenderReplyPrompt != nil {
+			text, kb := h.cfg.RenderReplyPrompt(ticketID)
+			h.send(user, text, kb)
+		} else {
+			h.send(user, "💬 <b>Reply</b>\n\nType your message and send it.",
+				InlineKeyboardMarkup{[][]InlineButton{{{Text: "← Cancel", CallbackData: "support:" + ticketID}}}})
+		}
+	default:
+		// View ticket details
+		ticketID := data
+		if h.cfg.RenderTicket != nil {
+			text, kb, _ := h.cfg.RenderTicket(user.ID, ticketID)
+			h.send(user, text, kb)
+		} else {
+			h.showWithNotice(user, ScreenMain, "⚠️ Support tickets are not available")
+		}
+	}
 }
