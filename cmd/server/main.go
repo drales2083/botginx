@@ -393,6 +393,7 @@ func main() {
 	authModule.SetPromoService(promocodesModule.Service())     // Promo codes for subscriptions
 	userBotSvc := userbot.NewUserBotService(db.DB, telegramModule.Service, getSiteURL()) // single shared instance
 	userBotSettings := userbot.NewSettingsHandler(db.DB)
+	userBotSettings.SetDomainLister(settingsDomainLister{domainsModule.Service()})
 	userBotHandler := userbot.NewUserBotHandler(userbot.Config{
 		Bot:              userBotSvc,
 		Links:            redirectLinksModule.Service(),
@@ -943,6 +944,21 @@ func (d domainListerAdapter) ListAvailableForSelect(userID string) ([]authhandle
 	result := make([]authhandlers.DomainOption, len(opts))
 	for i, o := range opts {
 		result[i] = authhandlers.DomainOption{ID: o.ID, Name: o.Name}
+	}
+	return result, nil
+}
+
+// settingsDomainLister adapts the domain service to the userbot settings handler.
+type settingsDomainLister struct{ svc *domainsvc.DomainService }
+
+func (d settingsDomainLister) ListAvailableForSelect(userID string) ([]userbot.DomainOption, error) {
+	opts, err := d.svc.ListAvailableForSelect(userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]userbot.DomainOption, len(opts))
+	for i, o := range opts {
+		result[i] = userbot.DomainOption{ID: o.ID, Name: o.Name}
 	}
 	return result, nil
 }
