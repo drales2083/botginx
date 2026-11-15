@@ -437,6 +437,7 @@ func main() {
 	usersModule.SetAuthService(authModule.AuthService())                          // Admin impersonation
 	supportModule.SetNotifier(telegramModule.Handler)           // Admin Telegram notifications
 	supportModule.SetUserNotifier(notificationSvc)               // User's personal Telegram bot
+	telegramModule.Handler.SetUserNotifier(notificationSvc)      // User notifications when admin replies via Telegram
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
 	serversModule.SetOnServerIPChange(domainsModule.ReconfigureAllDomainsWithIP) // Auto DNS reconfigure on deploy IP change
 

@@ -16,14 +16,25 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// UserNotifier sends notifications to users' personal Telegram bots
+type UserNotifier interface {
+	NotifySupportReply(userID, ticketID, subject, message string) error
+}
+
 type Handler struct {
-	db        *sqlx.DB
-	templates *module.TemplateEngine
-	service   *service.Service
+	db           *sqlx.DB
+	templates    *module.TemplateEngine
+	service      *service.Service
+	userNotifier UserNotifier
 }
 
 func NewHandler(db *sqlx.DB, templates *module.TemplateEngine, svc *service.Service) *Handler {
 	return &Handler{db: db, templates: templates, service: svc}
+}
+
+// SetUserNotifier sets the user notification service for ticket replies
+func (h *Handler) SetUserNotifier(n UserNotifier) {
+	h.userNotifier = n
 }
 
 func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {
@@ -496,13 +507,21 @@ func (h *Handler) processTicketReply(bot *service.Bot, pending *service.PendingR
 	// Delete pending reply
 	h.service.DeletePendingReply(pending.ID)
 
-	// Get ticket info for confirmation
-	var subject string
-	h.db.Get(&subject, "SELECT subject FROM support_tickets WHERE id = $1", pending.TicketID)
+	// Get ticket info for confirmation and user notification
+	var ticket struct {
+		Subject string `db:"subject"`
+		UserID  string `db:"user_id"`
+	}
+	h.db.Get(&ticket, "SELECT subject, user_id FROM support_tickets WHERE id = $1", pending.TicketID)
 
 	// Send confirmation
 	h.service.SendMessage(bot.BotToken, *bot.ChatID,
-		"✅ Reply sent to ticket:\n<b>"+subject+"</b>", nil)
+		"✅ Reply sent to ticket:\n<b>"+ticket.Subject+"</b>", nil)
+
+	// Notify the user via their personal Telegram bot
+	if h.userNotifier != nil && ticket.UserID != "" {
+		go h.userNotifier.NotifySupportReply(ticket.UserID, pending.TicketID, ticket.Subject, replyText)
+	}
 
 	// Notify other support bots that this ticket was replied
 	h.notifyOtherBots(bot.ID, pending.TicketID, "replied")

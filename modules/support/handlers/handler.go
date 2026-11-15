@@ -374,9 +374,14 @@ func (h *Handler) AdminShow(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APIAdminReply(w http.ResponseWriter, r *http.Request) {
 	ticketID := chi.URLParam(r, "id")
 
-	// Verify ticket exists
-	var ticket Ticket
-	err := h.db.Get(&ticket, `SELECT id, status FROM support_tickets WHERE id = $1`, ticketID)
+	// Verify ticket exists and get user info
+	var ticket struct {
+		ID      string `db:"id"`
+		Status  string `db:"status"`
+		UserID  string `db:"user_id"`
+		Subject string `db:"subject"`
+	}
+	err := h.db.Get(&ticket, `SELECT id, status, user_id, subject FROM support_tickets WHERE id = $1`, ticketID)
 	if err == sql.ErrNoRows {
 		h.jsonError(w, "Ticket not found", http.StatusNotFound)
 		return
@@ -407,6 +412,11 @@ func (h *Handler) APIAdminReply(w http.ResponseWriter, r *http.Request) {
 
 	// Update ticket status to answered
 	h.db.Exec(`UPDATE support_tickets SET status = 'answered', updated_at = NOW() WHERE id = $1`, ticketID)
+
+	// Notify user via their personal Telegram bot
+	if h.userNotifier != nil {
+		go h.userNotifier.NotifySupportReply(ticket.UserID, ticketID, ticket.Subject, input.Message)
+	}
 
 	// Log activity
 	if adminUser := ctx.GetUser(r); adminUser != nil {
