@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"html/template"
@@ -403,7 +404,8 @@ func main() {
 	})
 	authModule.SetTelegramConnector(telegramConnector{userBotSvc}) // Telegram user bot (settings page)
 	notificationSvc := services.NewNotificationService(db.DB, userBotSvc)
-	analyticsModule.Service().SetBotAttackChecker(notificationSvc.CheckBotAttack) // Bot attack notifications
+	analyticsModule.Service().SetBotAttackChecker(notificationSvc.CheckBotAttack)       // Bot attack notifications
+	analyticsModule.Service().SetMilestoneChecker(notificationSvc.CheckTrafficMilestone) // Traffic milestone notifications
 	usersModule.SetAuthService(authModule.AuthService())                          // Admin impersonation
 	supportModule.SetNotifier(telegramModule.Handler)          // Telegram notifications for tickets
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
@@ -507,6 +509,18 @@ func main() {
 	// Internal cron routes (no auth, localhost only)
 	// POST /api/cron/hosting/billing - process monthly billing
 	r.Mount("/api/cron/hosting", hostingModule.CronRoutes())
+	// POST /api/cron/telegram/notifications - check SSL/balance and notify
+	r.Route("/api/cron/telegram", func(r chi.Router) {
+		r.Post("/notifications", func(w http.ResponseWriter, req *http.Request) {
+			sslChecked, sslNotified, sslErr := notificationSvc.CheckAllSSL()
+			balChecked, balNotified, balErr := notificationSvc.CheckAllBalances()
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"ssl":     map[string]interface{}{"checked": sslChecked, "notified": sslNotified, "error": errStr(sslErr)},
+				"balance": map[string]interface{}{"checked": balChecked, "notified": balNotified, "error": errStr(balErr)},
+			})
+		})
+	})
 
 	// Public tracking API (no auth, CORS enabled)
 	// Called by redirect pages to record visits
@@ -1040,4 +1054,11 @@ func (rl *previewRateLimiter) Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func errStr(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }

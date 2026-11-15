@@ -13,13 +13,19 @@ import (
 )
 
 type AnalyticsService struct {
-	db       *sqlx.DB
-	attackFn func(userID, linkID string) error
+	db          *sqlx.DB
+	attackFn    func(userID, linkID string) error
+	milestoneFn func(userID, linkID string) error
 }
 
 // SetBotAttackChecker registers a callback invoked (asynchronously) after a bot visit is recorded.
 func (s *AnalyticsService) SetBotAttackChecker(fn func(userID, linkID string) error) {
 	s.attackFn = fn
+}
+
+// SetMilestoneChecker registers a callback invoked (asynchronously) after a human visit is recorded.
+func (s *AnalyticsService) SetMilestoneChecker(fn func(userID, linkID string) error) {
+	s.milestoneFn = fn
 }
 
 func NewAnalyticsService(db *sqlx.DB) *AnalyticsService {
@@ -69,6 +75,14 @@ func (s *AnalyticsService) RecordVisit(visit *models.Visit) error {
 		go func() {
 			if cerr := s.attackFn(userID, linkID); cerr != nil {
 				log.Printf("telegram bot-attack check: %v", cerr)
+			}
+		}()
+	}
+	if err == nil && !visit.IsBot && s.milestoneFn != nil {
+		userID, linkID := visit.UserID, visit.LinkID
+		go func() {
+			if cerr := s.milestoneFn(userID, linkID); cerr != nil {
+				log.Printf("telegram milestone check: %v", cerr)
 			}
 		}()
 	}

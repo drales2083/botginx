@@ -33,12 +33,18 @@ type NotificationService struct {
 	db  *sqlx.DB
 	bot *userbot.UserBotService
 
-	mu       sync.Mutex
-	lastSent map[string]time.Time // key: userID|linkID (bot attack rate limit)
+	mu            sync.Mutex
+	lastSent      map[string]time.Time // key: userID|linkID (bot attack rate limit)
+	lastMilestone map[string]int       // key: linkID → last notified threshold
 }
 
 func NewNotificationService(db *sqlx.DB, bot *userbot.UserBotService) *NotificationService {
-	return &NotificationService{db: db, bot: bot, lastSent: map[string]time.Time{}}
+	return &NotificationService{
+		db:            db,
+		bot:           bot,
+		lastSent:      map[string]time.Time{},
+		lastMilestone: map[string]int{},
+	}
 }
 
 func (s *NotificationService) prefs(userID string) (*prefs, error) {
@@ -103,6 +109,7 @@ func (s *NotificationService) NotifyBotAttack(userID, linkID string, count int) 
 }
 
 // NotifyTrafficMilestone congratulates the user when a link reaches a visit milestone.
+// Only notifies once per milestone crossing (50, 100, 500, 1000, 5000, 10000, ...).
 func (s *NotificationService) NotifyTrafficMilestone(userID, linkID string, visits int) error {
 	p, err := s.prefs(userID)
 	if err != nil || !p.Connected || !p.TrafficMilestones {
@@ -115,8 +122,28 @@ func (s *NotificationService) NotifyTrafficMilestone(userID, linkID string, visi
 	if visits < threshold {
 		return nil
 	}
+	// Round down to nearest milestone (threshold, threshold*5, threshold*10, ...)
+	milestone := threshold
+	for m := threshold; m <= visits; m *= 10 {
+		if m <= visits {
+			milestone = m
+		}
+		if m*5 <= visits {
+			milestone = m * 5
+		}
+	}
+	// Dedupe: skip if we already notified for this milestone
+	s.mu.Lock()
+	last := s.lastMilestone[linkID]
+	if milestone <= last {
+		s.mu.Unlock()
+		return nil
+	}
+	s.lastMilestone[linkID] = milestone
+	s.mu.Unlock()
+
 	text := fmt.Sprintf("🎉 <b>Traffic Milestone!</b>\n\nYour link hit %s visits!\n%s",
-		formatInt(visits), html.EscapeString(s.linkLabel(linkID)))
+		formatInt(milestone), html.EscapeString(s.linkLabel(linkID)))
 	return s.send(userID, text, []userbot.InlineButton{btn("View Stats", userbot.ScreenStats)})
 }
 
@@ -150,6 +177,16 @@ func (s *NotificationService) NotifyBalanceLow(userID string, balance float64) e
 	return s.send(userID, text, []userbot.InlineButton{btn("Add Funds", userbot.ScreenBalance)})
 }
 
+// CheckTrafficMilestone checks if a link has crossed a milestone threshold and notifies.
+// Intended to be run asynchronously after a visit is recorded.
+func (s *NotificationService) CheckTrafficMilestone(userID, linkID string) error {
+	var visits int
+	if err := s.db.Get(&visits, `SELECT COUNT(*) FROM visits WHERE link_id = $1`, linkID); err != nil {
+		return err
+	}
+	return s.NotifyTrafficMilestone(userID, linkID, visits)
+}
+
 // CheckBotAttack counts blocked bot visits on a link in the last hour and notifies
 // if the threshold is reached. Intended to be run asynchronously.
 func (s *NotificationService) CheckBotAttack(userID, linkID string) error {
@@ -170,4 +207,54 @@ func formatInt(n int) string {
 		s = s[:i] + "," + s[i:]
 	}
 	return s
+}
+
+// CheckAllSSL checks all domains for expiring SSL certificates and notifies owners.
+// Intended to be called periodically (e.g., daily via cron).
+func (s *NotificationService) CheckAllSSL() (checked, notified int, err error) {
+	type row struct {
+		UserID     string `db:"user_id"`
+		DomainName string `db:"name"`
+		DaysLeft   int    `db:"days_left"`
+	}
+	var rows []row
+	// Find domains with SSL expiring within 14 days
+	if err = s.db.Select(&rows, `
+		SELECT d.user_id, d.name,
+			EXTRACT(DAY FROM (d.ssl_expires - NOW()))::int AS days_left
+		FROM domains d
+		WHERE d.ssl_enabled = TRUE
+			AND d.ssl_expires IS NOT NULL
+			AND d.ssl_expires > NOW()
+			AND d.ssl_expires < NOW() + INTERVAL '14 days'
+	`); err != nil {
+		return
+	}
+	checked = len(rows)
+	for _, r := range rows {
+		if e := s.NotifySSLExpiring(r.UserID, r.DomainName, r.DaysLeft); e == nil {
+			notified++
+		}
+	}
+	return
+}
+
+// CheckAllBalances checks all users for low balance and notifies them.
+// Intended to be called periodically (e.g., daily via cron).
+func (s *NotificationService) CheckAllBalances() (checked, notified int, err error) {
+	type row struct {
+		UserID  string  `db:"id"`
+		Balance float64 `db:"balance"`
+	}
+	var rows []row
+	if err = s.db.Select(&rows, `SELECT id, balance FROM users WHERE balance < $1 AND balance > 0`, LowBalanceThreshold); err != nil {
+		return
+	}
+	checked = len(rows)
+	for _, r := range rows {
+		if e := s.NotifyBalanceLow(r.UserID, r.Balance); e == nil {
+			notified++
+		}
+	}
+	return
 }
