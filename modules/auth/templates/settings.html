@@ -300,15 +300,29 @@
                             <input class="form-check-input tg-notify" type="checkbox" role="switch" id="tg-n-balance" data-key="balance" {{if .Account.TelegramNotifyBalanceLow}}checked{{end}}>
                             <label class="form-check-label" for="tg-n-balance">{{t "telegram.notify_balance"}}</label>
                         </div>
-                        <div class="col-md-4 p-0">
-                            <label for="tg-threshold" class="form-label">{{t "telegram.traffic_threshold"}}</label>
-                            <select class="form-select" id="tg-threshold">
-                                {{$thr := .Account.TelegramTrafficThreshold}}
-                                <option value="50" {{if eq $thr 50}}selected{{end}}>50</option>
-                                <option value="100" {{if or (eq $thr 100) (le $thr 0)}}selected{{end}}>100</option>
-                                <option value="500" {{if eq $thr 500}}selected{{end}}>500</option>
-                                <option value="1000" {{if eq $thr 1000}}selected{{end}}>1000</option>
-                            </select>
+                        <div class="row">
+                            <div class="col-md-4 p-0">
+                                <label for="tg-threshold" class="form-label">{{t "telegram.traffic_threshold"}}</label>
+                                <select class="form-select" id="tg-threshold">
+                                    {{$thr := .Account.TelegramTrafficThreshold}}
+                                    <option value="50" {{if eq $thr 50}}selected{{end}}>50</option>
+                                    <option value="100" {{if or (eq $thr 100) (le $thr 0)}}selected{{end}}>100</option>
+                                    <option value="500" {{if eq $thr 500}}selected{{end}}>500</option>
+                                    <option value="1000" {{if eq $thr 1000}}selected{{end}}>1000</option>
+                                </select>
+                            </div>
+                            {{if .Domains}}
+                            <div class="col-md-4">
+                                <label for="tg-default-domain" class="form-label">{{t "telegram.default_domain"}}</label>
+                                <select class="form-select" id="tg-default-domain">
+                                    <option value="">Auto (first available)</option>
+                                    {{$defDomain := .Account.TelegramDefaultDomainID}}
+                                    {{range .Domains}}
+                                    <option value="{{.ID}}" {{if and $defDomain (eq .ID $defDomain)}}selected{{end}}>{{.Name}}</option>
+                                    {{end}}
+                                </select>
+                            </div>
+                            {{end}}
                         </div>
                     </div>
                 </div>
@@ -573,6 +587,31 @@ if (tgThreshold) {
         const next = tgThreshold.value;
         saveTelegramNotification({ threshold: parseInt(next, 10) }, () => { tgThreshold.value = prev; });
         prev = next;
+    });
+}
+
+const tgDefaultDomain = document.getElementById('tg-default-domain');
+if (tgDefaultDomain) {
+    let prev = tgDefaultDomain.value;
+    tgDefaultDomain.addEventListener('change', async () => {
+        const next = tgDefaultDomain.value;
+        try {
+            const res = await fetch('/user/settings/api/telegram/default-domain', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domainId: next || null })
+            });
+            if (res.ok) {
+                showToast('{{t "telegram.saved"}}', 'success');
+                prev = next;
+                return;
+            }
+            const data = await res.json();
+            showToast(data.error || 'Failed to save', 'danger');
+        } catch (err) {
+            showToast('Network error', 'danger');
+        }
+        tgDefaultDomain.value = prev;
     });
 }
 </script>

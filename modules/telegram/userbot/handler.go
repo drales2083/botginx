@@ -560,7 +560,7 @@ func (h *UserBotHandler) deleteLink(user *models.User, id string) string {
 	return "Link deleted"
 }
 
-// createLink creates a protected link for destURL on the user's first domain.
+// createLink creates a protected link for destURL using the user's default domain or first available.
 func (h *UserBotHandler) createLink(user *models.User, destURL string) {
 	back := InlineKeyboardMarkup{[][]InlineButton{backRow()}}
 	if !isURL(destURL) {
@@ -574,10 +574,22 @@ func (h *UserBotHandler) createLink(user *models.User, destURL string) {
 		return
 	}
 	var domain *struct{ ID, Name string }
-	for _, d := range domains {
-		if d.DNSVerified && d.SSLEnabled {
-			domain = &struct{ ID, Name string }{d.ID, d.Name}
-			break
+	// Use default domain if set and still valid
+	if user.TelegramDefaultDomainID != nil {
+		for _, d := range domains {
+			if d.ID == *user.TelegramDefaultDomainID && d.DNSVerified && d.SSLEnabled {
+				domain = &struct{ ID, Name string }{d.ID, d.Name}
+				break
+			}
+		}
+	}
+	// Fall back to first verified SSL domain
+	if domain == nil {
+		for _, d := range domains {
+			if d.DNSVerified && d.SSLEnabled {
+				domain = &struct{ ID, Name string }{d.ID, d.Name}
+				break
+			}
 		}
 	}
 	if domain == nil {

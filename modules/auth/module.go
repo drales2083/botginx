@@ -66,6 +66,11 @@ func (m *Module) SetTelegramConnector(c handlers.TelegramConnector) {
 	m.Handler.SetTelegramConnector(c)
 }
 
+// SetDomainLister wires the domain lister for default domain selection.
+func (m *Module) SetDomainLister(d handlers.DomainLister) {
+	m.Handler.SetDomainLister(d)
+}
+
 // AuthService returns the auth service for use by other modules (e.g., impersonation)
 func (m *Module) AuthService() *services.AuthService {
 	return m.service
@@ -110,6 +115,7 @@ func (m *Module) SettingsRoutes() chi.Router {
 	r.Post("/api/telegram/connect", m.Handler.APITelegramConnect)
 	r.Post("/api/telegram/disconnect", m.Handler.APITelegramDisconnect)
 	r.Put("/api/telegram/notifications", m.Handler.APITelegramNotifications)
+	r.Put("/api/telegram/default-domain", m.Handler.APITelegramDefaultDomain)
 	r.Post("/telegram/dismiss-alert", m.Handler.APITelegramDismissAlert)
 
 	// Global whitelist API

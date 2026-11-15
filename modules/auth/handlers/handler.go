@@ -26,6 +26,7 @@ type Handler struct {
 	subscriptions    *subscription.Service
 	promos           *promoservices.PromoService
 	telegram         TelegramConnector
+	domainLister     DomainLister
 }
 
 // TelegramConnector is the slice of the Telegram user bot service the
@@ -35,8 +36,23 @@ type TelegramConnector interface {
 	Disconnect(userID string) error
 }
 
+// DomainLister provides domain listing for default domain selection.
+type DomainLister interface {
+	ListAvailableForSelect(userID string) ([]DomainOption, error)
+}
+
+// DomainOption is a minimal domain struct for dropdown selection.
+type DomainOption struct {
+	ID   string
+	Name string
+}
+
 func (h *Handler) SetTelegramConnector(c TelegramConnector) {
 	h.telegram = c
+}
+
+func (h *Handler) SetDomainLister(d DomainLister) {
+	h.domainLister = d
 }
 
 func NewHandler(service *services.AuthService, templates *module.TemplateEngine) *Handler {
@@ -102,6 +118,11 @@ func (h *Handler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 		globalWhitelist, _ = h.globalWhitelist.List(user.ID)
 	}
 
+	var domains []DomainOption
+	if h.domainLister != nil {
+		domains, _ = h.domainLister.ListAvailableForSelect(user.ID)
+	}
+
 	activePage := r.URL.Query().Get("page")
 	switch activePage {
 	case "profile", "security", "account", "whitelist", "telegram":
@@ -115,6 +136,7 @@ func (h *Handler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 		"Account":         account,
 		"GlobalWhitelist": globalWhitelist,
 		"MaxWhitelistIPs": services.MaxGlobalWhitelistIPs,
+		"Domains":         domains,
 	})
 }
 
@@ -832,4 +854,22 @@ func (h *Handler) APITelegramDismissAlert(w http.ResponseWriter, r *http.Request
 	userID := ctx.GetUserID(r)
 	h.db.Exec(`UPDATE users SET telegram_alert_dismissed = TRUE WHERE id = $1`, userID)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// APITelegramDefaultDomain sets the default domain for Telegram link creation.
+func (h *Handler) APITelegramDefaultDomain(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	var input struct {
+		DomainID *string `json:"domainId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	_, err := h.db.Exec(`UPDATE users SET telegram_default_domain_id = $1 WHERE id = $2`, input.DomainID, userID)
+	if err != nil {
+		h.jsonError(w, "Failed to update", http.StatusInternalServerError)
+		return
+	}
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }

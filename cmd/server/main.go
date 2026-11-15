@@ -28,6 +28,8 @@ import (
 	// "github.com/botginx/botginx/modules/pdfgenerator" // Disabled - not ready for users
 	analyticshandlers "github.com/botginx/botginx/modules/analytics/handlers"
 	"github.com/botginx/botginx/modules/auth"
+	authhandlers "github.com/botginx/botginx/modules/auth/handlers"
+	domainsvc "github.com/botginx/botginx/modules/domains/services"
 	"github.com/botginx/botginx/modules/backup"
 	"github.com/botginx/botginx/modules/dashboard"
 	"github.com/botginx/botginx/modules/domainhealth"
@@ -403,6 +405,7 @@ func main() {
 		DashboardURL:     getSiteURL(),
 	})
 	authModule.SetTelegramConnector(telegramConnector{userBotSvc}) // Telegram user bot (settings page)
+	authModule.SetDomainLister(domainListerAdapter{domainsModule.Service()})  // Default domain selection
 	notificationSvc := services.NewNotificationService(db.DB, userBotSvc)
 	analyticsModule.Service().SetBotAttackChecker(notificationSvc.CheckBotAttack)       // Bot attack notifications
 	analyticsModule.Service().SetMilestoneChecker(notificationSvc.CheckTrafficMilestone) // Traffic milestone notifications
@@ -928,6 +931,21 @@ func (c telegramConnector) Connect(userID, botToken string) (string, error) {
 }
 
 func (c telegramConnector) Disconnect(userID string) error { return c.svc.Disconnect(userID) }
+
+// domainListerAdapter adapts the domain service to the auth settings page.
+type domainListerAdapter struct{ svc *domainsvc.DomainService }
+
+func (d domainListerAdapter) ListAvailableForSelect(userID string) ([]authhandlers.DomainOption, error) {
+	opts, err := d.svc.ListAvailableForSelect(userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]authhandlers.DomainOption, len(opts))
+	for i, o := range opts {
+		result[i] = authhandlers.DomainOption{ID: o.ID, Name: o.Name}
+	}
+	return result, nil
+}
 
 func getAppName() string {
 	if name := os.Getenv("UI_APP_NAME"); name != "" {

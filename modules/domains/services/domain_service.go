@@ -103,6 +103,27 @@ func (s *DomainService) ListAvailable(userID string) ([]models.Domain, error) {
 	return append(own, shared...), nil
 }
 
+// DomainOption is a minimal domain struct for dropdown selection.
+type DomainOption struct {
+	ID   string
+	Name string
+}
+
+// ListAvailableForSelect returns verified SSL domains for dropdown selection.
+func (s *DomainService) ListAvailableForSelect(userID string) ([]DomainOption, error) {
+	domains, err := s.ListAvailable(userID)
+	if err != nil {
+		return nil, err
+	}
+	var opts []DomainOption
+	for _, d := range domains {
+		if d.DNSVerified && d.SSLEnabled {
+			opts = append(opts, DomainOption{ID: d.ID, Name: d.Name})
+		}
+	}
+	return opts, nil
+}
+
 // SharedDomainsEnabled reports whether users may deploy to the shared pool.
 // The toggle only counts when there is actually something in the pool: with no
 // shared domains added, the feature is off however the flag is set.
