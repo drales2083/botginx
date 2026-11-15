@@ -34,6 +34,11 @@ type User struct {
 	CloudflareEmail            *string    `db:"cloudflare_email" json:"-"`
 	CloudflareAPIKeyEncrypted  *string    `db:"cloudflare_api_key_encrypted" json:"-"`
 	CloudflareConnectedAt      *time.Time `db:"cloudflare_connected_at" json:"cloudflareConnectedAt,omitempty"`
+
+	// GoDaddy integration
+	GoDaddyAPIKeyEncrypted    *string    `db:"godaddy_api_key_encrypted" json:"-"`
+	GoDaddyAPISecretEncrypted *string    `db:"godaddy_api_secret_encrypted" json:"-"`
+	GoDaddyConnectedAt        *time.Time `db:"godaddy_connected_at" json:"godaddyConnectedAt,omitempty"`
 }
 
 type SignupInput struct {
