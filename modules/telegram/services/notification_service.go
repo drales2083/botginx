@@ -79,6 +79,10 @@ func btn(text, data string) userbot.InlineButton {
 	return userbot.InlineButton{Text: text, CallbackData: data}
 }
 
+func navBtn(text, screen string) userbot.InlineButton {
+	return userbot.InlineButton{Text: text, CallbackData: "nav:" + screen}
+}
+
 // NotifyBotAttack alerts the user that count bots were blocked on a link in the last hour.
 // Rate limited to one notification per link per hour.
 func (s *NotificationService) NotifyBotAttack(userID, linkID string, count int) error {
@@ -98,7 +102,7 @@ func (s *NotificationService) NotifyBotAttack(userID, linkID string, count int) 
 	text := fmt.Sprintf("🚨 <b>Bot Attack Detected</b>\n\nLink: %s\nDetected: %d bots in last hour",
 		html.EscapeString(s.linkLabel(linkID)), count)
 	if err := s.send(userID, text, []userbot.InlineButton{
-		btn("View Details", userbot.ScreenStats), btn("Dismiss", "dismiss"),
+		navBtn("View Details", userbot.ScreenStats), btn("Dismiss", "dismiss"),
 	}); err != nil {
 		s.mu.Lock()
 		delete(s.lastSent, key) // allow retry after a failed send
@@ -144,7 +148,7 @@ func (s *NotificationService) NotifyTrafficMilestone(userID, linkID string, visi
 
 	text := fmt.Sprintf("🎉 <b>Traffic Milestone!</b>\n\nYour link hit %s visits!\n%s",
 		formatInt(milestone), html.EscapeString(s.linkLabel(linkID)))
-	return s.send(userID, text, []userbot.InlineButton{btn("View Stats", userbot.ScreenStats)})
+	return s.send(userID, text, []userbot.InlineButton{navBtn("View Stats", userbot.ScreenStats)})
 }
 
 // NotifySSLExpiring warns that a domain's certificate expires in daysLeft days.
@@ -157,10 +161,10 @@ func (s *NotificationService) NotifySSLExpiring(userID, domainName string, daysL
 	if daysLeft == 1 {
 		unit = "day"
 	}
-	text := fmt.Sprintf("⚠️ <b>SSL Certificate Expiring</b>\n\nDomain: %s\nExpires: %d %s",
+	text := fmt.Sprintf("⚠️ <b>SSL Certificate Expiring</b>\n\nDomain: %s\nExpires: %d %s\n\nRenew from the web panel.",
 		html.EscapeString(domainName), daysLeft, unit)
 	return s.send(userID, text, []userbot.InlineButton{
-		btn("Renew Now", userbot.ScreenLinks), btn("Settings", userbot.ScreenSettings),
+		navBtn("View Links", userbot.ScreenLinks), btn("Dismiss", "dismiss"),
 	})
 }
 
@@ -174,7 +178,7 @@ func (s *NotificationService) NotifyBalanceLow(userID string, balance float64) e
 		return err
 	}
 	text := fmt.Sprintf("💰 <b>Low Balance Warning</b>\n\nYour balance is $%.2f\nAdd funds to continue protection.", balance)
-	return s.send(userID, text, []userbot.InlineButton{btn("Add Funds", userbot.ScreenBalance)})
+	return s.send(userID, text, []userbot.InlineButton{navBtn("Add Funds", userbot.ScreenBalance)})
 }
 
 // CheckTrafficMilestone checks if a link has crossed a milestone threshold and notifies.

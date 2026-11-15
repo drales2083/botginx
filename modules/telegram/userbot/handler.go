@@ -98,6 +98,7 @@ type UserBotHandler struct {
 	replyState        map[string]string // userID -> ticketID (waiting for reply)
 	ticketSubject     map[string]string // userID -> subject (waiting for message)
 	ticketSubjectWait map[string]bool   // userID -> true (waiting for subject)
+	editDestState     map[string]string // userID -> linkID (waiting for new destination)
 }
 
 func NewUserBotHandler(cfg Config) *UserBotHandler {
@@ -110,6 +111,7 @@ func NewUserBotHandler(cfg Config) *UserBotHandler {
 		replyState:        make(map[string]string),
 		ticketSubject:     make(map[string]string),
 		ticketSubjectWait: make(map[string]bool),
+		editDestState:     make(map[string]string),
 	}
 }
 
@@ -262,6 +264,19 @@ func (h *UserBotHandler) handleMessage(user *models.User, m *tgMessage) {
 		return
 	}
 
+	// Check if user is editing a link destination
+	if linkID, ok := h.editDestState[user.ID]; ok && cmd == "" {
+		delete(h.editDestState, user.ID)
+		if !isURL(text) {
+			h.send(user, "⚠️ That doesn't look like a valid URL. Send a valid http(s) URL.",
+				InlineKeyboardMarkup{[][]InlineButton{{{Text: "← Cancel", CallbackData: "ld:" + linkID}}}})
+			h.editDestState[user.ID] = linkID // restore state
+			return
+		}
+		h.updateLinkDestination(user, linkID, text)
+		return
+	}
+
 	switch {
 	case cmd == "/start":
 		h.show(user, ScreenMain, "")
@@ -382,6 +397,8 @@ func (h *UserBotHandler) handleCallback(user *models.User, cq *tgCallbackQuery) 
 		h.confirmDelete(user, strings.TrimPrefix(data, "lx:"))
 	case strings.HasPrefix(data, "ly:"):
 		toast = h.deleteLink(user, strings.TrimPrefix(data, "ly:"))
+	case strings.HasPrefix(data, "le:"):
+		h.promptEditDestination(user, strings.TrimPrefix(data, "le:"))
 	case strings.HasPrefix(data, "set:"):
 		if h.cfg.SettingsCallback == nil {
 			toast = "Settings are not available yet"
@@ -699,6 +716,9 @@ func (h *UserBotHandler) showLinkDetail(user *models.User, id string) {
 			{Text: "📋 Copy", CopyText: &CopyTextSpec{Text: link.FullURL()}},
 		},
 		{
+			{Text: "✏️ Edit Destination", CallbackData: "le:" + link.ID},
+		},
+		{
 			{Text: "🗑️ Delete", CallbackData: "lx:" + link.ID},
 			{Text: "⬅️ Back", CallbackData: "nav:" + ScreenLinks},
 		},
@@ -755,6 +775,48 @@ func (h *UserBotHandler) deleteLink(user *models.User, id string) string {
 	}
 	h.showLinks(user, 0)
 	return "Link deleted"
+}
+
+func (h *UserBotHandler) promptEditDestination(user *models.User, id string) {
+	link := h.ownedLink(user, id)
+	if link == nil {
+		h.linkNotFound(user)
+		return
+	}
+	h.editDestState[user.ID] = id
+	dest := ""
+	if len(link.DestinationURLs) > 0 {
+		dest = link.DestinationURLs[0]
+	}
+	h.send(user, fmt.Sprintf("✏️ <b>Edit Destination</b>\n\n"+
+		"<b>Current:</b>\n%s\n\n"+
+		"Send me the new destination URL.", html.EscapeString(dest)),
+		InlineKeyboardMarkup{[][]InlineButton{{{Text: "← Cancel", CallbackData: "ld:" + id}}}})
+}
+
+func (h *UserBotHandler) updateLinkDestination(user *models.User, linkID, newURL string) {
+	link := h.ownedLink(user, linkID)
+	if link == nil {
+		h.linkNotFound(user)
+		return
+	}
+	// Update the destination
+	_, err := h.cfg.Links.Update(linkID, rlmodels.UpdateRedirectLinkInput{
+		DestinationURLs: []string{newURL},
+	})
+	if err != nil {
+		log.Printf("[userbot] update link destination %s: %v", linkID, err)
+		h.send(user, "⚠️ Could not update destination. Try again.",
+			InlineKeyboardMarkup{[][]InlineButton{{{Text: "← Back", CallbackData: "ld:" + linkID}}}})
+		return
+	}
+	// Redeploy the link
+	if h.cfg.Deploy != nil {
+		go h.cfg.Deploy(linkID)
+	}
+	// Show updated link detail
+	h.send(user, "✅ Destination updated!", InlineKeyboardMarkup{[][]InlineButton{}})
+	h.showLinkDetail(user, linkID)
 }
 
 // createLink creates a protected link for destURL using the user's default domain or first available.
