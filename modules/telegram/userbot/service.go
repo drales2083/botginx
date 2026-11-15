@@ -227,3 +227,17 @@ func (s *UserBotService) SaveChatID(userID string, chatID int64) (bool, error) {
 	n, _ := res.RowsAffected()
 	return n > 0, nil
 }
+
+// SendNewMessage always sends a fresh message (never edits the app screen) and
+// does not touch the stored last-message ID. Used for async event notifications.
+func (s *UserBotService) SendNewMessage(userID, text string, replyMarkup interface{}) (int64, error) {
+	token, chatID, _, err := s.target(userID)
+	if err != nil {
+		return 0, err
+	}
+	msg, err := s.tgSvc.SendMessage(token, chatID, text, replyMarkup)
+	if err != nil {
+		return 0, err
+	}
+	return msg.MessageID, nil
+}

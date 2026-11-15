@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"strings"
 	"time"
 
@@ -12,7 +13,13 @@ import (
 )
 
 type AnalyticsService struct {
-	db *sqlx.DB
+	db       *sqlx.DB
+	attackFn func(userID, linkID string) error
+}
+
+// SetBotAttackChecker registers a callback invoked (asynchronously) after a bot visit is recorded.
+func (s *AnalyticsService) SetBotAttackChecker(fn func(userID, linkID string) error) {
+	s.attackFn = fn
 }
 
 func NewAnalyticsService(db *sqlx.DB) *AnalyticsService {
@@ -57,6 +64,14 @@ func (s *AnalyticsService) RecordVisit(visit *models.Visit) error {
 			:action, :is_unique, :blocked, :block_reason, :duration_us, :created_at
 		)
 	`, visit)
+	if err == nil && visit.IsBot && s.attackFn != nil {
+		userID, linkID := visit.UserID, visit.LinkID
+		go func() {
+			if cerr := s.attackFn(userID, linkID); cerr != nil {
+				log.Printf("telegram bot-attack check: %v", cerr)
+			}
+		}()
+	}
 	return err
 }
 
