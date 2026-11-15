@@ -376,6 +376,22 @@ func (s *Service) AnswerCallbackQuery(token, callbackID, text string) error {
 	return nil
 }
 
+// AnswerCallbackQueryAlert answers a callback query, optionally as a modal alert.
+func (s *Service) AnswerCallbackQueryAlert(token, callbackID, text string, showAlert bool) error {
+	resp, err := s.apiCall(token, "answerCallbackQuery", map[string]interface{}{
+		"callback_query_id": callbackID,
+		"text":              text,
+		"show_alert":        showAlert,
+	})
+	if err != nil {
+		return err
+	}
+	if !resp.OK {
+		return fmt.Errorf("telegram API error: %s", resp.Description)
+	}
+	return nil
+}
+
 // Pending Replies
 
 func (s *Service) CreatePendingReply(botID string, userID, chatID int64, ticketID string) error {
