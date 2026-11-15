@@ -15,17 +15,23 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Notifier interface for sending ticket notifications
+// Notifier interface for sending ticket notifications to admin
 type Notifier interface {
 	NotifyNewTicket(ticketID, email, category, subject, message string)
 	NotifyTicketReply(ticketID, email, subject, message string)
 }
 
+// UserNotifier sends notifications to the user's personal Telegram bot
+type UserNotifier interface {
+	NotifySupportReply(userID, ticketID, subject, message string) error
+}
+
 type Handler struct {
-	db          *sqlx.DB
-	templates   *module.TemplateEngine
-	notifier    Notifier
-	adminLogger *adminlog.Logger
+	db           *sqlx.DB
+	templates    *module.TemplateEngine
+	notifier     Notifier
+	userNotifier UserNotifier
+	adminLogger  *adminlog.Logger
 }
 
 func NewHandler(db *sqlx.DB, templates *module.TemplateEngine) *Handler {
@@ -34,6 +40,10 @@ func NewHandler(db *sqlx.DB, templates *module.TemplateEngine) *Handler {
 
 func (h *Handler) SetNotifier(n Notifier) {
 	h.notifier = n
+}
+
+func (h *Handler) SetUserNotifier(n UserNotifier) {
+	h.userNotifier = n
 }
 
 // Models
@@ -480,9 +490,6 @@ func (h *Handler) notifyAdminNewTicket(ticketID, userID, category, subject, mess
 }
 
 func (h *Handler) notifyAdminReply(ticketID, userID, message string) {
-	if h.notifier == nil {
-		return
-	}
 	var email string
 	h.db.Get(&email, `SELECT email FROM users WHERE id = $1`, userID)
 
@@ -490,5 +497,13 @@ func (h *Handler) notifyAdminReply(ticketID, userID, message string) {
 	var subject string
 	h.db.Get(&subject, `SELECT subject FROM support_tickets WHERE id = $1`, ticketID)
 
-	h.notifier.NotifyTicketReply(ticketID, email, subject, message)
+	// Notify admin via shared Telegram bot
+	if h.notifier != nil {
+		h.notifier.NotifyTicketReply(ticketID, email, subject, message)
+	}
+
+	// Notify user via their personal Telegram bot
+	if h.userNotifier != nil {
+		go h.userNotifier.NotifySupportReply(userID, ticketID, subject, message)
+	}
 }

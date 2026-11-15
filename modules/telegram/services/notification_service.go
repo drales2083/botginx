@@ -258,3 +258,19 @@ func (s *NotificationService) CheckAllBalances() (checked, notified int, err err
 	}
 	return
 }
+
+// NotifySupportReply notifies the user that an admin replied to their support ticket.
+// Always sent if user has Telegram connected (no toggle).
+func (s *NotificationService) NotifySupportReply(userID, ticketID, subject, message string) error {
+	p, err := s.prefs(userID)
+	if err != nil || !p.Connected {
+		return err
+	}
+	preview := message
+	if len(preview) > 200 {
+		preview = preview[:200] + "..."
+	}
+	text := fmt.Sprintf("💬 <b>Support Reply</b>\n\n<b>%s</b>\n\n%s",
+		html.EscapeString(subject), html.EscapeString(preview))
+	return s.send(userID, text, []userbot.InlineButton{btn("View Ticket", "support:"+ticketID)})
+}

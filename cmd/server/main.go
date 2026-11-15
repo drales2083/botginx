@@ -407,7 +407,8 @@ func main() {
 	analyticsModule.Service().SetBotAttackChecker(notificationSvc.CheckBotAttack)       // Bot attack notifications
 	analyticsModule.Service().SetMilestoneChecker(notificationSvc.CheckTrafficMilestone) // Traffic milestone notifications
 	usersModule.SetAuthService(authModule.AuthService())                          // Admin impersonation
-	supportModule.SetNotifier(telegramModule.Handler)          // Telegram notifications for tickets
+	supportModule.SetNotifier(telegramModule.Handler)           // Admin Telegram notifications
+	supportModule.SetUserNotifier(notificationSvc)               // User's personal Telegram bot
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
 	serversModule.SetOnServerIPChange(domainsModule.ReconfigureAllDomainsWithIP) // Auto DNS reconfigure on deploy IP change
 
