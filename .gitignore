@@ -28,3 +28,4 @@ docs-site/.astro/
 static/uploads/intel/
 web/static/uploads/intel/
 mcp-server
+.worktrees/
