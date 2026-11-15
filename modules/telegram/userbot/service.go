@@ -216,3 +216,14 @@ func (s *UserBotService) SaveLastMessageID(userID string, messageID int64) error
 func (s *UserBotService) AnswerCallback(token, callbackID, text string, showAlert bool) error {
 	return s.tgSvc.AnswerCallbackQueryAlert(token, callbackID, text, showAlert)
 }
+
+// SaveChatID links the user's Telegram chat (only if none is linked yet).
+// Returns true when the chat was newly linked.
+func (s *UserBotService) SaveChatID(userID string, chatID int64) (bool, error) {
+	res, err := s.db.Exec(`UPDATE users SET telegram_chat_id = $1 WHERE id = $2 AND telegram_chat_id IS NULL`, chatID, userID)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
