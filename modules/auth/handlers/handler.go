@@ -542,12 +542,14 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 
 		// Add user to context using shared ctx package
 		ctxUser := &ctx.User{
-			ID:               user.ID,
-			Email:            user.Email,
-			Name:             user.Name,
-			Role:             user.Role,
-			Balance:          user.Balance,
-			IsResellerClient: user.IsResellerClient,
+			ID:                     user.ID,
+			Email:                  user.Email,
+			Name:                   user.Name,
+			Role:                   user.Role,
+			Balance:                user.Balance,
+			IsResellerClient:       user.IsResellerClient,
+			TelegramConnectedAt:    user.TelegramConnectedAt != nil,
+			TelegramAlertDismissed: user.TelegramAlertDismissed,
 		}
 		newCtx := ctx.WithUser(r.Context(), ctxUser)
 		next.ServeHTTP(w, r.WithContext(newCtx))
@@ -589,12 +591,14 @@ func (h *Handler) OptionalAuthMiddleware(next http.Handler) http.Handler {
 		if token != "" {
 			if user, err := h.service.ValidateSession(token); err == nil {
 				ctxUser := &ctx.User{
-					ID:               user.ID,
-					Email:            user.Email,
-					Name:             user.Name,
-					Role:             user.Role,
-					Balance:          user.Balance,
-					IsResellerClient: user.IsResellerClient,
+					ID:                     user.ID,
+					Email:                  user.Email,
+					Name:                   user.Name,
+					Role:                   user.Role,
+					Balance:                user.Balance,
+					IsResellerClient:       user.IsResellerClient,
+					TelegramConnectedAt:    user.TelegramConnectedAt != nil,
+					TelegramAlertDismissed: user.TelegramAlertDismissed,
 				}
 				r = r.WithContext(ctx.WithUser(r.Context(), ctxUser))
 			}

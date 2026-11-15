@@ -11,12 +11,14 @@ const UserKey contextKey = "user"
 
 // User represents the authenticated user in context
 type User struct {
-	ID               string
-	Email            string
-	Name             string
-	Role             string // "user" or "admin"
-	Balance          float64
-	IsResellerClient bool
+	ID                     string
+	Email                  string
+	Name                   string
+	Role                   string // "user" or "admin"
+	Balance                float64
+	IsResellerClient       bool
+	TelegramConnectedAt    bool // true if telegram is connected
+	TelegramAlertDismissed bool
 }
 
 // IsAdmin returns true if the user has admin role
