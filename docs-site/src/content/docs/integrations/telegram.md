@@ -1,81 +1,90 @@
 ---
 title: How to Connect Telegram
-description: Manage links, check stats, and get notifications through Telegram.
+description: Create your own Telegram bot, connect it to GuardBot, and manage links, stats and notifications from chat.
 ---
 
-This guide shows you how to connect your Telegram account to GuardBot. Once connected, you can create links, check analytics, and receive notifications without opening the dashboard.
+This guide shows you how to connect Telegram to GuardBot. You create your own bot with @BotFather, connect it to your account, and then manage links, check stats, and get notifications without opening the dashboard.
 
 ## Connect Your Account
 
-1. Go to **Settings** in your GuardBot dashboard
-2. Find the Telegram section and click the link to start a chat with the bot (or search for the bot username shown)
-3. Send `/start` to the bot
-4. Back in GuardBot settings, click **Connect Telegram** and copy the verification code
-5. Paste the code into your Telegram chat with the bot
+Each user runs their own bot. GuardBot does not use a shared bot.
 
-The bot verifies your identity and links your account.
+1. Open [@BotFather](https://t.me/BotFather) in Telegram
+2. Send `/newbot` and follow the prompts to pick a name and username
+3. Copy the bot token BotFather gives you
+4. In GuardBot, go to **Settings** → **Telegram**
+5. Paste the token and click **Connect**
+6. Open a chat with your new bot and send `/start`
 
-## Available Commands
+The first `/start` links that chat to your account. After that, the bot only responds to you.
 
-| Command | Description |
-|---------|-------------|
-| `/start` | Initialize or restart the bot |
-| `/help` | Show available commands |
-| `/stats` | Quick overview of your account stats |
-| `/newlink [url]` | Create a new redirect link |
-| `/links` | List your recent links |
-| `/balance` | Check your account balance |
+## Using the Bot
 
-### Create a Link
+The bot works like a small app. Each command opens a screen, and navigation happens with inline buttons. The bot edits its message in place instead of posting a new one for every reply, so the chat stays readable.
 
-Send `/newlink` followed by the destination URL:
+| Command | What it opens |
+|---------|---------------|
+| `/start` | Main menu |
+| `/help` | Available commands and tips |
+| `/stats` | Quick overview of your account |
+| `/links` | Your recent links |
+| `/newlink` | Create a new protected link |
+| `/balance` | Your current balance |
+| `/settings` | Notification settings |
+
+Your own messages are removed from the chat as the bot handles them, so the conversation stays tidy.
+
+### Quick Links
+
+To protect a URL, paste it or forward it to the bot. GuardBot creates a protected link right away and replies with the new link.
+
+You can also use `/newlink` with a URL, for example:
 
 ```
 /newlink https://my-landing-page.com/offer
 ```
 
-The bot creates the link on your default domain and sends back the URL.
+Send `/newlink` on its own to get a prompt for the URL.
 
 ### Check Stats
 
-Send `/stats` to get:
-
-- Total clicks today
-- Active links count
-- Recent bot blocks
-
-For detailed analytics, use the dashboard or API.
+Send `/stats` to see a quick summary of your account. For detailed analytics, use the dashboard or API.
 
 ## Configure Notifications
 
-Go to **Settings** → **Telegram** in your dashboard to toggle notifications:
+You can change notification settings in either place. Both update the same settings.
+
+**In Telegram:** send `/settings` to the bot and tap a setting to turn it on or off.
+
+**In the dashboard:** go to **Settings** → **Telegram**.
 
 | Notification | Description |
 |--------------|-------------|
-| **Traffic alerts** | When a link passes a click threshold |
-| **Bot attacks** | When blocked traffic spikes |
+| **Bot attack alerts** | When blocked traffic spikes |
+| **Traffic milestones** | When a link passes a click threshold |
 | **SSL expiring** | Before domain certificates need renewal |
-| **Support replies** | When an admin responds to your ticket |
-| **Balance warnings** | When your balance runs low |
+| **Low balance** | When your balance runs low |
 
-Set thresholds where applicable (like "notify after 100 visits").
+For traffic milestones, set the threshold (for example, "notify after 100 visits") in the dashboard or in the bot's notification settings.
 
-## Unlink Your Account
+## Disconnect Your Account
 
-Go to **Settings** in GuardBot and click **Disconnect Telegram**. The bot stops responding to your commands immediately.
+Go to **Settings** → **Telegram** in GuardBot and click **Disconnect**. The bot stops responding to your commands immediately.
 
 ## Troubleshooting
 
-**Bot doesn't respond**: Check if the bot is online (Telegram shows "last seen" status). Try `/start` again. If still nothing, relink your account.
+**Invalid token**: Check that you copied the full token from @BotFather. It includes a number, a colon, and a second part, for example `123456:ABC-DEF...`. Copy it again from BotFather if needed. Use `/token` in BotFather to view or regenerate it.
 
-**Commands fail**: Make sure your account is active. Lapsed subscriptions may limit bot access.
+**Bot not responding**: Make sure you sent `/start` to the bot after connecting. Only the chat where you sent `/start` is accepted, so use the same chat every time.
 
-**Not getting notifications**: Verify notifications are enabled in Settings. Check your Telegram notification settings too. Make sure the bot chat isn't muted.
+**Commands not working**: Verify the bot is connected in **Settings** → **Telegram**. If it is not, paste the token again and click **Connect**. Lapsed subscriptions may also limit bot access.
 
-**Wrong account linked**: Unlink from Settings, then link again with the correct Telegram account.
+**Not getting notifications**: Verify the notification is enabled in **Settings** → **Telegram** or with `/settings`. Check your Telegram notification settings too, and make sure the bot chat isn't muted.
+
+**Wrong bot connected**: Disconnect from **Settings** → **Telegram**, then connect the correct bot token.
 
 ## Security
 
-Only your linked Telegram account can control your GuardBot. Commands are authenticated using your Telegram user ID.
+Only your own Telegram chat with your bot can control your GuardBot account. Keep your bot token private. Anyone with the token can control your bot.
 
-Don't share your verification code. Don't click links from strangers claiming to be GuardBot. The real bot never asks for your password or API keys.
+Don't share your bot token. Don't click links from strangers claiming to be GuardBot. The real bot never asks for your password or API keys.
