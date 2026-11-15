@@ -25,6 +25,18 @@ type Handler struct {
 	db               *sqlx.DB
 	subscriptions    *subscription.Service
 	promos           *promoservices.PromoService
+	telegram         TelegramConnector
+}
+
+// TelegramConnector is the slice of the Telegram user bot service the
+// settings page needs. Declared here so auth does not depend on the telegram module.
+type TelegramConnector interface {
+	Connect(userID, botToken string) (botUsername string, err error)
+	Disconnect(userID string) error
+}
+
+func (h *Handler) SetTelegramConnector(c TelegramConnector) {
+	h.telegram = c
 }
 
 func NewHandler(service *services.AuthService, templates *module.TemplateEngine) *Handler {
@@ -90,8 +102,16 @@ func (h *Handler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 		globalWhitelist, _ = h.globalWhitelist.List(user.ID)
 	}
 
+	activePage := r.URL.Query().Get("page")
+	switch activePage {
+	case "profile", "security", "account", "whitelist", "telegram":
+	default:
+		activePage = "profile"
+	}
+
 	module.RenderUserSection(w, r, h.templates, "auth:settings.html", map[string]interface{}{
 		"Title":           "Settings",
+		"ActivePage":      activePage,
 		"Account":         account,
 		"GlobalWhitelist": globalWhitelist,
 		"MaxWhitelistIPs": services.MaxGlobalWhitelistIPs,
@@ -699,4 +719,106 @@ func (h *Handler) json(w http.ResponseWriter, status int, data interface{}) {
 
 func (h *Handler) jsonError(w http.ResponseWriter, message string, status int) {
 	h.json(w, status, map[string]interface{}{"error": message})
+}
+
+// Telegram user bot API handlers
+
+func (h *Handler) APITelegramConnect(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+	if h.telegram == nil {
+		h.jsonError(w, "Telegram integration unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	var input struct {
+		BotToken string `json:"botToken"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	token := strings.TrimSpace(input.BotToken)
+	if token == "" {
+		h.jsonError(w, "Bot token is required", http.StatusBadRequest)
+		return
+	}
+
+	username, err := h.telegram.Connect(userID, token)
+	if err != nil {
+		h.jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true, "botUsername": username})
+}
+
+func (h *Handler) APITelegramDisconnect(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+	if h.telegram == nil {
+		h.jsonError(w, "Telegram integration unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if err := h.telegram.Disconnect(userID); err != nil {
+		h.jsonError(w, "Failed to disconnect", http.StatusInternalServerError)
+		return
+	}
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
+// APITelegramNotifications updates notification preferences. Only the fields
+// present in the body are changed.
+func (h *Handler) APITelegramNotifications(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		h.jsonError(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+	if h.db == nil {
+		h.jsonError(w, "Unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	var input struct {
+		BotAttacks *bool `json:"botAttacks"`
+		Traffic    *bool `json:"traffic"`
+		SSL        *bool `json:"ssl"`
+		Balance    *bool `json:"balance"`
+		Threshold  *int  `json:"threshold"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if input.Threshold != nil {
+		valid := false
+		for _, o := range []int{50, 100, 500, 1000} {
+			if o == *input.Threshold {
+				valid = true
+			}
+		}
+		if !valid {
+			h.jsonError(w, "Invalid threshold", http.StatusBadRequest)
+			return
+		}
+	}
+
+	_, err := h.db.Exec(`UPDATE users SET
+		telegram_notify_bot_attacks = COALESCE($1, telegram_notify_bot_attacks),
+		telegram_notify_traffic_milestones = COALESCE($2, telegram_notify_traffic_milestones),
+		telegram_notify_ssl_expiring = COALESCE($3, telegram_notify_ssl_expiring),
+		telegram_notify_balance_low = COALESCE($4, telegram_notify_balance_low),
+		telegram_traffic_threshold = COALESCE($5, telegram_traffic_threshold)
+		WHERE id = $6`, input.BotAttacks, input.Traffic, input.SSL, input.Balance, input.Threshold, userID)
+	if err != nil {
+		h.jsonError(w, "Failed to update notifications", http.StatusInternalServerError)
+		return
+	}
+	h.json(w, http.StatusOK, map[string]interface{}{"success": true})
 }

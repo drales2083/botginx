@@ -4,21 +4,24 @@
     <div class="col-md-3">
         <div class="card">
             <div class="card-body p-0">
-                <div class="list-group list-group-flush nav nav-pills flex-column" id="settings-nav" role="tablist">
-                    <a href="#profile" class="list-group-item list-group-item-action active" data-bs-toggle="pill" role="tab" aria-selected="true">
+                <div class="list-group list-group-flush flex-column" id="settings-nav">
+                    <a href="?page=profile" class="list-group-item list-group-item-action {{if eq .ActivePage "profile"}}active{{end}}">
                         <i class="bi bi-person me-2"></i>Profile
                     </a>
-                    <a href="#security" class="list-group-item list-group-item-action" data-bs-toggle="pill" role="tab">
+                    <a href="?page=security" class="list-group-item list-group-item-action {{if eq .ActivePage "security"}}active{{end}}">
                         <i class="bi bi-shield-lock me-2"></i>Security
                     </a>
-                    <a href="#account" class="list-group-item list-group-item-action" data-bs-toggle="pill" role="tab">
+                    <a href="?page=account" class="list-group-item list-group-item-action {{if eq .ActivePage "account"}}active{{end}}">
                         <i class="bi bi-info-circle me-2"></i>Account
                     </a>
                     {{if .Subscription.Active}}
-                    <a href="#whitelist" class="list-group-item list-group-item-action" data-bs-toggle="pill" role="tab">
+                    <a href="?page=whitelist" class="list-group-item list-group-item-action {{if eq .ActivePage "whitelist"}}active{{end}}">
                         <i class="bi bi-shield-check me-2"></i>Whitelisted IPs
                     </a>
                     {{end}}
+                    <a href="?page=telegram" class="list-group-item list-group-item-action {{if eq .ActivePage "telegram"}}active{{end}}">
+                        <i class="bi bi-telegram me-2"></i>{{t "telegram.title"}}
+                    </a>
                 </div>
             </div>
         </div>
@@ -26,9 +29,10 @@
 
     <!-- Tab content -->
     <div class="col-md-9">
-        <div class="tab-content">
+        <div>
             <!-- Profile -->
-            <div class="tab-pane fade show active" id="profile" role="tabpanel">
+            {{if eq .ActivePage "profile"}}
+            <div id="profile">
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">Profile</h3>
@@ -62,9 +66,11 @@
                     </div>
                 </div>
             </div>
+            {{end}}
 
             <!-- Security -->
-            <div class="tab-pane fade" id="security" role="tabpanel">
+            {{if eq .ActivePage "security"}}
+            <div id="security">
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">Change Password</h3>
@@ -98,9 +104,11 @@
                     </div>
                 </div>
             </div>
+            {{end}}
 
             <!-- Account -->
-            <div class="tab-pane fade" id="account" role="tabpanel">
+            {{if eq .ActivePage "account"}}
+            <div id="account">
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">Account Info</h3>
@@ -150,10 +158,12 @@
                     </div>
                 </div>
             </div>
+            {{end}}
 
             {{if .Subscription.Active}}
             <!-- Whitelisted IPs -->
-            <div class="tab-pane fade" id="whitelist" role="tabpanel">
+            {{if eq .ActivePage "whitelist"}}
+            <div id="whitelist">
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">My Whitelisted IPs</h3>
@@ -224,12 +234,94 @@
                 </div>
             </div>
             {{end}}
+            {{end}}
+
+            {{if eq .ActivePage "telegram"}}
+            <!-- Telegram -->
+            <div id="telegram">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="bi bi-telegram me-1"></i> {{t "telegram.title"}}</h3>
+                    </div>
+                    <div class="card-body">
+                        {{if .Account.TelegramBotUsername}}
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div>
+                                <span class="badge bg-success me-2">{{t "telegram.connected"}}</span>
+                                {{t "telegram.connected_as"}} <strong>@{{.Account.TelegramBotUsername}}</strong>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a class="btn btn-outline-primary btn-sm" href="https://t.me/{{.Account.TelegramBotUsername}}" target="_blank" rel="noopener">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i> {{t "telegram.open_bot"}}
+                                </a>
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="tg-disconnect-btn">
+                                    <i class="bi bi-x-circle me-1"></i> {{t "telegram.disconnect"}}
+                                </button>
+                            </div>
+                        </div>
+                        {{else}}
+                        <p><span class="badge bg-secondary">{{t "telegram.not_connected"}}</span></p>
+                        <p class="text-muted small">{{t "telegram.create_bot_instructions"}}</p>
+                        <form id="tg-connect-form" class="row g-2">
+                            <div class="col-md-8">
+                                <label for="tg-bot-token" class="form-label">{{t "telegram.bot_token"}}</label>
+                                <input type="text" class="form-control font-monospace" id="tg-bot-token" name="botToken" placeholder="123456:ABC-DEF..." autocomplete="off" required>
+                                <div class="form-text">{{t "telegram.bot_token_hint"}}</div>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-plug me-1"></i> {{t "telegram.connect"}}
+                                </button>
+                            </div>
+                        </form>
+                        {{end}}
+                    </div>
+                </div>
+
+                {{if .Account.TelegramBotUsername}}
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{t "telegram.notifications"}}</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input tg-notify" type="checkbox" role="switch" id="tg-n-bot" data-key="botAttacks" {{if .Account.TelegramNotifyBotAttacks}}checked{{end}}>
+                            <label class="form-check-label" for="tg-n-bot">{{t "telegram.notify_bot_attacks"}}</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input tg-notify" type="checkbox" role="switch" id="tg-n-traffic" data-key="traffic" {{if .Account.TelegramNotifyTrafficMilestones}}checked{{end}}>
+                            <label class="form-check-label" for="tg-n-traffic">{{t "telegram.notify_traffic"}}</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input tg-notify" type="checkbox" role="switch" id="tg-n-ssl" data-key="ssl" {{if .Account.TelegramNotifySSLExpiring}}checked{{end}}>
+                            <label class="form-check-label" for="tg-n-ssl">{{t "telegram.notify_ssl"}}</label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input tg-notify" type="checkbox" role="switch" id="tg-n-balance" data-key="balance" {{if .Account.TelegramNotifyBalanceLow}}checked{{end}}>
+                            <label class="form-check-label" for="tg-n-balance">{{t "telegram.notify_balance"}}</label>
+                        </div>
+                        <div class="col-md-4 p-0">
+                            <label for="tg-threshold" class="form-label">{{t "telegram.traffic_threshold"}}</label>
+                            <select class="form-select" id="tg-threshold">
+                                {{$thr := .Account.TelegramTrafficThreshold}}
+                                <option value="50" {{if eq $thr 50}}selected{{end}}>50</option>
+                                <option value="100" {{if or (eq $thr 100) (le $thr 0)}}selected{{end}}>100</option>
+                                <option value="500" {{if eq $thr 500}}selected{{end}}>500</option>
+                                <option value="1000" {{if eq $thr 1000}}selected{{end}}>1000</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
         </div>
     </div>
 </div>
 
 <script>
-document.getElementById('profile-form').addEventListener('submit', async (e) => {
+const profileForm = document.getElementById('profile-form');
+if (profileForm) profileForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
@@ -259,7 +351,8 @@ document.getElementById('profile-form').addEventListener('submit', async (e) => 
     btn.disabled = false;
 });
 
-document.getElementById('password-form').addEventListener('submit', async (e) => {
+const passwordForm = document.getElementById('password-form');
+if (passwordForm) passwordForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
@@ -381,5 +474,85 @@ document.querySelectorAll('.btn-remove-ip').forEach(btn => {
         removeWhitelistIP(btn.dataset.id);
     });
 });
+// Telegram
+const tgConnectForm = document.getElementById('tg-connect-form');
+if (tgConnectForm) {
+    tgConnectForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = tgConnectForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        try {
+            const res = await fetch('/user/settings/api/telegram/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ botToken: tgConnectForm.botToken.value })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                reloadWithToast('{{t "telegram.connect_success"}}', 'success');
+                return;
+            }
+            showToast(data.error || 'Failed to connect', 'danger');
+        } catch (err) {
+            showToast('Network error', 'danger');
+        }
+        btn.disabled = false;
+    });
+}
+
+const tgDisconnectBtn = document.getElementById('tg-disconnect-btn');
+if (tgDisconnectBtn) {
+    tgDisconnectBtn.addEventListener('click', async () => {
+        if (!confirm('{{t "telegram.disconnect_confirm"}}')) return;
+        tgDisconnectBtn.disabled = true;
+        try {
+            const res = await fetch('/user/settings/api/telegram/disconnect', { method: 'POST' });
+            if (res.ok) {
+                reloadWithToast('{{t "telegram.disconnect_success"}}', 'success');
+                return;
+            }
+            const data = await res.json();
+            showToast(data.error || 'Failed to disconnect', 'danger');
+        } catch (err) {
+            showToast('Network error', 'danger');
+        }
+        tgDisconnectBtn.disabled = false;
+    });
+}
+
+async function saveTelegramNotification(body, revert) {
+    try {
+        const res = await fetch('/user/settings/api/telegram/notifications', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (res.ok) {
+            showToast('{{t "telegram.saved"}}', 'success');
+            return;
+        }
+        const data = await res.json();
+        showToast(data.error || 'Failed to save', 'danger');
+    } catch (err) {
+        showToast('Network error', 'danger');
+    }
+    revert();
+}
+
+document.querySelectorAll('.tg-notify').forEach(el => {
+    el.addEventListener('change', () => {
+        saveTelegramNotification({ [el.dataset.key]: el.checked }, () => { el.checked = !el.checked; });
+    });
+});
+
+const tgThreshold = document.getElementById('tg-threshold');
+if (tgThreshold) {
+    let prev = tgThreshold.value;
+    tgThreshold.addEventListener('change', () => {
+        const next = tgThreshold.value;
+        saveTelegramNotification({ threshold: parseInt(next, 10) }, () => { tgThreshold.value = prev; });
+        prev = next;
+    });
+}
 </script>
 {{end}}

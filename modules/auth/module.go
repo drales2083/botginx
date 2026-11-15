@@ -61,6 +61,11 @@ func (m *Module) SetPromoService(s *promoservices.PromoService) {
 	m.Handler.SetPromoService(s)
 }
 
+// SetTelegramConnector wires the Telegram user bot service for the settings page.
+func (m *Module) SetTelegramConnector(c handlers.TelegramConnector) {
+	m.Handler.SetTelegramConnector(c)
+}
+
 // AuthService returns the auth service for use by other modules (e.g., impersonation)
 func (m *Module) AuthService() *services.AuthService {
 	return m.service
@@ -100,6 +105,11 @@ func (m *Module) SettingsRoutes() chi.Router {
 	r.Get("/", m.Handler.SettingsPage)
 	r.Put("/api/profile", m.Handler.APIUpdateProfile)
 	r.Put("/api/password", m.Handler.APIChangePassword)
+
+	// Telegram user bot API
+	r.Post("/api/telegram/connect", m.Handler.APITelegramConnect)
+	r.Post("/api/telegram/disconnect", m.Handler.APITelegramDisconnect)
+	r.Put("/api/telegram/notifications", m.Handler.APITelegramNotifications)
 
 	// Global whitelist API
 	r.Get("/api/global-whitelist", m.Handler.APIGetGlobalWhitelist)

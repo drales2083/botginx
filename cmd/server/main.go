@@ -51,6 +51,7 @@ import (
 	"github.com/botginx/botginx/modules/shortener"
 	"github.com/botginx/botginx/modules/support"
 	"github.com/botginx/botginx/modules/telegram"
+	"github.com/botginx/botginx/modules/telegram/userbot"
 	"github.com/botginx/botginx/modules/threatlog"
 	"github.com/botginx/botginx/modules/trackingpixel"
 	"github.com/botginx/botginx/modules/twofactor"
@@ -386,6 +387,7 @@ func main() {
 	hostingModule.SetPaymentProcessor(referralsModule)         // Referral commissions on hosting payments
 	authModule.SetSubscriptionService(subscriptions)           // Self-service subscription purchase
 	authModule.SetPromoService(promocodesModule.Service())     // Promo codes for subscriptions
+	authModule.SetTelegramConnector(telegramConnector{userbot.NewUserBotService(db.DB, telegramModule.Service, getSiteURL())}) // Telegram user bot (settings page)
 	usersModule.SetAuthService(authModule.AuthService())       // Admin impersonation
 	supportModule.SetNotifier(telegramModule.Handler)          // Telegram notifications for tickets
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
@@ -878,6 +880,19 @@ func loadConfig(path string) *Config {
 
 	return cfg
 }
+
+// telegramConnector adapts the user bot service to the auth settings page.
+type telegramConnector struct{ svc *userbot.UserBotService }
+
+func (c telegramConnector) Connect(userID, botToken string) (string, error) {
+	res, err := c.svc.Connect(userID, botToken)
+	if err != nil {
+		return "", err
+	}
+	return res.BotUsername, nil
+}
+
+func (c telegramConnector) Disconnect(userID string) error { return c.svc.Disconnect(userID) }
 
 func getAppName() string {
 	if name := os.Getenv("UI_APP_NAME"); name != "" {
