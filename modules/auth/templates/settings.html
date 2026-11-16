@@ -317,7 +317,7 @@
                                 <select class="form-select" id="tg-default-domain">
                                     <option value="">Auto (first available)</option>
                                     {{range .Domains}}
-                                    <option value="{{.ID}}" {{if eq .ID $.Account.TelegramDefaultDomainID}}selected{{end}}>{{.Name}}</option>
+                                    <option value="{{.ID}}" {{if eq .ID (ptrStr $.Account.TelegramDefaultDomainID)}}selected{{end}}>{{.Name}}</option>
                                     {{end}}
                                 </select>
                             </div>

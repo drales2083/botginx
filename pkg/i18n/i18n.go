@@ -176,6 +176,12 @@ func (t *Translator) TemplateFuncs() template.FuncMap {
 		"t": func(key string) string {
 			return t.T(t.defaultLang, key)
 		},
+		"ptrStr": func(s *string) string {
+			if s == nil {
+				return ""
+			}
+			return *s
+		},
 		"tLang": func(lang, key string) string {
 			return t.T(lang, key)
 		},
