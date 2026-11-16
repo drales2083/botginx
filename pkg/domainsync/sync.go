@@ -244,20 +244,19 @@ func (s *Service) syncDomain(domain Domain) error {
 	}
 
 	// Step 3: Check/Generate SSL
-	if !domain.SSLEnabled {
-		log.Printf("[DomainSync] Domain %s DNS verified, checking SSL", domain.Name)
+	// Always verify SSL exists on server - don't trust ssl_enabled flag alone
+	// (ssl_enabled may be true from a previous partial setup or self-signed cert)
+	sslExists, err := s.checkSSLExists(domain, *server)
+	if err != nil {
+		return fmt.Errorf("failed to check SSL: %w", err)
+	}
 
-		sslExists, err := s.checkSSLExists(domain, *server)
-		if err != nil {
-			return fmt.Errorf("failed to check SSL: %w", err)
-		}
+	if !sslExists {
+		log.Printf("[DomainSync] Domain %s DNS verified, generating SSL", domain.Name)
+		s.updateSyncStatus(domain.ID, SyncStatusSSLGenerating, "")
 
-		if !sslExists {
-			s.updateSyncStatus(domain.ID, SyncStatusSSLGenerating, "")
-
-			if err := s.generateSSL(domain, *server); err != nil {
-				return fmt.Errorf("failed to generate SSL: %w", err)
-			}
+		if err := s.generateSSL(domain, *server); err != nil {
+			return fmt.Errorf("failed to generate SSL: %w", err)
 		}
 
 		// Mark SSL enabled
