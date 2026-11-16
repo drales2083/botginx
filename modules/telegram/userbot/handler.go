@@ -844,9 +844,9 @@ func (h *UserBotHandler) createLink(user *models.User, destURL string) {
 	}
 	var domain *struct{ ID, Name string }
 	// Use default domain if set and still valid
-	if user.TelegramDefaultDomainID != "" {
+	if user.TelegramDefaultDomainID != nil && *user.TelegramDefaultDomainID != "" {
 		for _, d := range domains {
-			if d.ID == user.TelegramDefaultDomainID && d.DNSVerified && d.SSLEnabled {
+			if d.ID == *user.TelegramDefaultDomainID && d.DNSVerified && d.SSLEnabled {
 				domain = &struct{ ID, Name string }{d.ID, d.Name}
 				break
 			}
