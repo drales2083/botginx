@@ -253,6 +253,9 @@ func (s *GoDaddyService) ListDomains(ctx context.Context, userID string) ([]mode
 
 // Import imports a GoDaddy domain as a GuardBot domain
 func (s *GoDaddyService) Import(ctx context.Context, userID string, input models.GoDaddyImportInput) (*models.Domain, error) {
+	// Normalize domain name to lowercase (DNS is case-insensitive, nginx uses lowercase)
+	input.Domain = strings.ToLower(input.Domain)
+
 	client, err := s.getClient(userID)
 	if err != nil {
 		return nil, err

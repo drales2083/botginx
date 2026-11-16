@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/botginx/botginx/modules/domains/models"
@@ -234,6 +235,9 @@ func (s *DomainService) ListAllUsers() ([]SimpleUser, error) {
 }
 
 func (s *DomainService) create(userID string, input models.CreateDomainInput, shared bool) (*models.Domain, error) {
+	// Normalize domain name to lowercase (DNS is case-insensitive, nginx uses lowercase)
+	input.Name = strings.ToLower(input.Name)
+
 	// Check if domain exists for this user
 	existing, _ := s.GetByName(userID, input.Name)
 	if existing != nil {

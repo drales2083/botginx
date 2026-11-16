@@ -285,6 +285,9 @@ func (s *CloudflareService) Import(ctx context.Context, userID string, input mod
 		return nil, fmt.Errorf("getting zone: %w", err)
 	}
 
+	// Normalize domain name to lowercase (DNS is case-insensitive, nginx uses lowercase)
+	zone.Name = strings.ToLower(zone.Name)
+
 	// Check if domain already exists
 	var existingID string
 	err = s.db.QueryRow(`SELECT id FROM domains WHERE name = $1 AND user_id = $2`, zone.Name, userID).Scan(&existingID)

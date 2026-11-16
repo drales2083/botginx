@@ -878,14 +878,14 @@ func (s *Service) setupNginxConfig(domain Domain, server Server) error {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-}`, baseDomain, baseDomain, baseDomainLower, baseDomainLower, baseDomain)
+}`, baseDomain, baseDomain, baseDomainLower, baseDomainLower, baseDomainLower)
 
-	// Create directories
-	mkdirCmd := fmt.Sprintf("mkdir -p /var/www/sites/%s/_root /var/www/sites/%s/_errors", baseDomain, baseDomain)
+	// Create directories (use lowercase for filesystem consistency)
+	mkdirCmd := fmt.Sprintf("mkdir -p /var/www/sites/%s/_root /var/www/sites/%s/_errors", baseDomainLower, baseDomainLower)
 	client.Exec(mkdirCmd)
 
-	// Write config
-	configPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", baseDomain)
+	// Write config (use lowercase for filesystem consistency)
+	configPath := fmt.Sprintf("/etc/nginx/sites-available/%s.conf", baseDomainLower)
 	writeCmd := fmt.Sprintf("cat > %s << 'NGINXEOF'\n%s\nNGINXEOF", configPath, nginxConfig)
 	if _, err := client.Exec(writeCmd); err != nil {
 		return fmt.Errorf("failed to write nginx config: %w", err)

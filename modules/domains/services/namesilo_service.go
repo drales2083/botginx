@@ -201,6 +201,9 @@ func (s *NameSiloService) ListDomains(ctx context.Context, userID string) ([]mod
 
 // ImportDomain imports a domain from NameSilo to our system
 func (s *NameSiloService) ImportDomain(ctx context.Context, userID string, input models.NameSiloImportInput) (string, error) {
+	// Normalize domain name to lowercase (DNS is case-insensitive, nginx uses lowercase)
+	input.Domain = strings.ToLower(input.Domain)
+
 	client, err := s.GetClient(userID)
 	if err != nil {
 		return "", err
