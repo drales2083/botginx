@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -96,6 +97,7 @@ func (s *AuthService) Login(input models.LoginInput) (*models.User, string, erro
 	var user models.User
 	err := s.db.Get(&user, "SELECT * FROM users WHERE email = $1 AND is_active = true", input.Email)
 	if err != nil {
+		log.Printf("[auth] Login scan error for email %s: %v", input.Email, err)
 		return nil, "", ErrInvalidCredentials
 	}
 
@@ -210,6 +212,7 @@ func (s *AuthService) CreateImpersonationSession(targetUserID string) (string, e
 	var user models.User
 	err := s.db.Get(&user, "SELECT * FROM users WHERE id = $1", targetUserID)
 	if err != nil {
+		log.Printf("[auth] CreateImpersonationSession scan error for user %s: %v", targetUserID, err)
 		return "", ErrUserNotFound
 	}
 
