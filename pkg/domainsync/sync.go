@@ -581,8 +581,10 @@ func (s *Service) checkDomainConfigExists(domain Domain, server Server) (bool, e
 	if strings.HasPrefix(baseDomain, "*.") {
 		baseDomain = baseDomain[2:]
 	}
+	// Certbot always creates directories in lowercase
+	baseDomainLower := strings.ToLower(baseDomain)
 
-	cmd := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "exists"`, baseDomain)
+	cmd := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "exists"`, baseDomainLower)
 	result, err := client.Exec(cmd)
 	if err != nil {
 		// Return error so caller knows check failed (don't proceed with reset)
@@ -646,9 +648,11 @@ func (s *Service) checkSSLExists(domain Domain, server Server) (bool, error) {
 	if strings.HasPrefix(baseDomain, "*.") {
 		baseDomain = baseDomain[2:]
 	}
+	// Certbot always creates directories in lowercase
+	baseDomainLower := strings.ToLower(baseDomain)
 
 	// Check if Let's Encrypt cert exists
-	cmd := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "exists"`, baseDomain)
+	cmd := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "exists"`, baseDomainLower)
 	result, _ := client.Exec(cmd)
 
 	return result != nil && strings.TrimSpace(result.Output) == "exists", nil
@@ -843,6 +847,8 @@ func (s *Service) setupNginxConfig(domain Domain, server Server) error {
 	if strings.HasPrefix(baseDomain, "*.") {
 		baseDomain = baseDomain[2:]
 	}
+	// Certbot always creates directories in lowercase
+	baseDomainLower := strings.ToLower(baseDomain)
 
 	// Check if config already exists
 	checkCmd := fmt.Sprintf(`test -f /etc/nginx/sites-enabled/%s.conf && echo "exists"`, baseDomain)
@@ -851,6 +857,7 @@ func (s *Service) setupNginxConfig(domain Domain, server Server) error {
 	}
 
 	// Create nginx config with SSL
+	// Note: SSL paths use lowercase (certbot creates lowercase dirs)
 	nginxConfig := fmt.Sprintf(`server {
     listen 80;
     listen 443 ssl;
@@ -871,7 +878,7 @@ func (s *Service) setupNginxConfig(domain Domain, server Server) error {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-}`, baseDomain, baseDomain, baseDomain, baseDomain, baseDomain)
+}`, baseDomain, baseDomain, baseDomainLower, baseDomainLower, baseDomain)
 
 	// Create directories
 	mkdirCmd := fmt.Sprintf("mkdir -p /var/www/sites/%s/_root /var/www/sites/%s/_errors", baseDomain, baseDomain)
