@@ -174,6 +174,18 @@ server {
         set $site_domain $2;
     }
 
+    # 4-part domains: sub.domain.secondlevel.tld (e.g. sub.example.co.uk)
+    if ($host ~* ^([^.]+)\.([^.]+\.[^.]+\.[^.]+)$) {
+        set $site_subdomain $1;
+        set $site_domain $2;
+    }
+
+    # 5-part domains: sub.domain.thirdlevel.secondlevel.tld
+    if ($host ~* ^([^.]+)\.([^.]+\.[^.]+\.[^.]+\.[^.]+)$) {
+        set $site_subdomain $1;
+        set $site_domain $2;
+    }
+
     root /var/www/sites/$site_domain/$site_subdomain;
     index index.php index.html;
 
