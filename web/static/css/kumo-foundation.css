@@ -18,15 +18,27 @@
    ========================================================================== */
 
 :root {
-  /* Glass Effect */
-  --kumo-glass-bg: rgba(255, 255, 255, 0.04);
-  --kumo-glass-border: rgba(255, 255, 255, 0.1);
-  --kumo-glass-blur: 16px;
+  /* ==========================================================================
+     Kumo UI Surface Tokens (from kumo-ui.com/colors)
+     ========================================================================== */
+  --kumo-canvas: oklch(10% 0 0);        /* Page background */
+  --kumo-elevated: oklch(12% 0 0);      /* Elevated surfaces */
+  --kumo-base: oklch(17% 0 0);          /* Card background */
+  --kumo-recessed: oklch(15% 0 0);      /* Inset areas */
+  --kumo-tint: oklch(26.9% 0 0);        /* Subtle highlight */
+  --kumo-overlay: oklch(26.9% 0 0);     /* Overlays */
 
-  /* Shadows - soft with large blur radius */
-  --kumo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --kumo-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
-  --kumo-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.3);
+  /* Border & Ring Tokens */
+  --kumo-line: oklch(32% 0 0);          /* Standard borders */
+  --kumo-hairline: oklch(26.9% 0 0);    /* Subtle borders */
+  --kumo-ring: oklch(32% 0 0);          /* Focus rings */
+
+  /* Shadow Tokens (use ring instead of border+shadow per Kumo guidelines) */
+  --kumo-shadow-edge: oklch(100% 0 0 / 0.1);
+  --kumo-shadow-drop: oklch(0% 0 0 / 0.3);
+  --kumo-shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.2);
+  --kumo-shadow-md: 0 4px 12px oklch(0% 0 0 / 0.25);
+  --kumo-shadow-lg: 0 8px 24px oklch(0% 0 0 / 0.3);
   --kumo-shadow-glow: 0 0 20px rgba(230, 57, 70, 0.2);
 
   /* Border Radius - generous rounding */
@@ -36,26 +48,35 @@
   --kumo-radius-xl: 24px;
   --kumo-radius-pill: 9999px;
 
-  /* Transitions - smooth micro-animations */
+  /* Transitions - keep color changes instant per Kumo guidelines */
   --kumo-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --kumo-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --kumo-transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  --kumo-transition-transform: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Colors - softer red primary with gradient accent */
+  /* Colors - primary red */
   --kumo-primary: #e63946;
   --kumo-primary-light: #f06c77;
   --kumo-primary-dark: #c52836;
   --kumo-primary-soft: rgba(230, 57, 70, 0.15);
   --kumo-accent-gradient: linear-gradient(135deg, #e63946 0%, #f4a261 100%);
-  --kumo-success-gradient: linear-gradient(135deg, #28a745 0%, #5dd879 100%);
-  --kumo-danger-gradient: linear-gradient(135deg, #dc3545 0%, #ff6b6b 100%);
-  --kumo-warning-gradient: linear-gradient(135deg, #ffc107 0%, #ffdb4d 100%);
-  --kumo-info-gradient: linear-gradient(135deg, #17a2b8 0%, #4dd4ec 100%);
 
-  /* Background layers - darker like Cloudflare/Kumo */
-  --kumo-bg-base: #09090b;
-  --kumo-bg-surface: #111113;
-  --kumo-bg-elevated: #18181b;
+  /* Status colors (from kumo-ui.com/colors) */
+  --kumo-success: oklch(76.5% 0.177 163.223);
+  --kumo-success-tint: oklch(39.3% 0.096 152.3 / 0.20);
+  --kumo-danger: oklch(57.7% 0.245 27.325);
+  --kumo-danger-tint: oklch(42.9% 0.176 28.7 / 0.17);
+  --kumo-warning: oklch(64.5% 0.168 50.0);
+  --kumo-warning-tint: oklch(35.3% 0.079 65.0 / 0.37);
+  --kumo-info: oklch(68.5% 0.169 237.323);
+  --kumo-info-tint: oklch(38.0% 0.145 265.5 / 0.22);
+
+  /* Legacy compatibility */
+  --kumo-bg-base: var(--kumo-canvas);
+  --kumo-bg-surface: var(--kumo-elevated);
+  --kumo-bg-elevated: var(--kumo-base);
+  --kumo-glass-bg: var(--kumo-base);
+  --kumo-glass-border: var(--kumo-hairline);
 
   /* Text colors */
   --kumo-text-primary: rgba(255, 255, 255, 0.95);
