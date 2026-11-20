@@ -96,10 +96,10 @@ func (m *Module) Routes() chi.Router {
 	// Pages
 	r.Get("/", m.handler.List)
 	r.Get("/new", m.handler.New)
+	r.Get("/provision/{id}", m.provisionHandler.ProvisionPage) // Must be before /{id} to avoid conflict
 	r.Get("/{id}", m.handler.Show)
 	r.Get("/{id}/logs", m.handler.Logs)
 	r.Get("/{id}/terminal", m.handler.Terminal)
-	r.Get("/provision/{id}", m.provisionHandler.ProvisionPage)
 
 	// API
 	r.Route("/api", func(r chi.Router) {
