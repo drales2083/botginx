@@ -107,6 +107,12 @@ func defaultFuncs() template.FuncMap {
 			}
 			return af / bf
 		},
+		"divideInt": func(a, b int) float64 {
+			if b == 0 {
+				return 0
+			}
+			return float64(a) / float64(b)
+		},
 		"mulf": func(a, b any) float64 {
 			af := toFloat(a)
 			bf := toFloat(b)
