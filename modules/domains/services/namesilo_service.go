@@ -232,9 +232,10 @@ func (s *NameSiloService) ImportDomain(ctx context.Context, userID string, input
 
 	// Insert domain as wildcard (redirect links use random subdomains)
 	// NameSilo-imported domains need wildcard SSL via DNS-01 challenge
+	// dns_api_user_id tracks who added it via API (for DNS updates even if ownership changes)
 	_, err = s.db.Exec(`
-		INSERT INTO domains (id, user_id, name, verify_token, server_id, source, provider_domain_id, is_wildcard, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NULLIF($5, ''), 'namesilo', $6, true, $7, $7)
+		INSERT INTO domains (id, user_id, name, verify_token, server_id, source, provider_domain_id, is_wildcard, dns_api_user_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NULLIF($5, ''), 'namesilo', $6, true, $2, $7, $7)
 	`, domainID, userID, input.Domain, verifyToken, serverID, input.Domain, time.Now())
 	if err != nil {
 		return "", fmt.Errorf("inserting domain: %w", err)
@@ -389,21 +390,22 @@ type ReconfigureResult struct {
 func (s *NameSiloService) ReconfigureAllDomains(ctx context.Context, newIP string) ([]ReconfigureResult, error) {
 	// Find all domains with source='namesilo' and dns_auto_configured=true
 	type domainInfo struct {
-		ID               string  `db:"id"`
-		Name             string  `db:"name"`
-		UserID           string  `db:"user_id"`
-		VerifyToken      string  `db:"verify_token"`
-		AcmeFulldomain   *string `db:"acme_fulldomain"`
-		AcmeSubdomain    *string `db:"acme_subdomain"`
-		AcmeUsername     *string `db:"acme_username"`
-		AcmePassword     *string `db:"acme_password"`
-		AcmeCnameVerified bool   `db:"acme_cname_verified"`
-		SSLEnabled       bool    `db:"ssl_enabled"`
+		ID                string  `db:"id"`
+		Name              string  `db:"name"`
+		UserID            string  `db:"user_id"`
+		DNSApiUserID      string  `db:"dns_api_user_id"`
+		VerifyToken       string  `db:"verify_token"`
+		AcmeFulldomain    *string `db:"acme_fulldomain"`
+		AcmeSubdomain     *string `db:"acme_subdomain"`
+		AcmeUsername      *string `db:"acme_username"`
+		AcmePassword      *string `db:"acme_password"`
+		AcmeCnameVerified bool    `db:"acme_cname_verified"`
+		SSLEnabled        bool    `db:"ssl_enabled"`
 	}
 
 	var domains []domainInfo
 	err := s.db.Select(&domains, `
-		SELECT id, name, user_id, verify_token,
+		SELECT id, name, user_id, COALESCE(dns_api_user_id, user_id) as dns_api_user_id, verify_token,
 			acme_fulldomain, acme_subdomain, acme_username, acme_password,
 			COALESCE(acme_cname_verified, false) as acme_cname_verified,
 			COALESCE(ssl_enabled, false) as ssl_enabled
@@ -418,10 +420,15 @@ func (s *NameSiloService) ReconfigureAllDomains(ctx context.Context, newIP strin
 		return []ReconfigureResult{}, nil
 	}
 
-	// Group domains by user (each user has their own API key)
+	// Group domains by DNS API user (the user whose API key was used to add the domain)
+	// This allows domains to be sold/transferred while still using the original API key
 	userDomains := make(map[string][]domainInfo)
 	for _, d := range domains {
-		userDomains[d.UserID] = append(userDomains[d.UserID], d)
+		apiUserID := d.DNSApiUserID
+		if apiUserID == "" {
+			apiUserID = d.UserID // Fallback for old domains without dns_api_user_id
+		}
+		userDomains[apiUserID] = append(userDomains[apiUserID], d)
 	}
 
 	var results []ReconfigureResult

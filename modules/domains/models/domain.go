@@ -77,6 +77,7 @@ type Domain struct {
 	ProviderDomainID   *string `db:"provider_domain_id" json:"providerDomainId,omitempty"`     // ID at the provider
 	DNSAutoConfigured  bool    `db:"dns_auto_configured" json:"dnsAutoConfigured"`             // DNS was auto-configured
 	DNSConfigError     *string `db:"dns_config_error" json:"dnsConfigError,omitempty"`         // Last DNS config error
+	DNSApiUserID       *string `db:"dns_api_user_id" json:"dnsApiUserId,omitempty"`            // User whose API key to use for DNS ops
 
 	// Safety check fields (from Domain Health module)
 	SafetyStatus    *string    `db:"safety_status" json:"safetyStatus,omitempty"`

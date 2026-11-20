@@ -285,10 +285,10 @@ func (s *GoDaddyService) Import(ctx context.Context, userID string, input models
 	}
 	domain.ID = fmt.Sprintf("dom_%s", generateID(12))
 
-	// Insert domain
+	// Insert domain (dns_api_user_id tracks who added it via API for DNS updates even if ownership changes)
 	err = s.db.QueryRow(`
-		INSERT INTO domains (id, user_id, name, verify_token, source, dns_auto_configured, is_wildcard, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, true, NOW(), NOW())
+		INSERT INTO domains (id, user_id, name, verify_token, source, dns_auto_configured, is_wildcard, dns_api_user_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, true, $2, NOW(), NOW())
 		RETURNING created_at
 	`, domain.ID, domain.UserID, domain.Name, domain.VerifyToken, domain.Source, domain.DNSAutoConfigured).
 		Scan(&domain.CreatedAt)
@@ -491,8 +491,10 @@ func (s *GoDaddyService) ReconfigureDomain(ctx context.Context, userID, domainID
 func (s *GoDaddyService) ReconfigureAllDomains(ctx context.Context, serverIP string) ([]ReconfigureResult, error) {
 	var results []ReconfigureResult
 
+	// Use dns_api_user_id (the user who added the domain via API) for DNS operations
+	// This allows domains to be sold/transferred while still using the original API key
 	rows, err := s.db.Query(`
-		SELECT d.id, d.name, d.user_id
+		SELECT d.id, d.name, COALESCE(d.dns_api_user_id, d.user_id) as api_user_id
 		FROM domains d
 		WHERE d.source = 'godaddy'
 	`)
@@ -502,8 +504,8 @@ func (s *GoDaddyService) ReconfigureAllDomains(ctx context.Context, serverIP str
 	defer rows.Close()
 
 	for rows.Next() {
-		var domainID, domainName, userID string
-		if err := rows.Scan(&domainID, &domainName, &userID); err != nil {
+		var domainID, domainName, apiUserID string
+		if err := rows.Scan(&domainID, &domainName, &apiUserID); err != nil {
 			continue
 		}
 
@@ -511,7 +513,7 @@ func (s *GoDaddyService) ReconfigureAllDomains(ctx context.Context, serverIP str
 			Domain: domainName,
 		}
 
-		if err := s.setupDNSInternal(ctx, userID, domainName); err != nil {
+		if err := s.setupDNSInternal(ctx, apiUserID, domainName); err != nil {
 			result.Success = false
 			result.Error = err.Error()
 		} else {

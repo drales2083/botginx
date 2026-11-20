@@ -24,21 +24,21 @@ type Provider struct {
 
 // DomainInventory represents a cached domain from a provider
 type DomainInventory struct {
-	ID                string         `db:"id" json:"id"`
-	ProviderID        string         `db:"provider_id" json:"-"`
-	DomainName        string         `db:"domain_name" json:"name"`
-	TLD               string         `db:"tld" json:"tld"`
-	RegistrationPrice int            `db:"registration_price" json:"-"` // Provider price, hidden
-	SalePrice         int            `db:"sale_price" json:"priceCents"`
-	AgeYears          sql.NullInt64  `db:"age_years" json:"ageYears"`
-	IsPremium         bool           `db:"is_premium" json:"isPremium"`
-	Category          string         `db:"category" json:"category"`
-	IsAvailable       bool           `db:"is_available" json:"isAvailable"`
-	SafetyStatus      string         `db:"safety_status" json:"safetyStatus"`
-	SafetyCheckedAt   sql.NullTime   `db:"safety_checked_at" json:"safetyCheckedAt,omitempty"`
-	SafetyReasons     string         `db:"safety_reasons" json:"safetyReasons,omitempty"`
-	FetchedAt         time.Time      `db:"fetched_at" json:"-"`
-	ExpiresAt         sql.NullTime   `db:"expires_at" json:"expiresAt,omitempty"`
+	ID                string     `db:"id" json:"id"`
+	ProviderID        string     `db:"provider_id" json:"-"`
+	DomainName        string     `db:"domain_name" json:"name"`
+	TLD               string     `db:"tld" json:"tld"`
+	RegistrationPrice int        `db:"registration_price" json:"-"` // Provider price, hidden
+	SalePrice         int        `db:"sale_price" json:"priceCents"`
+	AgeYears          *int       `db:"age_years" json:"ageYears"`
+	IsPremium         bool       `db:"is_premium" json:"isPremium"`
+	Category          string     `db:"category" json:"category"`
+	IsAvailable       bool       `db:"is_available" json:"isAvailable"`
+	SafetyStatus      string     `db:"safety_status" json:"safetyStatus"`
+	SafetyCheckedAt   *time.Time `db:"safety_checked_at" json:"safetyCheckedAt,omitempty"`
+	SafetyReasons     string     `db:"safety_reasons" json:"safetyReasons,omitempty"`
+	FetchedAt         time.Time  `db:"fetched_at" json:"-"`
+	ExpiresAt         *time.Time `db:"expires_at" json:"expiresAt,omitempty"`
 }
 
 // BalanceLock represents a temporary fund reservation
