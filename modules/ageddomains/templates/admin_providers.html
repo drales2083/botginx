@@ -4,7 +4,7 @@
         <div class="card-header">
             <h3 class="card-title">Domain Providers</h3>
             <div class="card-tools">
-                <button class="btn btn-primary btn-sm" onclick="showAddModal()">
+                <button class="btn btn-primary" onclick="showAddModal()">
                     <i class="fa-solid fa-plus me-1"></i>Add Provider
                 </button>
             </div>
@@ -206,12 +206,7 @@ function showAddModal() {
     document.getElementById('modal-title').textContent = 'Add Provider';
     document.getElementById('provider-form').reset();
     document.getElementById('is-active').checked = true;
-
-    // Try to restore saved form data
-    if (restoreFormFromStorage()) {
-        showToast('Form data restored from previous session', 'primary');
-    }
-
+    restoreFormFromStorage();
     providerModal.show();
 }
 
