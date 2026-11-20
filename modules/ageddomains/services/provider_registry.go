@@ -143,6 +143,26 @@ func (r *ProviderRegistry) InitializeClients(ctx context.Context) error {
 	return nil
 }
 
+// ReinitializeClient reinitializes the client for a specific provider (after credentials update)
+func (r *ProviderRegistry) ReinitializeClient(ctx context.Context, providerID string) error {
+	provider, err := r.Get(ctx, providerID)
+	if err != nil {
+		return err
+	}
+	if !provider.IsActive {
+		return nil
+	}
+	client, err := r.createClient(*provider)
+	if err != nil {
+		return err
+	}
+	if client != nil {
+		r.RegisterClient(providerID, client)
+		log.Printf("[ageddomains] Reinitialized client for provider %s", provider.DisplayName)
+	}
+	return nil
+}
+
 // createClient creates an API client based on provider type
 func (r *ProviderRegistry) createClient(p models.Provider) (DomainProvider, error) {
 	switch p.ProviderType {

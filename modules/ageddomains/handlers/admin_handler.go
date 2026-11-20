@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -133,6 +134,11 @@ func (h *AdminHandler) APICreateProvider(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Initialize the client for the new provider
+	if err := h.providerRegistry.ReinitializeClient(r.Context(), provider.ID); err != nil {
+		log.Printf("[ageddomains] Warning: could not initialize client after create: %v", err)
+	}
+
 	h.json(w, http.StatusCreated, provider)
 }
 
@@ -191,6 +197,12 @@ func (h *AdminHandler) APIUpdateProvider(w http.ResponseWriter, r *http.Request)
 	if err := h.providerRegistry.Update(r.Context(), existing); err != nil {
 		h.jsonError(w, "Failed to update provider", http.StatusInternalServerError)
 		return
+	}
+
+	// Reinitialize the client with new credentials
+	if err := h.providerRegistry.ReinitializeClient(r.Context(), id); err != nil {
+		// Log but don't fail - the update succeeded
+		log.Printf("[ageddomains] Warning: could not reinitialize client after update: %v", err)
 	}
 
 	h.json(w, http.StatusOK, existing)
