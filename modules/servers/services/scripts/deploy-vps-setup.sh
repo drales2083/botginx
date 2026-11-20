@@ -148,13 +148,13 @@ echo "[SETUP:2:START] Configuring nginx"
 echo "[2/5] Configuring nginx..."
 mkdir -p "$SITES_DIR"
 
-# Internal nginx - receives from botection (or direct), routes by Host header
+# Internal nginx - receives traffic FROM botection, routes by Host header
+# Traffic flow: Internet -> nginx:80 (botection-proxy) -> botection:8080 -> nginx:8081 (this) -> site files
 cat > /etc/nginx/sites-available/redirect-upstream.conf << 'NGINXEOF'
 # Internal upstream - botection (8080) -> nginx (8081) -> site files
-# Or direct access if botection not installed
+# NOTE: Only listens on 8081 - botection-proxy.conf handles port 80
 server {
     listen 127.0.0.1:8081 default_server;
-    listen 80 default_server;
     server_name _;
 
     # Prevent nginx from adding internal port to redirects
