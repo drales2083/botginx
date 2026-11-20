@@ -206,6 +206,8 @@ function showAddModal() {
     document.getElementById('modal-title').textContent = 'Add Provider';
     document.getElementById('provider-form').reset();
     document.getElementById('is-active').checked = true;
+    document.getElementById('api-key').placeholder = 'Enter API key';
+    document.getElementById('api-secret').placeholder = 'Enter API secret';
     restoreFormFromStorage();
     providerModal.show();
 }
@@ -229,9 +231,11 @@ function editProvider(id) {
             document.getElementById('min-age').value = p.minAgeYears || 0;
             document.getElementById('max-price').value = (p.maxPriceCents || 0) / 100;
             document.getElementById('allowed-tlds').value = p.allowedTlds || '';
-            // Clear API fields - they're never returned from server
+            // Clear API fields but set placeholder to indicate credentials exist
             document.getElementById('api-key').value = '';
+            document.getElementById('api-key').placeholder = '••••••••••••••• (stored - enter new to update)';
             document.getElementById('api-secret').value = '';
+            document.getElementById('api-secret').placeholder = '••••••••••••••• (stored - enter new to update)';
 
             providerModal.show();
         });
