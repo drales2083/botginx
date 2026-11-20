@@ -37,7 +37,7 @@ echo "VPS IP: $VPS_IP"
 echo ""
 echo "[1/5] Installing system packages..."
 apt-get update -qq
-apt-get install -y -qq nginx redis-server jq curl certbot python3-certbot-nginx ufw cron git php-fpm
+apt-get install -y -qq nginx redis-server jq curl certbot python3-certbot-nginx ufw cron git php-fpm sqlite3
 
 # Detect PHP-FPM version
 PHP_FPM=$(systemctl list-unit-files | grep -oP 'php[0-9.]+\-fpm' | head -1 || echo "php-fpm")

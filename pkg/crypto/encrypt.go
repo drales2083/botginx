@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"log"
 	"os"
 	"sync"
 )
@@ -27,10 +28,14 @@ func initKey() {
 			decoded, err := hex.DecodeString(key)
 			if err == nil {
 				encryptionKey = decoded
+				log.Printf("[crypto] Loaded HOSTING_ENCRYPTION_KEY (len=%d bytes)", len(encryptionKey))
 			} else {
 				// Fallback to raw bytes if not valid hex
 				encryptionKey = []byte(key)
+				log.Printf("[crypto] Warning: HOSTING_ENCRYPTION_KEY is not hex, using raw bytes (len=%d)", len(encryptionKey))
 			}
+		} else {
+			log.Printf("[crypto] Warning: HOSTING_ENCRYPTION_KEY not set, encryption disabled")
 		}
 	})
 }
