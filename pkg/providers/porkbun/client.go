@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -192,7 +193,18 @@ func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	return io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	// Debug: log if we got HTML instead of JSON
+	if resp.StatusCode != 200 || (len(body) > 0 && body[0] == '<') {
+		log.Printf("[porkbun] Unexpected response: status=%d content-type=%s url=%s body-prefix=%s",
+			resp.StatusCode, resp.Header.Get("Content-Type"), reqURL, string(body[:min(100, len(body))]))
+	}
+
+	return body, nil
 }
 
 // checkResponse parses the response and checks for API errors
