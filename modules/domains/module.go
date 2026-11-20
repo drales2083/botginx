@@ -376,14 +376,29 @@ func (m *Module) AdminReconfigureAllDomains(w http.ResponseWriter, r *http.Reque
 func (m *Module) reconfigureAll(serverIP string) map[string]interface{} {
 	// Results structure
 	type sourceResults struct {
-		Total   int                         `json:"total"`
-		Success int                         `json:"success"`
-		Fail    int                         `json:"fail"`
-		Results interface{}                 `json:"results"`
+		Total   int         `json:"total"`
+		Success int         `json:"success"`
+		Fail    int         `json:"fail"`
+		Results interface{} `json:"results"`
 	}
 
 	response := map[string]interface{}{
 		"serverIP": serverIP,
+	}
+
+	// Step 1: Reset ALL domains first (both API-connected and manual/external)
+	// This ensures manual users see their domains need reconfiguration
+	// DomainSync will re-verify DNS and regenerate SSL as domains are updated
+	resetCount, resetErr := m.service.ResetAllDomainsForReconfigure()
+	if resetErr != nil {
+		response["reset"] = map[string]interface{}{
+			"error": resetErr.Error(),
+		}
+	} else {
+		response["reset"] = map[string]interface{}{
+			"count":   resetCount,
+			"message": "All domains reset - DomainSync will re-verify DNS and generate SSL",
+		}
 	}
 
 	// Reconfigure NameSilo domains

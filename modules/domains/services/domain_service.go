@@ -465,6 +465,25 @@ func (s *DomainService) CountAll() (int, error) {
 	return count, err
 }
 
+// ResetAllDomainsForReconfigure resets dns_verified and ssl_enabled for ALL domains.
+// Called when deploy server IP changes so DomainSync can re-verify and regenerate SSL.
+// Returns the count of domains reset.
+func (s *DomainService) ResetAllDomainsForReconfigure() (int, error) {
+	result, err := s.db.Exec(`
+		UPDATE domains
+		SET dns_verified = FALSE,
+		    ssl_enabled = FALSE,
+		    sync_status = 'pending',
+		    setup_step = 'dns',
+		    updated_at = NOW()
+	`)
+	if err != nil {
+		return 0, err
+	}
+	count, _ := result.RowsAffected()
+	return int(count), nil
+}
+
 // ListUnverified returns domains that haven't been DNS verified yet
 func (s *DomainService) ListUnverified() ([]models.Domain, error) {
 	var domains []models.Domain
