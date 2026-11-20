@@ -1,7 +1,6 @@
 package services
 
 import (
-	"bufio"
 	"context"
 	"crypto/rand"
 	_ "embed"
@@ -265,6 +264,43 @@ func (s *ProvisionService) sendOutput(provisionID string, eventChan chan<- Provi
 	}
 }
 
+// streamWriter implements io.Writer and streams output lines via SSE
+type streamWriter struct {
+	service     *ProvisionService
+	provisionID string
+	eventChan   chan<- ProvisionEvent
+	buffer      []byte
+}
+
+func (w *streamWriter) Write(p []byte) (n int, err error) {
+	w.buffer = append(w.buffer, p...)
+
+	// Process complete lines
+	for {
+		idx := strings.Index(string(w.buffer), "\n")
+		if idx < 0 {
+			break
+		}
+		line := string(w.buffer[:idx])
+		w.buffer = w.buffer[idx+1:]
+		if line != "" {
+			w.service.sendOutput(w.provisionID, w.eventChan, line)
+		}
+	}
+	return len(p), nil
+}
+
+func (w *streamWriter) Flush() {
+	// Flush any remaining content in buffer
+	if len(w.buffer) > 0 {
+		line := string(w.buffer)
+		if line != "" {
+			w.service.sendOutput(w.provisionID, w.eventChan, line)
+		}
+		w.buffer = nil
+	}
+}
+
 // Step 1: Test SSH connection
 func (s *ProvisionService) executeStep1(client *ssh.Client, provisionID string, eventChan chan<- ProvisionEvent) error {
 	s.sendOutput(provisionID, eventChan, "Testing SSH connection...")
@@ -280,20 +316,27 @@ func (s *ProvisionService) executeStep2(client *ssh.Client, provisionID string, 
 	s.sendOutput(provisionID, eventChan, "Running base infrastructure setup...")
 	s.sendOutput(provisionID, eventChan, fmt.Sprintf("ACME_DOMAIN=%s", acmeDomain))
 
-	cmd := fmt.Sprintf("ACME_DOMAIN=%s bash -s", acmeDomain)
-	result, err := client.ExecWithStdin(cmd, deployVPSSetupScript)
+	// Upload script to server first, then execute with streaming
+	scriptPath := "/tmp/deploy-vps-setup.sh"
+	if err := client.WriteFile(scriptPath, []byte(deployVPSSetupScript), 0755); err != nil {
+		return fmt.Errorf("upload setup script: %w", err)
+	}
+
+	// Execute with streaming output
+	writer := &streamWriter{
+		service:     s,
+		provisionID: provisionID,
+		eventChan:   eventChan,
+	}
+	cmd := fmt.Sprintf("ACME_DOMAIN=%s bash %s 2>&1", acmeDomain, scriptPath)
+	err := client.ExecStream(cmd, writer, writer)
+	writer.Flush()
+
+	// Cleanup
+	client.Exec("rm -f " + scriptPath)
+
 	if err != nil {
 		return fmt.Errorf("deploy-vps-setup.sh failed: %w", err)
-	}
-
-	// Stream output lines
-	scanner := bufio.NewScanner(strings.NewReader(result.Output))
-	for scanner.Scan() {
-		s.sendOutput(provisionID, eventChan, scanner.Text())
-	}
-
-	if result.ExitCode != 0 {
-		return fmt.Errorf("deploy-vps-setup.sh exited with code %d", result.ExitCode)
 	}
 
 	s.sendOutput(provisionID, eventChan, "Base infrastructure setup complete")
@@ -341,20 +384,18 @@ func (s *ProvisionService) executeStep3(client *ssh.Client, provisionID string, 
 func (s *ProvisionService) executeStep4(client *ssh.Client, provisionID string, eventChan chan<- ProvisionEvent) error {
 	s.sendOutput(provisionID, eventChan, "Installing botection...")
 
-	cmd := "cd /var/www/antibot && SERVER_TYPE=templates bash packaging/deploy.sh"
-	result, err := client.Exec(cmd)
+	// Execute with streaming output
+	writer := &streamWriter{
+		service:     s,
+		provisionID: provisionID,
+		eventChan:   eventChan,
+	}
+	cmd := "cd /var/www/antibot && SERVER_TYPE=templates bash packaging/deploy.sh 2>&1"
+	err := client.ExecStream(cmd, writer, writer)
+	writer.Flush()
+
 	if err != nil {
 		return fmt.Errorf("botection deploy failed: %w", err)
-	}
-
-	// Stream output lines
-	scanner := bufio.NewScanner(strings.NewReader(result.Output))
-	for scanner.Scan() {
-		s.sendOutput(provisionID, eventChan, scanner.Text())
-	}
-
-	if result.ExitCode != 0 {
-		return fmt.Errorf("botection deploy exited with code %d", result.ExitCode)
 	}
 
 	s.sendOutput(provisionID, eventChan, "Botection installation complete")
