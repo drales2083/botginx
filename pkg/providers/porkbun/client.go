@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 )
@@ -159,8 +158,8 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 	return respBody, nil
 }
 
-// doGet makes a GET request with credentials as query parameters
-// Porkbun API requires auth even for GET-style endpoints
+// doGet makes a POST request with credentials in body (Porkbun requires POST for all endpoints)
+// The path may contain query params for filtering (e.g. ?tld=com&limit=100)
 func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 	c.mu.Lock()
 	elapsed := time.Since(c.lastRequest)
@@ -170,17 +169,20 @@ func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 	c.lastRequest = time.Now()
 	c.mu.Unlock()
 
-	// Add credentials as query parameters
-	separator := "?"
-	if strings.Contains(path, "?") {
-		separator = "&"
-	}
-	reqURL := c.baseURL + path + separator + "apikey=" + c.apiKey + "&secretapikey=" + c.secretKey
+	reqURL := c.baseURL + path
 
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	// Porkbun requires credentials in POST body for ALL endpoints
+	creds := Credentials{
+		APIKey:       c.apiKey,
+		SecretAPIKey: c.secretKey,
+	}
+	jsonBody, _ := json.Marshal(creds)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
