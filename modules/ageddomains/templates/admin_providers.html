@@ -5,7 +5,7 @@
             <h3 class="card-title">Domain Providers</h3>
             <div class="card-tools">
                 <button class="btn-primary btn-sm" onclick="showAddModal()">
-                    <i class="fa-solid fa-plus me-1"></i>Add Provider
+                    <i class="bi bi-plus-lg me-1"></i>Add Provider
                 </button>
             </div>
         </div>
@@ -37,13 +37,13 @@
                         <td>{{ if .IsActive }}<span class="badge bg-success">Active</span>{{ else }}<span class="badge bg-secondary">Inactive</span>{{ end }}</td>
                         <td>
                             <button class="btn btn-sm btn-outline-primary" onclick="editProvider('{{ .ID }}')">
-                                <i class="fa-solid fa-edit"></i>
+                                <i class="bi bi-pencil"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-info" onclick="testProvider('{{ .ID }}')">
-                                <i class="fa-solid fa-plug"></i>
+                                <i class="bi bi-plug"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-danger" onclick="deleteProvider('{{ .ID }}')">
-                                <i class="fa-solid fa-trash"></i>
+                                <i class="bi bi-trash"></i>
                             </button>
                         </td>
                     </tr>
@@ -97,7 +97,7 @@
                     </div>
 
                     <hr>
-                    <h6 class="text-muted mb-3"><i class="fa-solid fa-key me-1"></i>API Credentials</h6>
+                    <h6 class="text-muted mb-3"><i class="bi bi-key me-1"></i>API Credentials</h6>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -113,7 +113,7 @@
                     </div>
 
                     <hr>
-                    <h6 class="text-muted mb-3"><i class="fa-solid fa-filter me-1"></i>Inventory Filters</h6>
+                    <h6 class="text-muted mb-3"><i class="bi bi-funnel me-1"></i>Inventory Filters</h6>
 
                     <div class="row mb-3">
                         <div class="col-md-4">
@@ -143,7 +143,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="saveProvider()">
-                    <i class="fa-solid fa-save me-1"></i>Save Provider
+                    <i class="bi bi-floppy me-1"></i>Save Provider
                 </button>
             </div>
         </div>

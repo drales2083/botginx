@@ -5,7 +5,7 @@
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">
-                        <i class="fa-solid fa-globe me-2"></i>Domain Marketplace
+                        <i class="bi bi-globe me-2"></i>Domain Marketplace
                     </h3>
                     <div class="card-tools">
                         <span class="badge bg-primary me-2">
@@ -15,7 +15,7 @@
                             {{ end }}
                         </span>
                         <button id="btn-favorites" class="btn btn-sm btn-outline-warning" onclick="toggleFavoritesFilter()">
-                            <i class="fa-solid fa-star me-1"></i>
+                            <i class="bi bi-star-fill me-1"></i>
                             <span id="fav-count">{{ .FavoriteCount }}</span> Favorites
                         </button>
                     </div>
@@ -62,7 +62,7 @@
                                     <option value="name">Name</option>
                                 </select>
                                 <button id="sort-dir-btn" class="btn btn-outline-secondary" type="button" onclick="toggleSortDir()">
-                                    <i id="sort-dir-icon" class="fa-solid fa-arrow-down-wide-short"></i>
+                                    <i id="sort-dir-icon" class="bi bi-sort-down"></i>
                                 </button>
                             </div>
                         </div>
@@ -93,13 +93,13 @@
                     <!-- Filter Actions -->
                     <div class="d-flex gap-2 mb-3">
                         <button id="btn-filter" class="btn btn-primary btn-sm">
-                            <i class="fa-solid fa-filter me-1"></i>Apply Filters
+                            <i class="bi bi-funnel me-1"></i>Apply Filters
                         </button>
                         <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters">
-                            <i class="fa-solid fa-sliders me-1"></i>Advanced
+                            <i class="bi bi-sliders me-1"></i>Advanced
                         </button>
                         <button id="btn-clear" class="btn btn-outline-secondary btn-sm" onclick="clearFilters()">
-                            <i class="fa-solid fa-times me-1"></i>Clear
+                            <i class="bi bi-x-lg me-1"></i>Clear
                         </button>
                     </div>
 
@@ -162,7 +162,7 @@
             <div class="modal-footer" id="purchase-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="btn-confirm-purchase">
-                    <i class="fa-solid fa-credit-card me-1"></i>Confirm Purchase
+                    <i class="bi bi-credit-card me-1"></i>Confirm Purchase
                 </button>
             </div>
         </div>
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function toggleSortDir() {
     sortDir = sortDir === 'desc' ? 'asc' : 'desc';
     const icon = document.getElementById('sort-dir-icon');
-    icon.className = sortDir === 'desc' ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-wide-short';
+    icon.className = sortDir === 'desc' ? 'bi bi-sort-down' : 'bi bi-sort-up';
     loadDomains();
 }
 
@@ -227,7 +227,7 @@ function clearFilters() {
     document.getElementById('max-age').value = '';
     sortDir = 'desc';
     showFavoritesOnly = false;
-    document.getElementById('sort-dir-icon').className = 'fa-solid fa-arrow-down-wide-short';
+    document.getElementById('sort-dir-icon').className = 'bi bi-sort-down';
     document.getElementById('btn-favorites').classList.remove('btn-warning');
     document.getElementById('btn-favorites').classList.add('btn-outline-warning');
     currentPage = 1;
@@ -327,7 +327,7 @@ function renderDomains(domains) {
         <tr>
             <td>
                 <button class="btn btn-sm btn-link p-0" onclick="toggleFavorite('${d.id}', this)">
-                    <i class="fa-${d.isFavorite ? 'solid' : 'regular'} fa-star text-warning"></i>
+                    <i class="bi bi-star${d.isFavorite ? '-fill' : ''} text-warning"></i>
                 </button>
             </td>
             <td><strong>${d.name}</strong></td>
@@ -340,7 +340,7 @@ function renderDomains(domains) {
             </td>
             <td>
                 <button class="btn btn-sm btn-primary py-0 px-2" onclick="showPurchase('${d.id}', '${d.name}', ${d.priceCents})">
-                    <i class="fa-solid fa-cart-plus"></i> Buy
+                    <i class="bi bi-cart-plus"></i> Buy
                 </button>
             </td>
         </tr>
@@ -354,11 +354,11 @@ async function toggleFavorite(id, btn) {
 
         const icon = btn.querySelector('i');
         if (data.isFavorite) {
-            icon.classList.remove('fa-regular');
-            icon.classList.add('fa-solid');
+            icon.classList.remove('bi-star');
+            icon.classList.add('bi-star-fill');
         } else {
-            icon.classList.remove('fa-solid');
-            icon.classList.add('fa-regular');
+            icon.classList.remove('bi-star-fill');
+            icon.classList.add('bi-star');
         }
 
         // Update favorite count
@@ -460,7 +460,7 @@ function renderStatusSteps(events) {
     const container = document.getElementById('status-steps');
     container.innerHTML = events.map(e => `
         <div class="list-group-item d-flex align-items-center py-1">
-            <i class="fa-solid fa-check-circle text-success me-2"></i>
+            <i class="bi bi-check-circle-fill text-success me-2"></i>
             <span class="small">${e.message}</span>
             <small class="ms-auto text-muted">${new Date(e.at).toLocaleTimeString()}</small>
         </div>

@@ -5,14 +5,14 @@
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">
-                        <i class="fa-solid fa-clock-rotate-left me-2"></i>Aged Domains Admin
+                        <i class="bi bi-clock-history me-2"></i>Aged Domains Admin
                     </h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-4">
                             <div class="info-box">
-                                <span class="info-box-icon bg-primary"><i class="fa-solid fa-globe"></i></span>
+                                <span class="info-box-icon bg-primary"><i class="bi bi-globe"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text">Total Domains</span>
                                     <span class="info-box-number">{{ index .Stats "total" }}</span>
@@ -21,7 +21,7 @@
                         </div>
                         <div class="col-md-4">
                             <div class="info-box">
-                                <span class="info-box-icon bg-success"><i class="fa-solid fa-check"></i></span>
+                                <span class="info-box-icon bg-success"><i class="bi bi-check-lg"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text">Available</span>
                                     <span class="info-box-number">{{ index .Stats "available" }}</span>
@@ -30,7 +30,7 @@
                         </div>
                         <div class="col-md-4">
                             <div class="info-box">
-                                <span class="info-box-icon bg-info"><i class="fa-solid fa-shield"></i></span>
+                                <span class="info-box-icon bg-info"><i class="bi bi-shield-check"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text">Safety Checked</span>
                                     <span class="info-box-number">{{ index .Stats "clean" }}</span>
@@ -41,13 +41,13 @@
 
                     <div class="mt-4">
                         <a href="/admin/ageddomains/providers" class="btn btn-primary me-2">
-                            <i class="fa-solid fa-cog me-1"></i>Manage Providers
+                            <i class="bi bi-gear me-1"></i>Manage Providers
                         </a>
                         <a href="/admin/ageddomains/inventory" class="btn btn-secondary me-2">
-                            <i class="fa-solid fa-list me-1"></i>View Inventory
+                            <i class="bi bi-list-ul me-1"></i>View Inventory
                         </a>
                         <a href="/admin/ageddomains/purchases" class="btn btn-info">
-                            <i class="fa-solid fa-shopping-cart me-1"></i>View Purchases
+                            <i class="bi bi-cart me-1"></i>View Purchases
                         </a>
                     </div>
                 </div>
