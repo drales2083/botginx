@@ -4,7 +4,7 @@
         <div class="card-header">
             <h3 class="card-title">Domain Providers</h3>
             <div class="card-tools">
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#providerModal">
+                <button class="btn btn-primary btn-sm" onclick="showAddModal()">
                     <i class="fa-solid fa-plus me-1"></i>Add Provider
                 </button>
             </div>
@@ -14,32 +14,246 @@
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Display Name</th>
                         <th>Type</th>
                         <th>Markup</th>
+                        <th>Filters</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="providers-body">
                     {{ range .Providers }}
-                    <tr>
-                        <td>{{ .Name }}</td>
-                        <td>{{ .DisplayName }}</td>
-                        <td>{{ .ProviderType }}</td>
+                    <tr data-id="{{ .ID }}">
+                        <td><strong>{{ .DisplayName }}</strong><br><small class="text-muted">{{ .Name }}</small></td>
+                        <td><span class="badge bg-info">{{ .ProviderType }}</span></td>
                         <td>{{ .MarkupPercent }}%</td>
+                        <td>
+                            <small>
+                                {{ if gt .MinAgeYears 0 }}Age: {{ .MinAgeYears }}+ yrs<br>{{ end }}
+                                {{ if gt .MaxPriceCents 0 }}Max: ${{ divideInt .MaxPriceCents 100 }}<br>{{ end }}
+                                {{ if .AllowedTLDs }}TLDs: {{ .AllowedTLDs }}{{ end }}
+                            </small>
+                        </td>
                         <td>{{ if .IsActive }}<span class="badge bg-success">Active</span>{{ else }}<span class="badge bg-secondary">Inactive</span>{{ end }}</td>
                         <td>
-                            <button class="btn btn-sm btn-warning">Edit</button>
-                            <button class="btn btn-sm btn-info">Test</button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editProvider('{{ .ID }}')">
+                                <i class="fa-solid fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" onclick="testProvider('{{ .ID }}')">
+                                <i class="fa-solid fa-plug"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteProvider('{{ .ID }}')">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                     {{ else }}
-                    <tr><td colspan="6" class="text-center text-muted">No providers configured</td></tr>
+                    <tr id="empty-row"><td colspan="6" class="text-center text-muted">No providers configured. Add one to start fetching domains.</td></tr>
                     {{ end }}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<!-- Provider Modal -->
+<div class="modal fade" id="providerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">Add Provider</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="provider-form">
+                    <input type="hidden" id="provider-id">
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Provider Type</label>
+                            <select id="provider-type" class="form-select" required>
+                                <option value="porkbun">Porkbun (Closeout Domains)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Display Name</label>
+                            <input type="text" id="display-name" class="form-control" placeholder="e.g., Porkbun Closeouts" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Internal Name</label>
+                            <input type="text" id="provider-name" class="form-control" placeholder="e.g., porkbun-main" required>
+                            <small class="text-muted">Unique identifier, lowercase, no spaces</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <div class="form-check form-switch mt-2">
+                                <input type="checkbox" id="is-active" class="form-check-input" checked>
+                                <label class="form-check-label" for="is-active">Active</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="fa-solid fa-key me-1"></i>API Credentials</h6>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">API Key</label>
+                            <input type="password" id="api-key" class="form-control" placeholder="Enter API key">
+                            <small class="text-muted">Leave blank to keep existing (on edit)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">API Secret</label>
+                            <input type="password" id="api-secret" class="form-control" placeholder="Enter API secret">
+                            <small class="text-muted">Leave blank to keep existing (on edit)</small>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="fa-solid fa-filter me-1"></i>Inventory Filters</h6>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Markup %</label>
+                            <input type="number" id="markup-percent" class="form-control" value="0" min="0" max="100" step="0.1">
+                            <small class="text-muted">Added to provider price</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Min Age (years)</label>
+                            <input type="number" id="min-age" class="form-control" value="0" min="0">
+                            <small class="text-muted">0 = no minimum</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Max Price ($)</label>
+                            <input type="number" id="max-price" class="form-control" value="0" min="0" step="0.01">
+                            <small class="text-muted">0 = no limit</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Allowed TLDs</label>
+                        <input type="text" id="allowed-tlds" class="form-control" placeholder="com,net,org">
+                        <small class="text-muted">Comma-separated. Leave empty for all TLDs.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveProvider()">
+                    <i class="fa-solid fa-save me-1"></i>Save Provider
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let providerModal;
+let editingId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    providerModal = new bootstrap.Modal(document.getElementById('providerModal'));
+});
+
+function showAddModal() {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'Add Provider';
+    document.getElementById('provider-form').reset();
+    document.getElementById('is-active').checked = true;
+    providerModal.show();
+}
+
+function editProvider(id) {
+    editingId = id;
+    document.getElementById('modal-title').textContent = 'Edit Provider';
+
+    fetch(`/admin/ageddomains/api/providers`)
+        .then(r => r.json())
+        .then(providers => {
+            const p = providers.find(x => x.id === id);
+            if (!p) return;
+
+            document.getElementById('provider-id').value = p.id;
+            document.getElementById('provider-type').value = p.providerType || 'porkbun';
+            document.getElementById('display-name').value = p.displayName;
+            document.getElementById('provider-name').value = p.name;
+            document.getElementById('is-active').checked = p.isActive;
+            document.getElementById('markup-percent').value = p.markupPercent || 0;
+            document.getElementById('min-age').value = p.minAgeYears || 0;
+            document.getElementById('max-price').value = (p.maxPriceCents || 0) / 100;
+            document.getElementById('allowed-tlds').value = p.allowedTlds || '';
+            // Clear API fields - they're never returned from server
+            document.getElementById('api-key').value = '';
+            document.getElementById('api-secret').value = '';
+
+            providerModal.show();
+        });
+}
+
+function saveProvider() {
+    const data = {
+        name: document.getElementById('provider-name').value,
+        displayName: document.getElementById('display-name').value,
+        providerType: document.getElementById('provider-type').value,
+        apiKey: document.getElementById('api-key').value,
+        apiSecret: document.getElementById('api-secret').value,
+        isActive: document.getElementById('is-active').checked,
+        markupPercent: parseFloat(document.getElementById('markup-percent').value) || 0,
+        minAgeYears: parseInt(document.getElementById('min-age').value) || 0,
+        maxPriceCents: Math.round((parseFloat(document.getElementById('max-price').value) || 0) * 100),
+        allowedTlds: document.getElementById('allowed-tlds').value
+    };
+
+    const url = editingId
+        ? `/admin/ageddomains/api/providers/${editingId}`
+        : '/admin/ageddomains/api/providers';
+    const method = editingId ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => {
+        if (!r.ok) return r.json().then(e => Promise.reject(e));
+        return r.json();
+    })
+    .then(() => {
+        providerModal.hide();
+        toast(editingId ? 'Provider updated' : 'Provider created', 'success');
+        location.reload();
+    })
+    .catch(err => {
+        toast(err.error || 'Failed to save provider', 'error');
+    });
+}
+
+function testProvider(id) {
+    fetch(`/admin/ageddomains/api/providers/${id}/test`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                toast('Connection successful!', 'success');
+            } else {
+                toast('Connection failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+        })
+        .catch(() => toast('Test failed', 'error'));
+}
+
+function deleteProvider(id) {
+    if (!confirm('Delete this provider? This cannot be undone.')) return;
+
+    fetch(`/admin/ageddomains/api/providers/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(() => {
+            toast('Provider deleted', 'success');
+            location.reload();
+        })
+        .catch(() => toast('Delete failed', 'error'));
+}
+</script>
 {{ end }}

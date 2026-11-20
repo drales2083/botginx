@@ -170,14 +170,14 @@ func (m *Module) MenuItems() []module.MenuItem {
 		{
 			Section: module.MenuSectionUser,
 			Title:   "Domain Marketplace",
-			Icon:    "fa-solid fa-globe",
+			Icon:    "bi-globe",
 			Path:    "/user/ageddomains",
 			Order:   25,
 		},
 		{
 			Section: module.MenuSectionAdmin,
 			Title:   "Aged Domains",
-			Icon:    "fa-solid fa-clock-rotate-left",
+			Icon:    "bi-clock-history",
 			Path:    "/admin/ageddomains",
 			Order:   45,
 		},
