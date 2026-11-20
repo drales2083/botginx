@@ -127,30 +127,42 @@ func (b *BackgroundVerifier) setupSSL(domainID, domainName string) {
 
 	// For non-Cloudflare: generate SSL FIRST, then nginx config
 	if isWildcard {
-		// If acme-dns is configured and CNAME is verified, generate SSL automatically
-		if hasAcmeDns && domain.AcmeCnameVerified {
-			log.Printf("[domains] %s generating wildcard SSL via acme-dns", domainName)
-			if err := b.verifyService.GenerateWildcardSSLWithAcmeDNS(
-				domainName,
-				*domain.AcmeSubdomain,
-				*domain.AcmeUsername,
-				*domain.AcmePassword,
-			); err != nil {
-				log.Printf("[domains] wildcard SSL generation failed for %s: %v", domainName, err)
-				errStr := err.Error()
-				b.domainService.Update(domainID, models.UpdateDomainInput{SSLError: &errStr})
+		// If acme-dns is configured, check CNAME and generate SSL
+		if hasAcmeDns {
+			// If CNAME not verified yet, check it now
+			if !domain.AcmeCnameVerified && domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
+				if b.verifyService.CheckAcmeCnameRecord(domainName, *domain.AcmeFulldomain) {
+					log.Printf("[domains] %s CNAME verified via background check", domainName)
+					verified := true
+					b.domainService.Update(domainID, models.UpdateDomainInput{AcmeCnameVerified: &verified})
+					domain.AcmeCnameVerified = true
+				}
+			}
+
+			if domain.AcmeCnameVerified {
+				log.Printf("[domains] %s generating wildcard SSL via acme-dns", domainName)
+				if err := b.verifyService.GenerateWildcardSSLWithAcmeDNS(
+					domainName,
+					*domain.AcmeSubdomain,
+					*domain.AcmeUsername,
+					*domain.AcmePassword,
+				); err != nil {
+					log.Printf("[domains] wildcard SSL generation failed for %s: %v", domainName, err)
+					errStr := err.Error()
+					b.domainService.Update(domainID, models.UpdateDomainInput{SSLError: &errStr})
+					return
+				}
+				// SSL generated, now setup nginx and enable
+				if err := b.verifyService.SetupDomainNginx(domainName); err != nil {
+					log.Printf("[domains] nginx setup failed for %s: %v", domainName, err)
+					return
+				}
+				b.checkAndEnableSSL(domainID, domainName)
 				return
 			}
-			// SSL generated, now setup nginx and enable
-			if err := b.verifyService.SetupDomainNginx(domainName); err != nil {
-				log.Printf("[domains] nginx setup failed for %s: %v", domainName, err)
-				return
-			}
-			b.checkAndEnableSSL(domainID, domainName)
-			return
 		}
 
-		// No acme-dns or CNAME not verified - skip auto SSL
+		// No acme-dns or CNAME not verified yet - skip auto SSL
 		log.Printf("[domains] %s is wildcard - waiting for CNAME verification, skipping auto SSL", domainName)
 		return
 	}

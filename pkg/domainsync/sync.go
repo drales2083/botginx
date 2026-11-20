@@ -260,8 +260,10 @@ func (s *Service) syncDomain(domain Domain) error {
 			return fmt.Errorf("failed to generate SSL: %w", err)
 		}
 
-		// Mark SSL enabled
-		s.db.Exec(`UPDATE domains SET ssl_enabled = TRUE, updated_at = NOW() WHERE id = $1`, domain.ID)
+		// Mark SSL enabled (and CNAME verified if using acme-dns)
+		s.db.Exec(`UPDATE domains SET ssl_enabled = TRUE,
+			acme_cname_verified = CASE WHEN acme_fulldomain IS NOT NULL AND acme_fulldomain != '' THEN TRUE ELSE acme_cname_verified END,
+			updated_at = NOW() WHERE id = $1`, domain.ID)
 	}
 
 	// Step 4: Setup nginx config (must happen after SSL exists)
