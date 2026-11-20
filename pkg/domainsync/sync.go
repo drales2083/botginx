@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -236,7 +237,7 @@ func (s *Service) syncDomain(domain Domain) error {
 	}
 
 	// Check DNS records
-	dnsOK, missingRecords := s.checkDNSRecords(domain, server.IP)
+	dnsOK, missingRecords := s.checkDNSRecords(domain, *server)
 	if !dnsOK {
 		log.Printf("[DomainSync] Domain %s waiting for DNS: %v", domain.Name, missingRecords)
 		s.updateSyncStatus(domain.ID, SyncStatusDNSWaiting, "Missing: "+strings.Join(missingRecords, ", "))
@@ -617,30 +618,128 @@ func (s *Service) isCloudflare(domain string) bool {
 	return false
 }
 
+// ensureVerifyEndpoint ensures the /.well-known/domain-verify endpoint exists on the server
+func (s *Service) ensureVerifyEndpoint(server Server) error {
+	client := ssh.NewClient(ssh.Config{
+		Host:         server.IP,
+		Port:         server.Port,
+		User:         server.SSHUser,
+		Password:     server.Password,
+		TrustOnFirst: true,
+	})
+	defer client.Close()
+
+	if err := client.Connect(); err != nil {
+		return fmt.Errorf("SSH connect failed: %w", err)
+	}
+
+	// Check if the default nginx config has the domain-verify endpoint
+	checkCmd := `grep -q "domain-verify" /etc/nginx/sites-enabled/redirect-upstream.conf 2>/dev/null && echo "EXISTS" || echo "MISSING"`
+	result, err := client.Exec(checkCmd)
+	if err != nil || result == nil || strings.TrimSpace(result.Output) != "EXISTS" {
+		// Add the endpoint to the default nginx config
+		log.Printf("[DomainSync] Adding domain-verify endpoint to nginx")
+		addCmd := `cat >> /etc/nginx/sites-available/redirect-upstream.conf << 'EOF'
+
+# Domain verification endpoint for Cloudflare origin check
+location /.well-known/domain-verify {
+    default_type application/json;
+    return 200 '{"verified":true}';
+}
+EOF
+nginx -t && systemctl reload nginx`
+		if _, err := client.Exec(addCmd); err != nil {
+			return fmt.Errorf("failed to add domain-verify endpoint: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// verifyCloudflareOrigin checks if Cloudflare is correctly configured to send traffic to our server
+// by making an HTTP request through Cloudflare to our /.well-known/domain-verify endpoint
+func (s *Service) verifyCloudflareOrigin(domain string, server Server) bool {
+	baseDomain := domain
+	if strings.HasPrefix(baseDomain, "*.") {
+		baseDomain = baseDomain[2:]
+	}
+
+	// First ensure the verification endpoint exists on nginx
+	if err := s.ensureVerifyEndpoint(server); err != nil {
+		log.Printf("[DomainSync] Failed to ensure verify endpoint for %s: %v", baseDomain, err)
+		return false
+	}
+
+	// Try HTTP first (Cloudflare will upgrade to HTTPS if configured)
+	url := fmt.Sprintf("http://%s/.well-known/domain-verify", baseDomain)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Follow redirects (Cloudflare might redirect HTTP to HTTPS)
+			return nil
+		},
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		log.Printf("[DomainSync] Cloudflare origin check failed for %s: %v", baseDomain, err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	// Check if we got a successful response
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[DomainSync] Cloudflare origin check for %s returned status %d", baseDomain, resp.StatusCode)
+		return false
+	}
+
+	// Parse response - should be {"verified":true}
+	var result struct {
+		Verified bool `json:"verified"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("[DomainSync] Cloudflare origin check for %s: invalid response: %v", baseDomain, err)
+		return false
+	}
+
+	if result.Verified {
+		log.Printf("[DomainSync] Cloudflare origin verified for %s", baseDomain)
+		return true
+	}
+
+	log.Printf("[DomainSync] Cloudflare origin check for %s: verified=false", baseDomain)
+	return false
+}
+
 // checkDNSRecords verifies DNS records for the domain
-func (s *Service) checkDNSRecords(domain Domain, serverIP string) (bool, []string) {
+func (s *Service) checkDNSRecords(domain Domain, server Server) (bool, []string) {
 	var missing []string
 	baseDomain := domain.Name
 	if strings.HasPrefix(baseDomain, "*.") {
 		baseDomain = baseDomain[2:]
 	}
 
-	// Skip A record check for Cloudflare-proxied domains
-	// Cloudflare domains will have A records pointing to Cloudflare, not our server
+	// Check if domain is behind Cloudflare proxy
 	isCloudflare := s.isCloudflare(baseDomain)
 	if isCloudflare {
-		log.Printf("[DomainSync] Domain %s is behind Cloudflare, skipping A record check", baseDomain)
+		// For Cloudflare domains, verify origin is correctly configured
+		// by making HTTP request through Cloudflare to our server
+		log.Printf("[DomainSync] Domain %s is behind Cloudflare, verifying origin configuration", baseDomain)
+		if !s.verifyCloudflareOrigin(baseDomain, server) {
+			missing = append(missing, fmt.Sprintf("Cloudflare origin not configured (set A record to %s in Cloudflare dashboard, keep proxy enabled)", server.IP))
+		}
 	} else {
-		// Check A record for base domain
+		// For non-Cloudflare domains, check A records point to our server
 		aRecords, err := net.LookupHost(baseDomain)
-		if err != nil || !containsIP(aRecords, serverIP) {
-			missing = append(missing, fmt.Sprintf("A @ → %s", serverIP))
+		if err != nil || !containsIP(aRecords, server.IP) {
+			missing = append(missing, fmt.Sprintf("A @ → %s", server.IP))
 		}
 
 		// Check wildcard A record (test with a random subdomain)
 		wildcardRecords, err := net.LookupHost("sync-test." + baseDomain)
-		if err != nil || !containsIP(wildcardRecords, serverIP) {
-			missing = append(missing, fmt.Sprintf("A * → %s", serverIP))
+		if err != nil || !containsIP(wildcardRecords, server.IP) {
+			missing = append(missing, fmt.Sprintf("A * → %s", server.IP))
 		}
 	}
 
