@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +17,14 @@ import (
 	"github.com/botginx/botginx/modules/servers/models"
 	"github.com/botginx/botginx/pkg/ssh"
 	"github.com/jmoiron/sqlx"
+)
+
+// Regex patterns for parsing script progress markers
+var (
+	stepStartPattern      = regexp.MustCompile(`^\[STEP:(\d+):START\]\s*(.*)$`)
+	stepDonePattern       = regexp.MustCompile(`^\[STEP:(\d+):DONE\]$`)
+	scriptCompletePattern = regexp.MustCompile(`^\[SCRIPT:COMPLETE:(.+)\]$`)
+	scriptFailedPattern   = regexp.MustCompile(`^\[SCRIPT:FAILED:(.+)\]$`)
 )
 
 //go:embed scripts/deploy-vps-setup.sh
@@ -331,10 +341,15 @@ func (s *ProvisionService) sendOutput(provisionID string, line string) {
 }
 
 // streamWriter implements io.Writer and streams output lines to DB
+// It also parses progress markers from the script output
 type streamWriter struct {
-	service     *ProvisionService
-	provisionID string
-	buffer      []byte
+	service        *ProvisionService
+	provisionID    string
+	buffer         []byte
+	scriptName     string // tracks which script is running
+	scriptComplete bool   // set when [SCRIPT:COMPLETE:...] is seen
+	scriptFailed   bool   // set when [SCRIPT:FAILED:...] is seen
+	failReason     string // reason from [SCRIPT:FAILED:...]
 }
 
 func (w *streamWriter) Write(p []byte) (n int, err error) {
@@ -349,10 +364,56 @@ func (w *streamWriter) Write(p []byte) (n int, err error) {
 		line := string(w.buffer[:idx])
 		w.buffer = w.buffer[idx+1:]
 		if line != "" {
-			w.service.sendOutput(w.provisionID, line)
+			w.processLine(line)
 		}
 	}
 	return len(p), nil
+}
+
+// processLine handles a single line, parsing markers and forwarding output
+func (w *streamWriter) processLine(line string) {
+	// Check for script start marker
+	if strings.HasPrefix(line, "[SCRIPT:START:") {
+		w.scriptName = strings.TrimSuffix(strings.TrimPrefix(line, "[SCRIPT:START:"), "]")
+		w.service.sendOutput(w.provisionID, line)
+		return
+	}
+
+	// Check for step start marker: [STEP:N:START] description
+	if matches := stepStartPattern.FindStringSubmatch(line); matches != nil {
+		stepNum, _ := strconv.Atoi(matches[1])
+		stepName := strings.TrimSpace(matches[2])
+		// Update the provision step in DB (add 1 because Go steps start at 1)
+		w.service.UpdateStep(w.provisionID, stepNum+1, stepName)
+		w.service.sendOutput(w.provisionID, line)
+		return
+	}
+
+	// Check for step done marker: [STEP:N:DONE]
+	if matches := stepDonePattern.FindStringSubmatch(line); matches != nil {
+		w.service.sendOutput(w.provisionID, line)
+		return
+	}
+
+	// Check for script complete marker: [SCRIPT:COMPLETE:name]
+	if matches := scriptCompletePattern.FindStringSubmatch(line); matches != nil {
+		w.scriptComplete = true
+		w.service.sendOutput(w.provisionID, line)
+		log.Printf("[Provision] Script %s completed for provision %s", matches[1], w.provisionID)
+		return
+	}
+
+	// Check for script failed marker: [SCRIPT:FAILED:reason]
+	if matches := scriptFailedPattern.FindStringSubmatch(line); matches != nil {
+		w.scriptFailed = true
+		w.failReason = matches[1]
+		w.service.sendOutput(w.provisionID, line)
+		log.Printf("[Provision] Script failed for provision %s: %s", w.provisionID, w.failReason)
+		return
+	}
+
+	// Regular output line
+	w.service.sendOutput(w.provisionID, line)
 }
 
 func (w *streamWriter) Flush() {
@@ -360,7 +421,7 @@ func (w *streamWriter) Flush() {
 	if len(w.buffer) > 0 {
 		line := string(w.buffer)
 		if line != "" {
-			w.service.sendOutput(w.provisionID, line)
+			w.processLine(line)
 		}
 		w.buffer = nil
 	}
@@ -399,8 +460,18 @@ func (s *ProvisionService) executeStep2(client *ssh.Client, provisionID string, 
 	// Cleanup
 	client.Exec("rm -f " + scriptPath)
 
+	// Check script's own completion markers first
+	if writer.scriptFailed {
+		return fmt.Errorf("deploy-vps-setup.sh failed: %s", writer.failReason)
+	}
+
 	if err != nil {
 		return fmt.Errorf("deploy-vps-setup.sh failed: %w", err)
+	}
+
+	// Verify script reported completion
+	if !writer.scriptComplete {
+		return fmt.Errorf("deploy-vps-setup.sh did not complete (no completion marker)")
 	}
 
 	s.sendOutput(provisionID, "Base infrastructure setup complete")
