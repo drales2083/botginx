@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+export DEBIAN_FRONTEND=noninteractive
 
 # Botginx Deploy VPS Setup
 # Sets up a redirect links server with nginx (botection installed separately)
