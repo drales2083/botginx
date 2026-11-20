@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/botginx/botginx/modules/servers/models"
 	"github.com/botginx/botginx/modules/servers/services"
@@ -136,13 +137,27 @@ func (h *ProvisionHandler) APIStreamProvision(w http.ResponseWriter, r *http.Req
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	// Start provisioning in background if pending
-	if provision.Status == models.ProvisionStatusPending {
+	// Start provisioning in background if pending, or restart if stuck
+	shouldStart := provision.Status == models.ProvisionStatusPending
+
+	// Detect stuck provisions - running but started more than 10 minutes ago
+	if provision.Status == models.ProvisionStatusRunning && provision.StartedAt != nil {
+		stuckThreshold := time.Now().Add(-10 * time.Minute)
+		if provision.StartedAt.Before(stuckThreshold) {
+			log.Printf("[Provision] Detected stuck provision %s, restarting...", id)
+			// Reset to pending so it can restart
+			h.provisionService.SetStatus(id, models.ProvisionStatusPending)
+			h.provisionService.UpdateStep(id, 0, "")
+			shouldStart = true
+		}
+	}
+
+	if shouldStart {
 		go func() {
 			h.provisionService.RunProvision(ctx, id, eventChan)
 		}()
 	} else if provision.Status == models.ProvisionStatusRunning {
-		// Already running, just stream current state
+		// Actually running (not stuck), just stream current state
 		stepName := ""
 		if provision.StepName != nil {
 			stepName = *provision.StepName
