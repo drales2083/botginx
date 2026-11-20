@@ -37,6 +37,7 @@ type Module struct {
 	namesiloHandler *handlers.NameSiloHandler
 	godaddyService  *services.GoDaddyService
 	godaddyHandler  *handlers.GoDaddyHandler
+	porkbunService  *services.PorkbunService
 	background     *services.BackgroundVerifier
 }
 
@@ -67,6 +68,7 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.cloudflareHandler = handlers.NewCloudflareHandler(m.cloudflareService, deps.Templates)
 	m.godaddyService = services.NewGoDaddyService(deps.DB, m.service, verifyService)
 	m.godaddyHandler = handlers.NewGoDaddyHandler(m.godaddyService, deps.Templates)
+	m.porkbunService = services.NewPorkbunService(deps.DB, "", "") // Credentials set via admin config
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -316,6 +318,16 @@ func (m *Module) Service() *services.DomainService {
 	return m.service
 }
 
+// PorkbunService exposes the porkbun service to other modules (aged domains).
+func (m *Module) PorkbunService() *services.PorkbunService {
+	return m.porkbunService
+}
+
+// SetPorkbunCredentials updates the Porkbun API credentials from admin config
+func (m *Module) SetPorkbunCredentials(apiKey, apiSecret string) {
+	m.porkbunService.SetCredentials(apiKey, apiSecret)
+}
+
 // SetProxyService sets the proxy service for cPanel API calls
 func (m *Module) SetProxyService(ps *proxy.Service) {
 	m.cpanelService.SetProxyService(ps)
@@ -466,6 +478,29 @@ func (m *Module) reconfigureAll(serverIP string) map[string]interface{} {
 		}
 	}
 
+	// Reconfigure Porkbun domains (purchased from aged domains marketplace)
+	porkbunResults, err := m.porkbunService.ReconfigureAllDomains(context.Background(), serverIP)
+	if err != nil {
+		response["porkbun"] = map[string]interface{}{
+			"error": err.Error(),
+		}
+	} else {
+		pbSuccess, pbFail := 0, 0
+		for _, r := range porkbunResults {
+			if r.Success {
+				pbSuccess++
+			} else {
+				pbFail++
+			}
+		}
+		response["porkbun"] = sourceResults{
+			Total:   len(porkbunResults),
+			Success: pbSuccess,
+			Fail:    pbFail,
+			Results: porkbunResults,
+		}
+	}
+
 	return response
 }
 
@@ -475,7 +510,7 @@ func (m *Module) reconfigureAll(serverIP string) map[string]interface{} {
 func (m *Module) ReconfigureAllDomainsWithIP(serverIP string) error {
 	response := m.reconfigureAll(serverIP)
 	var failed []string
-	for _, k := range []string{"namesilo", "cpanel", "cloudflare", "godaddy"} {
+	for _, k := range []string{"namesilo", "cpanel", "cloudflare", "godaddy", "porkbun"} {
 		if e, ok := response[k].(map[string]interface{}); ok {
 			if msg, ok := e["error"].(string); ok {
 				failed = append(failed, k+": "+msg)

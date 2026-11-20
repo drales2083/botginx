@@ -2,17 +2,24 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 )
 
+// AlertNotifier interface for sending admin alerts
+type AlertNotifier interface {
+	SendAdminAlert(message string) error
+}
+
 type BackgroundJobs struct {
 	db               *sqlx.DB
 	inventoryService *InventoryService
 	balanceService   *BalanceService
 	providerRegistry *ProviderRegistry
+	alertNotifier    AlertNotifier
 	stopCh           chan struct{}
 }
 
@@ -24,6 +31,11 @@ func NewBackgroundJobs(db *sqlx.DB, is *InventoryService, bs *BalanceService, pr
 		providerRegistry: pr,
 		stopCh:           make(chan struct{}),
 	}
+}
+
+// SetAlertNotifier sets the notifier for admin alerts
+func (b *BackgroundJobs) SetAlertNotifier(n AlertNotifier) {
+	b.alertNotifier = n
 }
 
 func (b *BackgroundJobs) Start() {
@@ -152,8 +164,15 @@ func (b *BackgroundJobs) checkStalePurchases() {
 	}
 
 	for _, p := range stale {
-		log.Printf("[WARNING] Stale purchase detected: %s domain=%s (status: %s)", p.ID, p.Domain, p.Status)
-		// TODO: Send alert via telegram or admin notification system
+		msg := fmt.Sprintf("⚠️ Stale purchase detected: %s\nDomain: %s\nStatus: %s\nStuck for >30 minutes", p.ID[:8], p.Domain, p.Status)
+		log.Printf("[WARNING] %s", msg)
+
+		// Send alert via telegram if configured
+		if b.alertNotifier != nil {
+			if err := b.alertNotifier.SendAdminAlert(msg); err != nil {
+				log.Printf("[ageddomains] Failed to send alert: %v", err)
+			}
+		}
 	}
 }
 

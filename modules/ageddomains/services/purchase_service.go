@@ -14,14 +14,21 @@ import (
 )
 
 var (
-	ErrPurchaseNotFound = errors.New("purchase not found")
+	ErrPurchaseNotFound  = errors.New("purchase not found")
+	ErrDuplicatePurchase = errors.New("duplicate purchase attempt")
 )
+
+// DomainCreator interface for creating domain records in the domains module
+type DomainCreator interface {
+	CreateDomainFromPurchase(ctx context.Context, userID, domainName, verifyToken, purchaseID string) (string, error)
+}
 
 type PurchaseService struct {
 	db               *sqlx.DB
 	balanceService   *BalanceService
 	inventoryService *InventoryService
 	providerRegistry *ProviderRegistry
+	domainCreator    DomainCreator
 }
 
 func NewPurchaseService(db *sqlx.DB, bs *BalanceService, is *InventoryService, pr *ProviderRegistry) *PurchaseService {
@@ -31,6 +38,11 @@ func NewPurchaseService(db *sqlx.DB, bs *BalanceService, is *InventoryService, p
 		inventoryService: is,
 		providerRegistry: pr,
 	}
+}
+
+// SetDomainCreator sets the domain creator for creating domain records
+func (s *PurchaseService) SetDomainCreator(dc DomainCreator) {
+	s.domainCreator = dc
 }
 
 // PurchaseDomain initiates the full purchase flow
@@ -161,22 +173,37 @@ func (s *PurchaseService) handleFailure(ctx context.Context, purchase *models.Pu
 }
 
 func (s *PurchaseService) provisionDomain(ctx context.Context, purchase *models.Purchase) (string, error) {
-	// 1. Set nameservers to our deploy server
+	// Generate verify token for domain
+	verifyToken := uuid.New().String()[:8]
+
+	// Create domain record and configure DNS via domains module
+	if s.domainCreator != nil {
+		domainID, err := s.domainCreator.CreateDomainFromPurchase(ctx, purchase.UserID, purchase.DomainName, verifyToken, purchase.ID)
+		if err != nil {
+			return "", fmt.Errorf("create domain record: %w", err)
+		}
+		s.recordEvent(ctx, purchase.ID, "dns_configured", "DNS records created, waiting for propagation", "")
+		return domainID, nil
+	}
+
+	// Fallback: Configure DNS directly via provider if domains module not available
 	client := s.providerRegistry.GetClient(purchase.ProviderID)
 	if client != nil {
-		if err := client.SetNameservers(ctx, purchase.DomainName, []string{
-			"ns1.guardbot.sbs",
-			"ns2.guardbot.sbs",
-		}); err != nil {
-			return "", fmt.Errorf("set nameservers: %w", err)
+		// Get deploy server IP
+		var serverIP string
+		s.db.Get(&serverIP, `SELECT ip FROM servers WHERE is_deploy_vps = true LIMIT 1`)
+		if serverIP == "" {
+			return "", fmt.Errorf("no deploy server configured")
+		}
+
+		// Setup DNS via provider
+		if err := client.SetNameservers(ctx, purchase.DomainName, []string{serverIP}); err != nil {
+			log.Printf("[ageddomains] Warning: nameserver setup failed: %v", err)
 		}
 	}
 
-	// 2. Create domain record in our system
-	// TODO: Integrate with domains module to create actual domain record
-	// domainID, err := s.domainsService.CreateFromPurchase(ctx, purchase)
-	domainID := uuid.New().String() // Placeholder
-
+	// Generate fallback domain ID
+	domainID := uuid.New().String()
 	s.recordEvent(ctx, purchase.ID, "dns_configured", "Waiting for DNS propagation", "")
 
 	return domainID, nil

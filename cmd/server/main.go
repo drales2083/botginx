@@ -337,7 +337,8 @@ func main() {
 	registry.Register(webhooks.New())    // Webhooks module
 	registry.Register(hostingModule)     // Bullet Proof Hosting module
 	registry.Register(marketplaceModule)    // Domain marketplace (admin sells owned domains)
-	registry.Register(ageddomains.New())    // Aged Domains marketplace (purchase from external providers)
+	agedDomainsModule := ageddomains.New()
+	registry.Register(agedDomainsModule)    // Aged Domains marketplace (purchase from external providers)
 	registry.Register(paymentsModule)       // Crypto payments
 	registry.Register(promocodesModule)  // Promo codes for subscriptions
 	registry.Register(help.New())        // Help/FAQ module
@@ -449,6 +450,7 @@ func main() {
 	telegramModule.Handler.SetUserNotifier(notificationSvc)      // User notifications when admin replies via Telegram
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
 	serversModule.SetOnServerIPChange(domainsModule.ReconfigureAllDomainsWithIP) // Auto DNS reconfigure on deploy IP change
+	agedDomainsModule.SetDomainCreator(domainsModule.PorkbunService()) // Aged domains creates domain records via Porkbun
 
 	// QR codes needs redirect links list
 	qrcodesModule.SetLinkLister(func(userID string) ([]qrcodeshandlers.RedirectLink, error) {

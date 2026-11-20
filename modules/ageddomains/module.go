@@ -1,6 +1,7 @@
 package ageddomains
 
 import (
+	"context"
 	"embed"
 	"io/fs"
 	"log"
@@ -61,6 +62,16 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 	log.Printf("[ageddomains] Module initialized")
 	return nil
+}
+
+// DomainCreator interface for creating domain records
+type DomainCreator interface {
+	CreateDomainFromPurchase(ctx context.Context, userID, domainName, verifyToken, purchaseID string) (string, error)
+}
+
+// SetDomainCreator sets the domain creator (from domains module)
+func (m *Module) SetDomainCreator(dc DomainCreator) {
+	m.purchaseService.SetDomainCreator(dc)
 }
 
 func (m *Module) Migrate() error {
