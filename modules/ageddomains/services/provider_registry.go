@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -233,7 +234,7 @@ func (a *PorkbunAdapter) TestConnection(ctx context.Context) error {
 func (r *ProviderRegistry) TestProvider(ctx context.Context, id string) error {
 	client := r.GetClient(id)
 	if client == nil {
-		return nil // No client registered yet
+		return fmt.Errorf("no client registered for provider - restart server to initialize")
 	}
 	return client.TestConnection(ctx)
 }
