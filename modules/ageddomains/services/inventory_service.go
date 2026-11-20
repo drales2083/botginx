@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -36,55 +37,151 @@ func NewInventoryService(db *sqlx.DB, registry *ProviderRegistry) *InventoryServ
 	}
 }
 
-// ListAvailable returns available domains with optional filters
+// ListAvailable returns available domains with optional filters (legacy, use ListWithFilters)
 func (s *InventoryService) ListAvailable(ctx context.Context, tld string, maxPrice int, category string, page, perPage int) ([]models.DomainInventory, int, error) {
-	if perPage <= 0 {
-		perPage = 25
+	filters := models.ListFilters{
+		TLD:      tld,
+		MaxPrice: maxPrice,
+		Category: category,
+		Page:     page,
+		PerPage:  perPage,
 	}
-	if page <= 0 {
-		page = 1
-	}
-	offset := (page - 1) * perPage
+	return s.ListWithFilters(ctx, filters, "")
+}
 
-	// Build query with filters
-	query := `SELECT * FROM domain_inventory WHERE is_available = true`
-	countQuery := `SELECT COUNT(*) FROM domain_inventory WHERE is_available = true`
+// ListWithFilters returns available domains with advanced filtering, sorting, and favorites
+func (s *InventoryService) ListWithFilters(ctx context.Context, filters models.ListFilters, userID string) ([]models.DomainInventory, int, error) {
+	if filters.PerPage <= 0 {
+		filters.PerPage = 25
+	}
+	if filters.Page <= 0 {
+		filters.Page = 1
+	}
+	offset := (filters.Page - 1) * filters.PerPage
+
+	// Build base query
+	baseWhere := `is_available = true`
 	args := []interface{}{}
 	argNum := 1
 
-	if tld != "" {
-		query += ` AND tld = $` + string(rune('0'+argNum))
-		countQuery += ` AND tld = $` + string(rune('0'+argNum))
-		args = append(args, tld)
-		argNum++
-	}
-	if maxPrice > 0 {
-		query += ` AND sale_price <= $` + string(rune('0'+argNum))
-		countQuery += ` AND sale_price <= $` + string(rune('0'+argNum))
-		args = append(args, maxPrice)
-		argNum++
-	}
-	if category != "" {
-		query += ` AND category = $` + string(rune('0'+argNum))
-		countQuery += ` AND category = $` + string(rune('0'+argNum))
-		args = append(args, category)
+	// TLD filter
+	if filters.TLD != "" {
+		baseWhere += fmt.Sprintf(` AND tld = $%d`, argNum)
+		args = append(args, filters.TLD)
 		argNum++
 	}
 
-	// Get total count
+	// Price range
+	if filters.MinPrice > 0 {
+		baseWhere += fmt.Sprintf(` AND sale_price >= $%d`, argNum)
+		args = append(args, filters.MinPrice)
+		argNum++
+	}
+	if filters.MaxPrice > 0 {
+		baseWhere += fmt.Sprintf(` AND sale_price <= $%d`, argNum)
+		args = append(args, filters.MaxPrice)
+		argNum++
+	}
+
+	// Age range
+	if filters.MinAge > 0 {
+		baseWhere += fmt.Sprintf(` AND age_years >= $%d`, argNum)
+		args = append(args, filters.MinAge)
+		argNum++
+	}
+	if filters.MaxAge > 0 {
+		baseWhere += fmt.Sprintf(` AND age_years <= $%d`, argNum)
+		args = append(args, filters.MaxAge)
+		argNum++
+	}
+
+	// Category
+	if filters.Category != "" {
+		baseWhere += fmt.Sprintf(` AND category = $%d`, argNum)
+		args = append(args, filters.Category)
+		argNum++
+	}
+
+	// Safety status
+	if filters.SafetyStatus != "" && filters.SafetyStatus != "all" {
+		baseWhere += fmt.Sprintf(` AND safety_status = $%d`, argNum)
+		args = append(args, filters.SafetyStatus)
+		argNum++
+	}
+
+	// Domain name search
+	if filters.Search != "" {
+		baseWhere += fmt.Sprintf(` AND domain_name ILIKE $%d`, argNum)
+		args = append(args, "%"+filters.Search+"%")
+		argNum++
+	}
+
+	// Favorites only filter
+	if filters.FavoritesOnly && userID != "" {
+		baseWhere += fmt.Sprintf(` AND id IN (SELECT inventory_id FROM aged_domain_favorites WHERE user_id = $%d)`, argNum)
+		args = append(args, userID)
+		argNum++
+	}
+
+	// Count query
+	countQuery := `SELECT COUNT(*) FROM domain_inventory WHERE ` + baseWhere
 	var total int
 	err := s.db.GetContext(ctx, &total, countQuery, args...)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Add ordering and pagination
-	query += ` ORDER BY age_years DESC NULLS LAST, sale_price ASC LIMIT $` + string(rune('0'+argNum)) + ` OFFSET $` + string(rune('0'+argNum+1))
-	args = append(args, perPage, offset)
+	// Build ORDER BY clause
+	orderBy := s.buildOrderClause(filters.SortBy, filters.SortDir)
+
+	// Main query with pagination
+	query := fmt.Sprintf(`SELECT * FROM domain_inventory WHERE %s %s LIMIT $%d OFFSET $%d`,
+		baseWhere, orderBy, argNum, argNum+1)
+	args = append(args, filters.PerPage, offset)
 
 	var domains []models.DomainInventory
 	err = s.db.SelectContext(ctx, &domains, query, args...)
 	return domains, total, err
+}
+
+// buildOrderClause returns the ORDER BY clause based on sort options
+func (s *InventoryService) buildOrderClause(sortBy, sortDir string) string {
+	// Default direction
+	if sortDir != models.SortAsc && sortDir != models.SortDesc {
+		sortDir = models.SortDesc
+	}
+
+	switch sortBy {
+	case models.SortByPrice:
+		if sortDir == models.SortAsc {
+			return `ORDER BY sale_price ASC`
+		}
+		return `ORDER BY sale_price DESC`
+	case models.SortByAge:
+		if sortDir == models.SortAsc {
+			return `ORDER BY age_years ASC NULLS LAST`
+		}
+		return `ORDER BY age_years DESC NULLS LAST`
+	case models.SortByName:
+		if sortDir == models.SortAsc {
+			return `ORDER BY domain_name ASC`
+		}
+		return `ORDER BY domain_name DESC`
+	default:
+		// Default: oldest first, then cheapest
+		return `ORDER BY age_years DESC NULLS LAST, sale_price ASC`
+	}
+}
+
+// GetAvailableTLDs returns distinct TLDs in inventory for filter dropdown
+func (s *InventoryService) GetAvailableTLDs(ctx context.Context) ([]string, error) {
+	var tlds []string
+	err := s.db.SelectContext(ctx, &tlds, `
+		SELECT DISTINCT tld FROM domain_inventory
+		WHERE is_available = true
+		ORDER BY tld
+	`)
+	return tlds, err
 }
 
 // Get returns a domain by ID

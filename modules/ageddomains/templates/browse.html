@@ -8,48 +8,112 @@
                         <i class="fa-solid fa-globe me-2"></i>Domain Marketplace
                     </h3>
                     <div class="card-tools">
-                        <span class="badge bg-primary">
+                        <span class="badge bg-primary me-2">
                             Balance: ${{ printf "%.2f" (divideInt .Balance.Available 100) }} available
                             {{ if gt .Balance.Locked 0 }}
                             <span class="text-warning">(${{ printf "%.2f" (divideInt .Balance.Locked 100) }} locked)</span>
                             {{ end }}
                         </span>
+                        <button id="btn-favorites" class="btn btn-sm btn-outline-warning" onclick="toggleFavoritesFilter()">
+                            <i class="fa-solid fa-star me-1"></i>
+                            <span id="fav-count">{{ .FavoriteCount }}</span> Favorites
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Filters -->
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <select id="tld-filter" class="form-select">
+                    <!-- Filters Row 1: Basic -->
+                    <div class="row mb-2">
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted">TLD</label>
+                            <select id="tld-filter" class="form-select form-select-sm">
                                 <option value="">All TLDs</option>
-                                <option value=".com">.com</option>
-                                <option value=".net">.net</option>
-                                <option value=".org">.org</option>
-                                <option value=".io">.io</option>
+                                {{ range .AvailableTLDs }}
+                                <option value="{{ . }}">{{ . }}</option>
+                                {{ end }}
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <input type="number" id="max-price" class="form-control" placeholder="Max price ($)">
-                        </div>
-                        <div class="col-md-3">
-                            <select id="category-filter" class="form-select">
-                                <option value="">All Categories</option>
-                                <option value="aged">Aged Domains</option>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted">Category</label>
+                            <select id="category-filter" class="form-select form-select-sm">
+                                <option value="">All</option>
+                                <option value="aged">Aged</option>
                                 <option value="premium">Premium</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <button id="btn-filter" class="btn btn-primary w-100">
-                                <i class="fa-solid fa-filter me-1"></i>Filter
-                            </button>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted">Safety</label>
+                            <select id="safety-filter" class="form-select form-select-sm">
+                                <option value="">All</option>
+                                <option value="clean">Clean Only</option>
+                                <option value="unchecked">Unchecked</option>
+                            </select>
                         </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Search</label>
+                            <input type="text" id="search-filter" class="form-control form-control-sm" placeholder="Domain name...">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Sort By</label>
+                            <div class="input-group input-group-sm">
+                                <select id="sort-by" class="form-select">
+                                    <option value="">Age (Default)</option>
+                                    <option value="price">Price</option>
+                                    <option value="age">Age</option>
+                                    <option value="name">Name</option>
+                                </select>
+                                <button id="sort-dir-btn" class="btn btn-outline-secondary" type="button" onclick="toggleSortDir()">
+                                    <i id="sort-dir-icon" class="fa-solid fa-arrow-down-wide-short"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters Row 2: Advanced (collapsible) -->
+                    <div class="collapse mb-3" id="advancedFilters">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">Price Range ($)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" id="min-price" class="form-control" placeholder="Min">
+                                    <span class="input-group-text">-</span>
+                                    <input type="number" id="max-price" class="form-control" placeholder="Max">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">Age Range (years)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" id="min-age" class="form-control" placeholder="Min">
+                                    <span class="input-group-text">-</span>
+                                    <input type="number" id="max-age" class="form-control" placeholder="Max">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Actions -->
+                    <div class="d-flex gap-2 mb-3">
+                        <button id="btn-filter" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-filter me-1"></i>Apply Filters
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters">
+                            <i class="fa-solid fa-sliders me-1"></i>Advanced
+                        </button>
+                        <button id="btn-clear" class="btn btn-outline-secondary btn-sm" onclick="clearFilters()">
+                            <i class="fa-solid fa-times me-1"></i>Clear
+                        </button>
+                    </div>
+
+                    <!-- Results info -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted" id="results-info">Loading...</small>
                     </div>
 
                     <!-- Domains Table -->
                     <div class="table-responsive">
-                        <table id="domains-table" class="table table-hover">
+                        <table id="domains-table" class="table table-hover table-sm">
                             <thead>
                                 <tr>
+                                    <th style="width: 30px"></th>
                                     <th>Domain</th>
                                     <th>Age</th>
                                     <th>Price</th>
@@ -59,7 +123,7 @@
                             </thead>
                             <tbody id="domains-body">
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted">Loading domains...</td>
+                                    <td colspan="6" class="text-center text-muted">Loading domains...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -108,6 +172,8 @@
 <script>
 let currentPage = 1;
 let selectedDomain = null;
+let sortDir = 'desc';
+let showFavoritesOnly = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     loadDomains();
@@ -118,60 +184,202 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('btn-confirm-purchase').addEventListener('click', confirmPurchase);
+
+    // Enter key on search
+    document.getElementById('search-filter').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            currentPage = 1;
+            loadDomains();
+        }
+    });
 });
 
-async function loadDomains() {
-    const tld = document.getElementById('tld-filter').value;
-    const maxPrice = document.getElementById('max-price').value;
-    const category = document.getElementById('category-filter').value;
+function toggleSortDir() {
+    sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    const icon = document.getElementById('sort-dir-icon');
+    icon.className = sortDir === 'desc' ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-wide-short';
+    loadDomains();
+}
 
+function toggleFavoritesFilter() {
+    showFavoritesOnly = !showFavoritesOnly;
+    const btn = document.getElementById('btn-favorites');
+    if (showFavoritesOnly) {
+        btn.classList.remove('btn-outline-warning');
+        btn.classList.add('btn-warning');
+    } else {
+        btn.classList.remove('btn-warning');
+        btn.classList.add('btn-outline-warning');
+    }
+    currentPage = 1;
+    loadDomains();
+}
+
+function clearFilters() {
+    document.getElementById('tld-filter').value = '';
+    document.getElementById('category-filter').value = '';
+    document.getElementById('safety-filter').value = '';
+    document.getElementById('search-filter').value = '';
+    document.getElementById('sort-by').value = '';
+    document.getElementById('min-price').value = '';
+    document.getElementById('max-price').value = '';
+    document.getElementById('min-age').value = '';
+    document.getElementById('max-age').value = '';
+    sortDir = 'desc';
+    showFavoritesOnly = false;
+    document.getElementById('sort-dir-icon').className = 'fa-solid fa-arrow-down-wide-short';
+    document.getElementById('btn-favorites').classList.remove('btn-warning');
+    document.getElementById('btn-favorites').classList.add('btn-outline-warning');
+    currentPage = 1;
+    loadDomains();
+}
+
+async function loadDomains() {
     const params = new URLSearchParams();
+
+    const tld = document.getElementById('tld-filter').value;
+    const category = document.getElementById('category-filter').value;
+    const safety = document.getElementById('safety-filter').value;
+    const search = document.getElementById('search-filter').value;
+    const sortBy = document.getElementById('sort-by').value;
+    const minPrice = document.getElementById('min-price').value;
+    const maxPrice = document.getElementById('max-price').value;
+    const minAge = document.getElementById('min-age').value;
+    const maxAge = document.getElementById('max-age').value;
+
     if (tld) params.set('tld', tld);
-    if (maxPrice) params.set('max_price', maxPrice * 100);
     if (category) params.set('category', category);
+    if (safety) params.set('safety', safety);
+    if (search) params.set('search', search);
+    if (sortBy) params.set('sort_by', sortBy);
+    params.set('sort_dir', sortDir);
+    if (minPrice) params.set('min_price', minPrice * 100);
+    if (maxPrice) params.set('max_price', maxPrice * 100);
+    if (minAge) params.set('min_age', minAge);
+    if (maxAge) params.set('max_age', maxAge);
+    if (showFavoritesOnly) params.set('favorites', 'true');
     params.set('page', currentPage);
 
     try {
         const resp = await fetch('/user/ageddomains/api/domains?' + params);
         const data = await resp.json();
         renderDomains(data.domains || []);
+        updateResultsInfo(data.total, data.page, data.perPage);
+        renderPagination(data.total, data.perPage);
     } catch (err) {
         console.error('Failed to load domains:', err);
     }
+}
+
+function updateResultsInfo(total, page, perPage) {
+    const start = (page - 1) * perPage + 1;
+    const end = Math.min(page * perPage, total);
+    document.getElementById('results-info').textContent =
+        total > 0 ? `Showing ${start}-${end} of ${total} domains` : 'No domains found';
+}
+
+function renderPagination(total, perPage) {
+    const totalPages = Math.ceil(total / perPage);
+    const container = document.getElementById('pagination');
+
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '<nav><ul class="pagination pagination-sm mb-0">';
+
+    // Previous
+    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="goToPage(${currentPage - 1}); return false;">Prev</a>
+    </li>`;
+
+    // Page numbers
+    for (let i = 1; i <= totalPages && i <= 5; i++) {
+        html += `<li class="page-item ${currentPage === i ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="goToPage(${i}); return false;">${i}</a>
+        </li>`;
+    }
+
+    // Next
+    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="goToPage(${currentPage + 1}); return false;">Next</a>
+    </li>`;
+
+    html += '</ul></nav>';
+    container.innerHTML = html;
+}
+
+function goToPage(page) {
+    currentPage = page;
+    loadDomains();
 }
 
 function renderDomains(domains) {
     const tbody = document.getElementById('domains-body');
 
     if (!domains.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No domains available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No domains available</td></tr>';
         return;
     }
 
     tbody.innerHTML = domains.map(d => `
         <tr>
+            <td>
+                <button class="btn btn-sm btn-link p-0" onclick="toggleFavorite('${d.id}', this)">
+                    <i class="fa-${d.isFavorite ? 'solid' : 'regular'} fa-star text-warning"></i>
+                </button>
+            </td>
             <td><strong>${d.name}</strong></td>
-            <td>${d.ageYears ? d.ageYears + ' years' : '-'}</td>
+            <td>${d.ageYears ? d.ageYears + 'y' : '-'}</td>
             <td>$${(d.priceCents / 100).toFixed(2)}</td>
             <td>
                 ${d.safetyStatus === 'clean' ? '<span class="badge bg-success">Safe</span>' :
                   d.safetyStatus === 'flagged' ? '<span class="badge bg-danger">Risky</span>' :
-                  `<button class="btn btn-sm btn-outline-secondary" onclick="checkSafety('${d.id}')">Check</button>`}
+                  `<button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="checkSafety('${d.id}')">Check</button>`}
             </td>
             <td>
-                <button class="btn btn-sm btn-primary" onclick="showPurchase('${d.id}', '${d.name}', ${d.priceCents})">
-                    <i class="fa-solid fa-cart-plus me-1"></i>Buy
+                <button class="btn btn-sm btn-primary py-0 px-2" onclick="showPurchase('${d.id}', '${d.name}', ${d.priceCents})">
+                    <i class="fa-solid fa-cart-plus"></i> Buy
                 </button>
             </td>
         </tr>
     `).join('');
 }
 
+async function toggleFavorite(id, btn) {
+    try {
+        const resp = await fetch(`/user/ageddomains/api/domains/${id}/favorite`, { method: 'POST' });
+        const data = await resp.json();
+
+        const icon = btn.querySelector('i');
+        if (data.isFavorite) {
+            icon.classList.remove('fa-regular');
+            icon.classList.add('fa-solid');
+        } else {
+            icon.classList.remove('fa-solid');
+            icon.classList.add('fa-regular');
+        }
+
+        // Update favorite count
+        const countEl = document.getElementById('fav-count');
+        let count = parseInt(countEl.textContent);
+        countEl.textContent = data.isFavorite ? count + 1 : count - 1;
+
+        // If showing favorites only and we unfavorited, reload
+        if (showFavoritesOnly && !data.isFavorite) {
+            loadDomains();
+        }
+    } catch (err) {
+        toast('Failed to update favorite', 'error');
+    }
+}
+
 async function checkSafety(id) {
     try {
         const resp = await fetch(`/user/ageddomains/api/domains/${id}/check`);
         const data = await resp.json();
-        loadDomains(); // Refresh to show new status
+        loadDomains();
     } catch (err) {
         toast('Failed to check safety', 'error');
     }
@@ -210,7 +418,6 @@ async function confirmPurchase() {
             return;
         }
 
-        // Poll for status
         pollStatus(data.purchaseId);
     } catch (err) {
         document.getElementById('status-message').textContent = 'Purchase failed: ' + err.message;
@@ -252,9 +459,9 @@ function getStatusMessage(status) {
 function renderStatusSteps(events) {
     const container = document.getElementById('status-steps');
     container.innerHTML = events.map(e => `
-        <div class="list-group-item d-flex align-items-center">
+        <div class="list-group-item d-flex align-items-center py-1">
             <i class="fa-solid fa-check-circle text-success me-2"></i>
-            <span>${e.message}</span>
+            <span class="small">${e.message}</span>
             <small class="ms-auto text-muted">${new Date(e.at).toLocaleTimeString()}</small>
         </div>
     `).join('');

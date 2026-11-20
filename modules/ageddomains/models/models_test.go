@@ -256,6 +256,109 @@ func TestSafetyCheckResult(t *testing.T) {
 	}
 }
 
+func TestSortConstants(t *testing.T) {
+	if SortByPrice != "price" {
+		t.Errorf("SortByPrice = %q, want %q", SortByPrice, "price")
+	}
+	if SortByAge != "age" {
+		t.Errorf("SortByAge = %q, want %q", SortByAge, "age")
+	}
+	if SortByName != "name" {
+		t.Errorf("SortByName = %q, want %q", SortByName, "name")
+	}
+	if SortAsc != "asc" {
+		t.Errorf("SortAsc = %q, want %q", SortAsc, "asc")
+	}
+	if SortDesc != "desc" {
+		t.Errorf("SortDesc = %q, want %q", SortDesc, "desc")
+	}
+}
+
+func TestListFiltersDefaults(t *testing.T) {
+	filters := ListFilters{}
+
+	if filters.Page != 0 {
+		t.Error("Page should default to 0")
+	}
+	if filters.PerPage != 0 {
+		t.Error("PerPage should default to 0")
+	}
+	if filters.FavoritesOnly {
+		t.Error("FavoritesOnly should default to false")
+	}
+}
+
+func TestListFiltersWithValues(t *testing.T) {
+	filters := ListFilters{
+		TLD:           ".com",
+		MinPrice:      500,
+		MaxPrice:      5000,
+		MinAge:        3,
+		MaxAge:        10,
+		Category:      "aged",
+		SafetyStatus:  "clean",
+		Search:        "example",
+		FavoritesOnly: true,
+		SortBy:        SortByPrice,
+		SortDir:       SortAsc,
+		Page:          1,
+		PerPage:       25,
+	}
+
+	if filters.TLD != ".com" {
+		t.Errorf("TLD = %q, want %q", filters.TLD, ".com")
+	}
+	if filters.MinPrice != 500 {
+		t.Errorf("MinPrice = %d, want %d", filters.MinPrice, 500)
+	}
+	if filters.MaxPrice != 5000 {
+		t.Errorf("MaxPrice = %d, want %d", filters.MaxPrice, 5000)
+	}
+	if !filters.FavoritesOnly {
+		t.Error("FavoritesOnly should be true")
+	}
+	if filters.SortBy != SortByPrice {
+		t.Errorf("SortBy = %q, want %q", filters.SortBy, SortByPrice)
+	}
+}
+
+func TestFavoriteStructure(t *testing.T) {
+	fav := Favorite{
+		ID:          "fav123",
+		UserID:      "user456",
+		InventoryID: "inv789",
+	}
+
+	if fav.ID == "" {
+		t.Error("ID should not be empty")
+	}
+	if fav.UserID == "" {
+		t.Error("UserID should not be empty")
+	}
+	if fav.InventoryID == "" {
+		t.Error("InventoryID should not be empty")
+	}
+}
+
+func TestDomainWithFavorite(t *testing.T) {
+	domain := DomainWithFavorite{
+		DomainInventory: DomainInventory{
+			ID:         "dom123",
+			DomainName: "example.com",
+			TLD:        "com",
+			SalePrice:  1299,
+		},
+		IsFavorite: true,
+	}
+
+	if domain.DomainName != "example.com" {
+		t.Error("DomainName should be example.com")
+	}
+	if !domain.IsFavorite {
+		t.Error("IsFavorite should be true")
+	}
+}
+
 // Helper function
 func contains(s, substr string) bool {
 	return len(s) > 0 && len(substr) > 0 && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsMiddle(s, substr)))

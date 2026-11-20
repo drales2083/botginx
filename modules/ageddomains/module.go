@@ -24,6 +24,7 @@ type Module struct {
 	inventoryService *services.InventoryService
 	purchaseService  *services.PurchaseService
 	providerRegistry *services.ProviderRegistry
+	favoritesService *services.FavoritesService
 	handler          *handlers.Handler
 	adminHandler     *handlers.AdminHandler
 	background       *services.BackgroundJobs
@@ -47,9 +48,10 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.providerRegistry = services.NewProviderRegistry(deps.DB)
 	m.inventoryService = services.NewInventoryService(deps.DB, m.providerRegistry)
 	m.purchaseService = services.NewPurchaseService(deps.DB, m.balanceService, m.inventoryService, m.providerRegistry)
+	m.favoritesService = services.NewFavoritesService(deps.DB)
 
 	// Initialize handlers
-	m.handler = handlers.NewHandler(m.balanceService, m.inventoryService, m.purchaseService, deps.Templates)
+	m.handler = handlers.NewHandler(m.balanceService, m.inventoryService, m.purchaseService, m.favoritesService, deps.Templates)
 	m.adminHandler = handlers.NewAdminHandler(m.providerRegistry, m.inventoryService, m.purchaseService, deps.Templates)
 
 	// Register templates
@@ -95,6 +97,15 @@ func (m *Module) Migrate() error {
 	// Ignore errors for the extension migration (table may not exist)
 	m.DB().Exec(string(sql2))
 
+	// Run favorites table migration
+	sql3, err := fs.ReadFile(migrationsFS, "migrations/003_add_favorites.sql")
+	if err != nil {
+		return err
+	}
+	if _, err := m.DB().Exec(string(sql3)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -107,6 +118,8 @@ func (m *Module) Routes() chi.Router {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/domains", m.handler.APIListDomains)
 		r.Get("/domains/{id}/check", m.handler.APICheckSafety)
+		r.Post("/domains/{id}/favorite", m.handler.APIToggleFavorite)
+		r.Get("/tlds", m.handler.APIGetTLDs)
 		r.Post("/purchase/{id}", m.handler.APIPurchase)
 		r.Get("/purchase/{id}/status", m.handler.APIGetStatus)
 		r.Get("/balance", m.handler.APIGetBalance)

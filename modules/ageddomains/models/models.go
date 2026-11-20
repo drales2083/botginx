@@ -132,3 +132,43 @@ const (
 	SafetyFlagged   = "flagged"
 	SafetyUnknown   = "unknown"
 )
+
+// Favorite represents a user's saved domain
+type Favorite struct {
+	ID          string    `db:"id" json:"id"`
+	UserID      string    `db:"user_id" json:"-"`
+	InventoryID string    `db:"inventory_id" json:"inventoryId"`
+	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
+}
+
+// DomainWithFavorite extends DomainInventory with favorite status
+type DomainWithFavorite struct {
+	DomainInventory
+	IsFavorite bool `json:"isFavorite"`
+}
+
+// ListFilters contains all filter and sort options for domain listing
+type ListFilters struct {
+	TLD          string // Filter by TLD (e.g., ".com")
+	MinPrice     int    // Minimum price in cents
+	MaxPrice     int    // Maximum price in cents
+	MinAge       int    // Minimum age in years
+	MaxAge       int    // Maximum age in years
+	Category     string // Filter by category (aged, premium)
+	SafetyStatus string // Filter by safety (clean, unchecked, flagged, all)
+	Search       string // Search domain name
+	FavoritesOnly bool  // Show only favorites
+	SortBy       string // Sort field (price, age, name)
+	SortDir      string // Sort direction (asc, desc)
+	Page         int
+	PerPage      int
+}
+
+// Sort constants
+const (
+	SortByPrice = "price"
+	SortByAge   = "age"
+	SortByName  = "name"
+	SortAsc     = "asc"
+	SortDesc    = "desc"
+)

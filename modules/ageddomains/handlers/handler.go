@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/botginx/botginx/modules/ageddomains/models"
 	"github.com/botginx/botginx/modules/ageddomains/services"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
@@ -15,14 +16,16 @@ type Handler struct {
 	balanceService   *services.BalanceService
 	inventoryService *services.InventoryService
 	purchaseService  *services.PurchaseService
+	favoritesService *services.FavoritesService
 	templates        *module.TemplateEngine
 }
 
-func NewHandler(bs *services.BalanceService, is *services.InventoryService, ps *services.PurchaseService, t *module.TemplateEngine) *Handler {
+func NewHandler(bs *services.BalanceService, is *services.InventoryService, ps *services.PurchaseService, fs *services.FavoritesService, t *module.TemplateEngine) *Handler {
 	return &Handler{
 		balanceService:   bs,
 		inventoryService: is,
 		purchaseService:  ps,
+		favoritesService: fs,
 		templates:        t,
 	}
 }
@@ -31,32 +34,72 @@ func NewHandler(bs *services.BalanceService, is *services.InventoryService, ps *
 func (h *Handler) Browse(w http.ResponseWriter, r *http.Request) {
 	user := ctx.GetUser(r)
 	balance, _ := h.balanceService.GetAvailableBalance(r.Context(), user.ID)
+	tlds, _ := h.inventoryService.GetAvailableTLDs(r.Context())
+	favCount, _ := h.favoritesService.Count(r.Context(), user.ID)
 
 	module.Render(w, r, h.templates, "ageddomains:browse.html", map[string]interface{}{
-		"Title":   "Domain Marketplace",
-		"Balance": balance,
+		"Title":         "Domain Marketplace",
+		"Balance":       balance,
+		"AvailableTLDs": tlds,
+		"FavoriteCount": favCount,
 	})
 }
 
-// APIListDomains returns available domains with filters
+// APIListDomains returns available domains with advanced filters
 func (h *Handler) APIListDomains(w http.ResponseWriter, r *http.Request) {
-	tld := r.URL.Query().Get("tld")
-	maxPrice, _ := strconv.Atoi(r.URL.Query().Get("max_price"))
-	category := r.URL.Query().Get("category")
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	perPage, _ := strconv.Atoi(r.URL.Query().Get("per_page"))
+	user := ctx.GetUser(r)
 
-	domains, total, err := h.inventoryService.ListAvailable(r.Context(), tld, maxPrice, category, page, perPage)
+	// Parse all filter params
+	filters := models.ListFilters{
+		TLD:           r.URL.Query().Get("tld"),
+		Category:      r.URL.Query().Get("category"),
+		SafetyStatus:  r.URL.Query().Get("safety"),
+		Search:        r.URL.Query().Get("search"),
+		SortBy:        r.URL.Query().Get("sort_by"),
+		SortDir:       r.URL.Query().Get("sort_dir"),
+		FavoritesOnly: r.URL.Query().Get("favorites") == "true",
+	}
+
+	// Parse numeric filters
+	if v := r.URL.Query().Get("min_price"); v != "" {
+		filters.MinPrice, _ = strconv.Atoi(v)
+	}
+	if v := r.URL.Query().Get("max_price"); v != "" {
+		filters.MaxPrice, _ = strconv.Atoi(v)
+	}
+	if v := r.URL.Query().Get("min_age"); v != "" {
+		filters.MinAge, _ = strconv.Atoi(v)
+	}
+	if v := r.URL.Query().Get("max_age"); v != "" {
+		filters.MaxAge, _ = strconv.Atoi(v)
+	}
+	filters.Page, _ = strconv.Atoi(r.URL.Query().Get("page"))
+	filters.PerPage, _ = strconv.Atoi(r.URL.Query().Get("per_page"))
+
+	// Get domains
+	domains, total, err := h.inventoryService.ListWithFilters(r.Context(), filters, user.ID)
 	if err != nil {
 		h.jsonError(w, "Failed to list domains", http.StatusInternalServerError)
 		return
 	}
 
+	// Get user's favorites to mark domains
+	favoriteIDs, _ := h.favoritesService.GetUserFavoriteIDs(r.Context(), user.ID)
+
+	// Build response with favorite status
+	domainsWithFavorites := make([]models.DomainWithFavorite, len(domains))
+	for i, d := range domains {
+		domainsWithFavorites[i] = models.DomainWithFavorite{
+			DomainInventory: d,
+			IsFavorite:      favoriteIDs[d.ID],
+		}
+	}
+
 	h.json(w, http.StatusOK, map[string]interface{}{
-		"domains": domains,
+		"domains": domainsWithFavorites,
 		"total":   total,
-		"page":    page,
-		"perPage": perPage,
+		"page":    filters.Page,
+		"perPage": filters.PerPage,
 	})
 }
 
@@ -64,7 +107,6 @@ func (h *Handler) APIListDomains(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) APICheckSafety(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	// Perform the safety check (calls external APIs)
 	result, err := h.inventoryService.CheckSafety(r.Context(), id)
 	if err != nil {
 		if err == services.ErrDomainNotFound {
@@ -83,7 +125,6 @@ func (h *Handler) APIPurchase(w http.ResponseWriter, r *http.Request) {
 	user := ctx.GetUser(r)
 	inventoryID := chi.URLParam(r, "id")
 
-	// Parse confirmation
 	var req struct {
 		Confirm bool `json:"confirm"`
 	}
@@ -125,7 +166,6 @@ func (h *Handler) APIGetStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify ownership
 	purchase, _ := h.purchaseService.Get(r.Context(), purchaseID)
 	if purchase != nil && purchase.UserID != user.ID {
 		h.jsonError(w, "Access denied", http.StatusForbidden)
@@ -146,6 +186,35 @@ func (h *Handler) APIGetBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.json(w, http.StatusOK, balance)
+}
+
+// APIToggleFavorite adds or removes a domain from favorites
+func (h *Handler) APIToggleFavorite(w http.ResponseWriter, r *http.Request) {
+	user := ctx.GetUser(r)
+	inventoryID := chi.URLParam(r, "id")
+
+	isFavorite, err := h.favoritesService.Toggle(r.Context(), user.ID, inventoryID)
+	if err != nil {
+		h.jsonError(w, "Failed to update favorite", http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"isFavorite": isFavorite,
+	})
+}
+
+// APIGetTLDs returns available TLDs for filter dropdown
+func (h *Handler) APIGetTLDs(w http.ResponseWriter, r *http.Request) {
+	tlds, err := h.inventoryService.GetAvailableTLDs(r.Context())
+	if err != nil {
+		h.jsonError(w, "Failed to get TLDs", http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"tlds": tlds,
+	})
 }
 
 // Helper methods
