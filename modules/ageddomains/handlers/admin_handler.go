@@ -8,6 +8,7 @@ import (
 
 	"github.com/botginx/botginx/modules/ageddomains/models"
 	"github.com/botginx/botginx/modules/ageddomains/services"
+	"github.com/botginx/botginx/pkg/crypto"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ type AdminHandler struct {
 	inventoryService *services.InventoryService
 	purchaseService  *services.PurchaseService
 	templates        *module.TemplateEngine
+	background       *services.BackgroundJobs
 }
 
 func NewAdminHandler(pr *services.ProviderRegistry, is *services.InventoryService, ps *services.PurchaseService, t *module.TemplateEngine) *AdminHandler {
@@ -27,6 +29,11 @@ func NewAdminHandler(pr *services.ProviderRegistry, is *services.InventoryServic
 		purchaseService:  ps,
 		templates:        t,
 	}
+}
+
+// SetBackgroundJobs sets the background jobs reference for manual refresh
+func (h *AdminHandler) SetBackgroundJobs(bg *services.BackgroundJobs) {
+	h.background = bg
 }
 
 // Dashboard renders the admin dashboard
@@ -94,13 +101,25 @@ func (h *AdminHandler) APICreateProvider(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Encrypt API credentials
+	encryptedKey, err := crypto.Encrypt(req.APIKey)
+	if err != nil {
+		h.jsonError(w, "Failed to encrypt API key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	encryptedSecret, err := crypto.Encrypt(req.APISecret)
+	if err != nil {
+		h.jsonError(w, "Failed to encrypt API secret: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	provider := &models.Provider{
 		ID:            uuid.New().String(),
 		Name:          req.Name,
 		DisplayName:   req.DisplayName,
 		ProviderType:  req.ProviderType,
-		APIKey:        req.APIKey, // TODO: Encrypt
-		APISecret:     req.APISecret,
+		APIKey:        encryptedKey,
+		APISecret:     encryptedSecret,
 		IsActive:      true,
 		MarkupPercent: req.MarkupPercent,
 		MinAgeYears:   req.MinAgeYears,
@@ -149,10 +168,20 @@ func (h *AdminHandler) APIUpdateProvider(w http.ResponseWriter, r *http.Request)
 	existing.DisplayName = req.DisplayName
 	existing.ProviderType = req.ProviderType
 	if req.APIKey != "" {
-		existing.APIKey = req.APIKey // TODO: Encrypt
+		encryptedKey, err := crypto.Encrypt(req.APIKey)
+		if err != nil {
+			h.jsonError(w, "Failed to encrypt API key: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		existing.APIKey = encryptedKey
 	}
 	if req.APISecret != "" {
-		existing.APISecret = req.APISecret
+		encryptedSecret, err := crypto.Encrypt(req.APISecret)
+		if err != nil {
+			h.jsonError(w, "Failed to encrypt API secret: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		existing.APISecret = encryptedSecret
 	}
 	existing.IsActive = req.IsActive
 	existing.MarkupPercent = req.MarkupPercent
@@ -208,7 +237,11 @@ func (h *AdminHandler) APIListInventory(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AdminHandler) APIRefreshInventory(w http.ResponseWriter, r *http.Request) {
-	// TODO: Trigger background job refresh
+	if h.background == nil {
+		h.jsonError(w, "Background jobs not initialized", http.StatusInternalServerError)
+		return
+	}
+	h.background.RefreshInventoryNow()
 	h.json(w, http.StatusOK, map[string]bool{"started": true})
 }
 

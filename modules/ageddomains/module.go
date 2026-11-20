@@ -60,6 +60,9 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.background = services.NewBackgroundJobs(deps.DB, m.inventoryService, m.balanceService, m.providerRegistry)
 	m.background.Start()
 
+	// Wire background jobs to admin handler for manual refresh
+	m.adminHandler.SetBackgroundJobs(m.background)
+
 	log.Printf("[ageddomains] Module initialized")
 	return nil
 }

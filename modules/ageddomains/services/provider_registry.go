@@ -2,10 +2,12 @@ package services
 
 import (
 	"context"
+	"log"
 	"strings"
 	"sync"
 
 	"github.com/botginx/botginx/modules/ageddomains/models"
+	"github.com/botginx/botginx/pkg/crypto"
 	"github.com/botginx/botginx/pkg/providers/porkbun"
 	"github.com/jmoiron/sqlx"
 )
@@ -157,8 +159,25 @@ type PorkbunAdapter struct {
 }
 
 func NewPorkbunAdapter(p models.Provider) *PorkbunAdapter {
+	// Decrypt API credentials
+	apiKey := p.APIKey
+	apiSecret := p.APISecret
+
+	// Try to decrypt - if it fails, assume the value is not encrypted (legacy)
+	if decrypted, err := crypto.Decrypt(p.APIKey); err == nil && decrypted != "" {
+		apiKey = decrypted
+	} else if err != nil {
+		log.Printf("[ageddomains] Warning: could not decrypt API key for provider %s: %v", p.DisplayName, err)
+	}
+
+	if decrypted, err := crypto.Decrypt(p.APISecret); err == nil && decrypted != "" {
+		apiSecret = decrypted
+	} else if err != nil {
+		log.Printf("[ageddomains] Warning: could not decrypt API secret for provider %s: %v", p.DisplayName, err)
+	}
+
 	return &PorkbunAdapter{
-		client:   porkbun.NewClient(p.APIKey, p.APISecret),
+		client:   porkbun.NewClient(apiKey, apiSecret),
 		provider: p,
 	}
 }
