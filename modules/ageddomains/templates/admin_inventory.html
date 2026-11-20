@@ -29,7 +29,32 @@
     </div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', loadInventory);
+document.addEventListener('DOMContentLoaded', function() {
+    loadInventory();
+    document.getElementById('btn-refresh').addEventListener('click', refreshInventory);
+});
+
+async function refreshInventory() {
+    const btn = document.getElementById('btn-refresh');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spinner-border spinner-border-sm"></i>Refreshing...';
+
+    try {
+        const resp = await fetch('/admin/ageddomains/api/inventory/refresh', { method: 'POST' });
+        if (resp.ok) {
+            showToast('Inventory refresh started. This may take a few minutes.', 'success');
+            // Reload inventory after a short delay
+            setTimeout(loadInventory, 3000);
+        } else {
+            showToast('Failed to start refresh', 'danger');
+        }
+    } catch (err) {
+        showToast('Error: ' + err.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Refresh Now';
+    }
+}
 
 async function loadInventory() {
     const resp = await fetch('/admin/ageddomains/api/inventory');
