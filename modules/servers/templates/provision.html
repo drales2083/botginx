@@ -18,7 +18,7 @@
                 <!-- Progress Bar -->
                 <div class="mb-4">
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted" id="progress-text">Step 0 of 5</span>
+                        <span class="text-muted" id="progress-text">Step {{.Provision.CurrentStep}} of 5</span>
                         <span class="text-muted" id="progress-percent">0%</span>
                     </div>
                     <div class="progress" style="height: 8px;">
@@ -53,11 +53,12 @@
                             <span class="dot green"></span>
                         </div>
                         <span class="terminal-title">Terminal Output</span>
+                        <span class="terminal-status text-muted small ms-auto me-2" id="connection-status">Connecting...</span>
                         <button class="btn btn-sm btn-link text-light" onclick="clearOutput()" title="Clear">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
-                    <pre id="output-log" class="terminal-body">Connecting to server...</pre>
+                    <pre id="output-log" class="terminal-body">{{with .Provision.Output}}{{.}}{{else}}Waiting for output...{{end}}</pre>
                 </div>
 
                 <!-- Alerts -->
@@ -265,7 +266,6 @@
 .terminal-dots .green { background: #27c93f; }
 
 .terminal-title {
-    flex: 1;
     color: #888;
     font-size: 0.8125rem;
 }
@@ -295,6 +295,10 @@
 #status-badge.running { background: var(--bs-primary); color: white; }
 #status-badge.completed { background: var(--bs-success); color: white; }
 #status-badge.failed { background: var(--bs-danger); color: white; }
+
+/* Connection status */
+#connection-status.connected { color: #27c93f; }
+#connection-status.disconnected { color: #ff5f56; }
 </style>
 
 <script>
@@ -304,7 +308,8 @@ const totalSteps = 5;
 let currentStep = {{.Provision.CurrentStep}};
 let evtSource = null;
 let reconnectAttempts = 0;
-const maxReconnectAttempts = 5;
+const maxReconnectAttempts = 10;
+let isComplete = false;
 
 function updateProgress(step) {
     const percent = Math.round((step / totalSteps) * 100);
@@ -338,7 +343,7 @@ function updateStepUI(stepNum, stepName) {
 
 function appendOutput(line) {
     const log = document.getElementById('output-log');
-    if (log.textContent === 'Connecting to server...') {
+    if (log.textContent === 'Waiting for output...') {
         log.textContent = '';
     }
     log.textContent += line + '\n';
@@ -349,7 +354,22 @@ function clearOutput() {
     document.getElementById('output-log').textContent = '';
 }
 
+function setConnectionStatus(status) {
+    const el = document.getElementById('connection-status');
+    if (status === 'connected') {
+        el.textContent = 'Connected';
+        el.className = 'terminal-status text-muted small ms-auto me-2 connected';
+    } else if (status === 'reconnecting') {
+        el.textContent = `Reconnecting (${reconnectAttempts}/${maxReconnectAttempts})...`;
+        el.className = 'terminal-status text-muted small ms-auto me-2 disconnected';
+    } else {
+        el.textContent = 'Disconnected';
+        el.className = 'terminal-status text-muted small ms-auto me-2 disconnected';
+    }
+}
+
 function showComplete(success) {
+    isComplete = true;
     const badge = document.getElementById('status-badge');
     const progressBar = document.getElementById('progress-bar');
 
@@ -390,17 +410,26 @@ function showComplete(success) {
 
         flashToast('Provisioning failed', 'danger');
     }
+
+    // Close SSE connection
+    if (evtSource) {
+        evtSource.close();
+        evtSource = null;
+    }
 }
 
 function showError(message) {
     document.getElementById('error-message').textContent = message;
     document.getElementById('error-alert').classList.remove('d-none');
-    appendOutput('\n[ERROR] ' + message);
 }
 
 function connectSSE() {
     if (evtSource) {
         evtSource.close();
+    }
+
+    if (isComplete) {
+        return;
     }
 
     const badge = document.getElementById('status-badge');
@@ -409,16 +438,29 @@ function connectSSE() {
 
     evtSource = new EventSource('/admin/servers/api/provision/' + provisionId + '/stream');
 
+    evtSource.onopen = () => {
+        setConnectionStatus('connected');
+        reconnectAttempts = 0;
+    };
+
     evtSource.addEventListener('step', (e) => {
-        const data = JSON.parse(e.data);
-        updateStepUI(data.step, data.name);
-        reconnectAttempts = 0; // Reset on successful message
+        if (!e.data) return;
+        try {
+            const data = JSON.parse(e.data);
+            updateStepUI(data.step, data.name);
+        } catch (err) {
+            console.error('Failed to parse step event:', err);
+        }
     });
 
     evtSource.addEventListener('output', (e) => {
-        const data = JSON.parse(e.data);
-        appendOutput(data.line);
-        reconnectAttempts = 0;
+        if (!e.data) return;
+        try {
+            const data = JSON.parse(e.data);
+            appendOutput(data.line);
+        } catch (err) {
+            console.error('Failed to parse output event:', err);
+        }
     });
 
     evtSource.addEventListener('error', (e) => {
@@ -436,13 +478,22 @@ function connectSSE() {
     });
 
     evtSource.addEventListener('complete', (e) => {
-        const data = JSON.parse(e.data);
-        evtSource.close();
-        evtSource = null;
-        showComplete(data.success);
+        if (!e.data) return;
+        try {
+            const data = JSON.parse(e.data);
+            showComplete(data.success);
+        } catch (err) {
+            console.error('Failed to parse complete event:', err);
+        }
     });
 
     evtSource.onerror = (e) => {
+        if (isComplete) {
+            return;
+        }
+
+        setConnectionStatus('disconnected');
+
         if (evtSource.readyState === EventSource.CLOSED) {
             evtSource.close();
             evtSource = null;
@@ -450,7 +501,7 @@ function connectSSE() {
             // Try to reconnect
             if (reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++;
-                appendOutput(`\n[Connection lost, reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})]`);
+                setConnectionStatus('reconnecting');
                 setTimeout(connectSSE, 2000);
             } else {
                 showError('Connection lost. Refresh the page to check status.');
@@ -464,12 +515,20 @@ function retryProvision() {
     location.reload();
 }
 
+// Initialize based on initial step
+if (currentStep > 0) {
+    updateStepUI(currentStep, '');
+}
+
+// Scroll terminal to bottom if there's existing output
+const log = document.getElementById('output-log');
+if (log.textContent && log.textContent !== 'Waiting for output...') {
+    log.scrollTop = log.scrollHeight;
+}
+
 // Initialize based on status
 if (initialStatus === 'pending' || initialStatus === 'running') {
     connectSSE();
-    if (currentStep > 0) {
-        updateStepUI(currentStep, '');
-    }
 } else if (initialStatus === 'completed') {
     document.getElementById('status-badge').className = 'badge fs-6 completed';
     document.getElementById('success-alert').classList.remove('d-none');
@@ -482,12 +541,17 @@ if (initialStatus === 'pending' || initialStatus === 'running') {
         item.classList.add('done');
         item.querySelector('.timeline-status').textContent = 'Completed';
     });
-    document.getElementById('output-log').textContent = 'Provisioning completed successfully.';
+    setConnectionStatus('');
+    document.getElementById('connection-status').textContent = '';
+    isComplete = true;
 } else if (initialStatus === 'failed') {
     document.getElementById('status-badge').className = 'badge fs-6 failed';
     document.getElementById('retry-btn').classList.remove('d-none');
     document.getElementById('progress-bar').classList.remove('progress-bar-striped', 'progress-bar-animated', 'bg-primary');
     document.getElementById('progress-bar').classList.add('bg-danger');
+    setConnectionStatus('');
+    document.getElementById('connection-status').textContent = '';
+    isComplete = true;
     {{with .Provision.Error}}
     showError('{{.}}');
     {{end}}

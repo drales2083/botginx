@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/botginx/botginx/modules/servers/models"
@@ -86,7 +86,7 @@ func (h *ProvisionHandler) APIGetProvision(w http.ResponseWriter, r *http.Reques
 	h.json(w, http.StatusOK, provision)
 }
 
-// APIStreamProvision streams provision progress via SSE
+// APIStreamProvision streams provision progress via SSE (polling-based)
 func (h *ProvisionHandler) APIStreamProvision(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -108,82 +108,106 @@ func (h *ProvisionHandler) APIStreamProvision(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// If already completed or failed, send final state and close
-	if provision.Status == models.ProvisionStatusCompleted || provision.Status == models.ProvisionStatusFailed {
-		stepName := ""
-		if provision.StepName != nil {
-			stepName = *provision.StepName
-		}
-		h.sendSSE(w, flusher, "step", map[string]interface{}{
-			"step":  provision.CurrentStep,
-			"total": provision.TotalSteps,
-			"name":  stepName,
-		})
-		if provision.Error != nil && *provision.Error != "" {
-			h.sendSSE(w, flusher, "error", map[string]interface{}{
-				"message": *provision.Error,
-			})
-		}
-		h.sendSSE(w, flusher, "complete", map[string]interface{}{
-			"success": provision.Status == models.ProvisionStatusCompleted,
-		})
-		return
-	}
-
-	// Create event channel
-	eventChan := make(chan services.ProvisionEvent, 100)
-
-	// Create cancellable context
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
-
-	// Start provisioning in background if pending, or restart if stuck
-	shouldStart := provision.Status == models.ProvisionStatusPending
-
-	// Detect stuck provisions - running but started more than 2 minutes ago
-	// This handles cases where the server restarted mid-provision
-	if provision.Status == models.ProvisionStatusRunning && provision.StartedAt != nil {
-		stuckThreshold := time.Now().Add(-2 * time.Minute)
-		if provision.StartedAt.Before(stuckThreshold) {
-			log.Printf("[Provision] Detected stuck provision %s, restarting...", id)
-			// Reset to pending so it can restart
-			h.provisionService.SetStatus(id, models.ProvisionStatusPending)
-			h.provisionService.UpdateStep(id, 0, "")
-			shouldStart = true
+	// If pending or running, ensure the job is started
+	if provision.Status == models.ProvisionStatusPending || provision.Status == models.ProvisionStatusRunning {
+		if err := h.provisionService.StartProvision(id); err != nil {
+			log.Printf("[Provision] StartProvision error: %v", err)
 		}
 	}
 
-	if shouldStart {
-		go func() {
-			h.provisionService.RunProvision(ctx, id, eventChan)
-		}()
-	} else if provision.Status == models.ProvisionStatusRunning {
-		// Actually running (not stuck), just stream current state
-		stepName := ""
-		if provision.StepName != nil {
-			stepName = *provision.StepName
-		}
-		h.sendSSE(w, flusher, "step", map[string]interface{}{
-			"step":  provision.CurrentStep,
-			"total": provision.TotalSteps,
-			"name":  stepName,
-		})
-	}
+	// Track what we've already sent
+	lastStep := -1
+	lastOutputLen := 0
+	lastStatus := ""
 
-	// Stream events to client
+	// Poll for updates
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	// Send initial state immediately
+	h.sendCurrentState(w, flusher, id, &lastStep, &lastOutputLen, &lastStatus)
+
 	for {
 		select {
-		case <-ctx.Done():
-			// Client disconnected
+		case <-r.Context().Done():
+			// Client disconnected - job continues in background
 			return
-		case event, ok := <-eventChan:
-			if !ok {
-				// Channel closed, provisioning complete
+		case <-ticker.C:
+			done := h.sendCurrentState(w, flusher, id, &lastStep, &lastOutputLen, &lastStatus)
+			if done {
 				return
 			}
-			h.sendSSE(w, flusher, event.Type, event.Payload)
 		}
 	}
+}
+
+// sendCurrentState polls DB and sends any new state via SSE
+// Returns true if the provision is complete (no more updates expected)
+func (h *ProvisionHandler) sendCurrentState(w http.ResponseWriter, flusher http.Flusher, id string, lastStep *int, lastOutputLen *int, lastStatus *string) bool {
+	provision, err := h.provisionService.Get(id)
+	if err != nil {
+		return true // Can't get provision, stop
+	}
+
+	// Send step update if changed
+	if provision.CurrentStep != *lastStep {
+		*lastStep = provision.CurrentStep
+		stepName := ""
+		if provision.StepName != nil {
+			stepName = *provision.StepName
+		}
+		h.sendSSE(w, flusher, "step", map[string]interface{}{
+			"step":  provision.CurrentStep,
+			"total": provision.TotalSteps,
+			"name":  stepName,
+		})
+	}
+
+	// Send new output lines
+	output, _ := h.provisionService.GetOutput(id)
+	if len(output) > *lastOutputLen {
+		newOutput := output[*lastOutputLen:]
+		*lastOutputLen = len(output)
+
+		// Split into lines and send each
+		lines := strings.Split(newOutput, "\n")
+		for _, line := range lines {
+			if line != "" {
+				h.sendSSE(w, flusher, "output", map[string]interface{}{
+					"line": line,
+				})
+			}
+		}
+	}
+
+	// Check for status changes
+	status := string(provision.Status)
+	if status != *lastStatus {
+		*lastStatus = status
+
+		if provision.Status == models.ProvisionStatusCompleted {
+			h.sendSSE(w, flusher, "complete", map[string]interface{}{
+				"success": true,
+			})
+			return true
+		}
+
+		if provision.Status == models.ProvisionStatusFailed {
+			errMsg := ""
+			if provision.Error != nil {
+				errMsg = *provision.Error
+			}
+			h.sendSSE(w, flusher, "error", map[string]interface{}{
+				"message": errMsg,
+			})
+			h.sendSSE(w, flusher, "complete", map[string]interface{}{
+				"success": false,
+			})
+			return true
+		}
+	}
+
+	return false
 }
 
 // sendSSE sends a Server-Sent Event
