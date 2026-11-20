@@ -87,11 +87,19 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 // SetNotifier sets the notification handler for ticket events (admin notifications)
 func (m *Module) SetNotifier(n handlers.Notifier) {
 	m.handler.SetNotifier(n)
+	// Also set for background jobs (auto-close notifications)
+	if bg, ok := interface{}(n).(AdminNotifier); ok {
+		m.background.SetAdminNotifier(bg)
+	}
 }
 
 // SetUserNotifier sets the user notification handler (user's personal Telegram bot)
 func (m *Module) SetUserNotifier(n handlers.UserNotifier) {
 	m.handler.SetUserNotifier(n)
+	// Also set for background jobs (auto-close notifications)
+	if bg, ok := interface{}(n).(UserNotifier); ok {
+		m.background.SetUserNotifier(bg)
+	}
 }
 
 // MenuItems returns sidebar navigation items for this module

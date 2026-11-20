@@ -634,3 +634,20 @@ func (h *Handler) NotifyTicketReply(ticketID, email, subject, message string) {
 		h.service.SendMessage(bot.BotToken, *bot.ChatID, text, keyboard)
 	}
 }
+
+// NotifyTicketClosed sends notification when ticket is auto-closed
+func (h *Handler) NotifyTicketClosed(ticketID, email, subject string) {
+	bots, err := h.service.GetSupportBots()
+	if err != nil || len(bots) == 0 {
+		return
+	}
+
+	text := "🔒 <b>Ticket Auto-Closed</b>\n\n" +
+		"<b>From:</b> <code>" + email + "</code>\n" +
+		"<b>Subject:</b> " + subject + "\n\n" +
+		"<i>Closed due to 48h inactivity</i>"
+
+	for _, bot := range bots {
+		h.service.SendMessage(bot.BotToken, *bot.ChatID, text, nil)
+	}
+}
