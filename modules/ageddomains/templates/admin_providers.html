@@ -223,11 +223,11 @@ function saveProvider() {
     })
     .then(() => {
         providerModal.hide();
-        toast(editingId ? 'Provider updated' : 'Provider created', 'success');
+        showToast(editingId ? 'Provider updated' : 'Provider created', 'success');
         location.reload();
     })
     .catch(err => {
-        toast(err.error || 'Failed to save provider', 'error');
+        showToast(err.error || 'Failed to save provider', 'danger');
     });
 }
 
@@ -236,12 +236,12 @@ function testProvider(id) {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                toast('Connection successful!', 'success');
+                showToast('Connection successful!', 'success');
             } else {
-                toast('Connection failed: ' + (data.error || 'Unknown error'), 'error');
+                showToast('Connection failed: ' + (data.error || 'Unknown error'), 'danger');
             }
         })
-        .catch(() => toast('Test failed', 'error'));
+        .catch(() => showToast('Test failed', 'danger'));
 }
 
 function deleteProvider(id) {
@@ -250,10 +250,10 @@ function deleteProvider(id) {
     fetch(`/admin/ageddomains/api/providers/${id}`, { method: 'DELETE' })
         .then(r => r.json())
         .then(() => {
-            toast('Provider deleted', 'success');
+            showToast('Provider deleted', 'success');
             location.reload();
         })
-        .catch(() => toast('Delete failed', 'error'));
+        .catch(() => showToast('Delete failed', 'danger'));
 }
 </script>
 {{ end }}

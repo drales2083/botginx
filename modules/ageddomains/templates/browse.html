@@ -371,7 +371,7 @@ async function toggleFavorite(id, btn) {
             loadDomains();
         }
     } catch (err) {
-        toast('Failed to update favorite', 'error');
+        showToast('Failed to update favorite', 'danger');
     }
 }
 
@@ -381,7 +381,7 @@ async function checkSafety(id) {
         const data = await resp.json();
         loadDomains();
     } catch (err) {
-        toast('Failed to check safety', 'error');
+        showToast('Failed to check safety', 'danger');
     }
 }
 
@@ -433,7 +433,7 @@ async function pollStatus(purchaseId) {
         renderStatusSteps(data.events || []);
 
         if (data.status === 'completed') {
-            toast('Domain purchased successfully!', 'success');
+            showToast('Domain purchased successfully!', 'success');
             setTimeout(() => location.reload(), 2000);
         } else if (data.status === 'failed') {
             document.getElementById('status-message').textContent = data.error || 'Purchase failed';

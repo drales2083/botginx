@@ -101,16 +101,14 @@ func (h *AdminHandler) APICreateProvider(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Encrypt API credentials
-	encryptedKey, err := crypto.Encrypt(req.APIKey)
-	if err != nil {
-		h.jsonError(w, "Failed to encrypt API key: "+err.Error(), http.StatusInternalServerError)
-		return
+	// Encrypt API credentials if encryption key is configured, otherwise store plaintext
+	apiKey := req.APIKey
+	apiSecret := req.APISecret
+	if encryptedKey, err := crypto.Encrypt(req.APIKey); err == nil {
+		apiKey = encryptedKey
 	}
-	encryptedSecret, err := crypto.Encrypt(req.APISecret)
-	if err != nil {
-		h.jsonError(w, "Failed to encrypt API secret: "+err.Error(), http.StatusInternalServerError)
-		return
+	if encryptedSecret, err := crypto.Encrypt(req.APISecret); err == nil {
+		apiSecret = encryptedSecret
 	}
 
 	provider := &models.Provider{
@@ -118,8 +116,8 @@ func (h *AdminHandler) APICreateProvider(w http.ResponseWriter, r *http.Request)
 		Name:          req.Name,
 		DisplayName:   req.DisplayName,
 		ProviderType:  req.ProviderType,
-		APIKey:        encryptedKey,
-		APISecret:     encryptedSecret,
+		APIKey:        apiKey,
+		APISecret:     apiSecret,
 		IsActive:      true,
 		MarkupPercent: req.MarkupPercent,
 		MinAgeYears:   req.MinAgeYears,
@@ -168,20 +166,19 @@ func (h *AdminHandler) APIUpdateProvider(w http.ResponseWriter, r *http.Request)
 	existing.DisplayName = req.DisplayName
 	existing.ProviderType = req.ProviderType
 	if req.APIKey != "" {
-		encryptedKey, err := crypto.Encrypt(req.APIKey)
-		if err != nil {
-			h.jsonError(w, "Failed to encrypt API key: "+err.Error(), http.StatusInternalServerError)
-			return
+		// Encrypt if key configured, otherwise store plaintext
+		if encryptedKey, err := crypto.Encrypt(req.APIKey); err == nil {
+			existing.APIKey = encryptedKey
+		} else {
+			existing.APIKey = req.APIKey
 		}
-		existing.APIKey = encryptedKey
 	}
 	if req.APISecret != "" {
-		encryptedSecret, err := crypto.Encrypt(req.APISecret)
-		if err != nil {
-			h.jsonError(w, "Failed to encrypt API secret: "+err.Error(), http.StatusInternalServerError)
-			return
+		if encryptedSecret, err := crypto.Encrypt(req.APISecret); err == nil {
+			existing.APISecret = encryptedSecret
+		} else {
+			existing.APISecret = req.APISecret
 		}
-		existing.APISecret = encryptedSecret
 	}
 	existing.IsActive = req.IsActive
 	existing.MarkupPercent = req.MarkupPercent
