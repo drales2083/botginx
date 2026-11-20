@@ -37,7 +37,7 @@ echo "VPS IP: $VPS_IP"
 # 1. System packages
 # =============================================================================
 echo ""
-echo "[STEP:1:START] Installing system packages"
+echo "[SETUP:1:START] Installing system packages"
 echo "[1/5] Installing system packages..."
 apt-get update -qq
 apt-get install -y -qq nginx redis-server jq curl certbot python3-certbot-nginx ufw cron git php-fpm
@@ -138,13 +138,13 @@ if ! grep -q "^[[:space:]]*server_names_hash_bucket_size 128;" /etc/nginx/nginx.
     echo "  Set server_names_hash_bucket_size 128"
 fi
 
-echo "[STEP:1:DONE]"
+echo "[SETUP:1:DONE]"
 
 # =============================================================================
 # 2. Nginx - Internal upstream (8081) for site routing
 # =============================================================================
 echo ""
-echo "[STEP:2:START] Configuring nginx"
+echo "[SETUP:2:START] Configuring nginx"
 echo "[2/5] Configuring nginx..."
 mkdir -p "$SITES_DIR"
 
@@ -269,13 +269,13 @@ mkdir -p /etc/botection/links
 nginx -t && systemctl reload nginx
 echo "  Nginx configured (listening on :80 and 127.0.0.1:8081)"
 
-echo "[STEP:2:DONE]"
+echo "[SETUP:2:DONE]"
 
 # =============================================================================
 # 3. Firewall
 # =============================================================================
 echo ""
-echo "[STEP:3:START] Configuring firewall"
+echo "[SETUP:3:START] Configuring firewall"
 echo "[3/5] Configuring firewall..."
 
 ufw --force reset >/dev/null
@@ -297,13 +297,13 @@ cat > /etc/cron.d/check-acmedns-firewall << 'CRONEOF'
 CRONEOF
 chmod 644 /etc/cron.d/check-acmedns-firewall
 
-echo "[STEP:3:DONE]"
+echo "[SETUP:3:DONE]"
 
 # =============================================================================
 # 4. Add-site helper script
 # =============================================================================
 echo ""
-echo "[STEP:4:START] Creating helper scripts"
+echo "[SETUP:4:START] Creating helper scripts"
 echo "[4/5] Creating helper scripts..."
 
 cat > /usr/local/bin/add-site << 'SCRIPTEOF'
@@ -352,13 +352,13 @@ SCRIPTEOF
 
 chmod +x /usr/local/bin/add-site
 
-echo "[STEP:4:DONE]"
+echo "[SETUP:4:DONE]"
 
 # =============================================================================
 # 5. Done
 # =============================================================================
 echo ""
-echo "[STEP:5:START] Verifying installation"
+echo "[SETUP:5:START] Verifying installation"
 echo "[5/5] Verifying installation..."
 
 echo ""
@@ -404,5 +404,5 @@ echo "Wildcard SSL (CNAME delegation):"
 echo "  Users add: _acme-challenge.domain.com CNAME xxx.${ACME_DOMAIN}"
 echo "  Renewals are automatic - no user action needed"
 echo ""
-echo "[STEP:5:DONE]"
+echo "[SETUP:5:DONE]"
 echo "[SCRIPT:COMPLETE:deploy-vps-setup]"
