@@ -20,6 +20,11 @@ import (
 //go:embed scripts/deploy-vps-setup.sh
 var deployVPSSetupScript string
 
+// ptrStr returns a pointer to the given string
+func ptrStr(s string) *string {
+	return &s
+}
+
 // ProvisionService handles server provisioning operations
 type ProvisionService struct {
 	db            *sqlx.DB
@@ -51,8 +56,8 @@ func (s *ProvisionService) Create(input models.CreateProvisionInput) (*models.Pr
 		Status:      models.ProvisionStatusPending,
 		CurrentStep: 0,
 		TotalSteps:  5,
-		StepName:    "",
-		AcmeDomain:  input.AcmeDomain,
+		StepName:    ptrStr(""),
+		AcmeDomain:  ptrStr(input.AcmeDomain),
 		CreatedAt:   now,
 	}
 
@@ -191,11 +196,15 @@ func (s *ProvisionService) RunProvision(ctx context.Context, provisionID string,
 		}
 
 		var stepErr error
+		acmeDomain := ""
+		if provision.AcmeDomain != nil {
+			acmeDomain = *provision.AcmeDomain
+		}
 		switch step.Number {
 		case 1:
 			stepErr = s.executeStep1(client, provisionID, eventChan)
 		case 2:
-			stepErr = s.executeStep2(client, provisionID, provision.AcmeDomain, eventChan)
+			stepErr = s.executeStep2(client, provisionID, acmeDomain, eventChan)
 		case 3:
 			stepErr = s.executeStep3(client, provisionID, eventChan)
 		case 4:

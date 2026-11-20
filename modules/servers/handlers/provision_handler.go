@@ -109,14 +109,18 @@ func (h *ProvisionHandler) APIStreamProvision(w http.ResponseWriter, r *http.Req
 
 	// If already completed or failed, send final state and close
 	if provision.Status == models.ProvisionStatusCompleted || provision.Status == models.ProvisionStatusFailed {
+		stepName := ""
+		if provision.StepName != nil {
+			stepName = *provision.StepName
+		}
 		h.sendSSE(w, flusher, "step", map[string]interface{}{
 			"step":  provision.CurrentStep,
 			"total": provision.TotalSteps,
-			"name":  provision.StepName,
+			"name":  stepName,
 		})
-		if provision.Error != "" {
+		if provision.Error != nil && *provision.Error != "" {
 			h.sendSSE(w, flusher, "error", map[string]interface{}{
-				"message": provision.Error,
+				"message": *provision.Error,
 			})
 		}
 		h.sendSSE(w, flusher, "complete", map[string]interface{}{
@@ -139,10 +143,14 @@ func (h *ProvisionHandler) APIStreamProvision(w http.ResponseWriter, r *http.Req
 		}()
 	} else if provision.Status == models.ProvisionStatusRunning {
 		// Already running, just stream current state
+		stepName := ""
+		if provision.StepName != nil {
+			stepName = *provision.StepName
+		}
 		h.sendSSE(w, flusher, "step", map[string]interface{}{
 			"step":  provision.CurrentStep,
 			"total": provision.TotalSteps,
-			"name":  provision.StepName,
+			"name":  stepName,
 		})
 	}
 

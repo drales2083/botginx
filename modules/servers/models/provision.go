@@ -17,10 +17,10 @@ type Provision struct {
 	Status      ProvisionStatus `db:"status" json:"status"`
 	CurrentStep int             `db:"current_step" json:"currentStep"`
 	TotalSteps  int             `db:"total_steps" json:"totalSteps"`
-	StepName    string          `db:"step_name" json:"stepName"`
-	Output      string          `db:"output" json:"output,omitempty"`
-	Error       string          `db:"error" json:"error,omitempty"`
-	AcmeDomain  string          `db:"acme_domain" json:"acmeDomain"`
+	StepName    *string         `db:"step_name" json:"stepName,omitempty"`
+	Output      *string         `db:"output" json:"output,omitempty"`
+	Error       *string         `db:"error" json:"error,omitempty"`
+	AcmeDomain  *string         `db:"acme_domain" json:"acmeDomain,omitempty"`
 	StartedAt   *time.Time      `db:"started_at" json:"startedAt,omitempty"`
 	CompletedAt *time.Time      `db:"completed_at" json:"completedAt,omitempty"`
 	CreatedAt   time.Time       `db:"created_at" json:"createdAt"`
