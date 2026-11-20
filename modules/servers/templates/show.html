@@ -134,7 +134,7 @@ document.getElementById('btn-reconfigure-dns')?.addEventListener('click', async 
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating...';
 
     try {
-        const res = await fetch('/admin/domains/reconfigure-all', {
+        const res = await fetch('/admin/domains/api/reconfigure-all', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ip: serverIP })
