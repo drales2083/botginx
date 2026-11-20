@@ -502,9 +502,10 @@ setup() {
     local webhook_secret
     webhook_secret=$(openssl rand -hex 32)
 
-    # Generate encryption key for hosting passwords
+    # Use encryption key from deploy.env (MUST be consistent across deploys to decrypt existing data)
     local encryption_key
-    encryption_key=$(openssl rand -hex 32)
+    encryption_key="${HOSTING_ENCRYPTION_KEY:-$(openssl rand -hex 32)}"
+    [[ -z "$HOSTING_ENCRYPTION_KEY" ]] && warn "HOSTING_ENCRYPTION_KEY not set in deploy.env - generated random key (add to deploy.env to preserve across servers)"
 
     # Written only if absent, so a redeploy never clobbers live secrets.
     remote_sudo "test -f ${APP_DIR}/.env || cat > ${APP_DIR}/.env <<ENVEOF
