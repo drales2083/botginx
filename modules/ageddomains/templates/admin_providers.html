@@ -153,16 +153,65 @@
 <script>
 let providerModal;
 let editingId = null;
+const FORM_STORAGE_KEY = 'ageddomains_provider_form';
 
 document.addEventListener('DOMContentLoaded', function() {
     providerModal = new bootstrap.Modal(document.getElementById('providerModal'));
+
+    // Auto-save form data on input changes
+    document.getElementById('provider-form').addEventListener('input', saveFormToStorage);
+    document.getElementById('provider-form').addEventListener('change', saveFormToStorage);
 });
+
+function saveFormToStorage() {
+    if (editingId) return; // Don't save when editing existing provider
+    try {
+        const data = {
+            name: document.getElementById('provider-name').value,
+            displayName: document.getElementById('display-name').value,
+            providerType: document.getElementById('provider-type').value,
+            isActive: document.getElementById('is-active').checked,
+            markupPercent: document.getElementById('markup-percent').value,
+            minAge: document.getElementById('min-age').value,
+            maxPrice: document.getElementById('max-price').value,
+            allowedTlds: document.getElementById('allowed-tlds').value
+        };
+        localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
+    } catch (e) { /* localStorage not available */ }
+}
+
+function restoreFormFromStorage() {
+    try {
+        const saved = localStorage.getItem(FORM_STORAGE_KEY);
+        if (!saved) return false;
+        const data = JSON.parse(saved);
+        if (data.name) document.getElementById('provider-name').value = data.name;
+        if (data.displayName) document.getElementById('display-name').value = data.displayName;
+        if (data.providerType) document.getElementById('provider-type').value = data.providerType;
+        document.getElementById('is-active').checked = data.isActive !== false;
+        if (data.markupPercent) document.getElementById('markup-percent').value = data.markupPercent;
+        if (data.minAge) document.getElementById('min-age').value = data.minAge;
+        if (data.maxPrice) document.getElementById('max-price').value = data.maxPrice;
+        if (data.allowedTlds) document.getElementById('allowed-tlds').value = data.allowedTlds;
+        return true;
+    } catch (e) { return false; }
+}
+
+function clearFormStorage() {
+    try { localStorage.removeItem(FORM_STORAGE_KEY); } catch (e) { /* ignore */ }
+}
 
 function showAddModal() {
     editingId = null;
     document.getElementById('modal-title').textContent = 'Add Provider';
     document.getElementById('provider-form').reset();
     document.getElementById('is-active').checked = true;
+
+    // Try to restore saved form data
+    if (restoreFormFromStorage()) {
+        showToast('Form data restored from previous session', 'primary');
+    }
+
     providerModal.show();
 }
 
@@ -223,6 +272,7 @@ function saveProvider() {
     })
     .then(() => {
         providerModal.hide();
+        clearFormStorage(); // Clear saved form data on success
         showToast(editingId ? 'Provider updated' : 'Provider created', 'success');
         location.reload();
     })

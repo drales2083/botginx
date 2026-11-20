@@ -10,9 +10,9 @@ type Provider struct {
 	ID            string    `db:"id" json:"id"`
 	Name          string    `db:"name" json:"name"`
 	DisplayName   string    `db:"display_name" json:"displayName"`
-	ProviderType  string    `db:"provider_type" json:"-"` // Hidden from users
-	APIKey        string    `db:"api_key" json:"-"`       // Never expose
-	APISecret     string    `db:"api_secret" json:"-"`    // Never expose
+	ProviderType  string    `db:"provider_type" json:"providerType"`
+	APIKey        string    `db:"api_key" json:"-"` // Never expose
+	APISecret     string    `db:"api_secret" json:"-"` // Never expose
 	IsActive      bool      `db:"is_active" json:"isActive"`
 	MarkupPercent float64   `db:"markup_percent" json:"markupPercent"`
 	MinAgeYears   int       `db:"min_age_years" json:"minAgeYears"`

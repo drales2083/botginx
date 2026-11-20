@@ -90,6 +90,7 @@ func (h *AdminHandler) APICreateProvider(w http.ResponseWriter, r *http.Request)
 		ProviderType  string  `json:"providerType"`
 		APIKey        string  `json:"apiKey"`
 		APISecret     string  `json:"apiSecret"`
+		IsActive      bool    `json:"isActive"`
 		MarkupPercent float64 `json:"markupPercent"`
 		MinAgeYears   int     `json:"minAgeYears"`
 		MaxPriceCents int     `json:"maxPriceCents"`
@@ -118,7 +119,7 @@ func (h *AdminHandler) APICreateProvider(w http.ResponseWriter, r *http.Request)
 		ProviderType:  req.ProviderType,
 		APIKey:        apiKey,
 		APISecret:     apiSecret,
-		IsActive:      true,
+		IsActive:      req.IsActive,
 		MarkupPercent: req.MarkupPercent,
 		MinAgeYears:   req.MinAgeYears,
 		MaxPriceCents: req.MaxPriceCents,
