@@ -594,6 +594,29 @@ func (s *Service) checkDomainConfigExists(domain Domain, server Server) (bool, e
 	return strings.TrimSpace(result.Output) == "exists", nil
 }
 
+// isCloudflare checks if domain is behind Cloudflare proxy
+func (s *Service) isCloudflare(domain string) bool {
+	baseDomain := domain
+	if strings.HasPrefix(baseDomain, "*.") {
+		baseDomain = baseDomain[2:]
+	}
+
+	ips, err := net.LookupIP(baseDomain)
+	if err != nil || len(ips) == 0 {
+		return false
+	}
+
+	// Cloudflare IP ranges (simplified prefix check)
+	cfRanges := []string{"104.", "172.67.", "162.158.", "141.101.", "108.162.", "190.93.", "188.114.", "197.234.", "198.41.", "103.21.", "103.22.", "103.31."}
+	ipStr := ips[0].String()
+	for _, prefix := range cfRanges {
+		if strings.HasPrefix(ipStr, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // checkDNSRecords verifies DNS records for the domain
 func (s *Service) checkDNSRecords(domain Domain, serverIP string) (bool, []string) {
 	var missing []string
@@ -602,19 +625,26 @@ func (s *Service) checkDNSRecords(domain Domain, serverIP string) (bool, []strin
 		baseDomain = baseDomain[2:]
 	}
 
-	// Check A record for base domain
-	aRecords, err := net.LookupHost(baseDomain)
-	if err != nil || !containsIP(aRecords, serverIP) {
-		missing = append(missing, fmt.Sprintf("A @ → %s", serverIP))
+	// Skip A record check for Cloudflare-proxied domains
+	// Cloudflare domains will have A records pointing to Cloudflare, not our server
+	isCloudflare := s.isCloudflare(baseDomain)
+	if isCloudflare {
+		log.Printf("[DomainSync] Domain %s is behind Cloudflare, skipping A record check", baseDomain)
+	} else {
+		// Check A record for base domain
+		aRecords, err := net.LookupHost(baseDomain)
+		if err != nil || !containsIP(aRecords, serverIP) {
+			missing = append(missing, fmt.Sprintf("A @ → %s", serverIP))
+		}
+
+		// Check wildcard A record (test with a random subdomain)
+		wildcardRecords, err := net.LookupHost("sync-test." + baseDomain)
+		if err != nil || !containsIP(wildcardRecords, serverIP) {
+			missing = append(missing, fmt.Sprintf("A * → %s", serverIP))
+		}
 	}
 
-	// Check wildcard A record (test with a random subdomain)
-	wildcardRecords, err := net.LookupHost("sync-test." + baseDomain)
-	if err != nil || !containsIP(wildcardRecords, serverIP) {
-		missing = append(missing, fmt.Sprintf("A * → %s", serverIP))
-	}
-
-	// Check CNAME for acme-dns (if configured)
+	// Check CNAME for acme-dns (if configured) - required for both CF and non-CF domains
 	if domain.AcmeFulldomain != nil && *domain.AcmeFulldomain != "" {
 		cname, err := net.LookupCNAME("_acme-challenge." + baseDomain)
 		expectedCname := *domain.AcmeFulldomain
@@ -654,8 +684,14 @@ func (s *Service) checkSSLExists(domain Domain, server Server) (bool, error) {
 	// Check if Let's Encrypt cert exists
 	cmd := fmt.Sprintf(`test -f /etc/letsencrypt/live/%s/fullchain.pem && echo "exists"`, baseDomainLower)
 	result, _ := client.Exec(cmd)
+	if result != nil && strings.TrimSpace(result.Output) == "exists" {
+		return true, nil
+	}
 
-	return result != nil && strings.TrimSpace(result.Output) == "exists", nil
+	// Also check for self-signed cert (used for Cloudflare domains)
+	selfSignedCmd := fmt.Sprintf(`test -f /etc/nginx/ssl/%s.pem && echo "exists"`, baseDomainLower)
+	selfSignedResult, _ := client.Exec(selfSignedCmd)
+	return selfSignedResult != nil && strings.TrimSpace(selfSignedResult.Output) == "exists", nil
 }
 
 // generateSSL generates SSL certificate for the domain
@@ -683,7 +719,28 @@ func (s *Service) generateSSL(domain Domain, server Server) error {
 		baseDomain = baseDomain[2:]
 	}
 
-	// Create the update script for acme-dns
+	// For Cloudflare-proxied domains, generate self-signed cert (Cloudflare Full mode)
+	if s.isCloudflare(baseDomain) {
+		log.Printf("[DomainSync] Domain %s is behind Cloudflare, generating self-signed cert", baseDomain)
+		selfSignedCmd := fmt.Sprintf(`mkdir -p /etc/nginx/ssl && \
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+  -keyout /etc/nginx/ssl/%s.key \
+  -out /etc/nginx/ssl/%s.pem \
+  -subj "/CN=*.%s" 2>&1`, baseDomain, baseDomain, baseDomain)
+
+		result, err := client.Exec(selfSignedCmd)
+		if err != nil {
+			output := ""
+			if result != nil {
+				output = result.Output
+			}
+			return fmt.Errorf("self-signed cert generation failed: %w - output: %s", err, output)
+		}
+		log.Printf("[DomainSync] Self-signed cert created for %s", baseDomain)
+		return nil
+	}
+
+	// Create the update script for acme-dns (non-Cloudflare domains)
 	if domain.AcmeUsername != nil && domain.AcmePassword != nil && domain.AcmeSubdomain != nil {
 		updateScript := fmt.Sprintf(`cat > /root/update-acme-dns-%s.sh << 'SCRIPT'
 #!/bin/bash
@@ -856,15 +913,26 @@ func (s *Service) setupNginxConfig(domain Domain, server Server) error {
 		return nil // Config already exists
 	}
 
+	// Determine SSL paths based on whether domain is behind Cloudflare
+	var sslCertPath, sslKeyPath string
+	if s.isCloudflare(baseDomain) {
+		// Self-signed cert for Cloudflare Full mode
+		sslCertPath = fmt.Sprintf("/etc/nginx/ssl/%s.pem", baseDomainLower)
+		sslKeyPath = fmt.Sprintf("/etc/nginx/ssl/%s.key", baseDomainLower)
+	} else {
+		// Let's Encrypt cert
+		sslCertPath = fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", baseDomainLower)
+		sslKeyPath = fmt.Sprintf("/etc/letsencrypt/live/%s/privkey.pem", baseDomainLower)
+	}
+
 	// Create nginx config with SSL
-	// Note: SSL paths use lowercase (certbot creates lowercase dirs)
 	nginxConfig := fmt.Sprintf(`server {
     listen 80;
     listen 443 ssl;
     server_name %s *.%s;
 
-    ssl_certificate /etc/letsencrypt/live/%s/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/%s/privkey.pem;
+    ssl_certificate %s;
+    ssl_certificate_key %s;
 
     location /.well-known/acme-challenge/ {
         root /var/www/sites/%s;
@@ -878,7 +946,7 @@ func (s *Service) setupNginxConfig(domain Domain, server Server) error {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-}`, baseDomain, baseDomain, baseDomainLower, baseDomainLower, baseDomainLower)
+}`, baseDomain, baseDomain, sslCertPath, sslKeyPath, baseDomainLower)
 
 	// Create directories (use lowercase for filesystem consistency)
 	mkdirCmd := fmt.Sprintf("mkdir -p /var/www/sites/%s/_root /var/www/sites/%s/_errors", baseDomainLower, baseDomainLower)
