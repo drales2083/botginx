@@ -17,7 +17,8 @@ var migrationsFS embed.FS
 
 type Module struct {
 	*module.BaseModule
-	handler *handlers.Handler
+	handler    *handlers.Handler
+	background *BackgroundJobs
 }
 
 func New() *Module {
@@ -37,6 +38,10 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
+
+	// Start background jobs for auto-closing stale tickets
+	m.background = NewBackgroundJobs(deps.DB)
+	m.background.Start()
 
 	return nil
 }
