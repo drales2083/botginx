@@ -51,6 +51,7 @@ import (
 	"github.com/botginx/botginx/modules/referrals"
 	"github.com/botginx/botginx/modules/reports"
 	"github.com/botginx/botginx/modules/servers"
+	serversservices "github.com/botginx/botginx/modules/servers/services"
 	"github.com/botginx/botginx/modules/settings"
 	"github.com/botginx/botginx/modules/shortener"
 	"github.com/botginx/botginx/modules/support"
@@ -450,6 +451,19 @@ func main() {
 	telegramModule.Handler.SetUserNotifier(notificationSvc)      // User notifications when admin replies via Telegram
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
 	serversModule.SetOnServerIPChange(domainsModule.ReconfigureAllDomainsWithIP) // Auto DNS reconfigure on deploy IP change
+	serversModule.SetOnResetDomains(domainsModule.Service().ResetAllDomainsForReconfigure) // Reset domains callback
+	serversModule.SetOnAssignServer(domainsModule.Service().AssignServerToAllDomains)      // Assign server callback
+	serversModule.SetOnReconfigureAll(func(serverIP string, progressFn func(provider string, results []serversservices.ReconfigureResult)) error {
+		// Wrap the domains module function to convert between result types
+		return domainsModule.ReconfigureAllDomainsWithProgress(serverIP, func(provider string, domainResults []domains.ReconfigureResult) {
+			// Convert domains.ReconfigureResult to servers/services.ReconfigureResult
+			srvResults := make([]serversservices.ReconfigureResult, len(domainResults))
+			for i, r := range domainResults {
+				srvResults[i] = serversservices.ReconfigureResult{Domain: r.Domain, Success: r.Success, Error: r.Error}
+			}
+			progressFn(provider, srvResults)
+		})
+	})
 	agedDomainsModule.SetDomainCreator(domainsModule.PorkbunService()) // Aged domains creates domain records via Porkbun
 
 	// QR codes needs redirect links list

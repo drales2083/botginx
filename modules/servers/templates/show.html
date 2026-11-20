@@ -78,7 +78,7 @@
                 <a href="/admin/servers/{{.Server.ID}}/terminal" class="btn btn-outline-secondary">
                     <i class="bi bi-terminal me-2"></i> {{t "servers.terminal"}}
                 </a>
-                <button class="btn btn-outline-warning" id="btn-reconfigure-dns">
+                <button class="btn btn-outline-warning" id="btn-reconfigure-dns" onclick="startReconfigure()">
                     <i class="bi bi-arrow-repeat me-2"></i> Update All Domain DNS
                 </button>
                 <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
@@ -121,57 +121,40 @@ document.querySelector('.btn-test')?.addEventListener('click', async function() 
     btn.innerHTML = '<i class="bi bi-plug me-1"></i> {{t "servers.test_connection"}}';
 });
 
-// Update All Domain DNS - reconfigures both NameSilo and cPanel domains
-document.getElementById('btn-reconfigure-dns')?.addEventListener('click', async function() {
-    const btn = this;
+// Update All Domain DNS - redirect to reconfiguration page
+async function startReconfigure() {
+    const btn = document.getElementById('btn-reconfigure-dns');
     const serverIP = '{{.Server.IP}}';
+    const serverID = '{{.Server.ID}}';
 
-    if (!confirm(`Update DNS for ALL domains to point to ${serverIP}?\n\nThis will update wildcard A records for all NameSilo and cPanel domains.`)) {
+    if (!confirm(`Update DNS for ALL domains to point to ${serverIP}?\n\nThis will:\n1. Reset all domain DNS status\n2. Assign this server to all domains\n3. Update DNS for API-connected domains\n4. DomainSync will verify & enable SSL`)) {
         return;
     }
 
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Starting...';
 
     try {
-        const res = await fetch('/admin/domains/api/reconfigure-all', {
+        const res = await fetch('/admin/servers/api/reconfigure/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip: serverIP })
+            body: JSON.stringify({ serverId: serverID })
         });
         const data = await res.json();
 
-        if (data.success) {
-            const ns = data.data.namesilo || {};
-            const cp = data.data.cpanel || {};
-            const nsTotal = ns.total || 0;
-            const cpTotal = cp.total || 0;
-            const nsSuccess = ns.success || 0;
-            const cpSuccess = cp.success || 0;
-
-            const cf = data.data.cloudflare || {};
-            const cfTotal = cf.total || 0;
-            const cfSuccess = cf.success || 0;
-
-            if (nsTotal === 0 && cpTotal === 0 && cfTotal === 0) {
-                flashToast('No domains to update', 'info');
-            } else {
-                const parts = [];
-                if (nsTotal > 0) parts.push(`NameSilo: ${nsSuccess}/${nsTotal}`);
-                if (cpTotal > 0) parts.push(`cPanel: ${cpSuccess}/${cpTotal}`);
-                if (cfTotal > 0) parts.push(`Cloudflare: ${cfSuccess}/${cfTotal}`);
-                flashToast(`Updated ${nsSuccess + cpSuccess + cfSuccess} domains (${parts.join(', ')})`, 'success');
-            }
+        if (data.reconfigureId) {
+            window.location.href = `/admin/servers/reconfigure/${data.reconfigureId}`;
         } else {
-            flashToast(data.error || 'Failed to update domains', 'danger');
+            flashToast(data.error || 'Failed to start reconfiguration', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i> Update All Domain DNS';
         }
     } catch (err) {
         flashToast('Error: ' + err.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i> Update All Domain DNS';
     }
-
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i> Update All Domain DNS';
-});
+}
 
 document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
     const btn = document.getElementById('confirmDeleteBtn');

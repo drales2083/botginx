@@ -484,6 +484,22 @@ func (s *DomainService) ResetAllDomainsForReconfigure() (int, error) {
 	return int(count), nil
 }
 
+// AssignServerToAllDomains sets the server_id for ALL domains.
+// This is CRITICAL during reconfiguration - all domains must point to the new server.
+// Returns the count of domains updated.
+func (s *DomainService) AssignServerToAllDomains(serverID string) (int, error) {
+	result, err := s.db.Exec(`
+		UPDATE domains
+		SET server_id = $1,
+		    updated_at = NOW()
+	`, serverID)
+	if err != nil {
+		return 0, err
+	}
+	count, _ := result.RowsAffected()
+	return int(count), nil
+}
+
 // ListUnverified returns domains that haven't been DNS verified yet
 func (s *DomainService) ListUnverified() ([]models.Domain, error) {
 	var domains []models.Domain

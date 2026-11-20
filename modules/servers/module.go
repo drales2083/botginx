@@ -20,10 +20,12 @@ var migrationsFS embed.FS
 // Module implements the servers feature
 type Module struct {
 	*module.BaseModule
-	service          *services.ServerService
-	handler          *handlers.Handler
-	provisionService *services.ProvisionService
-	provisionHandler *handlers.ProvisionHandler
+	service            *services.ServerService
+	handler            *handlers.Handler
+	provisionService   *services.ProvisionService
+	provisionHandler   *handlers.ProvisionHandler
+	reconfigureService *services.ReconfigureService
+	reconfigureHandler *handlers.ReconfigureHandler
 
 	onServerIPChange func(newIP string) error
 }
@@ -57,6 +59,10 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	m.provisionService = services.NewProvisionService(deps.DB, m.service)
 	m.provisionHandler = handlers.NewProvisionHandler(m.provisionService, m.service, deps.Templates)
 
+	// Initialize reconfigure service and handler
+	m.reconfigureService = services.NewReconfigureService(deps.DB, m.service)
+	m.reconfigureHandler = handlers.NewReconfigureHandler(m.reconfigureService, m.service, deps.Templates)
+
 	m.handler.SetOnServerIPChange(func(ip string) error {
 		if m.onServerIPChange == nil {
 			return nil
@@ -87,6 +93,12 @@ func (m *Module) Migrate() error {
 		m.DB().Exec(string(sql2))
 	}
 
+	// Run reconfigurations table migration
+	sql3, err := fs.ReadFile(migrationsFS, "migrations/003_add_reconfigure.sql")
+	if err == nil {
+		m.DB().Exec(string(sql3))
+	}
+
 	return nil
 }
 
@@ -96,7 +108,8 @@ func (m *Module) Routes() chi.Router {
 	// Pages
 	r.Get("/", m.handler.List)
 	r.Get("/new", m.handler.New)
-	r.Get("/provision/{id}", m.provisionHandler.ProvisionPage) // Must be before /{id} to avoid conflict
+	r.Get("/provision/{id}", m.provisionHandler.ProvisionPage)     // Must be before /{id} to avoid conflict
+	r.Get("/reconfigure/{id}", m.reconfigureHandler.ReconfigurePage) // Must be before /{id} to avoid conflict
 	r.Get("/{id}", m.handler.Show)
 	r.Get("/{id}/logs", m.handler.Logs)
 	r.Get("/{id}/terminal", m.handler.Terminal)
@@ -117,6 +130,13 @@ func (m *Module) Routes() chi.Router {
 		r.Post("/", m.provisionHandler.APIStartProvision)
 		r.Get("/{id}", m.provisionHandler.APIGetProvision)
 		r.Get("/{id}/stream", m.provisionHandler.APIStreamProvision)
+	})
+
+	// Reconfigure API
+	r.Route("/api/reconfigure", func(r chi.Router) {
+		r.Post("/", m.reconfigureHandler.APIStartReconfigure)
+		r.Get("/{id}", m.reconfigureHandler.APIGetReconfigure)
+		r.Get("/{id}/stream", m.reconfigureHandler.APIStreamReconfigure)
 	})
 
 	return r
@@ -166,6 +186,21 @@ func (m *Module) GetDeployIP() string {
 // GetAllDeployServers returns all ready servers for IP list push.
 func (m *Module) GetAllDeployServers() ([]services.DeployServerInfo, error) {
 	return m.service.GetAllDeployServers()
+}
+
+// SetOnReconfigureAll registers the callback for DNS reconfiguration
+func (m *Module) SetOnReconfigureAll(fn func(serverIP string, progressFn func(provider string, results []services.ReconfigureResult)) error) {
+	m.reconfigureService.SetOnReconfigureAll(fn)
+}
+
+// SetOnAssignServer registers the callback for assigning server to all domains
+func (m *Module) SetOnAssignServer(fn func(serverID string) (int, error)) {
+	m.reconfigureService.SetOnAssignServer(fn)
+}
+
+// SetOnResetDomains registers the callback for resetting all domains
+func (m *Module) SetOnResetDomains(fn func() (int, error)) {
+	m.reconfigureService.SetOnResetDomains(fn)
 }
 
 func (m *Module) Widgets() []module.Widget {

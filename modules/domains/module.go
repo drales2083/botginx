@@ -538,6 +538,84 @@ func (m *Module) ReconfigureAllDomainsWithIP(serverIP string) error {
 	return nil
 }
 
+// ReconfigureResult is a single domain reconfiguration result
+type ReconfigureResult struct {
+	Domain  string
+	Success bool
+	Error   string
+}
+
+// ReconfigureAllDomainsWithProgress updates DNS for all providers with progress callbacks.
+// Used by the reconfigure page for real-time streaming progress.
+func (m *Module) ReconfigureAllDomainsWithProgress(serverIP string, progressFn func(provider string, results []ReconfigureResult)) error {
+	var allErrors []string
+
+	// NameSilo
+	namesiloResults, err := m.namesiloService.ReconfigureAllDomains(context.Background(), serverIP)
+	if err != nil {
+		allErrors = append(allErrors, "namesilo: "+err.Error())
+	} else if len(namesiloResults) > 0 {
+		results := make([]ReconfigureResult, len(namesiloResults))
+		for i, r := range namesiloResults {
+			results[i] = ReconfigureResult{Domain: r.Domain, Success: r.Success, Error: r.Error}
+		}
+		progressFn("NameSilo", results)
+	}
+
+	// cPanel
+	cpanelResults, err := m.cpanelService.ReconfigureAllDomains(serverIP)
+	if err != nil {
+		allErrors = append(allErrors, "cpanel: "+err.Error())
+	} else if len(cpanelResults) > 0 {
+		results := make([]ReconfigureResult, len(cpanelResults))
+		for i, r := range cpanelResults {
+			results[i] = ReconfigureResult{Domain: r.Domain, Success: r.Success, Error: r.Error}
+		}
+		progressFn("cPanel", results)
+	}
+
+	// Cloudflare
+	cloudflareResults, err := m.cloudflareService.ReconfigureAllDomains(context.Background(), serverIP)
+	if err != nil {
+		allErrors = append(allErrors, "cloudflare: "+err.Error())
+	} else if len(cloudflareResults) > 0 {
+		results := make([]ReconfigureResult, len(cloudflareResults))
+		for i, r := range cloudflareResults {
+			results[i] = ReconfigureResult{Domain: r.Domain, Success: r.Success, Error: r.Error}
+		}
+		progressFn("Cloudflare", results)
+	}
+
+	// GoDaddy
+	godaddyResults, err := m.godaddyService.ReconfigureAllDomains(context.Background(), serverIP)
+	if err != nil {
+		allErrors = append(allErrors, "godaddy: "+err.Error())
+	} else if len(godaddyResults) > 0 {
+		results := make([]ReconfigureResult, len(godaddyResults))
+		for i, r := range godaddyResults {
+			results[i] = ReconfigureResult{Domain: r.Domain, Success: r.Success, Error: r.Error}
+		}
+		progressFn("GoDaddy", results)
+	}
+
+	// Porkbun
+	porkbunResults, err := m.porkbunService.ReconfigureAllDomains(context.Background(), serverIP)
+	if err != nil {
+		allErrors = append(allErrors, "porkbun: "+err.Error())
+	} else if len(porkbunResults) > 0 {
+		results := make([]ReconfigureResult, len(porkbunResults))
+		for i, r := range porkbunResults {
+			results[i] = ReconfigureResult{Domain: r.Domain, Success: r.Success, Error: r.Error}
+		}
+		progressFn("Porkbun", results)
+	}
+
+	if len(allErrors) > 0 {
+		return fmt.Errorf("reconfigure errors: %s", strings.Join(allErrors, "; "))
+	}
+	return nil
+}
+
 func (m *Module) Widgets() []module.Widget {
 	return []module.Widget{
 		{

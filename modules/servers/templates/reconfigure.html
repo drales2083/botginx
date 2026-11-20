@@ -1,0 +1,559 @@
+{{define "content"}}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">
+                    <i class="bi bi-arrow-repeat me-2"></i>
+                    DNS Reconfiguration: {{.Server.Name}}
+                </h3>
+                <span class="badge fs-6" id="status-badge">
+                    {{if eq .Reconfigure.Status "pending"}}Pending{{end}}
+                    {{if eq .Reconfigure.Status "running"}}Running{{end}}
+                    {{if eq .Reconfigure.Status "completed"}}Completed{{end}}
+                    {{if eq .Reconfigure.Status "failed"}}Failed{{end}}
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- Progress Bar -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted" id="progress-text">Step {{.Reconfigure.CurrentStep}} of 4</span>
+                        <span class="text-muted" id="progress-percent">0%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated"
+                             id="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Steps Timeline -->
+                <div class="reconfigure-timeline mb-4">
+                    {{range .Steps}}
+                    <div class="timeline-item" data-step="{{.Number}}">
+                        <div class="timeline-marker">
+                            <span class="marker-number">{{.Number}}</span>
+                            <i class="bi bi-check-lg marker-check d-none"></i>
+                            <i class="bi bi-x-lg marker-fail d-none"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">{{.Name}}</div>
+                            <div class="timeline-status text-muted small">Waiting...</div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+
+                <!-- Output Terminal -->
+                <div class="terminal-panel">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <span class="terminal-title">Terminal Output</span>
+                        <span class="terminal-status text-muted small ms-auto me-2" id="connection-status">Connecting...</span>
+                        <button class="btn btn-sm btn-link text-light" onclick="clearOutput()" title="Clear">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    <pre id="output-log" class="terminal-body">{{with .Reconfigure.Output}}{{.}}{{else}}Waiting for output...{{end}}</pre>
+                </div>
+
+                <!-- Alerts -->
+                <div id="error-alert" class="alert alert-danger mt-3 d-none">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span id="error-message"></span>
+                </div>
+
+                <div id="success-alert" class="alert alert-success mt-3 d-none">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong>Success!</strong> DNS reconfiguration complete. DomainSync will verify and enable SSL for all domains.
+                </div>
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <a href="/admin/servers/{{.Server.ID}}" class="btn btn-primary" id="back-btn">
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Back to Server
+                </a>
+                <a href="/admin/domains" class="btn btn-outline-secondary" id="domains-btn">
+                    <i class="bi bi-globe me-1"></i>
+                    View Domains
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Server Details</h3>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <th class="ps-3">Name</th>
+                        <td>{{.Server.Name}}</td>
+                    </tr>
+                    <tr>
+                        <th class="ps-3">IP Address</th>
+                        <td><code>{{.Server.IP}}</code></td>
+                    </tr>
+                    <tr>
+                        <th class="ps-3">Status</th>
+                        <td>
+                            {{if eq .Server.Status "ready"}}
+                            <span class="badge bg-success">Ready</span>
+                            {{else}}
+                            <span class="badge bg-secondary">{{.Server.Status}}</span>
+                            {{end}}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h3 class="card-title mb-0">What's happening</h3>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-1-circle text-primary me-2"></i>Reset all domain DNS status</li>
+                    <li class="mb-2"><i class="bi bi-2-circle text-primary me-2"></i>Assign this server to all domains</li>
+                    <li class="mb-2"><i class="bi bi-3-circle text-primary me-2"></i>Update DNS via API (auto domains)</li>
+                    <li class="mb-0"><i class="bi bi-4-circle text-primary me-2"></i>DomainSync verifies & enables SSL</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h3 class="card-title mb-0">DNS Providers</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-2">Auto-updated via API:</p>
+                <ul class="list-unstyled mb-3">
+                    <li><i class="bi bi-check2 text-success me-2"></i>NameSilo</li>
+                    <li><i class="bi bi-check2 text-success me-2"></i>Cloudflare</li>
+                    <li><i class="bi bi-check2 text-success me-2"></i>cPanel</li>
+                    <li><i class="bi bi-check2 text-success me-2"></i>GoDaddy</li>
+                    <li><i class="bi bi-check2 text-success me-2"></i>Porkbun</li>
+                </ul>
+                <p class="text-muted small mb-0">External/manual domains need manual DNS update to: <code>{{.Server.IP}}</code></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Timeline Design */
+.reconfigure-timeline {
+    position: relative;
+    padding-left: 0;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    position: relative;
+}
+
+.timeline-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 1.125rem;
+    top: 2.75rem;
+    bottom: 0;
+    width: 2px;
+    background: var(--bs-border-color);
+}
+
+.timeline-item.done:not(:last-child)::after {
+    background: var(--bs-success);
+}
+
+.timeline-marker {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bs-tertiary-bg);
+    border: 2px solid var(--bs-border-color);
+    font-weight: 600;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.timeline-item.active .timeline-marker {
+    background: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+.timeline-item.done .timeline-marker {
+    background: var(--bs-success);
+    border-color: var(--bs-success);
+    color: white;
+}
+
+.timeline-item.done .marker-number { display: none; }
+.timeline-item.done .marker-check { display: block !important; }
+
+.timeline-item.failed .timeline-marker {
+    background: var(--bs-danger);
+    border-color: var(--bs-danger);
+    color: white;
+}
+
+.timeline-item.failed .marker-number { display: none; }
+.timeline-item.failed .marker-fail { display: block !important; }
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--bs-primary-rgb), 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(var(--bs-primary-rgb), 0); }
+}
+
+.timeline-content {
+    flex: 1;
+    padding-top: 0.25rem;
+}
+
+.timeline-title {
+    font-weight: 500;
+    margin-bottom: 0.125rem;
+}
+
+.timeline-status {
+    font-size: 0.8125rem;
+}
+
+.timeline-item.active .timeline-status {
+    color: var(--bs-primary) !important;
+}
+
+.timeline-item.done .timeline-status {
+    color: var(--bs-success) !important;
+}
+
+.timeline-item.failed .timeline-status {
+    color: var(--bs-danger) !important;
+}
+
+/* Terminal Design */
+.terminal-panel {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid var(--bs-border-color);
+}
+
+.terminal-header {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: #2d2d2d;
+    gap: 0.75rem;
+}
+
+.terminal-dots {
+    display: flex;
+    gap: 0.375rem;
+}
+
+.terminal-dots .dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+}
+
+.terminal-dots .red { background: #ff5f56; }
+.terminal-dots .yellow { background: #ffbd2e; }
+.terminal-dots .green { background: #27c93f; }
+
+.terminal-title {
+    color: #888;
+    font-size: 0.8125rem;
+}
+
+.terminal-body {
+    margin: 0;
+    padding: 1rem;
+    min-height: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: #1a1a1a;
+    color: #0f0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Status Badge */
+#status-badge {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+}
+
+#status-badge.pending { background: var(--bs-secondary); color: white; }
+#status-badge.running { background: var(--bs-primary); color: white; }
+#status-badge.completed { background: var(--bs-success); color: white; }
+#status-badge.failed { background: var(--bs-danger); color: white; }
+
+/* Connection status */
+#connection-status.connected { color: #27c93f; }
+#connection-status.disconnected { color: #ff5f56; }
+</style>
+
+<script>
+const reconfigureId = '{{.Reconfigure.ID}}';
+const initialStatus = '{{.Reconfigure.Status}}';
+const totalSteps = 4;
+let currentStep = {{.Reconfigure.CurrentStep}};
+let evtSource = null;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 10;
+let isComplete = false;
+
+function updateProgress(step) {
+    const percent = Math.round((step / totalSteps) * 100);
+    document.getElementById('progress-bar').style.width = percent + '%';
+    document.getElementById('progress-text').textContent = `Step ${step} of ${totalSteps}`;
+    document.getElementById('progress-percent').textContent = percent + '%';
+}
+
+function updateStepUI(stepNum, stepName) {
+    for (let i = 1; i < stepNum; i++) {
+        const item = document.querySelector(`.timeline-item[data-step="${i}"]`);
+        if (item && !item.classList.contains('done')) {
+            item.classList.remove('active');
+            item.classList.add('done');
+            item.querySelector('.timeline-status').textContent = 'Completed';
+        }
+    }
+
+    const currentItem = document.querySelector(`.timeline-item[data-step="${stepNum}"]`);
+    if (currentItem) {
+        currentItem.classList.add('active');
+        currentItem.classList.remove('done');
+        currentItem.querySelector('.timeline-status').textContent = 'In progress...';
+    }
+
+    updateProgress(stepNum);
+    currentStep = stepNum;
+}
+
+function appendOutput(line) {
+    const log = document.getElementById('output-log');
+    if (log.textContent === 'Waiting for output...') {
+        log.textContent = '';
+    }
+    log.textContent += line + '\n';
+    log.scrollTop = log.scrollHeight;
+}
+
+function clearOutput() {
+    document.getElementById('output-log').textContent = '';
+}
+
+function setConnectionStatus(status) {
+    const el = document.getElementById('connection-status');
+    if (status === 'connected') {
+        el.textContent = 'Connected';
+        el.className = 'terminal-status text-muted small ms-auto me-2 connected';
+    } else if (status === 'reconnecting') {
+        el.textContent = `Reconnecting (${reconnectAttempts}/${maxReconnectAttempts})...`;
+        el.className = 'terminal-status text-muted small ms-auto me-2 disconnected';
+    } else {
+        el.textContent = 'Disconnected';
+        el.className = 'terminal-status text-muted small ms-auto me-2 disconnected';
+    }
+}
+
+function showComplete(success) {
+    isComplete = true;
+    const badge = document.getElementById('status-badge');
+    const progressBar = document.getElementById('progress-bar');
+
+    progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+
+    if (success) {
+        badge.textContent = 'Completed';
+        badge.className = 'badge fs-6 completed';
+        progressBar.classList.remove('bg-primary');
+        progressBar.classList.add('bg-success');
+        progressBar.style.width = '100%';
+        document.getElementById('progress-percent').textContent = '100%';
+        document.getElementById('progress-text').textContent = 'Complete';
+        document.getElementById('success-alert').classList.remove('d-none');
+
+        document.querySelectorAll('.timeline-item').forEach(item => {
+            item.classList.remove('active');
+            item.classList.add('done');
+            item.querySelector('.timeline-status').textContent = 'Completed';
+        });
+
+        flashToast('DNS reconfiguration completed successfully!', 'success');
+    } else {
+        badge.textContent = 'Failed';
+        badge.className = 'badge fs-6 failed';
+        progressBar.classList.remove('bg-primary');
+        progressBar.classList.add('bg-danger');
+
+        const currentItem = document.querySelector(`.timeline-item[data-step="${currentStep}"]`);
+        if (currentItem) {
+            currentItem.classList.remove('active');
+            currentItem.classList.add('failed');
+            currentItem.querySelector('.timeline-status').textContent = 'Failed';
+        }
+
+        flashToast('DNS reconfiguration failed', 'danger');
+    }
+
+    if (evtSource) {
+        evtSource.close();
+        evtSource = null;
+    }
+}
+
+function showError(message) {
+    document.getElementById('error-message').textContent = message;
+    document.getElementById('error-alert').classList.remove('d-none');
+}
+
+function connectSSE() {
+    if (evtSource) {
+        evtSource.close();
+    }
+
+    if (isComplete) {
+        return;
+    }
+
+    const badge = document.getElementById('status-badge');
+    badge.textContent = 'Running';
+    badge.className = 'badge fs-6 running';
+
+    evtSource = new EventSource('/admin/servers/api/reconfigure/' + reconfigureId + '/stream');
+
+    evtSource.onopen = () => {
+        setConnectionStatus('connected');
+        reconnectAttempts = 0;
+    };
+
+    evtSource.addEventListener('step', (e) => {
+        if (!e.data) return;
+        try {
+            const data = JSON.parse(e.data);
+            updateStepUI(data.step, data.name);
+        } catch (err) {
+            console.error('Failed to parse step event:', err);
+        }
+    });
+
+    evtSource.addEventListener('output', (e) => {
+        if (!e.data) return;
+        try {
+            const data = JSON.parse(e.data);
+            appendOutput(data.line);
+        } catch (err) {
+            console.error('Failed to parse output event:', err);
+        }
+    });
+
+    evtSource.addEventListener('error', (e) => {
+        if (e.data) {
+            try {
+                const data = JSON.parse(e.data);
+                if (data && data.message) {
+                    showError(data.message);
+                }
+            } catch (err) {
+                // Invalid JSON, ignore
+            }
+        }
+    });
+
+    evtSource.addEventListener('complete', (e) => {
+        if (!e.data) return;
+        try {
+            const data = JSON.parse(e.data);
+            showComplete(data.success);
+        } catch (err) {
+            console.error('Failed to parse complete event:', err);
+        }
+    });
+
+    evtSource.onerror = (e) => {
+        if (isComplete) {
+            return;
+        }
+
+        setConnectionStatus('disconnected');
+
+        if (evtSource.readyState === EventSource.CLOSED) {
+            evtSource.close();
+            evtSource = null;
+
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                setConnectionStatus('reconnecting');
+                setTimeout(connectSSE, 2000);
+            } else {
+                showError('Connection lost. Refresh the page to check status.');
+            }
+        }
+    };
+}
+
+// Initialize based on initial step
+if (currentStep > 0) {
+    updateStepUI(currentStep, '');
+}
+
+// Scroll terminal to bottom if there's existing output
+const log = document.getElementById('output-log');
+if (log.textContent && log.textContent !== 'Waiting for output...') {
+    log.scrollTop = log.scrollHeight;
+}
+
+// Initialize based on status
+if (initialStatus === 'pending' || initialStatus === 'running') {
+    connectSSE();
+} else if (initialStatus === 'completed') {
+    document.getElementById('status-badge').className = 'badge fs-6 completed';
+    document.getElementById('success-alert').classList.remove('d-none');
+    document.getElementById('progress-bar').style.width = '100%';
+    document.getElementById('progress-bar').classList.remove('progress-bar-striped', 'progress-bar-animated', 'bg-primary');
+    document.getElementById('progress-bar').classList.add('bg-success');
+    document.getElementById('progress-percent').textContent = '100%';
+    document.getElementById('progress-text').textContent = 'Complete';
+    document.querySelectorAll('.timeline-item').forEach(item => {
+        item.classList.add('done');
+        item.querySelector('.timeline-status').textContent = 'Completed';
+    });
+    setConnectionStatus('');
+    document.getElementById('connection-status').textContent = '';
+    isComplete = true;
+} else if (initialStatus === 'failed') {
+    document.getElementById('status-badge').className = 'badge fs-6 failed';
+    document.getElementById('progress-bar').classList.remove('progress-bar-striped', 'progress-bar-animated', 'bg-primary');
+    document.getElementById('progress-bar').classList.add('bg-danger');
+    setConnectionStatus('');
+    document.getElementById('connection-status').textContent = '';
+    isComplete = true;
+    {{with .Reconfigure.Error}}
+    showError('{{.}}');
+    {{end}}
+}
+</script>
+{{end}}
