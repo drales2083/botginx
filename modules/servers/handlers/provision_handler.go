@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/botginx/botginx/modules/servers/models"
@@ -177,6 +178,7 @@ func (h *ProvisionHandler) ProvisionPage(w http.ResponseWriter, r *http.Request)
 
 	provision, err := h.provisionService.Get(id)
 	if err != nil {
+		log.Printf("[Provision] Get provision %s failed: %v", id, err)
 		module.Render(w, r, h.templates, "errors:404.html", map[string]interface{}{
 			"Title":   "Provision Not Found",
 			"Message": "The provision job you're looking for doesn't exist.",
@@ -186,6 +188,7 @@ func (h *ProvisionHandler) ProvisionPage(w http.ResponseWriter, r *http.Request)
 
 	server, err := h.serverService.Get(provision.ServerID)
 	if err != nil {
+		log.Printf("[Provision] Get server %s for provision %s failed: %v", provision.ServerID, id, err)
 		module.Render(w, r, h.templates, "errors:404.html", map[string]interface{}{
 			"Title":   "Server Not Found",
 			"Message": "The server for this provision doesn't exist.",
