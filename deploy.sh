@@ -521,20 +521,25 @@ SUPABASE_KEY=${SUPABASE_KEY:-}
 PANEL_URL=${PANEL_DOMAIN:-guardbot.sbs}
 # UI display name
 UI_APP_NAME=${UI_APP_NAME:-GuardBot}
-# Telegram notifications - deploy channel
-TG_DEPLOY_BOT_TOKEN=8809328273:AAE4mVBbnzdjhVJ77M676y8KSLkL1JesEBk
-TG_DEPLOY_CHAT_ID=-1004338360346
-# Telegram notifications - support tickets
-TG_SUPPORT_BOT_TOKEN=8559701777:AAEOEOJR2waR8rl3wF9yvNfdhbAv9ikvNSU
-TG_SUPPORT_CHAT_ID=-5518056987
-# Hosting module: AES-256-GCM encryption key for HestiaCP passwords
+# Telegram notifications - deploy channel (from deploy.env)
+TG_DEPLOY_BOT_TOKEN=${TG_DEPLOY_BOT_TOKEN:-}
+TG_DEPLOY_CHAT_ID=${TG_DEPLOY_CHAT_ID:-}
+# Telegram notifications - support tickets (from deploy.env)
+TG_SUPPORT_BOT_TOKEN=${TG_SUPPORT_BOT_TOKEN:-}
+TG_SUPPORT_CHAT_ID=${TG_SUPPORT_CHAT_ID:-}
+# Hosting module: AES-256-GCM encryption key (from deploy.env - NEVER change once deployed)
 HOSTING_ENCRYPTION_KEY=${encryption_key}
-# Domain Health: Google Safe Browsing API key (free: 10k queries/day)
-google_safe_browsing_api_key=AIzaSyDnRAEGuVysL3hinplk_5wH6Ak2lfJbwEE
-# Signed URL Verification: Ed25519 private key (NEVER change once deployed)
-SIGNED_URL_PRIVATE_KEY=${SIGNED_URL_PRIVATE_KEY:-TEvX+N6kVvCgDuJ7mm3CHDRpe8iaz3Q4viRkVhVVqbZWpZSXA74sbguhQ4Z4NyZnSWaUl15k6ZoF1wRpu2iGIQ==}
-# WebMCP: Chrome origin trial token for AI agent tools
-WEBMCP_ORIGIN_TRIAL_TOKEN=A33YwZcL9lJ0N+1e5B4O9NNMpHCAWEbfV/zPBDpeS7Y1rBQJRx9RQAHeTbKhqqsI2tnbDt9fwW3YPqKt3uA4JwUAAABzeyJvcmlnaW4iOiJodHRwczovL2d1YXJkYm90LnNiczo0NDMiLCJmZWF0dXJlIjoiV2ViTUNQIiwiZXhwaXJ5IjoxODA2MzY0ODAwLCJpc1N1YmRvbWFpbiI6dHJ1ZSwiaXNUaGlyZFBhcnR5Ijp0cnVlfQ==
+# Domain Health: Google Safe Browsing API key (from deploy.env)
+google_safe_browsing_api_key=${google_safe_browsing_api_key:-}
+# Signed URL Verification: Ed25519 private key (from deploy.env - NEVER change once deployed)
+SIGNED_URL_PRIVATE_KEY=${SIGNED_URL_PRIVATE_KEY:-}
+# WebMCP: Chrome origin trial token (from deploy.env)
+WEBMCP_ORIGIN_TRIAL_TOKEN=${WEBMCP_ORIGIN_TRIAL_TOKEN:-}
+# BitGo crypto payments (from deploy.env)
+BITGO_WALLET_ID=${BITGO_WALLET_ID:-}
+BITGO_API_KEY=${BITGO_API_KEY:-}
+BITGO_WEBHOOK_SECRET=${BITGO_WEBHOOK_SECRET:-}
+BITGO_TESTNET=${BITGO_TESTNET:-false}
 ENVEOF"
     remote_sudo "chown ${RUN_USER}:${RUN_USER} ${APP_DIR}/.env"
     remote_sudo "chmod 600 ${APP_DIR}/.env"
