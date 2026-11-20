@@ -166,20 +166,14 @@ func NewPorkbunAdapter(p models.Provider) *PorkbunAdapter {
 	// Try to decrypt - if it fails, assume the value is not encrypted (legacy)
 	if decrypted, err := crypto.Decrypt(p.APIKey); err == nil && decrypted != "" {
 		apiKey = decrypted
-		log.Printf("[ageddomains] Decrypted API key for provider %s (len=%d)", p.DisplayName, len(apiKey))
 	} else if err != nil {
 		log.Printf("[ageddomains] Warning: could not decrypt API key for provider %s: %v", p.DisplayName, err)
-	} else {
-		log.Printf("[ageddomains] Warning: decrypted API key is empty for provider %s, using raw value (len=%d)", p.DisplayName, len(apiKey))
 	}
 
 	if decrypted, err := crypto.Decrypt(p.APISecret); err == nil && decrypted != "" {
 		apiSecret = decrypted
-		log.Printf("[ageddomains] Decrypted API secret for provider %s (len=%d)", p.DisplayName, len(apiSecret))
 	} else if err != nil {
 		log.Printf("[ageddomains] Warning: could not decrypt API secret for provider %s: %v", p.DisplayName, err)
-	} else {
-		log.Printf("[ageddomains] Warning: decrypted API secret is empty for provider %s, using raw value (len=%d)", p.DisplayName, len(apiSecret))
 	}
 
 	return &PorkbunAdapter{
