@@ -4,9 +4,6 @@ import starlight from '@astrojs/starlight';
 
 export default defineConfig({
 	site: 'https://docs.guardbot.sbs',
-	redirects: {
-		'/': '/guides/introduction/',
-	},
 	integrations: [
 		starlight({
 			title: 'GuardBot',

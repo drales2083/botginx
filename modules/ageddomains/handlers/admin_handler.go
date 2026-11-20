@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -130,8 +129,7 @@ func (h *AdminHandler) APICreateProvider(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.providerRegistry.Create(r.Context(), provider); err != nil {
-		log.Printf("[ageddomains] Failed to create provider: %v", err)
-		h.jsonError(w, "Failed to create provider: "+err.Error(), http.StatusInternalServerError)
+		h.jsonError(w, "Failed to create provider", http.StatusInternalServerError)
 		return
 	}
 
