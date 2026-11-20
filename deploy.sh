@@ -540,6 +540,8 @@ BITGO_WALLET_ID=${BITGO_WALLET_ID:-}
 BITGO_API_KEY=${BITGO_API_KEY:-}
 BITGO_WEBHOOK_SECRET=${BITGO_WEBHOOK_SECRET:-}
 BITGO_TESTNET=${BITGO_TESTNET:-false}
+# ACME DNS for wildcard SSL (from deploy.env)
+ACME_DNS_DOMAIN=${ACME_DNS_DOMAIN:-}
 ENVEOF"
     remote_sudo "chown ${RUN_USER}:${RUN_USER} ${APP_DIR}/.env"
     remote_sudo "chmod 600 ${APP_DIR}/.env"
