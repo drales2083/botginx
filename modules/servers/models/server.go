@@ -26,6 +26,7 @@ type Server struct {
 	Status      ServerStatus `db:"status" json:"status"`
 	Provider    *string      `db:"provider" json:"provider,omitempty"`
 	OS          *string      `db:"os" json:"os,omitempty"`
+	ProvisionID *string      `db:"provision_id" json:"provisionId,omitempty"`
 	CreatedAt   time.Time    `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time    `db:"updated_at" json:"updatedAt"`
 }

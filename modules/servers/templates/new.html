@@ -76,15 +76,10 @@
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary" id="submit-btn" data-action="create">
-                            <span class="spinner-border spinner-border-sm d-none me-1" role="status"></span>
-                            <i class="bi bi-plus-lg me-1 btn-icon"></i>
-                            <span class="btn-text">Add Server</span>
-                        </button>
-                        <button type="button" class="btn btn-success" id="provision-btn" data-action="provision">
+                        <button type="button" class="btn btn-primary" id="provision-btn" data-action="provision">
                             <span class="spinner-border spinner-border-sm d-none me-1" role="status"></span>
                             <i class="bi bi-rocket-takeoff me-1 btn-icon"></i>
-                            <span class="btn-text">Add & Provision</span>
+                            <span class="btn-text">Deploy</span>
                         </button>
                         <a href="/admin/servers" class="btn btn-secondary">{{t "cancel"}}</a>
                     </div>
@@ -135,38 +130,13 @@ function setButtonLoading(btn, loading) {
     }
 }
 
-// Add Server only
-document.getElementById('create-form').addEventListener('submit', async (e) => {
+// Prevent form submit (we use the Deploy button instead)
+document.getElementById('create-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    const btn = document.getElementById('submit-btn');
-    const errorAlert = document.getElementById('error-alert');
-
-    setButtonLoading(btn, true);
-    errorAlert.classList.add('d-none');
-
-    try {
-        const res = await fetch('/admin/servers/api/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(getFormData())
-        });
-        const result = await res.json();
-        if (res.ok && result.server && result.server.id) {
-            flashToast('Server added', 'success');
-            window.location.href = '/admin/servers/' + result.server.id;
-        } else {
-            errorAlert.textContent = result.error || 'Failed to create server';
-            errorAlert.classList.remove('d-none');
-            setButtonLoading(btn, false);
-        }
-    } catch (err) {
-        errorAlert.textContent = 'Network error: ' + err.message;
-        errorAlert.classList.remove('d-none');
-        setButtonLoading(btn, false);
-    }
+    document.getElementById('provision-btn').click();
 });
 
-// Add & Provision
+// Deploy (create + provision)
 document.getElementById('provision-btn').addEventListener('click', async () => {
     const btn = document.getElementById('provision-btn');
     const errorAlert = document.getElementById('error-alert');
