@@ -1,0 +1,56 @@
+{{ define "content" }}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Domain Inventory</h3>
+            <div class="card-tools">
+                <button class="btn btn-primary btn-sm" id="btn-refresh">
+                    <i class="fa-solid fa-sync me-1"></i>Refresh Now
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover" id="inventory-table">
+                <thead>
+                    <tr>
+                        <th>Domain</th>
+                        <th>TLD</th>
+                        <th>Age</th>
+                        <th>Sale Price</th>
+                        <th>Safety</th>
+                        <th>Available</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-body">
+                    <tr><td colspan="6" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', loadInventory);
+
+async function loadInventory() {
+    const resp = await fetch('/admin/ageddomains/api/inventory');
+    const data = await resp.json();
+    const tbody = document.getElementById('inventory-body');
+
+    if (!data.domains || !data.domains.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No domains in inventory</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.domains.map(function(d) {
+        return '<tr>' +
+            '<td>' + d.name + '</td>' +
+            '<td>' + d.tld + '</td>' +
+            '<td>' + (d.ageYears || '-') + '</td>' +
+            '<td>$' + (d.priceCents / 100).toFixed(2) + '</td>' +
+            '<td>' + d.safetyStatus + '</td>' +
+            '<td>' + (d.isAvailable ? 'Yes' : 'No') + '</td>' +
+        '</tr>';
+    }).join('');
+}
+</script>
+{{ end }}

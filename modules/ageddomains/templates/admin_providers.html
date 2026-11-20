@@ -1,0 +1,45 @@
+{{ define "content" }}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Domain Providers</h3>
+            <div class="card-tools">
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#providerModal">
+                    <i class="fa-solid fa-plus me-1"></i>Add Provider
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover" id="providers-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Display Name</th>
+                        <th>Type</th>
+                        <th>Markup</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .Providers }}
+                    <tr>
+                        <td>{{ .Name }}</td>
+                        <td>{{ .DisplayName }}</td>
+                        <td>{{ .ProviderType }}</td>
+                        <td>{{ .MarkupPercent }}%</td>
+                        <td>{{ if .IsActive }}<span class="badge bg-success">Active</span>{{ else }}<span class="badge bg-secondary">Inactive</span>{{ end }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning">Edit</button>
+                            <button class="btn btn-sm btn-info">Test</button>
+                        </td>
+                    </tr>
+                    {{ else }}
+                    <tr><td colspan="6" class="text-center text-muted">No providers configured</td></tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{{ end }}

@@ -37,6 +37,7 @@ import (
 	"github.com/botginx/botginx/modules/help"
 	"github.com/botginx/botginx/modules/hosting"
 	hostingmodels "github.com/botginx/botginx/modules/hosting/models"
+	"github.com/botginx/botginx/modules/ageddomains"
 	"github.com/botginx/botginx/modules/intel"
 	"github.com/botginx/botginx/modules/iplists"
 	iplistsvc "github.com/botginx/botginx/modules/iplists/services"
@@ -335,8 +336,9 @@ func main() {
 	registry.Register(apikeys.New())     // API Keys management
 	registry.Register(webhooks.New())    // Webhooks module
 	registry.Register(hostingModule)     // Bullet Proof Hosting module
-	registry.Register(marketplaceModule) // Domain marketplace
-	registry.Register(paymentsModule)    // Crypto payments
+	registry.Register(marketplaceModule)    // Domain marketplace (admin sells owned domains)
+	registry.Register(ageddomains.New())    // Aged Domains marketplace (purchase from external providers)
+	registry.Register(paymentsModule)       // Crypto payments
 	registry.Register(promocodesModule)  // Promo codes for subscriptions
 	registry.Register(help.New())        // Help/FAQ module
 	supportModule := support.New()

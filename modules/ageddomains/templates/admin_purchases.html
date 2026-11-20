@@ -1,0 +1,62 @@
+{{ define "content" }}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Domain Purchases</h3>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover" id="purchases-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Domain</th>
+                        <th>User</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody id="purchases-body">
+                    <tr><td colspan="6" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', loadPurchases);
+
+async function loadPurchases() {
+    const resp = await fetch('/admin/ageddomains/api/purchases');
+    const data = await resp.json();
+    const tbody = document.getElementById('purchases-body');
+
+    if (!data.purchases || !data.purchases.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No purchases yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.purchases.map(function(p) {
+        return '<tr>' +
+            '<td><code>' + p.id.substring(0,8) + '</code></td>' +
+            '<td>' + p.domain + '</td>' +
+            '<td>' + p.userId.substring(0,8) + '</td>' +
+            '<td>$' + (p.priceCents / 100).toFixed(2) + '</td>' +
+            '<td><span class="badge bg-' + getStatusColor(p.status) + '">' + p.status + '</span></td>' +
+            '<td>' + new Date(p.createdAt).toLocaleString() + '</td>' +
+        '</tr>';
+    }).join('');
+}
+
+function getStatusColor(status) {
+    var colors = {
+        'pending': 'warning',
+        'purchasing': 'info',
+        'provisioning': 'info',
+        'completed': 'success',
+        'failed': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+</script>
+{{ end }}
