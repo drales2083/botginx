@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -158,7 +159,8 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 	return respBody, nil
 }
 
-// doGet makes a GET request (no body)
+// doGet makes a GET request with credentials as query parameters
+// Porkbun API requires auth even for GET-style endpoints
 func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 	c.mu.Lock()
 	elapsed := time.Since(c.lastRequest)
@@ -168,7 +170,12 @@ func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 	c.lastRequest = time.Now()
 	c.mu.Unlock()
 
-	reqURL := c.baseURL + path
+	// Add credentials as query parameters
+	separator := "?"
+	if strings.Contains(path, "?") {
+		separator = "&"
+	}
+	reqURL := c.baseURL + path + separator + "apikey=" + c.apiKey + "&secretapikey=" + c.secretKey
 
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
