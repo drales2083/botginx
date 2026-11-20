@@ -542,6 +542,10 @@ BITGO_WEBHOOK_SECRET=${BITGO_WEBHOOK_SECRET:-}
 BITGO_TESTNET=${BITGO_TESTNET:-false}
 # ACME DNS for wildcard SSL (from deploy.env)
 ACME_DNS_DOMAIN=${ACME_DNS_DOMAIN:-}
+# Server auto-provisioning: GitHub token for private antibot repo
+ANTIBOT_GITHUB_TOKEN=${ANTIBOT_GITHUB_TOKEN:-}
+# Server auto-provisioning: Default ACME domain for wildcard SSL
+DEFAULT_ACME_DOMAIN=${DEFAULT_ACME_DOMAIN:-acme.pamach.xyz}
 ENVEOF"
     remote_sudo "chown ${RUN_USER}:${RUN_USER} ${APP_DIR}/.env"
     remote_sudo "chmod 600 ${APP_DIR}/.env"
