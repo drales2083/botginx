@@ -46,6 +46,7 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	// Initialize services
 	m.balanceService = services.NewBalanceService(deps.DB)
 	m.providerRegistry = services.NewProviderRegistry(deps.DB)
+	m.providerRegistry.InitializeClients(context.Background())
 	m.inventoryService = services.NewInventoryService(deps.DB, m.providerRegistry)
 	m.purchaseService = services.NewPurchaseService(deps.DB, m.balanceService, m.inventoryService, m.providerRegistry)
 	m.favoritesService = services.NewFavoritesService(deps.DB)
