@@ -140,9 +140,10 @@ func (h *ProvisionHandler) APIStreamProvision(w http.ResponseWriter, r *http.Req
 	// Start provisioning in background if pending, or restart if stuck
 	shouldStart := provision.Status == models.ProvisionStatusPending
 
-	// Detect stuck provisions - running but started more than 10 minutes ago
+	// Detect stuck provisions - running but started more than 2 minutes ago
+	// This handles cases where the server restarted mid-provision
 	if provision.Status == models.ProvisionStatusRunning && provision.StartedAt != nil {
-		stuckThreshold := time.Now().Add(-10 * time.Minute)
+		stuckThreshold := time.Now().Add(-2 * time.Minute)
 		if provision.StartedAt.Before(stuckThreshold) {
 			log.Printf("[Provision] Detected stuck provision %s, restarting...", id)
 			// Reset to pending so it can restart
