@@ -20,8 +20,10 @@ var migrationsFS embed.FS
 // Module implements the servers feature
 type Module struct {
 	*module.BaseModule
-	service *services.ServerService
-	handler *handlers.Handler
+	service          *services.ServerService
+	handler          *handlers.Handler
+	provisionService *services.ProvisionService
+	provisionHandler *handlers.ProvisionHandler
 
 	onServerIPChange func(newIP string) error
 }
@@ -51,6 +53,10 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	// Initialize handler
 	m.handler = handlers.NewHandler(m.service, deps.Templates)
 
+	// Initialize provision service and handler
+	m.provisionService = services.NewProvisionService(deps.DB, m.service)
+	m.provisionHandler = handlers.NewProvisionHandler(m.provisionService, m.service, deps.Templates)
+
 	m.handler.SetOnServerIPChange(func(ip string) error {
 		if m.onServerIPChange == nil {
 			return nil
@@ -71,7 +77,17 @@ func (m *Module) Migrate() error {
 		return err
 	}
 	_, err = m.DB().Exec(string(sql))
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Run provisions table migration
+	sql2, err := fs.ReadFile(migrationsFS, "migrations/002_add_provisions.sql")
+	if err == nil {
+		m.DB().Exec(string(sql2))
+	}
+
+	return nil
 }
 
 func (m *Module) Routes() chi.Router {
@@ -83,6 +99,7 @@ func (m *Module) Routes() chi.Router {
 	r.Get("/{id}", m.handler.Show)
 	r.Get("/{id}/logs", m.handler.Logs)
 	r.Get("/{id}/terminal", m.handler.Terminal)
+	r.Get("/provision/{id}", m.provisionHandler.ProvisionPage)
 
 	// API
 	r.Route("/api", func(r chi.Router) {
@@ -93,6 +110,13 @@ func (m *Module) Routes() chi.Router {
 		r.Delete("/{id}", m.handler.APIDelete)
 		r.Post("/{id}/test", m.handler.APITestConnection)
 		r.Post("/{id}/exec", m.handler.APIExec)
+	})
+
+	// Provision API
+	r.Route("/api/provision", func(r chi.Router) {
+		r.Post("/", m.provisionHandler.APIStartProvision)
+		r.Get("/{id}", m.provisionHandler.APIGetProvision)
+		r.Get("/{id}/stream", m.provisionHandler.APIStreamProvision)
 	})
 
 	return r

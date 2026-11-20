@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -211,6 +212,40 @@ func (c *Client) Exec(command string) (*ExecResult, error) {
 		return nil, fmt.Errorf("new session: %w", err)
 	}
 	defer session.Close()
+
+	output, err := session.CombinedOutput(command)
+	result := &ExecResult{
+		Output:   string(output),
+		ExitCode: 0,
+	}
+
+	if err != nil {
+		if exitErr, ok := err.(*ssh.ExitError); ok {
+			result.ExitCode = exitErr.ExitStatus()
+		} else {
+			result.Error = err
+		}
+	}
+
+	return result, nil
+}
+
+// ExecWithStdin runs a command with stdin input and returns the combined output
+func (c *Client) ExecWithStdin(command string, stdin string) (*ExecResult, error) {
+	if c.conn == nil {
+		if err := c.Connect(); err != nil {
+			return nil, err
+		}
+	}
+
+	session, err := c.conn.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("new session: %w", err)
+	}
+	defer session.Close()
+
+	// Set stdin
+	session.Stdin = strings.NewReader(stdin)
 
 	output, err := session.CombinedOutput(command)
 	result := &ExecResult{

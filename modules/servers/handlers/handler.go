@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/botginx/botginx/modules/servers/models"
 	"github.com/botginx/botginx/modules/servers/services"
@@ -46,7 +47,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 	module.Render(w, r, h.templates, "servers:new.html", map[string]interface{}{
-		"Title": "Add Server",
+		"Title":             "Add Server",
+		"DefaultAcmeDomain": os.Getenv("DEFAULT_ACME_DOMAIN"),
 	})
 }
 

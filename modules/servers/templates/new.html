@@ -68,11 +68,23 @@
                         </select>
                     </div>
 
+                    <div class="mb-3" id="acme-section">
+                        <label for="acmeDomain" class="form-label">ACME Domain (for wildcard SSL)</label>
+                        <input type="text" class="form-control" id="acmeDomain" name="acmeDomain"
+                               placeholder="acme.pamach.xyz" value="{{.DefaultAcmeDomain}}">
+                        <small class="text-muted">Required for auto-provisioning. Leave empty to skip provisioning.</small>
+                    </div>
+
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary" id="submit-btn">
+                        <button type="submit" class="btn btn-primary" id="submit-btn" data-action="create">
                             <span class="spinner-border spinner-border-sm d-none me-1" role="status"></span>
                             <i class="bi bi-plus-lg me-1 btn-icon"></i>
-                            <span class="btn-text">{{t "create"}}</span>
+                            <span class="btn-text">Add Server</span>
+                        </button>
+                        <button type="button" class="btn btn-success" id="provision-btn" data-action="provision">
+                            <span class="spinner-border spinner-border-sm d-none me-1" role="status"></span>
+                            <i class="bi bi-rocket-takeoff me-1 btn-icon"></i>
+                            <span class="btn-text">Add & Provision</span>
                         </button>
                         <a href="/admin/servers" class="btn btn-secondary">{{t "cancel"}}</a>
                     </div>
@@ -93,16 +105,9 @@ document.querySelectorAll('input[name="authMethod"]').forEach(radio => {
     });
 });
 
-document.getElementById('create-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const btn = document.getElementById('submit-btn');
-    const spinner = btn.querySelector('.spinner-border');
-    const icon = btn.querySelector('.btn-icon');
-    const errorAlert = document.getElementById('error-alert');
-
+function getFormData() {
+    const form = document.getElementById('create-form');
     const authMethod = form.querySelector('input[name="authMethod"]:checked').value;
-
     const data = {
         name: form.name.value,
         ip: form.ip.value,
@@ -111,21 +116,39 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
         authMethod: authMethod,
         provider: form.provider.value
     };
-
     if (authMethod === 'password') {
         data.sshPassword = form.sshPassword.value;
     }
+    return data;
+}
 
-    btn.disabled = true;
-    spinner.classList.remove('d-none');
-    icon.classList.add('d-none');
+function setButtonLoading(btn, loading) {
+    const spinner = btn.querySelector('.spinner-border');
+    const icon = btn.querySelector('.btn-icon');
+    btn.disabled = loading;
+    if (loading) {
+        spinner.classList.remove('d-none');
+        icon.classList.add('d-none');
+    } else {
+        spinner.classList.add('d-none');
+        icon.classList.remove('d-none');
+    }
+}
+
+// Add Server only
+document.getElementById('create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const errorAlert = document.getElementById('error-alert');
+
+    setButtonLoading(btn, true);
     errorAlert.classList.add('d-none');
 
     try {
         const res = await fetch('/admin/servers/api/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(getFormData())
         });
         const result = await res.json();
         if (res.ok && result.server && result.server.id) {
@@ -134,16 +157,69 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
         } else {
             errorAlert.textContent = result.error || 'Failed to create server';
             errorAlert.classList.remove('d-none');
-            btn.disabled = false;
-            spinner.classList.add('d-none');
-            icon.classList.remove('d-none');
+            setButtonLoading(btn, false);
         }
     } catch (err) {
         errorAlert.textContent = 'Network error: ' + err.message;
         errorAlert.classList.remove('d-none');
-        btn.disabled = false;
-        spinner.classList.add('d-none');
-        icon.classList.remove('d-none');
+        setButtonLoading(btn, false);
+    }
+});
+
+// Add & Provision
+document.getElementById('provision-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('provision-btn');
+    const errorAlert = document.getElementById('error-alert');
+    const acmeDomain = document.getElementById('acmeDomain').value.trim();
+
+    if (!acmeDomain) {
+        errorAlert.textContent = 'ACME Domain is required for provisioning';
+        errorAlert.classList.remove('d-none');
+        return;
+    }
+
+    setButtonLoading(btn, true);
+    errorAlert.classList.add('d-none');
+
+    try {
+        // Step 1: Create the server
+        const createRes = await fetch('/admin/servers/api/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(getFormData())
+        });
+        const createResult = await createRes.json();
+        if (!createRes.ok || !createResult.server || !createResult.server.id) {
+            errorAlert.textContent = createResult.error || 'Failed to create server';
+            errorAlert.classList.remove('d-none');
+            setButtonLoading(btn, false);
+            return;
+        }
+
+        // Step 2: Start provisioning
+        const provisionRes = await fetch('/admin/servers/api/provision/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                serverId: createResult.server.id,
+                acmeDomain: acmeDomain
+            })
+        });
+        const provisionResult = await provisionRes.json();
+        if (!provisionRes.ok || !provisionResult.provisionId) {
+            errorAlert.textContent = provisionResult.error || 'Failed to start provisioning';
+            errorAlert.classList.remove('d-none');
+            setButtonLoading(btn, false);
+            return;
+        }
+
+        // Redirect to provision page
+        flashToast('Server created, starting provisioning...', 'success');
+        window.location.href = '/admin/servers/provision/' + provisionResult.provisionId;
+    } catch (err) {
+        errorAlert.textContent = 'Network error: ' + err.message;
+        errorAlert.classList.remove('d-none');
+        setButtonLoading(btn, false);
     }
 });
 </script>
