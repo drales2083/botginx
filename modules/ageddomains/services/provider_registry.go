@@ -203,6 +203,22 @@ func NewPorkbunAdapter(p models.Provider) *PorkbunAdapter {
 		log.Printf("[ageddomains] Warning: decrypted API secret is empty for provider %s", p.DisplayName)
 	}
 
+	// Validate API key format - Porkbun keys should start with "pk1_" or "sk1_"
+	keyPrefix := apiKey
+	if len(keyPrefix) > 4 {
+		keyPrefix = keyPrefix[:4]
+	}
+	secretPrefix := apiSecret
+	if len(secretPrefix) > 4 {
+		secretPrefix = secretPrefix[:4]
+	}
+	if !strings.HasPrefix(apiKey, "pk1_") && !strings.HasPrefix(apiKey, "sk") {
+		log.Printf("[ageddomains] Warning: API key for %s has unexpected format (first 4 chars: %s)", p.DisplayName, keyPrefix)
+	}
+	if !strings.HasPrefix(apiSecret, "sk1_") && !strings.HasPrefix(apiSecret, "pk") {
+		log.Printf("[ageddomains] Warning: API secret for %s has unexpected format (first 4 chars: %s)", p.DisplayName, secretPrefix)
+	}
+
 	return &PorkbunAdapter{
 		client:   porkbun.NewClient(apiKey, apiSecret),
 		provider: p,
