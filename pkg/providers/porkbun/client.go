@@ -142,6 +142,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "BotginxPanel/1.0")
 
 	// Execute
 	resp, err := c.httpClient.Do(req)
@@ -183,6 +184,7 @@ func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "BotginxPanel/1.0")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
