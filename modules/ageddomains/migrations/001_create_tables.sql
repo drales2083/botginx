@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS domain_providers (
     api_key         TEXT NOT NULL,
     api_secret      TEXT,
     is_active       BOOLEAN DEFAULT TRUE,
-    markup_percent  DECIMAL(5,2) DEFAULT 0,
+    markup_percent  INTEGER DEFAULT 0, -- Fixed markup in cents (e.g., 2000 = $20)
     min_age_years   INTEGER DEFAULT 0,
     max_price_cents INTEGER DEFAULT 0,
     allowed_tlds    TEXT DEFAULT '',
