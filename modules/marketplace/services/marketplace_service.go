@@ -333,3 +333,51 @@ func joinStrings(strs []string, sep string) string {
 	}
 	return result
 }
+
+// AgedDomain represents an aged domain from inventory
+type AgedDomain struct {
+	ID                string  `db:"id" json:"id"`
+	DomainName        string  `db:"domain_name" json:"domainName"`
+	TLD               string  `db:"tld" json:"tld"`
+	RegistrationPrice int     `db:"registration_price" json:"registrationPrice"`
+	SalePrice         int     `db:"sale_price" json:"salePrice"`
+	AgeYears          *int    `db:"age_years" json:"ageYears"`
+	SafetyStatus      string  `db:"safety_status" json:"safetyStatus"`
+	IsAvailable       bool    `db:"is_available" json:"isAvailable"`
+}
+
+// ListAgedDomains returns available aged domains from inventory
+func (s *MarketplaceService) ListAgedDomains(page, perPage int) ([]AgedDomain, int, error) {
+	if perPage <= 0 {
+		perPage = 25
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * perPage
+
+	// Count total
+	var total int
+	err := s.db.Get(&total, `SELECT COUNT(*) FROM domain_inventory WHERE is_available = true`)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get domains
+	var domains []AgedDomain
+	err = s.db.Select(&domains, `
+		SELECT id, domain_name, tld, registration_price, sale_price, age_years, safety_status, is_available
+		FROM domain_inventory
+		WHERE is_available = true
+		ORDER BY age_years DESC NULLS LAST, sale_price ASC
+		LIMIT $1 OFFSET $2
+	`, perPage, offset)
+	return domains, total, err
+}
+
+// GetAgedDomainsCount returns count of available aged domains
+func (s *MarketplaceService) GetAgedDomainsCount() int {
+	var count int
+	s.db.Get(&count, `SELECT COUNT(*) FROM domain_inventory WHERE is_available = true`)
+	return count
+}

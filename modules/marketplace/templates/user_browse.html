@@ -99,6 +99,78 @@
     </div>
 </div>
 
+<!-- Aged Domains Section -->
+{{if .AgedDomains}}
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Aged Domains <span class="badge bg-secondary ms-2">{{.AgedTotal}}</span></h5>
+        <a href="/user/ageddomains" class="btn btn-sm btn-outline-primary">
+            View All <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" data-datatable data-per-page="25" data-no-sort="5">
+                <thead>
+                    <tr>
+                        <th><i class="bi bi-globe me-1"></i> Domain</th>
+                        <th>TLD</th>
+                        <th class="text-center">Age</th>
+                        <th class="text-center">Safety</th>
+                        <th><i class="bi bi-currency-dollar me-1"></i> Price</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .AgedDomains}}
+                    <tr>
+                        <td>
+                            <code class="fs-6">{{.DomainName}}</code>
+                        </td>
+                        <td>
+                            {{if eq .TLD "com"}}
+                            <span class="badge bg-success">.{{.TLD}}</span>
+                            {{else if eq .TLD "org"}}
+                            <span class="badge bg-info">.{{.TLD}}</span>
+                            {{else if eq .TLD "net"}}
+                            <span class="badge bg-primary">.{{.TLD}}</span>
+                            {{else}}
+                            <span class="badge bg-secondary">.{{.TLD}}</span>
+                            {{end}}
+                        </td>
+                        <td class="text-center">
+                            {{if .AgeYears}}
+                            <span class="badge bg-warning text-dark">{{deref .AgeYears}} yrs</span>
+                            {{else}}
+                            <span class="text-muted">-</span>
+                            {{end}}
+                        </td>
+                        <td class="text-center">
+                            {{if eq .SafetyStatus "clean"}}
+                            <i class="bi bi-check-circle-fill text-success" title="Clean"></i>
+                            {{else if eq .SafetyStatus "flagged"}}
+                            <i class="bi bi-exclamation-circle-fill text-danger" title="Flagged"></i>
+                            {{else}}
+                            <i class="bi bi-question-circle text-muted" title="Unchecked"></i>
+                            {{end}}
+                        </td>
+                        <td>
+                            <strong class="text-success">${{printf "%.2f" (divCents .SalePrice)}}</strong>
+                        </td>
+                        <td class="text-end">
+                            <a href="/user/ageddomains" class="btn btn-sm btn-primary">
+                                <i class="bi bi-bag-check"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{{end}}
+
 <!-- Purchase Confirmation Modal -->
 <div class="modal fade" id="purchaseModal" tabindex="-1">
     <div class="modal-dialog">

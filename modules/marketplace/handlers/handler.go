@@ -146,10 +146,15 @@ func (h *Handler) UserBrowse(w http.ResponseWriter, r *http.Request) {
 		domains[i].Name = domainmask.Mask(domains[i].Name)
 	}
 
+	// Get aged domains from inventory
+	agedDomains, agedTotal, _ := h.service.ListAgedDomains(1, 50)
+
 	module.RenderUserSection(w, r, h.templates, "marketplace:user_browse.html", map[string]interface{}{
-		"Title":   "Buy Domain",
-		"Domains": domains,
-		"Balance": balance,
+		"Title":       "Buy Domain",
+		"Domains":     domains,
+		"Balance":     balance,
+		"AgedDomains": agedDomains,
+		"AgedTotal":   agedTotal,
 	})
 }
 
