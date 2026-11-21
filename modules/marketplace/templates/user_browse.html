@@ -99,7 +99,8 @@
     </div>
 </div>
 
-<!-- Aged Domains Section -->
+<!-- Aged Domains Section (only shown when provider is active) -->
+{{ if .ShowAgedDomains }}
 <div class="card mt-4">
     <div class="card-header">
         <h5 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Aged Domains</h5>
@@ -249,6 +250,7 @@
         </div>
     </div>
 </div>
+{{ end }}
 
 <!-- Purchase Confirmation Modal -->
 <div class="modal fade" id="purchaseModal" tabindex="-1">
@@ -421,8 +423,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Initialize aged domains section
-    initAgedDomains();
+    // Initialize aged domains section (only if elements exist)
+    if (document.getElementById('btn-aged-filter')) {
+        initAgedDomains();
+    }
 });
 
 // ============ Aged Domains Section ============

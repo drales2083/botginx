@@ -164,26 +164,32 @@ func (h *Handler) UserBrowse(w http.ResponseWriter, r *http.Request) {
 		domains[i].Name = domainmask.Mask(domains[i].Name)
 	}
 
-	// Get aged domains data if services are wired up
+	// Get aged domains data if services are wired up and providers are active
 	var agedBalance *ageddomainsmodels.BalanceInfo
 	var agedTLDs []string
 	var agedFavCount int
+	showAgedDomains := false
 	if h.agedBalanceService != nil && h.agedInventoryService != nil && h.agedFavoritesService != nil {
-		agedBalance, _ = h.agedBalanceService.GetAvailableBalance(r.Context(), user.ID)
-		agedTLDs, _ = h.agedInventoryService.GetAvailableTLDs(r.Context())
-		agedFavCount, _ = h.agedFavoritesService.Count(r.Context(), user.ID)
+		// Only show aged domains section if there's at least one active provider
+		showAgedDomains = h.agedInventoryService.HasActiveProviders(r.Context())
+		if showAgedDomains {
+			agedBalance, _ = h.agedBalanceService.GetAvailableBalance(r.Context(), user.ID)
+			agedTLDs, _ = h.agedInventoryService.GetAvailableTLDs(r.Context())
+			agedFavCount, _ = h.agedFavoritesService.Count(r.Context(), user.ID)
+		}
 	}
 	if agedBalance == nil {
 		agedBalance = &ageddomainsmodels.BalanceInfo{Available: 0, Locked: 0, Total: 0}
 	}
 
 	module.RenderUserSection(w, r, h.templates, "marketplace:user_browse.html", map[string]interface{}{
-		"Title":         "Buy Domain",
-		"Domains":       domains,
-		"Balance":       balance,
-		"AgedBalance":   agedBalance,
-		"AvailableTLDs": agedTLDs,
-		"FavoriteCount": agedFavCount,
+		"Title":          "Buy Domain",
+		"Domains":        domains,
+		"Balance":        balance,
+		"AgedBalance":    agedBalance,
+		"AvailableTLDs":  agedTLDs,
+		"FavoriteCount":  agedFavCount,
+		"ShowAgedDomains": showAgedDomains,
 	})
 }
 

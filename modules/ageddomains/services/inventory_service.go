@@ -184,6 +184,12 @@ func (s *InventoryService) GetAvailableTLDs(ctx context.Context) ([]string, erro
 	return tlds, err
 }
 
+// HasActiveProviders returns true if there are any active domain providers
+func (s *InventoryService) HasActiveProviders(ctx context.Context) bool {
+	providers, err := s.providerRegistry.ListActive(ctx)
+	return err == nil && len(providers) > 0
+}
+
 // Get returns a domain by ID
 func (s *InventoryService) Get(ctx context.Context, id string) (*models.DomainInventory, error) {
 	var domain models.DomainInventory
