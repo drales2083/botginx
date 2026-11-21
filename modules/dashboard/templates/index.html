@@ -19,14 +19,14 @@
                     <div class="progress-bar" role="progressbar" style="width: {{ .Onboarding.Percentage }}%"></div>
                 </div>
                 {{ range .Onboarding.Steps }}
-                <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                <div class="d-flex align-items-center gap-2 px-3 py-1 border-bottom" style="font-size: 0.8125rem;">
                     {{ if .Complete }}
-                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <span class="badge rounded-circle bg-success" style="width: 18px; height: 18px; font-size: 0.625rem; display: flex; align-items: center; justify-content: center;">✓</span>
                     <span class="text-muted flex-grow-1">{{ .Title }}</span>
                     {{ else }}
-                    <i class="bi bi-circle text-secondary"></i>
+                    <span class="badge rounded-circle bg-secondary" style="width: 18px; height: 18px; font-size: 0.625rem; display: flex; align-items: center; justify-content: center;">{{ .Index }}</span>
                     <span class="flex-grow-1">{{ .Title }}</span>
-                    <a href="{{ .Link }}" class="btn btn-sm btn-outline-primary py-0 px-2">{{ .LinkText }}</a>
+                    <a href="{{ .Link }}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.6875rem;">{{ .LinkText }}</a>
                     {{ end }}
                 </div>
                 {{ end }}

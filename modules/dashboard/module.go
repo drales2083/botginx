@@ -447,6 +447,7 @@ func (m *Module) apiVisitors(w http.ResponseWriter, r *http.Request) {
 
 type onboardingStep struct {
 	ID          string `json:"id"`
+	Index       int    `json:"index"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Complete    bool   `json:"complete"`
@@ -477,44 +478,42 @@ func (m *Module) getOnboardingStatus(user *ctx.User, domainCount int64, subStatu
 
 	steps := []onboardingStep{
 		{
-			ID:          "account",
-			Title:       "Create your account",
-			Description: "Welcome to GuardBot!",
-			Complete:    true,
-			Link:        "",
-			LinkText:    "",
+			ID:       "account",
+			Index:    1,
+			Title:    "Create account",
+			Complete: true,
 		},
 		{
-			ID:          "domain",
-			Title:       "Add your first domain",
-			Description: "Protect your website from bots",
-			Complete:    domainCount > 0,
-			Link:        "/user/domains/new",
-			LinkText:    "Add Domain",
+			ID:       "domain",
+			Index:    2,
+			Title:    "Add domain",
+			Complete: domainCount > 0,
+			Link:     "/user/domains/new",
+			LinkText: "Add",
 		},
 		{
-			ID:          "telegram",
-			Title:       "Connect Telegram",
-			Description: "Get instant bot attack alerts",
-			Complete:    user.TelegramConnectedAt,
-			Link:        "/user/settings?page=telegram",
-			LinkText:    "Connect",
+			ID:       "telegram",
+			Index:    3,
+			Title:    "Connect Telegram",
+			Complete: user.TelegramConnectedAt,
+			Link:     "/user/settings?page=telegram",
+			LinkText: "Connect",
 		},
 		{
-			ID:          "protection",
-			Title:       "Set up protection rules",
-			Description: "Customize how bots are handled",
-			Complete:    botSettingsVisited,
-			Link:        "/user/botsettings",
-			LinkText:    "Configure",
+			ID:       "protection",
+			Index:    4,
+			Title:    "Protection rules",
+			Complete: botSettingsVisited,
+			Link:     "/user/botsettings",
+			LinkText: "Configure",
 		},
 		{
-			ID:          "subscription",
-			Title:       "Activate subscription",
-			Description: "Unlock all features",
-			Complete:    subStatus == "active",
-			Link:        "/user/subscription",
-			LinkText:    "Subscribe",
+			ID:       "subscription",
+			Index:    5,
+			Title:    "Subscription",
+			Complete: subStatus == "active",
+			Link:     "/user/subscription",
+			LinkText: "Subscribe",
 		},
 	}
 
