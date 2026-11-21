@@ -54,6 +54,10 @@ type User struct {
 	TelegramTrafficThreshold        int        `db:"telegram_traffic_threshold" json:"telegramTrafficThreshold"`
 	TelegramAlertDismissed          bool       `db:"telegram_alert_dismissed" json:"-"`
 	TelegramDefaultDomainID         *string    `db:"telegram_default_domain_id" json:"telegramDefaultDomainId,omitempty"`
+
+	// Onboarding
+	OnboardingDismissedAt  *time.Time `db:"onboarding_dismissed_at" json:"-"`
+	BotSettingsVisitedAt   *time.Time `db:"bot_settings_visited_at" json:"-"`
 }
 
 type SignupInput struct {
