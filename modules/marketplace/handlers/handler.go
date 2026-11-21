@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
+	ageddomainsmodels "github.com/botginx/botginx/modules/ageddomains/models"
+	ageddomainssvc "github.com/botginx/botginx/modules/ageddomains/services"
 	healthservices "github.com/botginx/botginx/modules/domainhealth/services"
 	"github.com/botginx/botginx/modules/marketplace/models"
 	"github.com/botginx/botginx/modules/marketplace/services"
@@ -20,6 +23,12 @@ type Handler struct {
 	service       *services.MarketplaceService
 	templates     *module.TemplateEngine
 	safetyChecker *healthservices.SafetyChecker
+
+	// Aged domains services (optional, set via SetAgedDomainsServices)
+	agedBalanceService   *ageddomainssvc.BalanceService
+	agedInventoryService *ageddomainssvc.InventoryService
+	agedPurchaseService  *ageddomainssvc.PurchaseService
+	agedFavoritesService *ageddomainssvc.FavoritesService
 }
 
 func NewHandler(service *services.MarketplaceService, templates *module.TemplateEngine) *Handler {
@@ -28,6 +37,14 @@ func NewHandler(service *services.MarketplaceService, templates *module.Template
 		templates:     templates,
 		safetyChecker: healthservices.NewSafetyChecker(""),
 	}
+}
+
+// SetAgedDomainsServices wires up the aged domains services for the unified marketplace
+func (h *Handler) SetAgedDomainsServices(bs *ageddomainssvc.BalanceService, is *ageddomainssvc.InventoryService, ps *ageddomainssvc.PurchaseService, fs *ageddomainssvc.FavoritesService) {
+	h.agedBalanceService = bs
+	h.agedInventoryService = is
+	h.agedPurchaseService = ps
+	h.agedFavoritesService = fs
 }
 
 // SetGoogleAPIKey sets the Google Safe Browsing API key for safety checks
@@ -138,6 +155,7 @@ func (h *Handler) APIGetSales(w http.ResponseWriter, r *http.Request) {
 // UserBrowse shows available domains for purchase
 func (h *Handler) UserBrowse(w http.ResponseWriter, r *http.Request) {
 	userID := ctx.GetUserID(r)
+	user := ctx.GetUser(r)
 	domains, _ := h.service.ListAvailable()
 	balance := h.service.GetUserBalance(userID)
 
@@ -146,15 +164,26 @@ func (h *Handler) UserBrowse(w http.ResponseWriter, r *http.Request) {
 		domains[i].Name = domainmask.Mask(domains[i].Name)
 	}
 
-	// Get aged domains from inventory
-	agedDomains, agedTotal, _ := h.service.ListAgedDomains(1, 50)
+	// Get aged domains data if services are wired up
+	var agedBalance *ageddomainsmodels.BalanceInfo
+	var agedTLDs []string
+	var agedFavCount int
+	if h.agedBalanceService != nil && h.agedInventoryService != nil && h.agedFavoritesService != nil {
+		agedBalance, _ = h.agedBalanceService.GetAvailableBalance(r.Context(), user.ID)
+		agedTLDs, _ = h.agedInventoryService.GetAvailableTLDs(r.Context())
+		agedFavCount, _ = h.agedFavoritesService.Count(r.Context(), user.ID)
+	}
+	if agedBalance == nil {
+		agedBalance = &ageddomainsmodels.BalanceInfo{Available: 0, Locked: 0, Total: 0}
+	}
 
 	module.RenderUserSection(w, r, h.templates, "marketplace:user_browse.html", map[string]interface{}{
-		"Title":       "Buy Domain",
-		"Domains":     domains,
-		"Balance":     balance,
-		"AgedDomains": agedDomains,
-		"AgedTotal":   agedTotal,
+		"Title":         "Buy Domain",
+		"Domains":       domains,
+		"Balance":       balance,
+		"AgedBalance":   agedBalance,
+		"AvailableTLDs": agedTLDs,
+		"FavoriteCount": agedFavCount,
 	})
 }
 
@@ -305,6 +334,210 @@ func (h *Handler) checkSSL(domain string) (bool, string) {
 		return true, "Valid certificate"
 	}
 	return true, "Certificate present"
+}
+
+// ============ Aged Domains API Handlers ============
+
+// APIAgedDomainsList returns available aged domains with advanced filters
+func (h *Handler) APIAgedDomainsList(w http.ResponseWriter, r *http.Request) {
+	if h.agedInventoryService == nil || h.agedFavoritesService == nil {
+		h.jsonError(w, "Aged domains not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	user := ctx.GetUser(r)
+
+	filters := ageddomainsmodels.ListFilters{
+		TLD:           r.URL.Query().Get("tld"),
+		Category:      r.URL.Query().Get("category"),
+		SafetyStatus:  r.URL.Query().Get("safety"),
+		Search:        r.URL.Query().Get("search"),
+		SortBy:        r.URL.Query().Get("sort_by"),
+		SortDir:       r.URL.Query().Get("sort_dir"),
+		FavoritesOnly: r.URL.Query().Get("favorites") == "true",
+	}
+
+	if v := r.URL.Query().Get("min_price"); v != "" {
+		filters.MinPrice, _ = strconv.Atoi(v)
+	}
+	if v := r.URL.Query().Get("max_price"); v != "" {
+		filters.MaxPrice, _ = strconv.Atoi(v)
+	}
+	if v := r.URL.Query().Get("min_age"); v != "" {
+		filters.MinAge, _ = strconv.Atoi(v)
+	}
+	if v := r.URL.Query().Get("max_age"); v != "" {
+		filters.MaxAge, _ = strconv.Atoi(v)
+	}
+	filters.Page, _ = strconv.Atoi(r.URL.Query().Get("page"))
+	filters.PerPage, _ = strconv.Atoi(r.URL.Query().Get("per_page"))
+
+	domains, total, err := h.agedInventoryService.ListWithFilters(r.Context(), filters, user.ID)
+	if err != nil {
+		h.jsonError(w, "Failed to list domains", http.StatusInternalServerError)
+		return
+	}
+
+	favoriteIDs, _ := h.agedFavoritesService.GetUserFavoriteIDs(r.Context(), user.ID)
+
+	domainsWithFavorites := make([]ageddomainsmodels.DomainWithFavorite, len(domains))
+	for i, d := range domains {
+		domainsWithFavorites[i] = ageddomainsmodels.DomainWithFavorite{
+			DomainInventory: d,
+			IsFavorite:      favoriteIDs[d.ID],
+		}
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"domains": domainsWithFavorites,
+		"total":   total,
+		"page":    filters.Page,
+		"perPage": filters.PerPage,
+	})
+}
+
+// APIAgedDomainsCheckSafety performs an on-demand safety check for an aged domain
+func (h *Handler) APIAgedDomainsCheckSafety(w http.ResponseWriter, r *http.Request) {
+	if h.agedInventoryService == nil {
+		h.jsonError(w, "Aged domains not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+
+	result, err := h.agedInventoryService.CheckSafety(r.Context(), id)
+	if err != nil {
+		if err == ageddomainssvc.ErrDomainNotFound {
+			h.jsonError(w, "Domain not found", http.StatusNotFound)
+			return
+		}
+		h.jsonError(w, "Safety check failed", http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, result)
+}
+
+// APIAgedDomainsToggleFavorite adds or removes an aged domain from favorites
+func (h *Handler) APIAgedDomainsToggleFavorite(w http.ResponseWriter, r *http.Request) {
+	if h.agedFavoritesService == nil {
+		h.jsonError(w, "Aged domains not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	user := ctx.GetUser(r)
+	inventoryID := chi.URLParam(r, "id")
+
+	isFavorite, err := h.agedFavoritesService.Toggle(r.Context(), user.ID, inventoryID)
+	if err != nil {
+		h.jsonError(w, "Failed to update favorite", http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"isFavorite": isFavorite,
+	})
+}
+
+// APIAgedDomainsGetTLDs returns available TLDs for filter dropdown
+func (h *Handler) APIAgedDomainsGetTLDs(w http.ResponseWriter, r *http.Request) {
+	if h.agedInventoryService == nil {
+		h.jsonError(w, "Aged domains not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	tlds, err := h.agedInventoryService.GetAvailableTLDs(r.Context())
+	if err != nil {
+		h.jsonError(w, "Failed to get TLDs", http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"tlds": tlds,
+	})
+}
+
+// APIAgedDomainsPurchase initiates an aged domain purchase
+func (h *Handler) APIAgedDomainsPurchase(w http.ResponseWriter, r *http.Request) {
+	if h.agedPurchaseService == nil {
+		h.jsonError(w, "Aged domains not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	user := ctx.GetUser(r)
+	inventoryID := chi.URLParam(r, "id")
+
+	var req struct {
+		Confirm bool `json:"confirm"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || !req.Confirm {
+		h.jsonError(w, "Purchase must be confirmed", http.StatusBadRequest)
+		return
+	}
+
+	purchase, err := h.agedPurchaseService.PurchaseDomain(r.Context(), user.ID, inventoryID)
+	if err != nil {
+		if err == ageddomainssvc.ErrInsufficientBalance {
+			h.jsonError(w, "Insufficient balance", http.StatusPaymentRequired)
+			return
+		}
+		if err == ageddomainssvc.ErrDomainUnavailable {
+			h.jsonError(w, "Domain no longer available", http.StatusConflict)
+			return
+		}
+		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, map[string]interface{}{
+		"purchaseId": purchase.ID,
+		"status":     purchase.Status,
+		"domain":     purchase.DomainName,
+		"priceCents": purchase.SalePrice,
+	})
+}
+
+// APIAgedDomainsGetStatus returns the current status of an aged domain purchase
+func (h *Handler) APIAgedDomainsGetStatus(w http.ResponseWriter, r *http.Request) {
+	if h.agedPurchaseService == nil {
+		h.jsonError(w, "Aged domains not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	user := ctx.GetUser(r)
+	purchaseID := chi.URLParam(r, "id")
+
+	status, err := h.agedPurchaseService.GetStatus(r.Context(), purchaseID)
+	if err != nil {
+		h.jsonError(w, "Purchase not found", http.StatusNotFound)
+		return
+	}
+
+	purchase, _ := h.agedPurchaseService.Get(r.Context(), purchaseID)
+	if purchase != nil && purchase.UserID != user.ID {
+		h.jsonError(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	h.json(w, http.StatusOK, status)
+}
+
+// APIAgedDomainsGetBalance returns the user's available balance for aged domains
+func (h *Handler) APIAgedDomainsGetBalance(w http.ResponseWriter, r *http.Request) {
+	if h.agedBalanceService == nil {
+		h.jsonError(w, "Aged domains not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	user := ctx.GetUser(r)
+
+	balance, err := h.agedBalanceService.GetAvailableBalance(r.Context(), user.ID)
+	if err != nil {
+		h.jsonError(w, "Failed to get balance", http.StatusInternalServerError)
+		return
+	}
+
+	h.json(w, http.StatusOK, balance)
 }
 
 // ============ Helpers ============

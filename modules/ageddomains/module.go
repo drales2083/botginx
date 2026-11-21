@@ -80,6 +80,11 @@ func (m *Module) SetDomainCreator(dc DomainCreator) {
 	m.purchaseService.SetDomainCreator(dc)
 }
 
+// Services returns the module's services for use by other modules (e.g., marketplace consolidation)
+func (m *Module) Services() (*services.BalanceService, *services.InventoryService, *services.PurchaseService, *services.FavoritesService) {
+	return m.balanceService, m.inventoryService, m.purchaseService, m.favoritesService
+}
+
 func (m *Module) Migrate() error {
 	// Run main tables migration
 	sql1, err := fs.ReadFile(migrationsFS, "migrations/001_create_tables.sql")
@@ -110,23 +115,9 @@ func (m *Module) Migrate() error {
 	return nil
 }
 
-// Routes returns user-facing routes mounted at /user/ageddomains
+// Routes returns nil - user routes are now consolidated into /user/marketplace
 func (m *Module) Routes() chi.Router {
-	r := chi.NewRouter()
-
-	r.Get("/", m.handler.Browse)
-
-	r.Route("/api", func(r chi.Router) {
-		r.Get("/domains", m.handler.APIListDomains)
-		r.Get("/domains/{id}/check", m.handler.APICheckSafety)
-		r.Post("/domains/{id}/favorite", m.handler.APIToggleFavorite)
-		r.Get("/tlds", m.handler.APIGetTLDs)
-		r.Post("/purchase/{id}", m.handler.APIPurchase)
-		r.Get("/purchase/{id}/status", m.handler.APIGetStatus)
-		r.Get("/balance", m.handler.APIGetBalance)
-	})
-
-	return r
+	return nil
 }
 
 // RoutesForSection returns routes for the requested section
@@ -165,16 +156,9 @@ func (m *Module) AdminRoutes() chi.Router {
 	return r
 }
 
-// MenuItems returns menu items for navigation
+// MenuItems returns menu items for navigation - admin only (user route consolidated into marketplace)
 func (m *Module) MenuItems() []module.MenuItem {
 	return []module.MenuItem{
-		{
-			Section: module.MenuSectionUser,
-			Title:   "Aged Domains",
-			Icon:    "bi-clock-history",
-			Path:    "/user/ageddomains",
-			Order:   26,
-		},
 		{
 			Section: module.MenuSectionAdmin,
 			Title:   "Aged Domains",

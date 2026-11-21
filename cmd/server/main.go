@@ -466,6 +466,10 @@ func main() {
 	})
 	agedDomainsModule.SetDomainCreator(domainsModule.PorkbunService()) // Aged domains creates domain records via Porkbun
 
+	// Wire aged domains services to marketplace for unified page
+	agedBS, agedIS, agedPS, agedFS := agedDomainsModule.Services()
+	marketplaceModule.SetAgedDomainsServices(agedBS, agedIS, agedPS, agedFS)
+
 	// QR codes needs redirect links list
 	qrcodesModule.SetLinkLister(func(userID string) ([]qrcodeshandlers.RedirectLink, error) {
 		links, err := redirectLinksModule.ListForUser(userID)

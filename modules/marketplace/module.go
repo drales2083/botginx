@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 
+	ageddomainssvc "github.com/botginx/botginx/modules/ageddomains/services"
 	"github.com/botginx/botginx/modules/marketplace/handlers"
 	"github.com/botginx/botginx/modules/marketplace/services"
 	"github.com/botginx/botginx/pkg/module"
@@ -53,6 +54,11 @@ func (m *Module) Migrate() error {
 	return err
 }
 
+// SetAgedDomainsServices wires up the aged domains services for the unified marketplace
+func (m *Module) SetAgedDomainsServices(bs *ageddomainssvc.BalanceService, is *ageddomainssvc.InventoryService, ps *ageddomainssvc.PurchaseService, fs *ageddomainssvc.FavoritesService) {
+	m.handler.SetAgedDomainsServices(bs, is, ps, fs)
+}
+
 // Routes returns user-facing routes mounted at /user/marketplace
 func (m *Module) Routes() chi.Router {
 	r := chi.NewRouter()
@@ -60,9 +66,21 @@ func (m *Module) Routes() chi.Router {
 	r.Get("/", m.handler.UserBrowse)
 
 	r.Route("/api", func(r chi.Router) {
+		// Admin-listed domains API
 		r.Get("/domains", m.handler.APIListAvailable)
 		r.Post("/purchase/{domainID}", m.handler.APIPurchase)
 		r.Get("/check/{domainID}", m.handler.APICheckDomain)
+
+		// Aged domains API (consolidated from /user/ageddomains)
+		r.Route("/aged", func(r chi.Router) {
+			r.Get("/domains", m.handler.APIAgedDomainsList)
+			r.Get("/domains/{id}/check", m.handler.APIAgedDomainsCheckSafety)
+			r.Post("/domains/{id}/favorite", m.handler.APIAgedDomainsToggleFavorite)
+			r.Get("/tlds", m.handler.APIAgedDomainsGetTLDs)
+			r.Post("/purchase/{id}", m.handler.APIAgedDomainsPurchase)
+			r.Get("/purchase/{id}/status", m.handler.APIAgedDomainsGetStatus)
+			r.Get("/balance", m.handler.APIAgedDomainsGetBalance)
+		})
 	})
 
 	return r

@@ -100,76 +100,169 @@
 </div>
 
 <!-- Aged Domains Section -->
-{{if .AgedDomains}}
 <div class="card mt-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Aged Domains <span class="badge bg-secondary ms-2">{{.AgedTotal}}</span></h5>
-        <a href="/user/ageddomains" class="btn btn-sm btn-outline-primary">
-            View All <i class="bi bi-arrow-right ms-1"></i>
-        </a>
+    <div class="card-header">
+        <h5 class="card-title mb-0 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-clock-history me-2"></i>Aged Domains</span>
+            <div class="card-tools">
+                <span class="badge bg-primary me-2">
+                    Balance: ${{ printf "%.2f" (divideInt .AgedBalance.Available 100) }} available
+                    {{ if gt .AgedBalance.Locked 0 }}
+                    <span class="text-warning">(${{ printf "%.2f" (divideInt .AgedBalance.Locked 100) }} locked)</span>
+                    {{ end }}
+                </span>
+                <button id="btn-favorites" class="btn btn-sm btn-outline-warning" onclick="toggleFavoritesFilter()">
+                    <i class="bi bi-star-fill me-1"></i>
+                    <span id="fav-count">{{ .FavoriteCount }}</span> Favorites
+                </button>
+            </div>
+        </h5>
     </div>
     <div class="card-body">
+        <!-- Filters Row 1: Basic -->
+        <div class="row mb-2">
+            <div class="col-md-2">
+                <label class="form-label small text-muted">TLD</label>
+                <select id="aged-tld-filter" class="form-select form-select-sm">
+                    <option value="">All TLDs</option>
+                    {{ range .AvailableTLDs }}
+                    <option value="{{ . }}">{{ . }}</option>
+                    {{ end }}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Category</label>
+                <select id="aged-category-filter" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    <option value="aged">Aged</option>
+                    <option value="premium">Premium</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Safety</label>
+                <select id="aged-safety-filter" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    <option value="clean">Clean Only</option>
+                    <option value="unchecked">Unchecked</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Search</label>
+                <input type="text" id="aged-search-filter" class="form-control form-control-sm" placeholder="Domain name...">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Sort By</label>
+                <div class="input-group input-group-sm">
+                    <select id="aged-sort-by" class="form-select">
+                        <option value="">Age (Default)</option>
+                        <option value="price">Price</option>
+                        <option value="age">Age</option>
+                        <option value="name">Name</option>
+                    </select>
+                    <button id="aged-sort-dir-btn" class="btn btn-outline-secondary" type="button" onclick="toggleAgedSortDir()">
+                        <i id="aged-sort-dir-icon" class="bi bi-sort-down"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Row 2: Advanced (collapsible) -->
+        <div class="collapse mb-3" id="agedAdvancedFilters">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Price Range ($)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" id="aged-min-price" class="form-control" placeholder="Min">
+                        <span class="input-group-text">-</span>
+                        <input type="number" id="aged-max-price" class="form-control" placeholder="Max">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Age Range (years)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" id="aged-min-age" class="form-control" placeholder="Min">
+                        <span class="input-group-text">-</span>
+                        <input type="number" id="aged-max-age" class="form-control" placeholder="Max">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Actions -->
+        <div class="d-flex gap-2 mb-3">
+            <button id="btn-aged-filter" class="btn btn-primary btn-sm">
+                <i class="bi bi-funnel me-1"></i>Apply Filters
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#agedAdvancedFilters">
+                <i class="bi bi-sliders me-1"></i>Advanced
+            </button>
+            <button id="btn-aged-clear" class="btn btn-outline-secondary btn-sm" onclick="clearAgedFilters()">
+                <i class="bi bi-x-lg me-1"></i>Clear
+            </button>
+        </div>
+
+        <!-- Results info -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <small class="text-muted" id="aged-results-info">Loading...</small>
+        </div>
+
+        <!-- Domains Table -->
         <div class="table-responsive">
-            <table class="table table-hover mb-0" data-datatable data-per-page="25" data-no-sort="5">
+            <table id="aged-domains-table" class="table table-hover table-sm">
                 <thead>
                     <tr>
-                        <th><i class="bi bi-globe me-1"></i> Domain</th>
-                        <th>TLD</th>
-                        <th class="text-center">Age</th>
-                        <th class="text-center">Safety</th>
-                        <th><i class="bi bi-currency-dollar me-1"></i> Price</th>
-                        <th class="text-end">Actions</th>
+                        <th style="width: 30px"></th>
+                        <th>Domain</th>
+                        <th>Age</th>
+                        <th>Price</th>
+                        <th>Safety</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {{range .AgedDomains}}
+                <tbody id="aged-domains-body">
                     <tr>
-                        <td>
-                            <code class="fs-6">{{.DomainName}}</code>
-                        </td>
-                        <td>
-                            {{if eq .TLD "com"}}
-                            <span class="badge bg-success">.{{.TLD}}</span>
-                            {{else if eq .TLD "org"}}
-                            <span class="badge bg-info">.{{.TLD}}</span>
-                            {{else if eq .TLD "net"}}
-                            <span class="badge bg-primary">.{{.TLD}}</span>
-                            {{else}}
-                            <span class="badge bg-secondary">.{{.TLD}}</span>
-                            {{end}}
-                        </td>
-                        <td class="text-center">
-                            {{if .AgeYears}}
-                            <span class="badge bg-warning text-dark">{{deref .AgeYears}} yrs</span>
-                            {{else}}
-                            <span class="text-muted">-</span>
-                            {{end}}
-                        </td>
-                        <td class="text-center">
-                            {{if eq .SafetyStatus "clean"}}
-                            <i class="bi bi-check-circle-fill text-success" title="Clean"></i>
-                            {{else if eq .SafetyStatus "flagged"}}
-                            <i class="bi bi-exclamation-circle-fill text-danger" title="Flagged"></i>
-                            {{else}}
-                            <i class="bi bi-question-circle text-muted" title="Unchecked"></i>
-                            {{end}}
-                        </td>
-                        <td>
-                            <strong class="text-success">${{printf "%.2f" (divCents .SalePrice)}}</strong>
-                        </td>
-                        <td class="text-end">
-                            <a href="/user/ageddomains" class="btn btn-sm btn-primary">
-                                <i class="bi bi-bag-check"></i> View
-                            </a>
-                        </td>
+                        <td colspan="6" class="text-center text-muted">Loading domains...</td>
                     </tr>
-                    {{end}}
                 </tbody>
             </table>
         </div>
+
+        <!-- Pagination -->
+        <div id="aged-pagination" class="d-flex justify-content-center mt-3"></div>
     </div>
 </div>
-{{end}}
+
+<!-- Aged Domain Purchase Modal -->
+<div class="modal fade" id="agedPurchaseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Purchase Domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="aged-purchase-confirm" class="text-center">
+                    <p class="fs-4 mb-2" id="aged-modal-domain"></p>
+                    <p class="fs-3 text-primary" id="aged-modal-price"></p>
+                    <p class="text-muted">This domain will be automatically configured with DNS and SSL.</p>
+                </div>
+                <div id="aged-purchase-status" class="d-none">
+                    <div class="text-center mb-3">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2" id="aged-status-message">Processing...</p>
+                    </div>
+                    <div id="aged-status-steps" class="list-group"></div>
+                </div>
+            </div>
+            <div class="modal-footer" id="aged-purchase-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-aged-purchase">
+                    <i class="bi bi-credit-card me-1"></i>Confirm Purchase
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Purchase Confirmation Modal -->
 <div class="modal fade" id="purchaseModal" tabindex="-1">
@@ -341,6 +434,300 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.innerHTML = '<i class="bi bi-bag-check me-1"></i>{{t "marketplace.confirm_purchase"}}';
         }
     });
+
+    // Initialize aged domains section
+    initAgedDomains();
 });
+
+// ============ Aged Domains Section ============
+let agedCurrentPage = 1;
+let agedSelectedDomain = null;
+let agedSortDir = 'desc';
+let agedShowFavoritesOnly = false;
+
+function initAgedDomains() {
+    loadAgedDomains();
+
+    document.getElementById('btn-aged-filter').addEventListener('click', function() {
+        agedCurrentPage = 1;
+        loadAgedDomains();
+    });
+
+    document.getElementById('btn-confirm-aged-purchase').addEventListener('click', confirmAgedPurchase);
+
+    document.getElementById('aged-search-filter').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            agedCurrentPage = 1;
+            loadAgedDomains();
+        }
+    });
+}
+
+function toggleAgedSortDir() {
+    agedSortDir = agedSortDir === 'desc' ? 'asc' : 'desc';
+    const icon = document.getElementById('aged-sort-dir-icon');
+    icon.className = agedSortDir === 'desc' ? 'bi bi-sort-down' : 'bi bi-sort-up';
+    loadAgedDomains();
+}
+
+function toggleFavoritesFilter() {
+    agedShowFavoritesOnly = !agedShowFavoritesOnly;
+    const btn = document.getElementById('btn-favorites');
+    if (agedShowFavoritesOnly) {
+        btn.classList.remove('btn-outline-warning');
+        btn.classList.add('btn-warning');
+    } else {
+        btn.classList.remove('btn-warning');
+        btn.classList.add('btn-outline-warning');
+    }
+    agedCurrentPage = 1;
+    loadAgedDomains();
+}
+
+function clearAgedFilters() {
+    document.getElementById('aged-tld-filter').value = '';
+    document.getElementById('aged-category-filter').value = '';
+    document.getElementById('aged-safety-filter').value = '';
+    document.getElementById('aged-search-filter').value = '';
+    document.getElementById('aged-sort-by').value = '';
+    document.getElementById('aged-min-price').value = '';
+    document.getElementById('aged-max-price').value = '';
+    document.getElementById('aged-min-age').value = '';
+    document.getElementById('aged-max-age').value = '';
+    agedSortDir = 'desc';
+    agedShowFavoritesOnly = false;
+    document.getElementById('aged-sort-dir-icon').className = 'bi bi-sort-down';
+    document.getElementById('btn-favorites').classList.remove('btn-warning');
+    document.getElementById('btn-favorites').classList.add('btn-outline-warning');
+    agedCurrentPage = 1;
+    loadAgedDomains();
+}
+
+async function loadAgedDomains() {
+    const params = new URLSearchParams();
+
+    const tld = document.getElementById('aged-tld-filter').value;
+    const category = document.getElementById('aged-category-filter').value;
+    const safety = document.getElementById('aged-safety-filter').value;
+    const search = document.getElementById('aged-search-filter').value;
+    const sortBy = document.getElementById('aged-sort-by').value;
+    const minPrice = document.getElementById('aged-min-price').value;
+    const maxPrice = document.getElementById('aged-max-price').value;
+    const minAge = document.getElementById('aged-min-age').value;
+    const maxAge = document.getElementById('aged-max-age').value;
+
+    if (tld) params.set('tld', tld);
+    if (category) params.set('category', category);
+    if (safety) params.set('safety', safety);
+    if (search) params.set('search', search);
+    if (sortBy) params.set('sort_by', sortBy);
+    params.set('sort_dir', agedSortDir);
+    if (minPrice) params.set('min_price', minPrice * 100);
+    if (maxPrice) params.set('max_price', maxPrice * 100);
+    if (minAge) params.set('min_age', minAge);
+    if (maxAge) params.set('max_age', maxAge);
+    if (agedShowFavoritesOnly) params.set('favorites', 'true');
+    params.set('page', agedCurrentPage);
+
+    try {
+        const resp = await fetch('/user/marketplace/api/aged/domains?' + params);
+        const data = await resp.json();
+        renderAgedDomains(data.domains || []);
+        updateAgedResultsInfo(data.total, data.page, data.perPage);
+        renderAgedPagination(data.total, data.perPage);
+    } catch (err) {
+        console.error('Failed to load aged domains:', err);
+    }
+}
+
+function updateAgedResultsInfo(total, page, perPage) {
+    const start = (page - 1) * perPage + 1;
+    const end = Math.min(page * perPage, total);
+    document.getElementById('aged-results-info').textContent =
+        total > 0 ? `Showing ${start}-${end} of ${total} domains` : 'No domains found';
+}
+
+function renderAgedPagination(total, perPage) {
+    const totalPages = Math.ceil(total / perPage);
+    const container = document.getElementById('aged-pagination');
+
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '<nav><ul class="pagination pagination-sm mb-0">';
+
+    html += `<li class="page-item ${agedCurrentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="goToAgedPage(${agedCurrentPage - 1}); return false;">Prev</a>
+    </li>`;
+
+    for (let i = 1; i <= totalPages && i <= 5; i++) {
+        html += `<li class="page-item ${agedCurrentPage === i ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="goToAgedPage(${i}); return false;">${i}</a>
+        </li>`;
+    }
+
+    html += `<li class="page-item ${agedCurrentPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="goToAgedPage(${agedCurrentPage + 1}); return false;">Next</a>
+    </li>`;
+
+    html += '</ul></nav>';
+    container.innerHTML = html;
+}
+
+function goToAgedPage(page) {
+    agedCurrentPage = page;
+    loadAgedDomains();
+}
+
+function renderAgedDomains(domains) {
+    const tbody = document.getElementById('aged-domains-body');
+
+    if (!domains.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No domains available</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = domains.map(d => `
+        <tr>
+            <td>
+                <button class="btn btn-sm btn-link p-0" onclick="toggleAgedFavorite('${d.id}', this)">
+                    <i class="bi bi-star${d.isFavorite ? '-fill' : ''} text-warning"></i>
+                </button>
+            </td>
+            <td><strong>${d.name}</strong></td>
+            <td>${d.ageYears ? d.ageYears + 'y' : '-'}</td>
+            <td>$${(d.priceCents / 100).toFixed(2)}</td>
+            <td>
+                ${d.safetyStatus === 'clean' ? '<span class="badge bg-success">Safe</span>' :
+                  d.safetyStatus === 'flagged' ? '<span class="badge bg-danger">Risky</span>' :
+                  `<button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="checkAgedSafety('${d.id}')">Check</button>`}
+            </td>
+            <td>
+                <button class="btn btn-sm btn-primary py-0 px-2" onclick="showAgedPurchase('${d.id}', '${d.name}', ${d.priceCents})">
+                    <i class="bi bi-cart-plus"></i> Buy
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function toggleAgedFavorite(id, btn) {
+    try {
+        const resp = await fetch(`/user/marketplace/api/aged/domains/${id}/favorite`, { method: 'POST' });
+        const data = await resp.json();
+
+        const icon = btn.querySelector('i');
+        if (data.isFavorite) {
+            icon.classList.remove('bi-star');
+            icon.classList.add('bi-star-fill');
+        } else {
+            icon.classList.remove('bi-star-fill');
+            icon.classList.add('bi-star');
+        }
+
+        const countEl = document.getElementById('fav-count');
+        let count = parseInt(countEl.textContent);
+        countEl.textContent = data.isFavorite ? count + 1 : count - 1;
+
+        if (agedShowFavoritesOnly && !data.isFavorite) {
+            loadAgedDomains();
+        }
+    } catch (err) {
+        showToast('Failed to update favorite', 'danger');
+    }
+}
+
+async function checkAgedSafety(id) {
+    try {
+        await fetch(`/user/marketplace/api/aged/domains/${id}/check`);
+        loadAgedDomains();
+    } catch (err) {
+        showToast('Failed to check safety', 'danger');
+    }
+}
+
+function showAgedPurchase(id, name, priceCents) {
+    agedSelectedDomain = { id, name, priceCents };
+    document.getElementById('aged-modal-domain').textContent = name;
+    document.getElementById('aged-modal-price').textContent = '$' + (priceCents / 100).toFixed(2);
+
+    document.getElementById('aged-purchase-confirm').classList.remove('d-none');
+    document.getElementById('aged-purchase-status').classList.add('d-none');
+    document.getElementById('aged-purchase-footer').classList.remove('d-none');
+
+    new bootstrap.Modal(document.getElementById('agedPurchaseModal')).show();
+}
+
+async function confirmAgedPurchase() {
+    if (!agedSelectedDomain) return;
+
+    document.getElementById('aged-purchase-confirm').classList.add('d-none');
+    document.getElementById('aged-purchase-status').classList.remove('d-none');
+    document.getElementById('aged-purchase-footer').classList.add('d-none');
+
+    try {
+        const resp = await fetch(`/user/marketplace/api/aged/purchase/${agedSelectedDomain.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirm: true })
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            document.getElementById('aged-status-message').textContent = data.error || 'Purchase failed';
+            return;
+        }
+
+        pollAgedStatus(data.purchaseId);
+    } catch (err) {
+        document.getElementById('aged-status-message').textContent = 'Purchase failed: ' + err.message;
+    }
+}
+
+async function pollAgedStatus(purchaseId) {
+    try {
+        const resp = await fetch(`/user/marketplace/api/aged/purchase/${purchaseId}/status`);
+        const data = await resp.json();
+
+        document.getElementById('aged-status-message').textContent = getAgedStatusMessage(data.status);
+        renderAgedStatusSteps(data.events || []);
+
+        if (data.status === 'completed') {
+            showToast('Domain purchased successfully!', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else if (data.status === 'failed') {
+            document.getElementById('aged-status-message').textContent = data.error || 'Purchase failed';
+        } else {
+            setTimeout(() => pollAgedStatus(purchaseId), 2000);
+        }
+    } catch (err) {
+        setTimeout(() => pollAgedStatus(purchaseId), 3000);
+    }
+}
+
+function getAgedStatusMessage(status) {
+    const messages = {
+        'pending': 'Initiating purchase...',
+        'purchasing': 'Registering domain...',
+        'provisioning': 'Setting up DNS and SSL...',
+        'completed': 'Domain ready!',
+        'failed': 'Purchase failed'
+    };
+    return messages[status] || status;
+}
+
+function renderAgedStatusSteps(events) {
+    const container = document.getElementById('aged-status-steps');
+    container.innerHTML = events.map(e => `
+        <div class="list-group-item d-flex align-items-center py-1">
+            <i class="bi bi-check-circle-fill text-success me-2"></i>
+            <span class="small">${e.message}</span>
+            <small class="ms-auto text-muted">${new Date(e.at).toLocaleTimeString()}</small>
+        </div>
+    `).join('');
+}
 </script>
 {{end}}
