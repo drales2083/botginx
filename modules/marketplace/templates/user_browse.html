@@ -102,21 +102,7 @@
 <!-- Aged Domains Section -->
 <div class="card mt-4">
     <div class="card-header">
-        <h5 class="card-title mb-0 d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-clock-history me-2"></i>Aged Domains</span>
-            <div class="card-tools">
-                <span class="badge bg-primary me-2">
-                    Balance: ${{ printf "%.2f" (divideInt .AgedBalance.Available 100) }} available
-                    {{ if gt .AgedBalance.Locked 0 }}
-                    <span class="text-warning">(${{ printf "%.2f" (divideInt .AgedBalance.Locked 100) }} locked)</span>
-                    {{ end }}
-                </span>
-                <button id="btn-favorites" class="btn btn-sm btn-outline-warning" onclick="toggleFavoritesFilter()">
-                    <i class="bi bi-star-fill me-1"></i>
-                    <span id="fav-count">{{ .FavoriteCount }}</span> Favorites
-                </button>
-            </div>
-        </h5>
+        <h5 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Aged Domains</h5>
     </div>
     <div class="card-body">
         <!-- Filters Row 1: Basic -->
@@ -443,7 +429,6 @@ document.addEventListener('DOMContentLoaded', function() {
 let agedCurrentPage = 1;
 let agedSelectedDomain = null;
 let agedSortDir = 'desc';
-let agedShowFavoritesOnly = false;
 
 function initAgedDomains() {
     loadAgedDomains();
@@ -470,20 +455,6 @@ function toggleAgedSortDir() {
     loadAgedDomains();
 }
 
-function toggleFavoritesFilter() {
-    agedShowFavoritesOnly = !agedShowFavoritesOnly;
-    const btn = document.getElementById('btn-favorites');
-    if (agedShowFavoritesOnly) {
-        btn.classList.remove('btn-outline-warning');
-        btn.classList.add('btn-warning');
-    } else {
-        btn.classList.remove('btn-warning');
-        btn.classList.add('btn-outline-warning');
-    }
-    agedCurrentPage = 1;
-    loadAgedDomains();
-}
-
 function clearAgedFilters() {
     document.getElementById('aged-tld-filter').value = '';
     document.getElementById('aged-category-filter').value = '';
@@ -495,10 +466,7 @@ function clearAgedFilters() {
     document.getElementById('aged-min-age').value = '';
     document.getElementById('aged-max-age').value = '';
     agedSortDir = 'desc';
-    agedShowFavoritesOnly = false;
     document.getElementById('aged-sort-dir-icon').className = 'bi bi-sort-down';
-    document.getElementById('btn-favorites').classList.remove('btn-warning');
-    document.getElementById('btn-favorites').classList.add('btn-outline-warning');
     agedCurrentPage = 1;
     loadAgedDomains();
 }
@@ -526,7 +494,6 @@ async function loadAgedDomains() {
     if (maxPrice) params.set('max_price', maxPrice * 100);
     if (minAge) params.set('min_age', minAge);
     if (maxAge) params.set('max_age', maxAge);
-    if (agedShowFavoritesOnly) params.set('favorites', 'true');
     params.set('page', agedCurrentPage);
 
     try {
@@ -625,14 +592,6 @@ async function toggleAgedFavorite(id, btn) {
         } else {
             icon.classList.remove('bi-star-fill');
             icon.classList.add('bi-star');
-        }
-
-        const countEl = document.getElementById('fav-count');
-        let count = parseInt(countEl.textContent);
-        countEl.textContent = data.isFavorite ? count + 1 : count - 1;
-
-        if (agedShowFavoritesOnly && !data.isFavorite) {
-            loadAgedDomains();
         }
     } catch (err) {
         showToast('Failed to update favorite', 'danger');
