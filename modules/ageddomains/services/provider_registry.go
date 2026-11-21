@@ -17,6 +17,8 @@ import (
 type DomainProvider interface {
 	// ListAgedDomains returns available aged domains from the provider
 	ListAgedDomains(ctx context.Context) ([]ProviderDomain, error)
+	// CheckAvailability verifies a domain is still available and returns current price
+	CheckAvailability(ctx context.Context, domain string) (available bool, priceCents int, err error)
 	// RegisterDomain purchases a domain and returns the order ID
 	RegisterDomain(ctx context.Context, domain string, priceCents int) (string, error)
 	// SetNameservers configures nameservers for a domain
@@ -235,7 +237,15 @@ func (a *PorkbunAdapter) ListAgedDomains(ctx context.Context) ([]ProviderDomain,
 		}
 	}
 
-	closeouts, err := a.client.ListAgedDomains(ctx, a.provider.MinAgeYears, a.provider.MaxPriceCents, tlds)
+	// MaxPriceCents is the max SALE price the admin wants to show users.
+	// Since we add markup, we need to calculate the max CLOSEOUT price to filter by:
+	// max_closeout = max_sale / (1 + markup/100)
+	maxCloseoutPrice := a.provider.MaxPriceCents
+	if a.provider.MarkupPercent > 0 && maxCloseoutPrice > 0 {
+		maxCloseoutPrice = int(float64(maxCloseoutPrice) / (1 + a.provider.MarkupPercent/100))
+	}
+
+	closeouts, err := a.client.ListAgedDomains(ctx, a.provider.MinAgeYears, maxCloseoutPrice, tlds)
 	if err != nil {
 		return nil, err
 	}
@@ -254,6 +264,16 @@ func (a *PorkbunAdapter) ListAgedDomains(ctx context.Context) ([]ProviderDomain,
 	}
 
 	return domains, nil
+}
+
+func (a *PorkbunAdapter) CheckAvailability(ctx context.Context, domain string) (bool, int, error) {
+	resp, err := a.client.GetCloseout(ctx, domain)
+	if err != nil {
+		// If we get a "not found" error, domain is not available
+		return false, 0, err
+	}
+	// Return availability status and total price (what we'd actually pay)
+	return resp.Available, resp.TotalPrice, nil
 }
 
 func (a *PorkbunAdapter) RegisterDomain(ctx context.Context, domain string, priceCents int) (string, error) {

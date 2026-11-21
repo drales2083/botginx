@@ -53,16 +53,39 @@ func (s *PurchaseService) PurchaseDomain(ctx context.Context, userID, inventoryI
 		return nil, fmt.Errorf("reserve domain: %w", err)
 	}
 
-	// 2. Generate idempotency key
+	// 2. Verify domain is still available at provider BEFORE locking funds
+	// This prevents charging user for a domain that was already sold
+	client := s.providerRegistry.GetClient(domain.ProviderID)
+	if client == nil {
+		s.inventoryService.MarkAvailable(ctx, inventoryID)
+		return nil, fmt.Errorf("provider not configured")
+	}
+
+	available, currentPrice, err := client.CheckAvailability(ctx, domain.DomainName)
+	if err != nil {
+		s.inventoryService.MarkAvailable(ctx, inventoryID)
+		return nil, fmt.Errorf("verify availability: %w", err)
+	}
+	if !available {
+		s.inventoryService.MarkAvailable(ctx, inventoryID)
+		return nil, ErrDomainUnavailable
+	}
+	// Update price if provider's price changed
+	if currentPrice > 0 && currentPrice != domain.RegistrationPrice {
+		log.Printf("[ageddomains] Price changed for %s: %d -> %d cents", domain.DomainName, domain.RegistrationPrice, currentPrice)
+		domain.RegistrationPrice = currentPrice
+	}
+
+	// 3. Generate idempotency key
 	idempotencyKey := GenerateIdempotencyKey(userID, domain.DomainName)
 
-	// 3. Check for existing purchase (idempotent replay)
+	// 4. Check for existing purchase (idempotent replay)
 	existing, _ := s.GetByIdempotency(ctx, idempotencyKey)
 	if existing != nil {
 		return existing, nil
 	}
 
-	// 4. Lock funds
+	// 5. Lock funds - only after verifying domain is available at provider
 	lock, err := s.balanceService.LockFunds(ctx, userID, domain.SalePrice, idempotencyKey,
 		fmt.Sprintf("domain_purchase:%s", domain.DomainName))
 	if err != nil {
