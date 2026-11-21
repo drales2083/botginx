@@ -61,10 +61,10 @@ func (s *BalanceService) LockFunds(ctx context.Context, userID string, amountCen
 	}
 	defer tx.Rollback()
 
-	// Get user's current balance with row lock
+	// Get user's current balance with row lock (convert dollars to cents)
 	var currentBalance int
 	err = tx.GetContext(ctx, &currentBalance,
-		`SELECT COALESCE(balance, 0) FROM users WHERE id = $1 FOR UPDATE`, userID)
+		`SELECT COALESCE((balance * 100)::int, 0) FROM users WHERE id = $1 FOR UPDATE`, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrInsufficientBalance
@@ -197,7 +197,7 @@ func (s *BalanceService) GetAvailableBalance(ctx context.Context, userID string)
 	}
 	err := s.db.GetContext(ctx, &result, `
 		SELECT
-			COALESCE(u.balance, 0) as balance,
+			COALESCE((u.balance * 100)::int, 0) as balance,
 			COALESCE(l.total, 0) as locked
 		FROM users u
 		LEFT JOIN (
