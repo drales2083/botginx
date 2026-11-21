@@ -53,19 +53,9 @@ func (m *Module) Migrate() error {
 	return err
 }
 
-// Routes returns user-facing routes mounted at /user/marketplace
+// Routes returns nil - user routes are now handled by ageddomains module at /user/marketplace
 func (m *Module) Routes() chi.Router {
-	r := chi.NewRouter()
-
-	r.Get("/", m.handler.UserBrowse)
-
-	r.Route("/api", func(r chi.Router) {
-		r.Get("/domains", m.handler.APIListAvailable)
-		r.Post("/purchase/{domainID}", m.handler.APIPurchase)
-		r.Get("/check/{domainID}", m.handler.APICheckDomain)
-	})
-
-	return r
+	return nil // User marketplace is handled by ageddomains module
 }
 
 // RoutesForSection returns routes for the requested section
@@ -73,7 +63,7 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 	if section == module.MenuSectionAdmin {
 		return m.AdminRoutes()
 	}
-	return m.Routes()
+	return nil // User marketplace is handled by ageddomains module
 }
 
 // AdminRoutes returns admin-facing routes mounted at /admin/marketplace
@@ -100,14 +90,7 @@ func (m *Module) Templates() fs.FS {
 
 func (m *Module) MenuItems() []module.MenuItem {
 	return []module.MenuItem{
-		{
-			Title:   "Buy Domain",
-			Icon:    "bi-bag",
-			Path:    "/user/marketplace",
-			Order:   25,
-			Section: module.MenuSectionUser,
-			Hidden:  true, // Accessed via button on /user/domains
-		},
+		// User marketplace menu is now in ageddomains module
 		{
 			Title:   "Sell Domain",
 			Icon:    "bi-tag",

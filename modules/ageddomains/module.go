@@ -110,7 +110,7 @@ func (m *Module) Migrate() error {
 	return nil
 }
 
-// Routes returns user-facing routes mounted at /user/ageddomains
+// Routes returns user-facing routes mounted at /user/marketplace
 func (m *Module) Routes() chi.Router {
 	r := chi.NewRouter()
 
@@ -172,7 +172,7 @@ func (m *Module) MenuItems() []module.MenuItem {
 			Section: module.MenuSectionUser,
 			Title:   "Domain Marketplace",
 			Icon:    "bi-globe",
-			Path:    "/user/ageddomains",
+			Path:    "/user/marketplace",
 			Order:   25,
 		},
 		{

@@ -238,13 +238,16 @@ func (a *PorkbunAdapter) ListAgedDomains(ctx context.Context) ([]ProviderDomain,
 	}
 
 	// MaxPriceCents is the max SALE price the admin wants to show users.
-	// Since markup is now a fixed amount (not percentage), we subtract it to get max closeout price.
-	// e.g., if max_sale = $30 (3000 cents) and markup = $20 (2000 cents), max_closeout = $10 (1000 cents)
-	maxCloseoutPrice := a.provider.MaxPriceCents
-	if a.provider.MarkupPercent > 0 && maxCloseoutPrice > 0 {
-		maxCloseoutPrice = maxCloseoutPrice - int(a.provider.MarkupPercent)
-		if maxCloseoutPrice < 0 {
-			maxCloseoutPrice = 0
+	// Sale price = total cost (closeout + renewal) + markup
+	// We fetch domains without strict price filtering, then filter after calculating total cost.
+	// This avoids under-fetching due to unknown renewal prices varying by TLD.
+	maxCloseoutPrice := 0 // No filter at API level - we'll filter after calculating total cost
+	if a.provider.MaxPriceCents > 0 {
+		// Rough estimate: subtract markup and typical renewal (~1200 cents) for API-level filtering
+		// This is just to reduce API response size, not the final filter
+		maxCloseoutPrice = a.provider.MaxPriceCents - int(a.provider.MarkupPercent) - 1200
+		if maxCloseoutPrice < 500 {
+			maxCloseoutPrice = 0 // Don't filter too aggressively
 		}
 	}
 
@@ -256,11 +259,13 @@ func (a *PorkbunAdapter) ListAgedDomains(ctx context.Context) ([]ProviderDomain,
 	// Convert to ProviderDomain
 	domains := make([]ProviderDomain, 0, len(closeouts))
 	for _, c := range closeouts {
+		// Total cost = closeout price + provider renewal price (what it actually costs to buy)
+		totalCost := c.Price + c.ProviderRenewalPrice
 		domains = append(domains, ProviderDomain{
 			Domain:     c.Domain,
 			TLD:        c.TLD,
-			PriceCents: c.Price, // Closeout price from search results
-			AgeYears:   c.Age,   // Domain age in years
+			PriceCents: totalCost, // Full purchase cost (closeout + renewal)
+			AgeYears:   c.Age,
 			IsPremium:  false,
 			ExpiresAt:  c.EndTime,
 		})
