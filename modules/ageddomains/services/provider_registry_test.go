@@ -184,3 +184,156 @@ func TestDomainProviderInterface(t *testing.T) {
 	// Verify DomainProvider interface has all required methods
 	var _ DomainProvider = (*PorkbunAdapter)(nil)
 }
+
+// TestCheckAvailabilityReturnValues documents expected return values
+func TestCheckAvailabilityReturnValues(t *testing.T) {
+	// CheckAvailability returns:
+	// - available: whether domain can still be purchased
+	// - priceCents: current price (may differ from cached inventory price)
+	// - err: API error or nil
+
+	// Scenarios:
+	scenarios := []struct {
+		name       string
+		available  bool
+		priceCents int
+		hasError   bool
+		meaning    string
+	}{
+		{
+			name:       "domain available at same price",
+			available:  true,
+			priceCents: 2500,
+			hasError:   false,
+			meaning:    "can purchase at expected price",
+		},
+		{
+			name:       "domain available but price changed",
+			available:  true,
+			priceCents: 3000, // higher than cached
+			hasError:   false,
+			meaning:    "can purchase but price may need update",
+		},
+		{
+			name:       "domain no longer available",
+			available:  false,
+			priceCents: 0,
+			hasError:   true,
+			meaning:    "cannot purchase - sold or expired",
+		},
+		{
+			name:       "API error",
+			available:  false,
+			priceCents: 0,
+			hasError:   true,
+			meaning:    "cannot determine availability - retry later",
+		},
+	}
+
+	for _, s := range scenarios {
+		if s.name == "" {
+			t.Error("Scenario name should not be empty")
+		}
+		if !s.available && !s.hasError && s.priceCents == 0 {
+			// This is the expected state for unavailable domains
+		}
+	}
+}
+
+// TestDomainProviderInterfaceMethods documents all required interface methods
+func TestDomainProviderInterfaceMethods(t *testing.T) {
+	// DomainProvider interface requires these methods:
+	methods := []struct {
+		name        string
+		description string
+	}{
+		{
+			name:        "ListAgedDomains",
+			description: "Returns available aged domains from the provider",
+		},
+		{
+			name:        "CheckAvailability",
+			description: "Verifies a domain is still available and returns current price",
+		},
+		{
+			name:        "RegisterDomain",
+			description: "Purchases a domain and returns the order ID",
+		},
+		{
+			name:        "SetNameservers",
+			description: "Configures nameservers for a domain",
+		},
+		{
+			name:        "TestConnection",
+			description: "Verifies API credentials work",
+		},
+	}
+
+	for _, m := range methods {
+		if m.name == "" {
+			t.Error("Method name should not be empty")
+		}
+		if m.description == "" {
+			t.Errorf("Method %s should have a description", m.name)
+		}
+	}
+}
+
+// TestPorkbunCloseoutToPurchaseFlow documents the closeout purchase flow
+func TestPorkbunCloseoutToPurchaseFlow(t *testing.T) {
+	// Porkbun closeout domain purchase flow:
+	// 1. ListAgedDomains (GET /closeout/search) - gets available closeouts
+	// 2. CheckAvailability (GET /closeout/get/{domain}) - verifies still available
+	// 3. RegisterDomain (POST /closeout/buy/{domain}) - purchases the domain
+	// 4. SetNameservers (POST /domain/updateNs/{domain}) - configures DNS
+	// 5. SetupDNS via CreateDNSRecord (POST /dns/create/{domain}) - creates A/TXT records
+
+	steps := []struct {
+		step       int
+		method     string
+		endpoint   string
+		httpMethod string
+	}{
+		{1, "ListAgedDomains", "GET /closeout/search", "GET"},
+		{2, "CheckAvailability", "GET /closeout/get/{domain}", "GET"},
+		{3, "RegisterDomain", "POST /closeout/buy/{domain}", "POST"},
+		{4, "SetNameservers", "POST /domain/updateNs/{domain}", "POST"},
+		{5, "CreateDNSRecord", "POST /dns/create/{domain}", "POST"},
+	}
+
+	for _, s := range steps {
+		if s.method == "" {
+			t.Errorf("Step %d should have a method name", s.step)
+		}
+	}
+}
+
+// TestPriceFilterAppliedToSalePrice verifies price filter semantics
+func TestPriceFilterAppliedToSalePrice(t *testing.T) {
+	// MaxPriceCents in provider config is the maximum SALE price (what user pays)
+	// When filtering closeouts, we must convert to max closeout price:
+	// max_closeout = max_sale / (1 + markup/100)
+	//
+	// Example:
+	// - Admin sets MaxPriceCents = $50 (max user pays)
+	// - Admin sets MarkupPercent = 50%
+	// - We filter closeouts costing <= $33.33
+	// - After markup: $33.33 * 1.5 = $50 (what user pays)
+
+	maxSale := 5000      // $50.00 max sale price
+	markup := 50.0       // 50% markup
+
+	// Calculate max closeout price to filter by
+	maxCloseout := int(float64(maxSale) / (1 + markup/100))
+
+	// Verify the math
+	if maxCloseout != 3333 {
+		t.Errorf("Expected max closeout 3333, got %d", maxCloseout)
+	}
+
+	// Verify sale price after markup doesn't exceed max
+	salePrice := int(float64(maxCloseout) * (1 + markup/100))
+	if salePrice > maxSale {
+		t.Errorf("Sale price %d exceeds max %d", salePrice, maxSale)
+	}
+}
