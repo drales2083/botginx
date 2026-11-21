@@ -164,15 +164,26 @@ func (s *PorkbunService) CreateDomainFromPurchase(ctx context.Context, userID, d
 		return "", fmt.Errorf("no deploy server configured: %w", err)
 	}
 
+	// Get admin user ID for dns_api_user_id
+	// Porkbun domains are purchased through admin's API keys, so DNS updates use admin credentials
+	var adminUserID string
+	err = s.db.GetContext(ctx, &adminUserID, `
+		SELECT id FROM users WHERE role = 'admin' ORDER BY created_at LIMIT 1
+	`)
+	if err != nil {
+		return "", fmt.Errorf("no admin user found: %w", err)
+	}
+
 	// Generate domain ID
 	domainID := fmt.Sprintf("dom_%s", purchaseID[:8])
 
-	// Create domain record
+	// Create domain record with dns_api_user_id set to admin
+	// This ensures DNS auto-updates work when admin clicks "Update All DNS"
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO domains (id, user_id, name, verify_token, source, dns_auto_configured, is_wildcard, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, 'porkbun', true, true, NOW(), NOW())
-		ON CONFLICT (name) DO UPDATE SET user_id = $2, verify_token = $4, dns_auto_configured = true, updated_at = NOW()
-	`, domainID, userID, domainName, verifyToken)
+		INSERT INTO domains (id, user_id, name, verify_token, source, dns_auto_configured, is_wildcard, dns_api_user_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, 'porkbun', true, true, $5, NOW(), NOW())
+		ON CONFLICT (name) DO UPDATE SET user_id = $2, verify_token = $4, dns_auto_configured = true, dns_api_user_id = $5, updated_at = NOW()
+	`, domainID, userID, domainName, verifyToken, adminUserID)
 	if err != nil {
 		return "", fmt.Errorf("creating domain record: %w", err)
 	}

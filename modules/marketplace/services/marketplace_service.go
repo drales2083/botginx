@@ -347,6 +347,7 @@ type AgedDomain struct {
 }
 
 // ListAgedDomains returns available aged domains from inventory
+// Only returns domains from ACTIVE providers
 func (s *MarketplaceService) ListAgedDomains(page, perPage int) ([]AgedDomain, int, error) {
 	if perPage <= 0 {
 		perPage = 25
@@ -356,28 +357,37 @@ func (s *MarketplaceService) ListAgedDomains(page, perPage int) ([]AgedDomain, i
 	}
 	offset := (page - 1) * perPage
 
-	// Count total
+	// Count total - only from active providers
 	var total int
-	err := s.db.Get(&total, `SELECT COUNT(*) FROM domain_inventory WHERE is_available = true`)
+	err := s.db.Get(&total, `
+		SELECT COUNT(*) FROM domain_inventory di
+		JOIN domain_providers dp ON dp.id = di.provider_id
+		WHERE di.is_available = true AND dp.is_active = true
+	`)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Get domains
+	// Get domains - only from active providers
 	var domains []AgedDomain
 	err = s.db.Select(&domains, `
-		SELECT id, domain_name, tld, registration_price, sale_price, age_years, safety_status, is_available
-		FROM domain_inventory
-		WHERE is_available = true
-		ORDER BY age_years DESC NULLS LAST, sale_price ASC
+		SELECT di.id, di.domain_name, di.tld, di.registration_price, di.sale_price, di.age_years, di.safety_status, di.is_available
+		FROM domain_inventory di
+		JOIN domain_providers dp ON dp.id = di.provider_id
+		WHERE di.is_available = true AND dp.is_active = true
+		ORDER BY di.age_years DESC NULLS LAST, di.sale_price ASC
 		LIMIT $1 OFFSET $2
 	`, perPage, offset)
 	return domains, total, err
 }
 
-// GetAgedDomainsCount returns count of available aged domains
+// GetAgedDomainsCount returns count of available aged domains from active providers
 func (s *MarketplaceService) GetAgedDomainsCount() int {
 	var count int
-	s.db.Get(&count, `SELECT COUNT(*) FROM domain_inventory WHERE is_available = true`)
+	s.db.Get(&count, `
+		SELECT COUNT(*) FROM domain_inventory di
+		JOIN domain_providers dp ON dp.id = di.provider_id
+		WHERE di.is_available = true AND dp.is_active = true
+	`)
 	return count
 }

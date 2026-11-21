@@ -33,7 +33,10 @@ func NewHandler(bs *services.BalanceService, is *services.InventoryService, ps *
 // Browse renders the marketplace browsing page
 func (h *Handler) Browse(w http.ResponseWriter, r *http.Request) {
 	user := ctx.GetUser(r)
-	balance, _ := h.balanceService.GetAvailableBalance(r.Context(), user.ID)
+	balance, err := h.balanceService.GetAvailableBalance(r.Context(), user.ID)
+	if err != nil || balance == nil {
+		balance = &models.BalanceInfo{Available: 0, Locked: 0, Total: 0}
+	}
 	tlds, _ := h.inventoryService.GetAvailableTLDs(r.Context())
 	favCount, _ := h.favoritesService.Count(r.Context(), user.ID)
 
