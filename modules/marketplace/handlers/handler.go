@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/tls"
 	"encoding/json"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -491,7 +492,9 @@ func (h *Handler) APIAgedDomainsPurchase(w http.ResponseWriter, r *http.Request)
 			h.jsonError(w, "Domain no longer available", http.StatusConflict)
 			return
 		}
-		h.jsonError(w, err.Error(), http.StatusInternalServerError)
+		// Don't leak internal/API errors to users - log and show generic message
+		log.Printf("[marketplace] aged domain purchase failed for user %s: %v", user.ID, err)
+		h.jsonError(w, "Purchase failed. Please try again or contact support.", http.StatusInternalServerError)
 		return
 	}
 

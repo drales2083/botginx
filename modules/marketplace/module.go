@@ -77,8 +77,10 @@ func (m *Module) Routes() chi.Router {
 			r.Get("/domains/{id}/check", m.handler.APIAgedDomainsCheckSafety)
 			r.Post("/domains/{id}/favorite", m.handler.APIAgedDomainsToggleFavorite)
 			r.Get("/tlds", m.handler.APIAgedDomainsGetTLDs)
-			r.Post("/purchase/{id}", m.handler.APIAgedDomainsPurchase)
-			r.Get("/purchase/{id}/status", m.handler.APIAgedDomainsGetStatus)
+			r.Route("/purchase/{id}", func(r chi.Router) {
+				r.Post("/", m.handler.APIAgedDomainsPurchase)
+				r.Get("/status", m.handler.APIAgedDomainsGetStatus)
+			})
 			r.Get("/balance", m.handler.APIAgedDomainsGetBalance)
 		})
 	})
