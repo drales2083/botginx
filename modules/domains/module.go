@@ -250,6 +250,9 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 
 		// Unified reconfigure - updates NameSilo, cPanel and Cloudflare domains
 		r.Post("/reconfigure-all", m.AdminReconfigureAllDomains)
+
+		// cPanel CNAME update for a specific domain
+		r.Post("/cpanel/{id}/update-acme-cname", m.AdminUpdateCpanelAcmeCNAME)
 	})
 
 	return r
@@ -338,6 +341,41 @@ func (m *Module) SetProxyService(ps *proxy.Service) {
 // built the service.
 func (m *Module) ListAvailable(userID string) ([]models.Domain, error) {
 	return m.service.ListAvailable(userID)
+}
+
+// AdminUpdateCpanelAcmeCNAME updates the ACME CNAME record for a cPanel domain
+func (m *Module) AdminUpdateCpanelAcmeCNAME(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	domain, err := m.service.Get(id)
+	if err != nil {
+		http.Error(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	if domain.CpanelConnectionID == nil || *domain.CpanelConnectionID == "" {
+		http.Error(w, "Domain not connected to cPanel", http.StatusBadRequest)
+		return
+	}
+
+	if domain.AcmeFulldomain == nil || *domain.AcmeFulldomain == "" {
+		http.Error(w, "Domain has no acme-dns registration", http.StatusBadRequest)
+		return
+	}
+
+	if err := m.cpanelService.AddAcmeCNAME(*domain.CpanelConnectionID, domain.Name, *domain.AcmeFulldomain); err != nil {
+		http.Error(w, "Failed to update CNAME: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Mark CNAME as verified
+	verified := true
+	m.service.Update(id, models.UpdateDomainInput{AcmeCnameVerified: &verified})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "CNAME updated to " + *domain.AcmeFulldomain,
+	})
 }
 
 // AdminReconfigureAllDomains updates DNS for ALL domains (both NameSilo and cPanel)
