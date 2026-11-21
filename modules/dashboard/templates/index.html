@@ -48,14 +48,6 @@
 
         <!-- Telegram Promo (only if not connected) -->
         {{ if not .User.TelegramConnectedAt }}
-        {{ $tips := slice
-            (dict "title" "Get Instant Alerts" "text" "Bot attacks, SSL warnings, and more - straight to your phone.")
-            (dict "title" "Never Miss a Bot Attack" "text" "Get notified in seconds when bots hit your site.")
-            (dict "title" "Control From Your Phone" "text" "Manage domains and protection settings via Telegram.")
-            (dict "title" "Reply to Support Faster" "text" "Answer tickets directly from Telegram.")
-            (dict "title" "Traffic Milestones" "text" "Celebrate when you hit 1K, 10K, 100K visitors.")
-        }}
-        {{ $tip := index $tips (mod (now.Unix) (len $tips)) }}
         <div class="card mb-4 border-info">
             <div class="card-body">
                 <div class="d-flex align-items-start gap-3">
@@ -63,8 +55,8 @@
                         <i class="bi bi-telegram"></i>
                     </span>
                     <div>
-                        <div class="fw-semibold mb-1">{{ $tip.title }}</div>
-                        <p class="text-secondary small mb-2">{{ $tip.text }}</p>
+                        <div class="fw-semibold mb-1" id="tg-promo-title">Get Instant Alerts</div>
+                        <p class="text-secondary small mb-2" id="tg-promo-text">Bot attacks, SSL warnings, and more - straight to your phone.</p>
                         <a href="/user/settings?page=telegram" class="btn btn-info btn-sm">
                             <i class="bi bi-plug me-1"></i>Connect Telegram
                         </a>
@@ -72,6 +64,20 @@
                 </div>
             </div>
         </div>
+        <script>
+        (function() {
+            const tips = [
+                {title: "Get Instant Alerts", text: "Bot attacks, SSL warnings, and more - straight to your phone."},
+                {title: "Never Miss a Bot Attack", text: "Get notified in seconds when bots hit your site."},
+                {title: "Control From Your Phone", text: "Manage domains and protection settings via Telegram."},
+                {title: "Reply to Support Faster", text: "Answer tickets directly from Telegram."},
+                {title: "Traffic Milestones", text: "Celebrate when you hit 1K, 10K, 100K visitors."}
+            ];
+            const tip = tips[Math.floor(Math.random() * tips.length)];
+            document.getElementById('tg-promo-title').textContent = tip.title;
+            document.getElementById('tg-promo-text').textContent = tip.text;
+        })();
+        </script>
         {{ end }}
 
         <!-- Statistics -->
