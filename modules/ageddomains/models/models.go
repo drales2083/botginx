@@ -14,7 +14,7 @@ type Provider struct {
 	APIKey        string    `db:"api_key" json:"-"` // Never expose
 	APISecret     string    `db:"api_secret" json:"-"` // Never expose
 	IsActive      bool      `db:"is_active" json:"isActive"`
-	MarkupPercent float64   `db:"markup_percent" json:"markupPercent"`
+	MarkupPercent float64   `db:"markup_percent" json:"markupPercent"` // Legacy, now used as fixed cents (e.g., 2000 = $20)
 	MinAgeYears   int       `db:"min_age_years" json:"minAgeYears"`
 	MaxPriceCents int       `db:"max_price_cents" json:"maxPriceCents"`
 	AllowedTLDs   string    `db:"allowed_tlds" json:"allowedTlds"`

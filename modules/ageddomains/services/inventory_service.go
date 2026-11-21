@@ -287,11 +287,8 @@ func (s *InventoryService) UpdateInventory(ctx context.Context, providerID strin
 	updated := 0
 
 	for _, d := range domains {
-		// Calculate sale price with markup
-		salePrice := d.PriceCents
-		if markupPercent > 0 {
-			salePrice = int(float64(d.PriceCents) * (1 + markupPercent/100))
-		}
+		// Calculate sale price with fixed markup (markupPercent is now used as fixed cents, e.g., 2000 = $20)
+		salePrice := d.PriceCents + int(markupPercent)
 
 		// Upsert domain
 		_, err := s.db.ExecContext(ctx, `

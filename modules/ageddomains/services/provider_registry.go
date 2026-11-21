@@ -238,11 +238,14 @@ func (a *PorkbunAdapter) ListAgedDomains(ctx context.Context) ([]ProviderDomain,
 	}
 
 	// MaxPriceCents is the max SALE price the admin wants to show users.
-	// Since we add markup, we need to calculate the max CLOSEOUT price to filter by:
-	// max_closeout = max_sale / (1 + markup/100)
+	// Since markup is now a fixed amount (not percentage), we subtract it to get max closeout price.
+	// e.g., if max_sale = $30 (3000 cents) and markup = $20 (2000 cents), max_closeout = $10 (1000 cents)
 	maxCloseoutPrice := a.provider.MaxPriceCents
 	if a.provider.MarkupPercent > 0 && maxCloseoutPrice > 0 {
-		maxCloseoutPrice = int(float64(maxCloseoutPrice) / (1 + a.provider.MarkupPercent/100))
+		maxCloseoutPrice = maxCloseoutPrice - int(a.provider.MarkupPercent)
+		if maxCloseoutPrice < 0 {
+			maxCloseoutPrice = 0
+		}
 	}
 
 	closeouts, err := a.client.ListAgedDomains(ctx, a.provider.MinAgeYears, maxCloseoutPrice, tlds)

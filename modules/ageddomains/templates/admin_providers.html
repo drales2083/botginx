@@ -117,9 +117,9 @@
 
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            <label class="form-label">Markup %</label>
-                            <input type="number" id="markup-percent" class="form-control" value="0" min="0" max="100" step="0.1">
-                            <small class="text-muted">Added to provider price</small>
+                            <label class="form-label">Markup ($)</label>
+                            <input type="number" id="markup-percent" class="form-control" value="0" min="0" step="0.01">
+                            <small class="text-muted">Fixed profit added to each domain</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Min Age (years)</label>
@@ -227,7 +227,7 @@ function editProvider(id) {
             document.getElementById('display-name').value = p.displayName;
             document.getElementById('provider-name').value = p.name;
             document.getElementById('is-active').checked = p.isActive;
-            document.getElementById('markup-percent').value = p.markupPercent || 0;
+            document.getElementById('markup-percent').value = (p.markupPercent || 0) / 100; // Convert cents to $
             document.getElementById('min-age').value = p.minAgeYears || 0;
             document.getElementById('max-price').value = (p.maxPriceCents || 0) / 100;
             document.getElementById('allowed-tlds').value = p.allowedTlds || '';
@@ -249,7 +249,7 @@ function saveProvider() {
         apiKey: document.getElementById('api-key').value,
         apiSecret: document.getElementById('api-secret').value,
         isActive: document.getElementById('is-active').checked,
-        markupPercent: parseFloat(document.getElementById('markup-percent').value) || 0,
+        markupPercent: Math.round((parseFloat(document.getElementById('markup-percent').value) || 0) * 100), // Convert $ to cents
         minAgeYears: parseInt(document.getElementById('min-age').value) || 0,
         maxPriceCents: Math.round((parseFloat(document.getElementById('max-price').value) || 0) * 100),
         allowedTlds: document.getElementById('allowed-tlds').value
