@@ -26,16 +26,17 @@ const (
 
 // Domain represents a domain with server assignment
 type Domain struct {
-	ID              string  `db:"id"`
-	Name            string  `db:"name"`
-	ServerID        *string `db:"server_id"`
-	SyncStatus      string  `db:"sync_status"`
-	SSLEnabled      bool    `db:"ssl_enabled"`
-	AcmeSubdomain   *string `db:"acme_subdomain"`
-	AcmeUsername    *string `db:"acme_username"`
-	AcmePassword    *string `db:"acme_password"`
-	AcmeFulldomain  *string `db:"acme_fulldomain"`
-	IsWildcard      bool    `db:"is_wildcard"`
+	ID                  string  `db:"id"`
+	Name                string  `db:"name"`
+	ServerID            *string `db:"server_id"`
+	SyncStatus          string  `db:"sync_status"`
+	SSLEnabled          bool    `db:"ssl_enabled"`
+	AcmeSubdomain       *string `db:"acme_subdomain"`
+	AcmeUsername        *string `db:"acme_username"`
+	AcmePassword        *string `db:"acme_password"`
+	AcmeFulldomain      *string `db:"acme_fulldomain"`
+	IsWildcard          bool    `db:"is_wildcard"`
+	CpanelConnectionID  *string `db:"cpanel_connection_id"`
 }
 
 // Server represents a deploy server
@@ -179,7 +180,8 @@ func (s *Service) getDomainsWithServers() ([]Domain, error) {
 	var domains []Domain
 	err := s.db.Select(&domains, `
 		SELECT id, name, server_id, COALESCE(sync_status, 'pending') as sync_status,
-		       ssl_enabled, acme_subdomain, acme_username, acme_password, acme_fulldomain, is_wildcard
+		       ssl_enabled, acme_subdomain, acme_username, acme_password, acme_fulldomain, is_wildcard,
+		       cpanel_connection_id
 		FROM domains
 		WHERE server_id IS NOT NULL
 	`)
@@ -732,13 +734,18 @@ func (s *Service) checkDNSRecords(domain Domain, server Server) (bool, []string)
 			missing = append(missing, fmt.Sprintf("Cloudflare origin not configured (set A record to %s in Cloudflare dashboard, keep proxy enabled)", server.IP))
 		}
 	} else {
-		// For non-Cloudflare domains, check A records point to our server
-		aRecords, err := net.LookupHost(baseDomain)
-		if err != nil || !containsIP(aRecords, server.IP) {
-			missing = append(missing, fmt.Sprintf("A @ → %s", server.IP))
+		// For cPanel domains, only check wildcard record (@ points to cPanel server for the website)
+		isCpanelDomain := domain.CpanelConnectionID != nil && *domain.CpanelConnectionID != ""
+
+		if !isCpanelDomain {
+			// For non-cPanel domains, check A record points to our server
+			aRecords, err := net.LookupHost(baseDomain)
+			if err != nil || !containsIP(aRecords, server.IP) {
+				missing = append(missing, fmt.Sprintf("A @ → %s", server.IP))
+			}
 		}
 
-		// Check wildcard A record (test with a random subdomain)
+		// Check wildcard A record (test with a random subdomain) - required for all domains
 		wildcardRecords, err := net.LookupHost("sync-test." + baseDomain)
 		if err != nil || !containsIP(wildcardRecords, server.IP) {
 			missing = append(missing, fmt.Sprintf("A * → %s", server.IP))
