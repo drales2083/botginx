@@ -10,42 +10,32 @@
         <!-- Onboarding Checklist -->
         {{ if .Onboarding.Show }}
         <div class="card mb-4 border-primary" id="onboarding-card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h3 class="card-title mb-0"><i class="bi bi-rocket-takeoff me-2"></i>Getting Started</h3>
+            <div class="card-header d-flex align-items-center justify-content-between py-2">
+                <span class="fw-semibold"><i class="bi bi-rocket-takeoff me-2"></i>Getting Started</span>
                 <span class="badge text-bg-primary">{{ .Onboarding.Percentage }}%</span>
             </div>
             <div class="card-body p-0">
-                <div class="progress" style="height: 4px; border-radius: 0;">
+                <div class="progress" style="height: 3px; border-radius: 0;">
                     <div class="progress-bar" role="progressbar" style="width: {{ .Onboarding.Percentage }}%"></div>
                 </div>
-                <div class="list-group list-group-flush">
-                    {{ range .Onboarding.Steps }}
-                    <div class="list-group-item d-flex align-items-center gap-3 py-3">
-                        {{ if .Complete }}
-                        <span class="text-success"><i class="bi bi-check-circle-fill"></i></span>
-                        {{ else }}
-                        <span class="text-secondary"><i class="bi bi-circle"></i></span>
-                        {{ end }}
-                        <div class="flex-grow-1">
-                            <div class="{{ if .Complete }}text-muted text-decoration-line-through{{ else }}fw-semibold{{ end }}">{{ .Title }}</div>
-                            <small class="text-secondary">{{ .Description }}</small>
-                        </div>
-                        {{ if and (not .Complete) .Link }}
-                        <a href="{{ .Link }}" class="btn btn-sm btn-outline-primary">{{ .LinkText }} →</a>
-                        {{ end }}
-                    </div>
+                {{ range .Onboarding.Steps }}
+                <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                    {{ if .Complete }}
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <span class="text-muted flex-grow-1">{{ .Title }}</span>
+                    {{ else }}
+                    <i class="bi bi-circle text-secondary"></i>
+                    <span class="flex-grow-1">{{ .Title }}</span>
+                    <a href="{{ .Link }}" class="btn btn-sm btn-outline-primary py-0 px-2">{{ .LinkText }}</a>
                     {{ end }}
                 </div>
-            </div>
-            <div class="card-footer d-flex align-items-center justify-content-between">
-                {{ if .Onboarding.CanDismiss }}
-                <button class="btn btn-sm btn-outline-secondary" onclick="dismissOnboarding()">
-                    <i class="bi bi-x-lg me-1"></i>Dismiss
-                </button>
-                {{ else }}
-                <small class="text-secondary">Complete all steps to dismiss</small>
                 {{ end }}
-                <small class="text-muted">{{ .Onboarding.Completed }}/{{ .Onboarding.Total }}</small>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between py-2">
+                <small class="text-muted">{{ .Onboarding.Completed }}/{{ .Onboarding.Total }} complete</small>
+                {{ if .Onboarding.CanDismiss }}
+                <button class="btn btn-sm btn-outline-secondary py-0" onclick="dismissOnboarding()">Dismiss</button>
+                {{ end }}
             </div>
         </div>
         <script>
