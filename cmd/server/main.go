@@ -734,8 +734,6 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(subscriptions.Enforce)
 			registry.MountRoutesBySection(r, module.MenuSectionUser, "auth", "payments", "twofactor", "qrcodes", "reports", "domainhealth", "analogstats", "awstats", "threatlog", "antibotcontrol", "apikeys", "webhooks")
-			// Mount aged domains at /marketplace (user-facing path)
-			r.Mount("/marketplace", agedDomainsModule.Routes())
 		})
 
 		// Registered on the section rather than inside the group above: chi
