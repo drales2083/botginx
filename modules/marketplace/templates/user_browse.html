@@ -235,7 +235,8 @@
                 </div>
                 <div id="aged-purchase-status" class="d-none">
                     <div class="text-center mb-3">
-                        <div class="spinner-border text-primary" role="status"></div>
+                        <div id="aged-status-spinner" class="spinner-border text-primary" role="status"></div>
+                        <i id="aged-status-error-icon" class="bi bi-x-circle-fill text-danger fs-1 d-none"></i>
                         <p class="mt-2" id="aged-status-message">Processing...</p>
                     </div>
                     <div id="aged-status-steps" class="list-group"></div>
@@ -640,14 +641,24 @@ async function confirmAgedPurchase() {
         const data = await resp.json();
 
         if (!resp.ok) {
-            document.getElementById('aged-status-message').textContent = data.error || 'Purchase failed';
+            showAgedPurchaseError(data.error || 'Purchase failed');
             return;
         }
 
         pollAgedStatus(data.purchaseId);
     } catch (err) {
-        document.getElementById('aged-status-message').textContent = 'Purchase failed: ' + err.message;
+        showAgedPurchaseError('Purchase failed: ' + err.message);
     }
+}
+
+function showAgedPurchaseError(message) {
+    document.getElementById('aged-status-spinner').classList.add('d-none');
+    document.getElementById('aged-status-error-icon').classList.remove('d-none');
+    document.getElementById('aged-status-message').textContent = message;
+    // Show footer with close button
+    const footer = document.getElementById('aged-purchase-footer');
+    footer.classList.remove('d-none');
+    footer.innerHTML = '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>';
 }
 
 async function pollAgedStatus(purchaseId) {
@@ -662,7 +673,7 @@ async function pollAgedStatus(purchaseId) {
             showToast('Domain purchased successfully!', 'success');
             setTimeout(() => location.reload(), 2000);
         } else if (data.status === 'failed') {
-            document.getElementById('aged-status-message').textContent = data.error || 'Purchase failed';
+            showAgedPurchaseError(data.error || 'Purchase failed');
         } else {
             setTimeout(() => pollAgedStatus(purchaseId), 2000);
         }
