@@ -8,17 +8,32 @@ import (
 	"strconv"
 )
 
-// Closeout represents a closeout domain listing
+// Closeout represents a closeout domain listing from search results
 type Closeout struct {
-	Domain           string `json:"domain"`
-	TLD              string `json:"tld"`
-	TotalPrice       int    `json:"totalPrice"`       // Price in cents
-	RenewalPrice     int    `json:"renewalPrice"`     // Renewal price in cents
-	EndTime          string `json:"endTime"`          // When closeout expires
-	RegistrationDate string `json:"registrationDate"` // Original registration date
-	InboundLinks     int    `json:"inboundLinks"`
-	Visitors         int    `json:"visitors"`
-	Revenue          int    `json:"revenue"`
+	CloseoutID           int    `json:"closeoutId"`
+	Domain               string `json:"domain"`
+	TLD                  string `json:"tld"`
+	Price                int    `json:"price"`                // Closeout price in cents
+	Age                  int    `json:"age"`                  // Domain age in years
+	RegistrationDate     string `json:"registrationDate"`     // Original registration (ISO 8601)
+	EndTime              string `json:"endTime"`              // When listing ends (ISO 8601)
+	NameLength           int    `json:"nameLength"`           // SLD character count
+	IsIDN                bool   `json:"isIdn"`                // Internationalized domain
+	EstibotAppraisal     int    `json:"estibotAppraisal"`     // Third-party appraisal (cents)
+	MonthlyVisitors      int    `json:"monthlyVisitors"`      // Traffic stat
+	InboundLinks         int    `json:"inboundLinks"`         // Backlink count
+	ExpiredRevenue       int    `json:"expiredRevenue"`       // Historical revenue
+	OtherTLDCount        int    `json:"otherTldCount"`        // Same name in other TLDs
+	ProviderRenewalPrice int    `json:"providerRenewalPrice"` // Provider's renewal figure
+}
+
+// CloseoutDetail has additional fields from /closeout/get/{domain}
+type CloseoutDetail struct {
+	Closeout
+	RenewalPrice int  `json:"renewalPrice"` // Porkbun renewal price
+	TotalPrice   int  `json:"totalPrice"`   // price + renewalPrice (what you pay)
+	LocalDomain  bool `json:"localDomain"`  // Already at Porkbun
+	Available    bool `json:"available"`    // Still available
 }
 
 // SearchCloseoutsParams contains parameters for searching closeouts
@@ -47,6 +62,7 @@ type SearchCloseoutsResponse struct {
 }
 
 // SearchCloseouts searches for available closeout domains
+// Uses GET with header authentication per Porkbun API docs
 func (c *Client) SearchCloseouts(ctx context.Context, params SearchCloseoutsParams) (*SearchCloseoutsResponse, error) {
 	// Build query string
 	q := url.Values{}
@@ -83,7 +99,7 @@ func (c *Client) SearchCloseouts(ctx context.Context, params SearchCloseoutsPara
 	if params.Limit > 0 {
 		q.Set("limit", strconv.Itoa(params.Limit))
 	} else {
-		q.Set("limit", "100") // Default
+		q.Set("limit", "100")
 	}
 
 	path := "/closeout/search"
@@ -111,12 +127,18 @@ func (c *Client) SearchCloseouts(ctx context.Context, params SearchCloseoutsPara
 
 // GetCloseoutResponse is the response from getting a single closeout
 type GetCloseoutResponse struct {
-	Status    string   `json:"status"`
-	Available bool     `json:"available"`
-	Closeout  Closeout `json:"closeout"`
+	Status   string         `json:"status"`
+	Closeout CloseoutDetail `json:"closeout,omitempty"`
+	// Flat fields also present at root level
+	Domain       string `json:"domain,omitempty"`
+	Available    bool   `json:"available"`
+	TotalPrice   int    `json:"totalPrice,omitempty"`
+	RenewalPrice int    `json:"renewalPrice,omitempty"`
+	Price        int    `json:"price,omitempty"`
 }
 
 // GetCloseout returns details for a specific closeout domain
+// Uses GET with header authentication
 func (c *Client) GetCloseout(ctx context.Context, domain string) (*GetCloseoutResponse, error) {
 	path := fmt.Sprintf("/closeout/get/%s", domain)
 
@@ -143,7 +165,7 @@ type BuyCloseoutResponse struct {
 	Status        string `json:"status"`
 	Domain        string `json:"domain"`
 	OrderID       string `json:"orderId"`
-	CloseoutID    string `json:"closeoutId"`
+	CloseoutID    int    `json:"closeoutId"`
 	CloseoutPrice int    `json:"closeoutPrice"`
 	RenewalPrice  int    `json:"renewalPrice"`
 	TotalPrice    int    `json:"totalPrice"`
@@ -152,14 +174,13 @@ type BuyCloseoutResponse struct {
 
 // BuyCloseout purchases a closeout domain
 // cost must be the exact totalPrice in cents from GetCloseout
+// Uses POST with body authentication
 func (c *Client) BuyCloseout(ctx context.Context, domain string, costCents int) (*BuyCloseoutResponse, error) {
 	path := fmt.Sprintf("/closeout/buy/%s", domain)
 
-	reqBody := map[string]interface{}{
+	body, err := c.doPost(ctx, path, map[string]interface{}{
 		"cost": costCents,
-	}
-
-	body, err := c.doRequest(ctx, "POST", path, reqBody)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -177,8 +198,8 @@ func (c *Client) BuyCloseout(ctx context.Context, domain string, costCents int) 
 	return &resp, nil
 }
 
-// ListAgedDomains returns all closeout domains for inventory (implements DomainProvider interface)
-// This fetches all pages of closeouts matching the given criteria
+// ListAgedDomains returns all closeout domains matching criteria
+// Fetches all pages for the given TLDs
 func (c *Client) ListAgedDomains(ctx context.Context, minAge int, maxPriceCents int, tlds []string) ([]Closeout, error) {
 	var allDomains []Closeout
 
@@ -203,7 +224,7 @@ func (c *Client) ListAgedDomains(ctx context.Context, minAge int, maxPriceCents 
 			allDomains = append(allDomains, resp.Closeouts...)
 
 			// Check if more pages
-			if start+resp.Count >= resp.TotalAvailable {
+			if start+resp.Count >= resp.TotalAvailable || len(resp.Closeouts) == 0 {
 				break
 			}
 			start += resp.Count

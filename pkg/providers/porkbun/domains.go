@@ -29,11 +29,9 @@ type ListDomainsResponse struct {
 }
 
 // ListDomains returns all domains in the account
-// Optional filters: expiringWithinDays, nameContains, tlds, etc.
 func (c *Client) ListDomains(ctx context.Context) ([]Domain, error) {
-	path := "/domain/listAll"
-
-	body, err := c.doRequest(ctx, "POST", path, nil)
+	// POST /domain/listAll with credentials in body
+	body, err := c.doPost(ctx, "/domain/listAll", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +59,8 @@ type GetDomainResponse struct {
 func (c *Client) GetDomain(ctx context.Context, domain string) (*Domain, error) {
 	path := fmt.Sprintf("/domain/get/%s", domain)
 
-	body, err := c.doRequest(ctx, "POST", path, nil)
+	// POST with credentials in body
+	body, err := c.doPost(ctx, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +82,6 @@ func (c *Client) GetDomain(ctx context.Context, domain string) (*Domain, error) 
 func (c *Client) IsDomainInAccount(ctx context.Context, domain string) (bool, error) {
 	_, err := c.GetDomain(ctx, domain)
 	if err != nil {
-		// Check if it's a "not found" error
 		if apiErr, ok := err.(*APIError); ok {
 			if apiErr.Code == "DOMAIN_NOT_FOUND" {
 				return false, nil
@@ -94,20 +92,13 @@ func (c *Client) IsDomainInAccount(ctx context.Context, domain string) (bool, er
 	return true, nil
 }
 
-// SetNameserversRequest is the request body for updating nameservers
-type SetNameserversRequest struct {
-	NS []string `json:"ns"`
-}
-
 // SetNameservers updates the nameservers for a domain
 func (c *Client) SetNameservers(ctx context.Context, domain string, nameservers []string) error {
 	path := fmt.Sprintf("/domain/updateNs/%s", domain)
 
-	reqBody := map[string]interface{}{
+	body, err := c.doPost(ctx, path, map[string]interface{}{
 		"ns": nameservers,
-	}
-
-	body, err := c.doRequest(ctx, "POST", path, reqBody)
+	})
 	if err != nil {
 		return err
 	}
@@ -120,7 +111,7 @@ func (c *Client) SetNameservers(ctx context.Context, domain string, nameservers 
 func (c *Client) GetNameservers(ctx context.Context, domain string) ([]string, error) {
 	path := fmt.Sprintf("/domain/getNs/%s", domain)
 
-	body, err := c.doRequest(ctx, "POST", path, nil)
+	body, err := c.doPost(ctx, path, nil)
 	if err != nil {
 		return nil, err
 	}

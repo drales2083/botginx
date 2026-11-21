@@ -22,8 +22,8 @@ func TestSearchCloseoutsParamsFilters(t *testing.T) {
 		TLD:           "com",
 		AgeMin:        5,
 		AgeMax:        10,
-		PriceMin:      500,   // $5.00
-		PriceMax:      5000,  // $50.00
+		PriceMin:      500,  // $5.00
+		PriceMax:      5000, // $50.00
 		SortName:      "registrationDate",
 		SortDirection: "desc",
 		Limit:         50,
@@ -67,16 +67,17 @@ func TestSearchCloseoutsSortOptions(t *testing.T) {
 }
 
 func TestCloseoutStructure(t *testing.T) {
+	// Closeout struct from search results
 	closeout := Closeout{
+		CloseoutID:       12345,
 		Domain:           "example.com",
 		TLD:              "com",
-		TotalPrice:       1299, // $12.99
-		RenewalPrice:     999,  // $9.99
+		Price:            1299, // $12.99 (closeout price)
+		Age:              8,    // 8 years old
 		EndTime:          "2024-01-15T12:00:00Z",
-		RegistrationDate: "2015-03-01",
+		RegistrationDate: "2015-03-01T00:00:00Z",
 		InboundLinks:     150,
-		Visitors:         1000,
-		Revenue:          0,
+		MonthlyVisitors:  1000,
 	}
 
 	if closeout.Domain == "" {
@@ -85,8 +86,32 @@ func TestCloseoutStructure(t *testing.T) {
 	if closeout.TLD == "" {
 		t.Error("TLD should not be empty")
 	}
-	if closeout.TotalPrice <= 0 {
-		t.Error("TotalPrice should be positive")
+	if closeout.Price <= 0 {
+		t.Error("Price should be positive")
+	}
+	if closeout.Age <= 0 {
+		t.Error("Age should be positive for aged domains")
+	}
+}
+
+func TestCloseoutDetailStructure(t *testing.T) {
+	// CloseoutDetail has additional fields from /closeout/get/{domain}
+	detail := CloseoutDetail{
+		Closeout: Closeout{
+			CloseoutID: 12345,
+			Domain:     "example.com",
+			TLD:        "com",
+			Price:      999, // Closeout price
+			Age:        5,
+		},
+		RenewalPrice: 1099,       // Porkbun renewal price
+		TotalPrice:   999 + 1099, // What you pay
+		Available:    true,
+		LocalDomain:  false,
+	}
+
+	if detail.TotalPrice != detail.Price+detail.RenewalPrice {
+		t.Errorf("TotalPrice should equal Price + RenewalPrice")
 	}
 }
 
@@ -98,8 +123,8 @@ func TestSearchCloseoutsResponseStructure(t *testing.T) {
 		Start:          0,
 		Limit:          100,
 		Closeouts: []Closeout{
-			{Domain: "one.com", TLD: "com", TotalPrice: 999},
-			{Domain: "two.net", TLD: "net", TotalPrice: 1299},
+			{CloseoutID: 1, Domain: "one.com", TLD: "com", Price: 999, Age: 3},
+			{CloseoutID: 2, Domain: "two.net", TLD: "net", Price: 1299, Age: 5},
 		},
 	}
 
@@ -113,13 +138,12 @@ func TestSearchCloseoutsResponseStructure(t *testing.T) {
 
 func TestGetCloseoutResponseStructure(t *testing.T) {
 	resp := GetCloseoutResponse{
-		Status:    "SUCCESS",
-		Available: true,
-		Closeout: Closeout{
-			Domain:     "example.com",
-			TLD:        "com",
-			TotalPrice: 1299,
-		},
+		Status:       "SUCCESS",
+		Available:    true,
+		Domain:       "example.com",
+		Price:        999,
+		RenewalPrice: 1099,
+		TotalPrice:   2098,
 	}
 
 	if resp.Status != "SUCCESS" {
@@ -135,11 +159,11 @@ func TestBuyCloseoutResponseStructure(t *testing.T) {
 		Status:        "SUCCESS",
 		Domain:        "example.com",
 		OrderID:       "order123",
-		CloseoutID:    "closeout456",
+		CloseoutID:    456789,
 		CloseoutPrice: 999,
-		RenewalPrice:  999,
-		TotalPrice:    1998,
-		Message:       "Purchase successful",
+		RenewalPrice:  1099,
+		TotalPrice:    2098,
+		Message:       "Domain purchased",
 	}
 
 	if resp.Status != "SUCCESS" {

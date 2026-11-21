@@ -246,8 +246,8 @@ func (a *PorkbunAdapter) ListAgedDomains(ctx context.Context) ([]ProviderDomain,
 		domains = append(domains, ProviderDomain{
 			Domain:     c.Domain,
 			TLD:        c.TLD,
-			PriceCents: c.TotalPrice,
-			AgeYears:   0, // Calculate from RegistrationDate if needed
+			PriceCents: c.Price, // Closeout price from search results
+			AgeYears:   c.Age,   // Domain age in years
 			IsPremium:  false,
 			ExpiresAt:  c.EndTime,
 		})

@@ -38,7 +38,7 @@ type ListDNSRecordsResponse struct {
 func (c *Client) ListDNSRecords(ctx context.Context, domain string) ([]DNSRecord, error) {
 	path := fmt.Sprintf("/dns/retrieve/%s", domain)
 
-	body, err := c.doRequest(ctx, "POST", path, nil)
+	body, err := c.doPost(ctx, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -67,24 +67,24 @@ type CreateDNSRecordResponse struct {
 func (c *Client) CreateDNSRecord(ctx context.Context, domain string, input DNSRecordInput) (string, error) {
 	path := fmt.Sprintf("/dns/create/%s", domain)
 
-	reqBody := map[string]interface{}{
+	data := map[string]interface{}{
 		"type":    input.Type,
 		"content": input.Content,
 	}
 	if input.Name != "" {
-		reqBody["name"] = input.Name
+		data["name"] = input.Name
 	}
 	if input.TTL > 0 {
-		reqBody["ttl"] = input.TTL
+		data["ttl"] = input.TTL
 	}
 	if input.Prio > 0 {
-		reqBody["prio"] = input.Prio
+		data["prio"] = input.Prio
 	}
 	if input.Notes != "" {
-		reqBody["notes"] = input.Notes
+		data["notes"] = input.Notes
 	}
 
-	body, err := c.doRequest(ctx, "POST", path, reqBody)
+	body, err := c.doPost(ctx, path, data)
 	if err != nil {
 		return "", err
 	}
@@ -106,7 +106,7 @@ func (c *Client) CreateDNSRecord(ctx context.Context, domain string, input DNSRe
 func (c *Client) DeleteDNSRecord(ctx context.Context, domain, recordID string) error {
 	path := fmt.Sprintf("/dns/delete/%s/%s", domain, recordID)
 
-	body, err := c.doRequest(ctx, "POST", path, nil)
+	body, err := c.doPost(ctx, path, nil)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (c *Client) DeleteDNSRecord(ctx context.Context, domain, recordID string) e
 func (c *Client) DeleteDNSRecordByNameType(ctx context.Context, domain, recordType, subdomain string) error {
 	path := fmt.Sprintf("/dns/deleteByNameType/%s/%s/%s", domain, recordType, subdomain)
 
-	body, err := c.doRequest(ctx, "POST", path, nil)
+	body, err := c.doPost(ctx, path, nil)
 	if err != nil {
 		return err
 	}
@@ -135,11 +135,8 @@ func (c *Client) SetupDNS(ctx context.Context, domain, serverIP string) (rootID,
 	records, err := c.ListDNSRecords(ctx, domain)
 	if err == nil {
 		for _, r := range records {
-			if r.Type == "A" {
-				// Delete existing A record (root or wildcard)
-				if r.Name == "" || r.Name == "*" {
-					c.DeleteDNSRecord(ctx, domain, r.ID)
-				}
+			if r.Type == "A" && (r.Name == "" || r.Name == "*") {
+				c.DeleteDNSRecord(ctx, domain, r.ID)
 			}
 		}
 	}

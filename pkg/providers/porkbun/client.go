@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -14,7 +13,7 @@ import (
 
 const (
 	defaultBaseURL     = "https://api.porkbun.com/api/json/v3"
-	minRequestInterval = 100 * time.Millisecond // Conservative: 10 req/sec
+	minRequestInterval = 100 * time.Millisecond // ~10 req/sec (API allows ~20/2s)
 )
 
 // Client is the Porkbun API client
@@ -29,17 +28,11 @@ type Client struct {
 	lastRequest time.Time
 }
 
-// Credentials is the auth payload for Porkbun API requests
-type Credentials struct {
-	APIKey       string `json:"apikey"`
-	SecretAPIKey string `json:"secretapikey"`
-}
-
 // APIResponse is the wrapper for Porkbun API responses
 type APIResponse struct {
-	Status  string          `json:"status"` // SUCCESS or ERROR
-	Message string          `json:"message,omitempty"`
-	Code    string          `json:"code,omitempty"`
+	Status  string `json:"status"` // SUCCESS or ERROR
+	Message string `json:"message,omitempty"`
+	Code    string `json:"code,omitempty"`
 }
 
 // APIError represents a Porkbun API error
@@ -56,24 +49,13 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("porkbun: %s", e.Message)
 }
 
-// IsCloseoutUnavailable returns true if the closeout is no longer available
-func (e *APIError) IsCloseoutUnavailable() bool {
-	return e.Code == "CLOSEOUT_UNAVAILABLE"
-}
-
-// IsCostMismatch returns true if the cost doesn't match current price
-func (e *APIError) IsCostMismatch() bool {
-	return e.Code == "COST_MISMATCH"
-}
-
-// IsInsufficientFunds returns true if account has insufficient funds
-func (e *APIError) IsInsufficientFunds() bool {
-	return e.Code == "INSUFFICIENT_FUNDS"
-}
-
-// IsRateLimited returns true if rate limited
-func (e *APIError) IsRateLimited() bool {
-	return e.Code == "RATE_LIMIT_EXCEEDED"
+// Error code checks
+func (e *APIError) IsCloseoutUnavailable() bool { return e.Code == "CLOSEOUT_UNAVAILABLE" }
+func (e *APIError) IsCostMismatch() bool        { return e.Code == "COST_MISMATCH" }
+func (e *APIError) IsInsufficientFunds() bool   { return e.Code == "INSUFFICIENT_FUNDS" }
+func (e *APIError) IsRateLimited() bool         { return e.Code == "RATE_LIMIT_EXCEEDED" }
+func (e *APIError) IsInvalidCredentials() bool {
+	return e.Code == "INVALID_API_KEYS_001" || e.Code == "API_KEY_REQUIRED"
 }
 
 // NewClient creates a new Porkbun API client
@@ -93,99 +75,31 @@ func (c *Client) SetBaseURL(url string) {
 	c.baseURL = url
 }
 
-// doRequest makes a rate-limited request to the Porkbun API
-func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}) ([]byte, error) {
-	// Rate limiting
+// rateLimit enforces the minimum request interval
+func (c *Client) rateLimit() {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	elapsed := time.Since(c.lastRequest)
 	if elapsed < minRequestInterval {
 		time.Sleep(minRequestInterval - elapsed)
 	}
 	c.lastRequest = time.Now()
-	c.mu.Unlock()
-
-	// Build URL
-	reqURL := c.baseURL + path
-
-	// Create request body with credentials
-	var reqBody io.Reader
-	if body != nil {
-		// If body is a map, add credentials
-		if m, ok := body.(map[string]interface{}); ok {
-			m["apikey"] = c.apiKey
-			m["secretapikey"] = c.secretKey
-			jsonBody, err := json.Marshal(m)
-			if err != nil {
-				return nil, fmt.Errorf("marshaling request body: %w", err)
-			}
-			reqBody = bytes.NewReader(jsonBody)
-		} else {
-			jsonBody, err := json.Marshal(body)
-			if err != nil {
-				return nil, fmt.Errorf("marshaling request body: %w", err)
-			}
-			reqBody = bytes.NewReader(jsonBody)
-		}
-	} else {
-		// POST with just credentials
-		creds := Credentials{
-			APIKey:       c.apiKey,
-			SecretAPIKey: c.secretKey,
-		}
-		jsonBody, _ := json.Marshal(creds)
-		reqBody = bytes.NewReader(jsonBody)
-	}
-
-	// Create request
-	req, err := http.NewRequestWithContext(ctx, method, reqURL, reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
-
-	// Execute
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("executing request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading response: %w", err)
-	}
-
-	return respBody, nil
 }
 
-// doGet makes a POST request with credentials in body (Porkbun requires POST for all endpoints)
-// The path may contain query params for filtering (e.g. ?tld=com&limit=100)
+// doGet makes a GET request with header authentication
+// Used for read operations like /closeout/search
 func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
-	c.mu.Lock()
-	elapsed := time.Since(c.lastRequest)
-	if elapsed < minRequestInterval {
-		time.Sleep(minRequestInterval - elapsed)
-	}
-	c.lastRequest = time.Now()
-	c.mu.Unlock()
+	c.rateLimit()
 
 	reqURL := c.baseURL + path
-
-	// Porkbun requires credentials in POST body for ALL endpoints
-	creds := Credentials{
-		APIKey:       c.apiKey,
-		SecretAPIKey: c.secretKey,
-	}
-	jsonBody, _ := json.Marshal(creds)
-
-	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewReader(jsonBody))
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
+
+	// Header authentication for GET requests (per Porkbun API docs)
+	req.Header.Set("X-API-Key", c.apiKey)
+	req.Header.Set("X-Secret-API-Key", c.secretKey)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -198,10 +112,44 @@ func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 		return nil, fmt.Errorf("reading response: %w", err)
 	}
 
-	// Debug: log if we got HTML instead of JSON
-	if resp.StatusCode != 200 || (len(body) > 0 && body[0] == '<') {
-		log.Printf("[porkbun] Unexpected response: status=%d content-type=%s url=%s body-prefix=%s",
-			resp.StatusCode, resp.Header.Get("Content-Type"), reqURL, string(body[:min(100, len(body))]))
+	return body, nil
+}
+
+// doPost makes a POST request with body authentication
+// Used for write operations like /ping, /closeout/buy, /domain/updateNs
+func (c *Client) doPost(ctx context.Context, path string, data map[string]interface{}) ([]byte, error) {
+	c.rateLimit()
+
+	reqURL := c.baseURL + path
+
+	// Add credentials to body
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+	data["apikey"] = c.apiKey
+	data["secretapikey"] = c.secretKey
+
+	jsonBody, err := json.Marshal(data)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewReader(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("executing request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
 	}
 
 	return body, nil
@@ -211,7 +159,12 @@ func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 func checkResponse(body []byte) (*APIResponse, error) {
 	var resp APIResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("parsing response: %w (body: %s)", err, string(body))
+		// If we can't parse as JSON, it's likely an HTML error page
+		preview := string(body)
+		if len(preview) > 200 {
+			preview = preview[:200]
+		}
+		return nil, fmt.Errorf("invalid response (not JSON): %s", preview)
 	}
 
 	if resp.Status != "SUCCESS" {
@@ -225,13 +178,12 @@ func checkResponse(body []byte) (*APIResponse, error) {
 	return &resp, nil
 }
 
-// VerifyCredentials checks if the API credentials are valid
+// VerifyCredentials checks if the API credentials are valid using /ping
 func (c *Client) VerifyCredentials(ctx context.Context) error {
-	body, err := c.doRequest(ctx, "POST", "/ping", nil)
+	body, err := c.doPost(ctx, "/ping", nil)
 	if err != nil {
 		return err
 	}
-
 	_, err = checkResponse(body)
 	return err
 }
