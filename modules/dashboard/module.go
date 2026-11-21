@@ -50,6 +50,7 @@ func (m *Module) Migrate() error {
 	files := []string{
 		"migrations/001_dashboard_stats.sql",
 		"migrations/002_seed_announcements.sql",
+		"migrations/003_onboarding.sql",
 	}
 	for _, file := range files {
 		sql, err := migrationsFS.ReadFile(file)
@@ -73,6 +74,7 @@ func (m *Module) Routes() chi.Router {
 	r.Get("/api/countries", m.apiCountries)
 	r.Get("/api/visitors", m.apiVisitors)
 	r.Post("/api/reset-stat", m.apiResetStat)
+	r.Post("/api/dismiss-onboarding", m.apiDismissOnboarding)
 
 	return r
 }
@@ -143,6 +145,9 @@ func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	// News feed
 	announcements := m.getAnnouncements()
 
+	// Onboarding checklist
+	onboarding := m.getOnboardingStatus(user, domains, subStatus)
+
 	module.RenderUserSection(w, r, m.templates, "dashboard:index.html", map[string]interface{}{
 		"Title": "Dashboard",
 		"KPI": map[string]interface{}{
@@ -161,6 +166,7 @@ func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		},
 		"SubStatus":     subStatus,
 		"Announcements": announcements,
+		"Onboarding":    onboarding,
 	})
 }
 
@@ -435,5 +441,137 @@ func (m *Module) apiVisitors(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(points)
+}
+
+// Onboarding checklist
+
+type onboardingStep struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Complete    bool   `json:"complete"`
+	Link        string `json:"link"`
+	LinkText    string `json:"linkText"`
+}
+
+type onboardingStatus struct {
+	Show       bool             `json:"show"`
+	Steps      []onboardingStep `json:"steps"`
+	Completed  int              `json:"completed"`
+	Total      int              `json:"total"`
+	Percentage int              `json:"percentage"`
+	CanDismiss bool             `json:"canDismiss"`
+}
+
+func (m *Module) getOnboardingStatus(user *ctx.User, domainCount int64, subStatus string) onboardingStatus {
+	// Check if already dismissed
+	var dismissed bool
+	m.DB().Get(&dismissed, `SELECT onboarding_dismissed_at IS NOT NULL FROM users WHERE id = $1`, user.ID)
+	if dismissed {
+		return onboardingStatus{Show: false}
+	}
+
+	// Check bot settings visited
+	var botSettingsVisited bool
+	m.DB().Get(&botSettingsVisited, `SELECT bot_settings_visited_at IS NOT NULL FROM users WHERE id = $1`, user.ID)
+
+	steps := []onboardingStep{
+		{
+			ID:          "account",
+			Title:       "Create your account",
+			Description: "Welcome to GuardBot!",
+			Complete:    true,
+			Link:        "",
+			LinkText:    "",
+		},
+		{
+			ID:          "domain",
+			Title:       "Add your first domain",
+			Description: "Protect your website from bots",
+			Complete:    domainCount > 0,
+			Link:        "/user/domains/new",
+			LinkText:    "Add Domain",
+		},
+		{
+			ID:          "telegram",
+			Title:       "Connect Telegram",
+			Description: "Get instant bot attack alerts",
+			Complete:    user.TelegramConnectedAt,
+			Link:        "/user/settings?page=telegram",
+			LinkText:    "Connect",
+		},
+		{
+			ID:          "protection",
+			Title:       "Set up protection rules",
+			Description: "Customize how bots are handled",
+			Complete:    botSettingsVisited,
+			Link:        "/user/botsettings",
+			LinkText:    "Configure",
+		},
+		{
+			ID:          "subscription",
+			Title:       "Activate subscription",
+			Description: "Unlock all features",
+			Complete:    subStatus == "active",
+			Link:        "/user/subscription",
+			LinkText:    "Subscribe",
+		},
+	}
+
+	completed := 0
+	for _, s := range steps {
+		if s.Complete {
+			completed++
+		}
+	}
+
+	percentage := (completed * 100) / len(steps)
+
+	return onboardingStatus{
+		Show:       true,
+		Steps:      steps,
+		Completed:  completed,
+		Total:      len(steps),
+		Percentage: percentage,
+		CanDismiss: completed == len(steps),
+	}
+}
+
+func (m *Module) apiDismissOnboarding(w http.ResponseWriter, r *http.Request) {
+	userID := ctx.GetUserID(r)
+
+	// Check if all steps are complete
+	status := m.getOnboardingStatus(ctx.GetUser(r), 0, "")
+
+	// Re-check with actual data
+	var domainCount int64
+	m.DB().Get(&domainCount, `SELECT COUNT(*) FROM domains WHERE user_id = $1 AND is_shared = FALSE`, userID)
+
+	var subStatus string
+	m.DB().Get(&subStatus, `
+		SELECT CASE WHEN expires_at > NOW() THEN 'active' ELSE 'expired' END
+		FROM subscriptions WHERE user_id = $1
+		ORDER BY expires_at DESC LIMIT 1
+	`, userID)
+
+	status = m.getOnboardingStatus(ctx.GetUser(r), domainCount, subStatus)
+
+	if !status.CanDismiss {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"Complete all steps first"}`))
+		return
+	}
+
+	_, err := m.DB().Exec(`UPDATE users SET onboarding_dismissed_at = NOW() WHERE id = $1`, userID)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to dismiss"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"ok":true}`))
 }
 

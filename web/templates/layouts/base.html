@@ -363,23 +363,6 @@
           {{end}}
           {{end}}
 
-          {{/* Telegram connect prompt - show on dashboard if not connected and not dismissed */}}
-          {{if eq .Title "Dashboard"}}
-          {{if and (not .User.TelegramConnectedAt) (not .User.TelegramAlertDismissed)}}
-          <div id="telegram-alert" class="alert alert-info alert-border-left alert-dismissible fade show mb-3" role="alert">
-            <i class="bi bi-telegram me-2"></i>
-            Get instant notifications in Telegram. <a href="/user/settings?page=telegram" class="alert-link">Connect your bot</a> in Settings.
-            <button type="button" class="btn-close" onclick="dismissTelegramAlert()" aria-label="Close"></button>
-          </div>
-          <script>
-          function dismissTelegramAlert() {
-            fetch('/user/settings/telegram/dismiss-alert', { method: 'POST' });
-            document.getElementById('telegram-alert').remove();
-          }
-          </script>
-          {{end}}
-          {{end}}
-
           {{/* Domain promo banner - show on dashboard and domain pages only */}}
           {{if not .DomainStats.HasDomains}}
           {{if or (eq .Title "Dashboard") (eq .Title "Domains") (eq .Title "Add Domain")}}
