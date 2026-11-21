@@ -504,7 +504,7 @@ func (m *Module) getOnboardingStatus(user *ctx.User, domainCount int64, subStatu
 			Index:    4,
 			Title:    "Protection rules",
 			Complete: botSettingsVisited,
-			Link:     "/user/botsettings",
+			Link:     "/user/antibotcontrol",
 			LinkText: "Configure",
 		},
 		{
