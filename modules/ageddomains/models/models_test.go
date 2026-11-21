@@ -30,8 +30,9 @@ func TestProviderJSONSerialization(t *testing.T) {
 	if contains(jsonStr, "super-secret") {
 		t.Error("APISecret should be hidden from JSON (json:\"-\")")
 	}
-	if contains(jsonStr, "porkbun") && contains(jsonStr, "providerType") {
-		t.Error("ProviderType should be hidden from JSON (json:\"-\")")
+	// ProviderType is intentionally visible (not sensitive like API keys)
+	if !contains(jsonStr, "providerType") {
+		t.Error("ProviderType should be visible in JSON")
 	}
 
 	// Verify visible fields are present
