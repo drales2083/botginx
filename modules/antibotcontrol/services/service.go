@@ -61,8 +61,14 @@ func (s *AntibotControlService) SaveDefaults(userID string, settings *protection
 			settings = EXCLUDED.settings,
 			updated_at = NOW()
 	`, userID, settings)
+	if err != nil {
+		return err
+	}
 
-	return err
+	// Mark bot settings as visited for onboarding checklist
+	s.db.Exec(`UPDATE users SET bot_settings_visited_at = NOW() WHERE id = $1 AND bot_settings_visited_at IS NULL`, userID)
+
+	return nil
 }
 
 func (s *AntibotControlService) ResetDefaults(userID string) error {
