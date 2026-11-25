@@ -6,18 +6,20 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 // Banner represents the system-wide notification banner
 type Banner struct {
-	ID         int       `db:"id" json:"id"`
-	Type       string    `db:"type" json:"type"`
-	Title      string    `db:"title" json:"title"`
-	Message    string    `db:"message" json:"message"`
-	ButtonText string    `db:"button_text" json:"button_text"`
-	ButtonURL  string    `db:"button_url" json:"button_url"`
-	Enabled    bool      `db:"enabled" json:"enabled"`
-	UpdatedAt  time.Time `db:"updated_at" json:"updated_at"`
+	ID          int            `db:"id" json:"id"`
+	Type        string         `db:"type" json:"type"`
+	Title       string         `db:"title" json:"title"`
+	Message     string         `db:"message" json:"message"`
+	ButtonText  string         `db:"button_text" json:"button_text"`
+	ButtonURL   string         `db:"button_url" json:"button_url"`
+	Enabled     bool           `db:"enabled" json:"enabled"`
+	DismissedBy pq.StringArray `db:"dismissed_by" json:"-"`
+	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
 }
 
 // Service handles system banner operations
@@ -43,12 +45,16 @@ func (s *Service) EnsureTable() error {
 			button_text VARCHAR(50) DEFAULT '',
 			button_url VARCHAR(500) DEFAULT '',
 			enabled BOOLEAN DEFAULT false,
+			dismissed_by TEXT[] DEFAULT '{}',
 			updated_at TIMESTAMP DEFAULT NOW()
 		)
 	`)
 	if err != nil {
 		return err
 	}
+
+	// Add dismissed_by column if not exists (for existing installations)
+	s.db.Exec(`ALTER TABLE system_banner ADD COLUMN IF NOT EXISTS dismissed_by TEXT[] DEFAULT '{}'`)
 
 	// Insert default row if not exists
 	_, err = s.db.Exec(`
@@ -84,11 +90,11 @@ func (s *Service) Get() (*Banner, error) {
 	return &banner, nil
 }
 
-// Update updates the banner configuration
+// Update updates the banner configuration and clears dismissed list
 func (s *Service) Update(b *Banner) error {
 	_, err := s.db.Exec(`
-		INSERT INTO system_banner (id, type, title, message, button_text, button_url, enabled, updated_at)
-		VALUES (1, $1, $2, $3, $4, $5, $6, NOW())
+		INSERT INTO system_banner (id, type, title, message, button_text, button_url, enabled, dismissed_by, updated_at)
+		VALUES (1, $1, $2, $3, $4, $5, $6, '{}', NOW())
 		ON CONFLICT (id) DO UPDATE SET
 			type = $1,
 			title = $2,
@@ -96,6 +102,7 @@ func (s *Service) Update(b *Banner) error {
 			button_text = $4,
 			button_url = $5,
 			enabled = $6,
+			dismissed_by = '{}',
 			updated_at = NOW()
 	`, b.Type, b.Title, b.Message, b.ButtonText, b.ButtonURL, b.Enabled)
 
@@ -125,4 +132,39 @@ func (s *Service) GetEnabled() *Banner {
 		return nil
 	}
 	return b
+}
+
+// GetEnabledForUser returns the banner if enabled and not dismissed by this user
+func (s *Service) GetEnabledForUser(userID string) *Banner {
+	b, err := s.Get()
+	if err != nil || !b.Enabled || userID == "" {
+		return nil
+	}
+	// Check if user has dismissed
+	for _, id := range b.DismissedBy {
+		if id == userID {
+			return nil
+		}
+	}
+	return b
+}
+
+// Dismiss marks the banner as dismissed for a user
+func (s *Service) Dismiss(userID string) error {
+	if userID == "" {
+		return nil
+	}
+	_, err := s.db.Exec(`
+		UPDATE system_banner
+		SET dismissed_by = array_append(dismissed_by, $1)
+		WHERE id = 1 AND NOT ($1 = ANY(dismissed_by))
+	`, userID)
+	if err != nil {
+		return err
+	}
+	// Clear cache
+	s.mu.Lock()
+	s.cache = nil
+	s.mu.Unlock()
+	return nil
 }

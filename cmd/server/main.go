@@ -275,12 +275,23 @@ func main() {
 	// System banner service (created early so template function is available during parsing)
 	bannerService := banner.NewService(db.DB)
 	templates.AddFuncs(template.FuncMap{
-		"systemBanner": bannerService.GetEnabled,
+		"systemBanner": bannerService.GetEnabled, // Placeholder, overridden per-request
 	})
 
 	// Rebuilt per render so "t" resolves in the visitor's chosen language
-	// rather than the configured default.
-	templates.SetRequestFuncs(translator.RequestTemplateFuncs)
+	// rather than the configured default. Also includes systemBanner with user context.
+	templates.SetRequestFuncs(func(r *http.Request) template.FuncMap {
+		funcs := translator.RequestTemplateFuncs(r)
+		// Override systemBanner to check if user has dismissed
+		funcs["systemBanner"] = func() *banner.Banner {
+			user := ctx.GetUser(r)
+			if user == nil {
+				return bannerService.GetEnabled()
+			}
+			return bannerService.GetEnabledForUser(user.ID)
+		}
+		return funcs
+	})
 
 	// Error pages are registered like a module so they can use the same layouts.
 	errorsSub, _ := fs.Sub(web.ErrorsFS, "templates/errors")
@@ -320,7 +331,8 @@ func main() {
 	promocodesModule := promocodes.New(nil, nil) // Initialized via Init()
 
 	registry.Register(authModule)
-	registry.Register(dashboard.New())
+	dashboardModule := dashboard.New()
+	registry.Register(dashboardModule)
 	registry.Register(serversModule) // Admin module
 	registry.Register(domainsModule)
 	registry.Register(redirectLinksModule)
@@ -356,7 +368,8 @@ func main() {
 	telegramModule := telegram.New()
 	registry.Register(telegramModule) // Telegram bot integration
 	settingsModule := settings.New(telegramModule)
-	settingsModule.SetBannerService(bannerService) // Share banner service with templates
+	settingsModule.SetBannerService(bannerService)  // Share banner service with templates
+	dashboardModule.SetBannerService(bannerService) // For dismiss API
 	registry.Register(settingsModule) // Admin settings (telegram, etc.)
 	backupModule := backup.New()
 	registry.Register(backupModule) // Telegram backup system

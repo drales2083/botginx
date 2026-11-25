@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/botginx/botginx/pkg/banner"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/go-chi/chi/v5"
@@ -22,7 +23,13 @@ var migrationsFS embed.FS
 // Module implements the dashboard feature
 type Module struct {
 	*module.BaseModule
-	templates *module.TemplateEngine
+	templates     *module.TemplateEngine
+	bannerService *banner.Service
+}
+
+// SetBannerService sets the banner service for dismiss functionality
+func (m *Module) SetBannerService(svc *banner.Service) {
+	m.bannerService = svc
 }
 
 func New() *Module {
@@ -75,10 +82,31 @@ func (m *Module) Routes() chi.Router {
 	r.Get("/api/visitors", m.apiVisitors)
 	r.Post("/api/reset-stat", m.apiResetStat)
 	r.Post("/api/dismiss-onboarding", m.apiDismissOnboarding)
+	r.Post("/api/dismiss-banner", m.apiDismissBanner)
 
 	return r
 }
 
+func (m *Module) apiDismissBanner(w http.ResponseWriter, r *http.Request) {
+	if m.bannerService == nil {
+		http.Error(w, `{"error":"banner service not available"}`, http.StatusInternalServerError)
+		return
+	}
+
+	userID := ctx.GetUserID(r)
+	if userID == "" {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	if err := m.bannerService.Dismiss(userID); err != nil {
+		http.Error(w, `{"error":"failed to dismiss banner"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"ok":true}`))
+}
 
 func (m *Module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	user := ctx.GetUser(r)

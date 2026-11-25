@@ -716,25 +716,10 @@
     function dismissBanner() {
       const banner = document.getElementById('systemBanner');
       if (banner) {
-        const bannerId = banner.dataset.bannerId;
-        try {
-          localStorage.setItem('dismissed-banner-' + bannerId, '1');
-        } catch (e) {}
         banner.style.display = 'none';
+        fetch('/user/dashboard/api/dismiss-banner', { method: 'POST' }).catch(() => {});
       }
     }
-    // Check if banner was dismissed
-    (function() {
-      const banner = document.getElementById('systemBanner');
-      if (banner) {
-        const bannerId = banner.dataset.bannerId;
-        try {
-          if (localStorage.getItem('dismissed-banner-' + bannerId) === '1') {
-            banner.style.display = 'none';
-          }
-        } catch (e) {}
-      }
-    })();
 
     // Any table marked data-datatable gets search, sort and paging.
     //   data-per-page   rows per page (default 25)
