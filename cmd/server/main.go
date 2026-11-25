@@ -65,6 +65,7 @@ import (
 	"github.com/botginx/botginx/modules/webhooks"
 	"github.com/botginx/botginx/pkg/api/v1"
 	"github.com/botginx/botginx/pkg/apiauth"
+	"github.com/botginx/botginx/pkg/banner"
 	"github.com/botginx/botginx/pkg/buildinfo"
 	"github.com/botginx/botginx/pkg/ctx"
 	"github.com/botginx/botginx/pkg/database"
@@ -270,6 +271,13 @@ func main() {
 			return fmt.Sprintf("%.1fs", d.Seconds())
 		},
 	})
+
+	// System banner service (created early so template function is available during parsing)
+	bannerService := banner.NewService(db.DB)
+	templates.AddFuncs(template.FuncMap{
+		"systemBanner": bannerService.GetEnabled,
+	})
+
 	// Rebuilt per render so "t" resolves in the visitor's chosen language
 	// rather than the configured default.
 	templates.SetRequestFuncs(translator.RequestTemplateFuncs)
@@ -348,6 +356,7 @@ func main() {
 	telegramModule := telegram.New()
 	registry.Register(telegramModule) // Telegram bot integration
 	settingsModule := settings.New(telegramModule)
+	settingsModule.SetBannerService(bannerService) // Share banner service with templates
 	registry.Register(settingsModule) // Admin settings (telegram, etc.)
 	backupModule := backup.New()
 	registry.Register(backupModule) // Telegram backup system
@@ -450,11 +459,6 @@ func main() {
 	supportModule.SetUserNotifier(notificationSvc)               // User's personal Telegram bot
 	telegramModule.Handler.SetUserNotifier(notificationSvc)      // User notifications when admin replies via Telegram
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
-
-	// System banner template function
-	templates.AddFuncs(template.FuncMap{
-		"systemBanner": settingsModule.BannerService.GetEnabled,
-	})
 	serversModule.SetOnServerIPChange(domainsModule.ReconfigureAllDomainsWithIP) // Auto DNS reconfigure on deploy IP change
 	serversModule.SetOnResetDomains(domainsModule.Service().ResetAllDomainsForReconfigure) // Reset domains callback
 	serversModule.SetOnAssignServer(domainsModule.Service().AssignServerToAllDomains)      // Assign server callback

@@ -39,7 +39,10 @@ func (m *Module) Init(deps *module.Dependencies) error {
 
 	// Initialize services
 	m.ProxyService = proxy.NewService(deps.DB)
-	m.BannerService = banner.NewService(deps.DB)
+	// BannerService is set externally via SetBannerService (created early for template function)
+	if m.BannerService == nil {
+		m.BannerService = banner.NewService(deps.DB)
+	}
 
 	m.handler = handlers.NewHandler(deps.DB, deps.Templates, m.telegramModule, m.ProxyService, m.BannerService)
 
@@ -47,6 +50,11 @@ func (m *Module) Init(deps *module.Dependencies) error {
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
 
 	return nil
+}
+
+// SetBannerService sets the banner service (must be called before Init if sharing with templates)
+func (m *Module) SetBannerService(svc *banner.Service) {
+	m.BannerService = svc
 }
 
 func (m *Module) Migrate() error {
