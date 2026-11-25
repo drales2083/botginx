@@ -209,28 +209,6 @@
   <!-- Mobile sidebar backdrop -->
   <div class="sidebar-backdrop" onclick="closeSidebar()"></div>
   <div class="app-wrapper">
-    {{$banner := systemBanner}}
-    {{if $banner}}
-    <!-- System Banner -->
-    <div class="system-banner system-banner-{{$banner.Type}}" id="systemBanner" data-banner-id="{{$banner.UpdatedAt.Unix}}">
-      <div class="banner-icon">
-        {{if eq $banner.Type "danger"}}<i class="bi bi-exclamation-triangle-fill"></i>
-        {{else if eq $banner.Type "warning"}}<i class="bi bi-exclamation-circle-fill"></i>
-        {{else if eq $banner.Type "success"}}<i class="bi bi-check-circle-fill"></i>
-        {{else}}<i class="bi bi-info-circle-fill"></i>{{end}}
-      </div>
-      <div class="banner-content">
-        {{if $banner.Title}}<div class="banner-title">{{$banner.Title}}</div>{{end}}
-        {{if $banner.Message}}<div class="banner-message">{{$banner.Message}}</div>{{end}}
-      </div>
-      {{if and $banner.ButtonText $banner.ButtonURL}}
-      <a href="{{$banner.ButtonURL}}" class="banner-button" target="_blank" rel="noopener">{{$banner.ButtonText}}</a>
-      {{end}}
-      <button class="banner-dismiss" onclick="dismissBanner()" title="Dismiss">
-        <i class="bi bi-x-lg"></i>
-      </button>
-    </div>
-    {{end}}
     <!-- Header -->
     <nav class="app-header navbar navbar-expand bg-dark" data-bs-theme="dark">
       <div class="container-fluid">
@@ -402,6 +380,28 @@
 
     <!-- Main Content -->
     <main class="app-main">
+      {{$banner := systemBanner}}
+      {{if $banner}}
+      <!-- System Banner -->
+      <div class="system-banner system-banner-{{$banner.Type}}" id="systemBanner" data-banner-id="{{$banner.UpdatedAt.Unix}}">
+        <div class="banner-icon">
+          {{if eq $banner.Type "danger"}}<i class="bi bi-exclamation-triangle-fill"></i>
+          {{else if eq $banner.Type "warning"}}<i class="bi bi-exclamation-circle-fill"></i>
+          {{else if eq $banner.Type "success"}}<i class="bi bi-check-circle-fill"></i>
+          {{else}}<i class="bi bi-info-circle-fill"></i>{{end}}
+        </div>
+        <div class="banner-content">
+          {{if $banner.Title}}<div class="banner-title">{{$banner.Title}}</div>{{end}}
+          {{if $banner.Message}}<div class="banner-message">{{$banner.Message}}</div>{{end}}
+        </div>
+        {{if and $banner.ButtonText $banner.ButtonURL}}
+        <a href="{{$banner.ButtonURL}}" class="banner-button">{{$banner.ButtonText}}</a>
+        {{end}}
+        <button class="banner-dismiss" onclick="dismissBanner()" title="Dismiss">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      {{end}}
       <div class="app-content-header">
         <div class="container-fluid">
           <div class="row">
