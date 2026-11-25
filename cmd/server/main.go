@@ -450,6 +450,11 @@ func main() {
 	supportModule.SetUserNotifier(notificationSvc)               // User's personal Telegram bot
 	telegramModule.Handler.SetUserNotifier(notificationSvc)      // User notifications when admin replies via Telegram
 	domainsModule.SetProxyService(settingsModule.ProxyService) // Proxy for cPanel API calls
+
+	// System banner template function
+	templates.AddFuncs(template.FuncMap{
+		"systemBanner": settingsModule.BannerService.GetEnabled,
+	})
 	serversModule.SetOnServerIPChange(domainsModule.ReconfigureAllDomainsWithIP) // Auto DNS reconfigure on deploy IP change
 	serversModule.SetOnResetDomains(domainsModule.Service().ResetAllDomainsForReconfigure) // Reset domains callback
 	serversModule.SetOnAssignServer(domainsModule.Service().AssignServerToAllDomains)      // Assign server callback

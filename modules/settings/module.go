@@ -6,6 +6,7 @@ import (
 
 	"github.com/botginx/botginx/modules/settings/handlers"
 	"github.com/botginx/botginx/modules/telegram"
+	"github.com/botginx/botginx/pkg/banner"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/proxy"
 	"github.com/go-chi/chi/v5"
@@ -19,6 +20,7 @@ type Module struct {
 	handler        *handlers.Handler
 	telegramModule *telegram.Module
 	ProxyService   *proxy.Service
+	BannerService  *banner.Service
 }
 
 func New(telegramModule *telegram.Module) *Module {
@@ -35,10 +37,11 @@ func New(telegramModule *telegram.Module) *Module {
 func (m *Module) Init(deps *module.Dependencies) error {
 	m.SetDeps(deps)
 
-	// Initialize proxy service
+	// Initialize services
 	m.ProxyService = proxy.NewService(deps.DB)
+	m.BannerService = banner.NewService(deps.DB)
 
-	m.handler = handlers.NewHandler(deps.DB, deps.Templates, m.telegramModule, m.ProxyService)
+	m.handler = handlers.NewHandler(deps.DB, deps.Templates, m.telegramModule, m.ProxyService, m.BannerService)
 
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 	deps.Templates.RegisterModule(m.ID(), tmplFS)
@@ -47,8 +50,11 @@ func (m *Module) Init(deps *module.Dependencies) error {
 }
 
 func (m *Module) Migrate() error {
-	// Ensure proxy table exists
-	return m.ProxyService.EnsureTable()
+	// Ensure tables exist
+	if err := m.ProxyService.EnsureTable(); err != nil {
+		return err
+	}
+	return m.BannerService.EnsureTable()
 }
 
 func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
@@ -57,6 +63,13 @@ func (m *Module) RoutesForSection(section module.MenuSection) chi.Router {
 
 		// Main settings page
 		r.Get("/", m.handler.Index)
+
+		// System banner settings
+		r.Route("/banner", func(r chi.Router) {
+			r.Get("/", m.handler.Banner)
+			r.Get("/api/config", m.handler.APIGetBanner)
+			r.Put("/api/config", m.handler.APIUpdateBanner)
+		})
 
 		// Telegram settings section
 		r.Route("/telegram", func(r chi.Router) {

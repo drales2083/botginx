@@ -7,6 +7,7 @@ import (
 
 	"github.com/botginx/botginx/modules/telegram"
 	"github.com/botginx/botginx/pkg/adminlog"
+	"github.com/botginx/botginx/pkg/banner"
 	"github.com/botginx/botginx/pkg/module"
 	"github.com/botginx/botginx/pkg/proxy"
 	"github.com/jmoiron/sqlx"
@@ -17,15 +18,17 @@ type Handler struct {
 	templates      *module.TemplateEngine
 	telegramModule *telegram.Module
 	proxyService   *proxy.Service
+	bannerService  *banner.Service
 	adminLogger    *adminlog.Logger
 }
 
-func NewHandler(db *sqlx.DB, templates *module.TemplateEngine, telegramModule *telegram.Module, proxyService *proxy.Service) *Handler {
+func NewHandler(db *sqlx.DB, templates *module.TemplateEngine, telegramModule *telegram.Module, proxyService *proxy.Service, bannerService *banner.Service) *Handler {
 	return &Handler{
 		db:             db,
 		templates:      templates,
 		telegramModule: telegramModule,
 		proxyService:   proxyService,
+		bannerService:  bannerService,
 		adminLogger:    adminlog.NewLogger(db),
 	}
 }
@@ -47,6 +50,13 @@ type SettingsSection struct {
 // Index shows the main settings page with all sections
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 	sections := []SettingsSection{
+		{
+			ID:          "banner",
+			Title:       "System Banner",
+			Description: "Display important notifications to all users across the dashboard",
+			Icon:        "bi-megaphone",
+			Path:        "/admin/settings/banner",
+		},
 		{
 			ID:          "telegram",
 			Title:       "Telegram",
@@ -190,4 +200,66 @@ func parseInt(s string, def int) int {
 		return def
 	}
 	return v
+}
+
+// Banner shows the system banner settings page
+func (h *Handler) Banner(w http.ResponseWriter, r *http.Request) {
+	b, err := h.bannerService.Get()
+	if err != nil {
+		b = &banner.Banner{Type: "info", Enabled: false}
+	}
+
+	module.Render(w, r, h.templates, "settings:banner.html", map[string]interface{}{
+		"Title":  "System Banner",
+		"Banner": b,
+	})
+}
+
+// APIGetBanner returns the banner configuration
+func (h *Handler) APIGetBanner(w http.ResponseWriter, r *http.Request) {
+	b, err := h.bannerService.Get()
+	if err != nil {
+		h.jsonError(w, "Failed to get banner config", http.StatusInternalServerError)
+		return
+	}
+	h.jsonSuccess(w, b)
+}
+
+// APIUpdateBanner updates the banner configuration
+func (h *Handler) APIUpdateBanner(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Type       string `json:"type"`
+		Title      string `json:"title"`
+		Message    string `json:"message"`
+		ButtonText string `json:"button_text"`
+		ButtonURL  string `json:"button_url"`
+		Enabled    bool   `json:"enabled"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate type
+	validTypes := map[string]bool{"danger": true, "warning": true, "success": true, "info": true}
+	if !validTypes[input.Type] {
+		input.Type = "info"
+	}
+
+	b := &banner.Banner{
+		Type:       input.Type,
+		Title:      input.Title,
+		Message:    input.Message,
+		ButtonText: input.ButtonText,
+		ButtonURL:  input.ButtonURL,
+		Enabled:    input.Enabled,
+	}
+
+	if err := h.bannerService.Update(b); err != nil {
+		h.jsonError(w, "Failed to update banner", http.StatusInternalServerError)
+		return
+	}
+
+	h.jsonSuccess(w, map[string]string{"message": "Banner settings updated"})
 }

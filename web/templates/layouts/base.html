@@ -106,6 +106,82 @@
     }
 
     /* NOTE: Form switches, accordions, alerts, datatables are now styled by Kumo theme */
+
+    /* System Banner */
+    .system-banner {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      border-left: 4px solid;
+      font-size: 0.9rem;
+    }
+    .system-banner-danger {
+      background-color: var(--bs-danger);
+      border-color: #a71d2a;
+      color: #fff;
+    }
+    .system-banner-warning {
+      background-color: var(--bs-warning);
+      border-color: #cc9a06;
+      color: #000;
+    }
+    .system-banner-success {
+      background-color: var(--bs-success);
+      border-color: #157347;
+      color: #fff;
+    }
+    .system-banner-info {
+      background-color: var(--bs-info);
+      border-color: #0a95a8;
+      color: #fff;
+    }
+    .system-banner .banner-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .system-banner .banner-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .system-banner .banner-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .system-banner .banner-message {
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+    .system-banner .banner-button {
+      flex-shrink: 0;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-radius: 0.375rem;
+      text-decoration: none;
+      white-space: nowrap;
+      background: rgba(255,255,255,0.2);
+      color: inherit;
+    }
+    .system-banner-warning .banner-button {
+      background: rgba(0,0,0,0.15);
+    }
+    .system-banner .banner-button:hover {
+      opacity: 0.85;
+    }
+    .system-banner .banner-dismiss {
+      flex-shrink: 0;
+      background: transparent;
+      border: none;
+      padding: 0.25rem;
+      opacity: 0.7;
+      cursor: pointer;
+      color: inherit;
+      font-size: 0.9rem;
+    }
+    .system-banner .banner-dismiss:hover {
+      opacity: 1;
+    }
   </style>
   <script>
     // Apply sidebar state immediately to prevent flash
@@ -133,6 +209,28 @@
   <!-- Mobile sidebar backdrop -->
   <div class="sidebar-backdrop" onclick="closeSidebar()"></div>
   <div class="app-wrapper">
+    {{$banner := systemBanner}}
+    {{if $banner}}
+    <!-- System Banner -->
+    <div class="system-banner system-banner-{{$banner.Type}}" id="systemBanner" data-banner-id="{{$banner.UpdatedAt.Unix}}">
+      <div class="banner-icon">
+        {{if eq $banner.Type "danger"}}<i class="bi bi-exclamation-triangle-fill"></i>
+        {{else if eq $banner.Type "warning"}}<i class="bi bi-exclamation-circle-fill"></i>
+        {{else if eq $banner.Type "success"}}<i class="bi bi-check-circle-fill"></i>
+        {{else}}<i class="bi bi-info-circle-fill"></i>{{end}}
+      </div>
+      <div class="banner-content">
+        {{if $banner.Title}}<div class="banner-title">{{$banner.Title}}</div>{{end}}
+        {{if $banner.Message}}<div class="banner-message">{{$banner.Message}}</div>{{end}}
+      </div>
+      {{if and $banner.ButtonText $banner.ButtonURL}}
+      <a href="{{$banner.ButtonURL}}" class="banner-button" target="_blank" rel="noopener">{{$banner.ButtonText}}</a>
+      {{end}}
+      <button class="banner-dismiss" onclick="dismissBanner()" title="Dismiss">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    {{end}}
     <!-- Header -->
     <nav class="app-header navbar navbar-expand bg-dark" data-bs-theme="dark">
       <div class="container-fluid">
@@ -613,6 +711,30 @@
         });
       }
     });
+
+    // System banner dismiss function
+    function dismissBanner() {
+      const banner = document.getElementById('systemBanner');
+      if (banner) {
+        const bannerId = banner.dataset.bannerId;
+        try {
+          localStorage.setItem('dismissed-banner-' + bannerId, '1');
+        } catch (e) {}
+        banner.style.display = 'none';
+      }
+    }
+    // Check if banner was dismissed
+    (function() {
+      const banner = document.getElementById('systemBanner');
+      if (banner) {
+        const bannerId = banner.dataset.bannerId;
+        try {
+          if (localStorage.getItem('dismissed-banner-' + bannerId) === '1') {
+            banner.style.display = 'none';
+          }
+        } catch (e) {}
+      }
+    })();
 
     // Any table marked data-datatable gets search, sort and paging.
     //   data-per-page   rows per page (default 25)

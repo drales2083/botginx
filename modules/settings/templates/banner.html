@@ -1,0 +1,341 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="/admin/settings">Settings</a></li>
+                    <li class="breadcrumb-item active">System Banner</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-megaphone me-2"></i>System Banner</h2>
+            <p class="text-muted">Display important notifications to all users across the dashboard.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">Banner Settings</h6>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="bannerEnabled"
+                               {{if .Banner.Enabled}}checked{{end}}>
+                        <label class="form-check-label" for="bannerEnabled">Enable Banner</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form id="bannerForm">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Banner Type</label>
+                                <div class="d-flex gap-2 flex-wrap" id="typeSelector">
+                                    <button type="button" class="btn btn-outline-danger type-btn {{if eq .Banner.Type "danger"}}active{{end}}" data-type="danger">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Danger
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning type-btn {{if eq .Banner.Type "warning"}}active{{end}}" data-type="warning">
+                                        <i class="bi bi-exclamation-circle me-1"></i>Warning
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success type-btn {{if eq .Banner.Type "success"}}active{{end}}" data-type="success">
+                                        <i class="bi bi-check-circle me-1"></i>Success
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info type-btn {{if or (eq .Banner.Type "info") (eq .Banner.Type "")}}active{{end}}" data-type="info">
+                                        <i class="bi bi-info-circle me-1"></i>Info
+                                    </button>
+                                </div>
+                                <input type="hidden" id="bannerType" value="{{if .Banner.Type}}{{.Banner.Type}}{{else}}info{{end}}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Title</label>
+                                <input type="text" class="form-control" id="bannerTitle"
+                                       value="{{.Banner.Title}}" placeholder="Scheduled Maintenance" maxlength="200">
+                                <small class="text-muted">Short headline for the banner</small>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Message</label>
+                                <textarea class="form-control" id="bannerMessage" rows="3"
+                                          placeholder="Our servers will be down on Dec 1st from 2:00 AM - 4:00 AM UTC.">{{.Banner.Message}}</textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Button Text <span class="text-muted">(optional)</span></label>
+                                <input type="text" class="form-control" id="buttonText"
+                                       value="{{.Banner.ButtonText}}" placeholder="Learn More" maxlength="50">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Button URL <span class="text-muted">(optional)</span></label>
+                                <input type="url" class="form-control" id="buttonURL"
+                                       value="{{.Banner.ButtonURL}}" placeholder="https://status.example.com">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary" onclick="saveBanner()" id="saveBtn">
+                        <i class="bi bi-check-lg me-1"></i>Save Settings
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Preview -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-eye me-2"></i>Live Preview</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div id="bannerPreview" class="system-banner banner-info">
+                        <div class="banner-icon">
+                            <i class="bi bi-info-circle"></i>
+                        </div>
+                        <div class="banner-content">
+                            <div class="banner-title" id="previewTitle">New Feature Available</div>
+                            <div class="banner-message" id="previewMessage">API v2 is now live with improved rate limits.</div>
+                        </div>
+                        <a href="#" class="banner-button" id="previewButton" style="display: none;">Learn More</a>
+                        <button class="banner-dismiss" title="Dismiss">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>About System Banner</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        The system banner displays important notifications at the top of every page
+                        for all logged-in users.
+                    </p>
+                    <p class="small text-muted mb-0">
+                        <strong>Use cases:</strong>
+                        <ul class="small text-muted mb-0">
+                            <li>Scheduled maintenance announcements</li>
+                            <li>New feature releases</li>
+                            <li>Service disruptions</li>
+                            <li>Important policy updates</li>
+                        </ul>
+                    </p>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-check2-circle me-2"></i>Status</h6>
+                </div>
+                <div class="card-body">
+                    <div id="statusCard">
+                        {{if .Banner.Enabled}}
+                        <span class="badge bg-success">Active</span>
+                        <p class="small text-muted mt-2 mb-0">
+                            Banner is visible to all users.
+                        </p>
+                        {{else}}
+                        <span class="badge bg-secondary">Disabled</span>
+                        <p class="small text-muted mt-2 mb-0">
+                            Banner is not currently displayed.
+                        </p>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.type-btn.active {
+    color: #fff !important;
+}
+.type-btn.active.btn-outline-danger { background-color: var(--bs-danger); }
+.type-btn.active.btn-outline-warning { background-color: var(--bs-warning); color: #000 !important; }
+.type-btn.active.btn-outline-success { background-color: var(--bs-success); }
+.type-btn.active.btn-outline-info { background-color: var(--bs-info); }
+
+/* System Banner Preview Styles */
+.system-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-left: 4px solid;
+}
+.system-banner.banner-danger {
+    background-color: var(--bs-danger);
+    border-color: #a71d2a;
+    color: #fff;
+}
+.system-banner.banner-warning {
+    background-color: var(--bs-warning);
+    border-color: #cc9a06;
+    color: #000;
+}
+.system-banner.banner-success {
+    background-color: var(--bs-success);
+    border-color: #157347;
+    color: #fff;
+}
+.system-banner.banner-info {
+    background-color: var(--bs-info);
+    border-color: #0a95a8;
+    color: #fff;
+}
+.banner-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+.banner-content {
+    flex: 1;
+    min-width: 0;
+}
+.banner-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+.banner-message {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+.banner-button {
+    flex-shrink: 0;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.banner-danger .banner-button { background: rgba(255,255,255,0.2); color: #fff; }
+.banner-warning .banner-button { background: rgba(0,0,0,0.15); color: #000; }
+.banner-success .banner-button { background: rgba(255,255,255,0.2); color: #fff; }
+.banner-info .banner-button { background: rgba(255,255,255,0.2); color: #fff; }
+.banner-button:hover { opacity: 0.9; }
+.banner-dismiss {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    padding: 0.25rem;
+    opacity: 0.7;
+    cursor: pointer;
+    color: inherit;
+}
+.banner-dismiss:hover { opacity: 1; }
+</style>
+
+<script>
+const API_BASE = '/admin/settings/banner/api';
+let currentType = '{{if .Banner.Type}}{{.Banner.Type}}{{else}}info{{end}}';
+
+// Type selector
+document.querySelectorAll('.type-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentType = this.dataset.type;
+        document.getElementById('bannerType').value = currentType;
+        updatePreview();
+    });
+});
+
+// Live preview updates
+['bannerTitle', 'bannerMessage', 'buttonText', 'buttonURL'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', updatePreview);
+});
+
+function updatePreview() {
+    const preview = document.getElementById('bannerPreview');
+    const title = document.getElementById('bannerTitle').value || 'Banner Title';
+    const message = document.getElementById('bannerMessage').value || 'Banner message will appear here.';
+    const btnText = document.getElementById('buttonText').value;
+    const btnURL = document.getElementById('buttonURL').value;
+
+    // Update type class
+    preview.className = 'system-banner banner-' + currentType;
+
+    // Update icon
+    const icons = {
+        danger: 'bi-exclamation-triangle',
+        warning: 'bi-exclamation-circle',
+        success: 'bi-check-circle',
+        info: 'bi-info-circle'
+    };
+    preview.querySelector('.banner-icon i').className = 'bi ' + icons[currentType];
+
+    // Update content
+    document.getElementById('previewTitle').textContent = title;
+    document.getElementById('previewMessage').textContent = message;
+
+    // Update button
+    const previewBtn = document.getElementById('previewButton');
+    if (btnText && btnURL) {
+        previewBtn.textContent = btnText;
+        previewBtn.href = btnURL;
+        previewBtn.style.display = 'inline-block';
+    } else {
+        previewBtn.style.display = 'none';
+    }
+}
+
+function getFormData() {
+    return {
+        type: currentType,
+        title: document.getElementById('bannerTitle').value,
+        message: document.getElementById('bannerMessage').value,
+        button_text: document.getElementById('buttonText').value,
+        button_url: document.getElementById('buttonURL').value,
+        enabled: document.getElementById('bannerEnabled').checked
+    };
+}
+
+async function saveBanner() {
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    try {
+        const resp = await fetch(API_BASE + '/config', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(getFormData())
+        });
+        const result = await resp.json();
+
+        if (resp.ok && result.success) {
+            window.showToast?.('Banner settings saved', 'success');
+            updateStatusCard();
+        } else {
+            window.showToast?.(result.error || 'Failed to save', 'danger');
+        }
+    } catch (err) {
+        window.showToast?.('Network error', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Settings';
+    }
+}
+
+function updateStatusCard() {
+    const enabled = document.getElementById('bannerEnabled').checked;
+    const statusCard = document.getElementById('statusCard');
+
+    if (enabled) {
+        statusCard.innerHTML = `
+            <span class="badge bg-success">Active</span>
+            <p class="small text-muted mt-2 mb-0">Banner is visible to all users.</p>
+        `;
+    } else {
+        statusCard.innerHTML = `
+            <span class="badge bg-secondary">Disabled</span>
+            <p class="small text-muted mt-2 mb-0">Banner is not currently displayed.</p>
+        `;
+    }
+}
+
+document.getElementById('bannerEnabled').addEventListener('change', updateStatusCard);
+
+// Initialize preview
+updatePreview();
+</script>
+{{end}}
